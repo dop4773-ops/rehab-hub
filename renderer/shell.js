@@ -194,8 +194,8 @@ function readToolSummary(key) {
 // content가 있으면 "잇다로 보내기" 버튼을 같이 붙인다 — 자동으로 보내지 않고, 사용자가 누를 때만
 // 잇다의 Inbox에 한 줄 들어간다(잇다 Inbox 철학과 동일: 자동 분류 없음, 단순 저장).
 function alertRow(label, badgeText, badgeClass, content) {
-  const btn = content ? `<button class="btn" style="padding:3px 8px;font-size:11px;margin-left:6px" data-itda-push="${content.replace(/"/g, '&quot;')}">잇다로 보내기</button>` : '';
-  return `<div class="row"><span>${label}</span><span><span class="badge ${badgeClass}">${badgeText}</span>${btn}</span></div>`;
+  const btn = content ? `<button class="btn" style="padding:3px 8px;font-size:11px;margin-left:6px" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>` : '';
+  return `<div class="row ${badgeClass}"><span class="lbl"><span class="dot ${badgeClass}"></span>${label}</span><span><span class="badge ${badgeClass}">${badgeText}</span>${btn}</span></div>`;
 }
 
 function wireItdaPushButtons() {
