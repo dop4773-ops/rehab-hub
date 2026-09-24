@@ -134,6 +134,16 @@ async function waitForSummaryThenRender(key, tries = 20) {
   }
 }
 
+// 도구(iframe)는 sandbox라 window.rehab(IPC)에 직접 접근 못 한다 — 대신 같은 출처(app://rehab-shell)라
+// iframe.contentWindow에 함수를 직접 심어줄 수 있다. 지금은 그랜드라운딩의 "일정 보관함"만 쓰지만,
+// 모든 도구에 공통으로 심어둬서 나중에 다른 도구도 바로 쓸 수 있게 한다(TOOLS 레지스트리와 같은 확장 취지).
+const SCHEDULES_BRIDGE = {
+  save: (dateKey, patients) => window.rehab.schedules.save(dateKey, patients),
+  list: () => window.rehab.schedules.list(),
+  load: (dateKeys) => window.rehab.schedules.load(dateKeys),
+  delete: (dateKey) => window.rehab.schedules.delete(dateKey),
+};
+
 // ── 사이드바 / 화면 전환 ───────────────────────────────────
 function ensureToolLoaded(key) {
   if (!TOOLS[key]) return;
@@ -141,6 +151,10 @@ function ensureToolLoaded(key) {
   if (!loadedTools.has(key)) {
     loadedTools.add(key);
     iframe.addEventListener('load', async () => {
+      iframe.contentWindow.__schedulesApi = SCHEDULES_BRIDGE;
+      // 도구 쪽에서 "브리지가 막 연결됐다"는 걸 알아야 하는 화면(그랜드라운딩의 일정 보관함 목록 등)을 위한
+      // 선택적 훅 — 함수를 정의해둔 도구만 반응하고, 없으면 그냥 넘어간다.
+      iframe.contentWindow.__onSchedulesApiReady?.();
       const n = await autoFillTool(key);
       logActivity(TOOLS[key].label, n ? `화면 열림 · ${n}개 칸 자동 채움` : '화면 열림');
       renderHome();

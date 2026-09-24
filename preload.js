@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld('rehab', {
     readFile: (path) => ipcRenderer.invoke('folders:readFile', path),
     openFolder: (path) => ipcRenderer.invoke('folders:openFolder', path),
   },
+  schedules: {
+    save: (dateKey, patients) => ipcRenderer.invoke('schedules:save', dateKey, patients),
+    list: () => ipcRenderer.invoke('schedules:list'),
+    load: (dateKeys) => ipcRenderer.invoke('schedules:load', dateKeys),
+    delete: (dateKey) => ipcRenderer.invoke('schedules:delete', dateKey),
+  },
   itda: {
     installed: () => ipcRenderer.invoke('itda:installed'),
     pushInboxItem: (content) => ipcRenderer.invoke('itda:pushInboxItem', content),

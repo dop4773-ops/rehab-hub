@@ -4,6 +4,7 @@ const path = require('path');
 const { registerSchemePrivileges, registerProtocolHandler, shellUrl } = require('./protocol');
 const { registerFoldersIpc } = require('./ipc/folders.ipc');
 const { registerItdaIpc } = require('./ipc/itda.ipc');
+const { registerSchedulesIpc } = require('./ipc/schedules.ipc');
 const { initUpdater } = require('./updater');
 
 registerSchemePrivileges(); // app.whenReady() 전에 호출해야 함(Electron 요구사항)
@@ -46,6 +47,7 @@ if (!gotLock) {
     registerProtocolHandler();
     registerFoldersIpc();
     registerItdaIpc();
+    registerSchedulesIpc();
     createWindow();
     // mainWindow를 그대로 넘기면 안 된다 — mac은 창을 닫아도 앱이 안 죽고, dock 클릭(activate)으로
     // 새 창이 만들어지는데 그때도 이 참조는 여전히 "닫힌" 옛 창을 가리켜서 업데이트 알림이 조용히

@@ -16,7 +16,7 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);font-family:"Pretendard","Malgun Gothic","맑은 고딕",Arial,sans-serif;color:var(--text);font-size:14px}
+body{margin:0;background:var(--bg);font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Arial,sans-serif;color:var(--text);font-size:14px}
 button{font-family:inherit}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:#c7d1e0;border-radius:6px}
@@ -321,9 +321,8 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 }
 </style>
 <style>
-/* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard 폰트로 화면 3개(그랜드라운딩·치료기록 QA·교차검증) 폰트 통일 */
+/* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
 @font-face{font-family:"Pretendard Variable";src:url("../fonts/PretendardVariable.woff2") format("woff2-variations"),url("../fonts/PretendardVariable.woff2") format("woff2");font-weight:45 920;font-style:normal;font-display:swap;}
-html,body{font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Arial,sans-serif !important;}
 </style>
 </head>
 <body>

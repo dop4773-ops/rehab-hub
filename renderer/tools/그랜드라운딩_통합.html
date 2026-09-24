@@ -11,7 +11,7 @@
   --sticky1:92px; --sticky2:72px;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Malgun Gothic","맑은 고딕",Arial,sans-serif;font-size:14px}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Arial,sans-serif;font-size:14px}
 button,input,select{font:inherit}
 button{cursor:pointer}
 .header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1680px;margin:22px auto 0;padding:0 18px 14px}
@@ -87,6 +87,13 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-matrix td.ot-therapist-cell,.grand-matrix td.swallow-therapist-cell,.grand-matrix td.cog-therapist-cell,.grand-matrix td.pt-therapist-cell{min-width:100px;max-width:130px;font-weight:800;white-space:normal;line-height:1.35}
 .grand-matrix td.ot-therapist-cell{color:#214568;background:#f4f8fc}.grand-matrix td.swallow-therapist-cell{color:#7a4c1d;background:#fff8ef}.grand-matrix td.cog-therapist-cell{color:#5a4380;background:#faf7ff}.grand-matrix td.pt-therapist-cell{color:#24593d;background:#f3faf6}
 .grand-ot-upload,.grand-pt-upload{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 11px;border:1px solid #dbe5f0;border-radius:9px;background:#f8fbff}
+.grand-archive{margin-top:14px;padding-top:12px;border-top:1px dashed #dbe5f0}
+.grand-archive-title{font-size:11px;font-weight:900;color:#294766;margin-bottom:6px}
+.grand-archive-title small{font-weight:600;color:#7a8798;margin-left:4px}
+.grand-archive-list{margin:8px 0;display:flex;flex-direction:column;gap:4px}
+.grand-archive-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid #e6ecf3;border-radius:7px;background:#fff;font-size:11px;color:#3a4a60}
+.grand-archive-row .cnt{color:#6f8293;margin-left:auto}
+.grand-archive-row button{padding:3px 8px;font-size:10px}
 .grand-pt-upload{background:#f7fbf8;border-color:#d8e9de}
 .grand-ot-upload .label,.grand-pt-upload .label{font-size:10px;font-weight:900;color:#294766}.grand-pt-upload .label{color:#285a42}
 .grand-ot-upload .status,.grand-pt-upload .status{font-size:10px;color:#5f7086;font-weight:700}.grand-ot-upload .status.ok,.grand-pt-upload .status.ok{color:#18704a}.grand-ot-upload .status.warn,.grand-pt-upload .status.warn{color:#a05d12}
@@ -122,9 +129,8 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-map-card{margin:0;border:1px solid #e5ebf2;border-radius:12px;background:#fbfdff;overflow:hidden}.grand-map-card figcaption{padding:10px 12px;border-bottom:1px solid #e8edf3;background:#fff;font-size:11px;font-weight:800;color:#27415f}.grand-map-card figcaption small{display:block;font-size:9px;color:#708094;font-weight:600;margin-top:3px}.grand-map-card img{display:block;width:100%;height:auto;background:#f3f6f9}.grand-map-note{padding:10px 12px;font-size:10px;color:#64748b;line-height:1.55;border-top:1px solid #e8edf3;background:#fff}
 </style>
 <style>
-/* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard 폰트로 화면 3개(그랜드라운딩·치료기록 QA·교차검증) 폰트 통일 */
+/* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
 @font-face{font-family:"Pretendard Variable";src:url("../fonts/PretendardVariable.woff2") format("woff2-variations"),url("../fonts/PretendardVariable.woff2") format("woff2");font-weight:45 920;font-style:normal;font-display:swap;}
-html,body{font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Arial,sans-serif !important;}
 </style>
 </head>
 <body>
@@ -244,6 +250,28 @@ html,body{font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Aria
             <label class="check"><input id="grandLangColCheck" type="checkbox"> 언어치료 대상 열 표시</label>
             <button id="grandClassifyExportBtn" class="btn primary" type="button">분류 Excel · 치료사별 시트</button>
             <span id="grandClassifyStatus" class="status">작업치료현황을 업로드하면 치료사별로 나눠 Excel을 만들 수 있습니다. "팀" 시트가 있으면 위에서 팀을 선택해 그 팀만 뽑을 수 있습니다.</span>
+          </div>
+          <div class="grand-archive">
+            <div class="grand-archive-title">📚 일정 보관함 <small>— 매일 업로드하는 시간표를 저장해뒀다가, 나중에 여러 날짜를 한꺼번에 조회·추출합니다</small></div>
+            <div class="grand-ot-upload">
+              <span class="label">이 시간표 보관</span>
+              <input id="grandArchiveDateInput" type="date">
+              <button id="grandArchiveSaveBtn" class="btn" type="button">이 시간표 보관하기</button>
+              <span id="grandArchiveSaveStatus" class="status"></span>
+            </div>
+            <div id="grandArchiveList" class="grand-archive-list"></div>
+            <div class="grand-ot-upload">
+              <span class="label">기간 불러오기</span>
+              <input id="grandArchiveFromInput" type="date"> ~ <input id="grandArchiveToInput" type="date">
+              <button id="grandArchiveLoadBtn" class="btn" type="button">이 기간 불러오기</button>
+            </div>
+            <div id="grandArchiveExtractRow" class="grand-ot-upload" style="display:none">
+              <span class="label">추출</span>
+              <select id="grandArchiveRmSelect"><option value="ALL">전체 RM</option></select>
+              <button id="grandArchiveTeamExportBtn" class="btn primary" type="button">팀별로 추출</button>
+              <button id="grandArchiveLangExportBtn" class="btn" type="button">언어치료만 추출</button>
+            </div>
+            <span id="grandArchiveLoadStatus" class="status"></span>
           </div>
         </div>
         <div id="grandClinicalTools" class="grand-dept-tools grand-clinical-tools" hidden>
@@ -1062,6 +1090,93 @@ function exportGrandLanguageOnly(){
   const date=document.getElementById('grandDateInput').value||dateStamp(), period=grandPrintPeriodKey(), periodInfo=grandPrintPeriodInfo(period);
   downloadBytes(buildGrandWorkbookXlsx(defs,day,hour,routeKey,period),`그랜드라운딩_언어치료_${grandRouteProfile(routeKey).roundLabel}_${date}_${periodInfo.label}.xlsx`);
   if(statusEl) statusEl.textContent=`언어치료 대상 ${patients.length}명 · Excel을 만들었습니다.`;
+}
+// ===== 일정 보관함(여러 날짜 저장·일괄 추출, 2026-09-24 추가) =====
+// 이 화면은 sandbox iframe이라 window.rehab(IPC)에 직접 접근 못 한다 — 셸(shell.js)이 iframe 로드 직후
+// window.__schedulesApi에 브리지 함수를 심어준다. 그 전에는(또는 이 파일을 데스크톱 앱 밖에서 열면) null.
+let grandArchiveLoaded=[]; // "기간 불러오기"로 합쳐 dedupe한 환자 배열(추출 대상)
+function grandArchiveApi(){ return window.__schedulesApi||null; }
+async function renderGrandArchiveList(){
+  const box=document.getElementById('grandArchiveList'); if(!box) return;
+  const api=grandArchiveApi();
+  if(!api){ box.innerHTML='<span class="muted">이 화면은 데스크톱 앱 안에서만 일정 보관함을 쓸 수 있습니다.</span>'; return; }
+  const list=await api.list();
+  if(!list.length){ box.innerHTML='<span class="muted">아직 보관한 시간표가 없습니다.</span>'; return; }
+  box.innerHTML=list.map(x=>`<div class="grand-archive-row"><span>${xmlEscape(x.dateKey)}</span><span class="cnt">${x.count}명</span><button type="button" data-archive-del="${xmlEscape(x.dateKey)}">삭제</button></div>`).join('');
+  box.querySelectorAll('[data-archive-del]').forEach(b=>b.addEventListener('click',async()=>{
+    await grandArchiveApi().delete(b.dataset.archiveDel);
+    renderGrandArchiveList();
+  }));
+}
+window.__onSchedulesApiReady=renderGrandArchiveList; // 셸이 브리지를 심어준 직후 목록을 채워달라는 훅
+async function grandArchiveSave(){
+  const status=document.getElementById('grandArchiveSaveStatus'), api=grandArchiveApi();
+  if(!api){ if(status) status.textContent='데스크톱 앱 안에서만 사용할 수 있습니다.'; return; }
+  if(!allPatients.length){ if(status) status.textContent='먼저 시간표를 업로드해 주세요.'; return; }
+  const dateKey=document.getElementById('grandArchiveDateInput').value;
+  if(!dateKey){ if(status) status.textContent='보관할 날짜를 선택해 주세요.'; return; }
+  try{ const r=await api.save(dateKey,allPatients); if(status) status.textContent=`${dateKey} · ${r.count}명 보관 완료.`; renderGrandArchiveList(); }
+  catch(err){ if(status) status.textContent=`보관 실패: ${err.message}`; }
+}
+async function grandArchiveLoadRange(){
+  const status=document.getElementById('grandArchiveLoadStatus'), api=grandArchiveApi();
+  const from=document.getElementById('grandArchiveFromInput').value, to=document.getElementById('grandArchiveToInput').value;
+  const extractRow=document.getElementById('grandArchiveExtractRow');
+  if(!api){ if(status) status.textContent='데스크톱 앱 안에서만 사용할 수 있습니다.'; return; }
+  if(!from||!to){ if(status) status.textContent='시작일과 종료일을 모두 선택해 주세요.'; return; }
+  const list=await api.list();
+  const dateKeys=list.map(x=>x.dateKey).filter(d=>d>=from&&d<=to);
+  if(!dateKeys.length){ if(status) status.textContent='선택한 기간에 보관된 시간표가 없습니다.'; extractRow.style.display='none'; grandArchiveLoaded=[]; return; }
+  const snapshots=await api.load(dateKeys);
+  // 같은 환자가 여러 날짜에 걸쳐 있으면 더 최근 날짜 것을 채택한다. grandPatientKey(room·병동까지 포함)는
+  // 날짜가 다르면 병실이 바뀌어 있을 수 있어 "다른 사람"으로 잘못 갈라진다 — 등록번호 위주의
+  // grandIdentityKey(reg 우선, 없으면 이름+방)를 써야 날짜를 넘나들며 같은 환자로 인식된다.
+  const byKey=new Map();
+  for(const snap of snapshots) for(const p of snap.patients){
+    const key=grandIdentityKey(p), prev=byKey.get(key);
+    if(!prev||snap.dateKey>prev.dateKey) byKey.set(key,{dateKey:snap.dateKey,patient:p});
+  }
+  grandArchiveLoaded=[...byKey.values()].map(x=>x.patient);
+  const rms=[...new Set(grandArchiveLoaded.map(p=>p.rm))].sort(rmSort);
+  const rmSelect=document.getElementById('grandArchiveRmSelect');
+  rmSelect.innerHTML='<option value="ALL">전체 RM</option>'+rms.map(r=>`<option value="${xmlEscape(r)}">${xmlEscape(r)}</option>`).join('');
+  extractRow.style.display='';
+  if(status) status.textContent=`${dateKeys.length}개 날짜(${from}~${to}) · 중복 제거 후 ${grandArchiveLoaded.length}명 불러옴.`;
+}
+function grandArchiveFiltered(){
+  const rm=document.getElementById('grandArchiveRmSelect').value;
+  return rm==='ALL'?grandArchiveLoaded:grandArchiveLoaded.filter(p=>p.rm===rm);
+}
+function grandArchiveExportTeam(){
+  const status=document.getElementById('grandArchiveLoadStatus');
+  const patients=grandArchiveFiltered();
+  if(!patients.length){ if(status) status.textContent='추출할 환자가 없습니다.'; return; }
+  if(!grandOtBook){ if(status) status.textContent='작업치료현황을 먼저 업로드해야 치료사를 알 수 있습니다(현재 세션에 로드된 치료사·팀 기준으로 묶습니다).'; return; }
+  const key=document.getElementById('grandClassifyKeySelect')?.value||'ot';
+  const keyLabel={ot:'작업치료사',swallow:'연하치료사',cog:'인지치료사'}[key]||key;
+  let groups=grandGroupByTherapist(key,patients);
+  if(groups.has('(미배정)')) groups.delete('(미배정)');
+  if(grandSelectedTeams.size){
+    const allowed=new Set(); for(const t of grandSelectedTeams) for(const n of grandTeamRoster.get(t)||[]) allowed.add(n);
+    groups=new Map([...groups].filter(([name])=>allowed.has(name)));
+  }
+  if(!groups.size){ if(status) status.textContent=`조건에 맞는 ${keyLabel} 배정 환자가 없어 Excel을 만들지 않았습니다.`; return; }
+  const defs=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko')).map(([name,pts])=>({name,title:`${name} · ${keyLabel}`,patients:pts}));
+  const overviewPatients=[...new Set([...groups.values()].flat())];
+  const allDefs=[buildGrandOverviewSheetDef(overviewPatients),...defs];
+  const from=document.getElementById('grandArchiveFromInput').value, to=document.getElementById('grandArchiveToInput').value;
+  const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1', period=grandPrintPeriodKey();
+  downloadBytes(buildGrandWorkbookXlsx(allDefs,day,hour,routeKey,period),`그랜드라운딩_보관이력_${keyLabel}별_${from}-${to}.xlsx`);
+  if(status) status.textContent=`${keyLabel} 기준 ${defs.length}명 · 보관 이력(${from}~${to}) 치료사별 시트로 Excel을 만들었습니다.`;
+}
+function grandArchiveExportLanguage(){
+  const status=document.getElementById('grandArchiveLoadStatus');
+  const patients=grandArchiveFiltered().filter(grandIsLanguagePatient);
+  if(!patients.length){ if(status) status.textContent='조건에 맞는 언어치료 대상 환자가 없어 Excel을 만들지 않았습니다.'; return; }
+  const from=document.getElementById('grandArchiveFromInput').value, to=document.getElementById('grandArchiveToInput').value;
+  const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1', period=grandPrintPeriodKey();
+  downloadBytes(buildGrandWorkbookXlsx([{name:'언어치료',title:'언어치료 대상',patients}],day,hour,routeKey,period),`그랜드라운딩_보관이력_언어치료_${from}-${to}.xlsx`);
+  if(status) status.textContent=`언어치료 대상 ${patients.length}명 · 보관 이력(${from}~${to}) Excel을 만들었습니다.`;
 }
 function grandTherapistMapAdd(map,name,therapist){
   const key=grandResolvePatientKey?grandResolvePatientKey(name):normalizeGrandOtPatientKey(name);
@@ -2146,6 +2261,11 @@ dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')})
 document.getElementById('grandRouteSelect').addEventListener('change',()=>{updateGrandWardOptions();renderGrandTable();}); ['grandTimeInput','grandRmSelect','grandWardSelect'].forEach(id=>document.getElementById(id).addEventListener('change',renderGrandTable)); document.getElementById('grandDaySelect').addEventListener('change',async()=>{if(grandOtBook) await rebuildGrandOtTherapistMap();renderGrandTable();}); document.getElementById('grandPrintPeriodSelect').addEventListener('change',()=>{updateGrandExportButtonLabels();renderGrandTable();});
 document.getElementById('grandLangOnlyToggle').addEventListener('click',toggleGrandLanguageOnly);
 document.getElementById('grandLangOnlyExportBtn').addEventListener('click',exportGrandLanguageOnly);
+document.getElementById('grandArchiveDateInput').value=dateStamp();
+document.getElementById('grandArchiveSaveBtn').addEventListener('click',grandArchiveSave);
+document.getElementById('grandArchiveLoadBtn').addEventListener('click',grandArchiveLoadRange);
+document.getElementById('grandArchiveTeamExportBtn').addEventListener('click',grandArchiveExportTeam);
+document.getElementById('grandArchiveLangExportBtn').addEventListener('click',grandArchiveExportLanguage);
 grandDateInput.addEventListener('change',async()=>{ const d=grandDateToDay(grandDateInput.value); if(d) grandDaySel.value=d; if(grandOtBook) await rebuildGrandOtTherapistMap(); if(grandPtBooks[10]||grandPtBooks[3]) await rebuildGrandPtTherapistMap(); renderGrandTable(); });
 document.getElementById('grandTableWrap').addEventListener('input',e=>{
   if(e.target.classList.contains('grand-report')) setGrandNoteByKey(decodeURIComponent(e.target.dataset.vkey||''),e.target.value);
