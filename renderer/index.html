@@ -173,23 +173,38 @@
     <section class="view" data-view="report">
       <div class="card">
         <h2>🖨️ 보고서 / 출력</h2>
-        <p class="muted">통합 보고서 화면은 준비 중입니다. 지금은 각 도구 화면에서 직접 내보내기(Excel/인쇄)를 사용해 주세요.</p>
+        <p class="muted">각 도구가 이미 분석해둔 내용을 이 화면에서 바로 내보낼 수 있습니다. 아직 한 번도 안 연 화면은 먼저 사이드바에서 열어 파일을 불러와야 합니다.</p>
       </div>
       <div class="report-links">
         <div class="card">
           <h2>👤 그랜드라운딩</h2>
-          <p class="muted">회진표·치료사별 시트·언어치료 전용 Excel 내보내기</p>
-          <button class="btn primary" data-goto="rm">화면 열기 →</button>
+          <p class="muted">현재 대회진 RM으로 선택된 환자를 1개 시트 Excel로 내보냅니다(치료사별·언어치료 전용 등 다른 형식은 화면에서 직접 선택).</p>
+          <div class="statbox-row" id="reportRmBoxes"></div>
+          <div class="status-line" id="reportRmStatus"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn" data-goto="rm">화면 열기</button>
+            <button class="btn primary" id="reportRmExportBtn">현재 RM 대회진표 Excel</button>
+          </div>
         </div>
         <div class="card">
           <h2>📋 치료기록 QA</h2>
-          <p class="muted">오류 리포트 CSV 내보내기</p>
-          <button class="btn green" data-goto="acting">화면 열기 →</button>
+          <p class="muted">지금까지 분석된 오류 목록을 CSV로 내보냅니다.</p>
+          <div class="statbox-row" id="reportActingBoxes"></div>
+          <div class="status-line" id="reportActingStatus"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn" data-goto="acting">화면 열기</button>
+            <button class="btn green" id="reportActingExportBtn">오류목록 CSV</button>
+          </div>
         </div>
         <div class="card">
           <h2>🔍 교차검증</h2>
-          <p class="muted">검증 결과 Excel/인쇄</p>
-          <button class="btn purple" data-goto="cross">화면 열기 →</button>
+          <p class="muted">현재 화면에 적용된 필터(탭) 기준 그대로 Excel로 내보냅니다.</p>
+          <div class="statbox-row" id="reportCrossBoxes"></div>
+          <div class="status-line" id="reportCrossStatus"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn" data-goto="cross">화면 열기</button>
+            <button class="btn purple" id="reportCrossExportBtn">검증결과 Excel</button>
+          </div>
         </div>
       </div>
     </section>

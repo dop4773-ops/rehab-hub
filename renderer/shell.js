@@ -25,6 +25,8 @@ const TOOLS = {
     ],
     alertRow: (s) => s && alertRow('그랜드라운딩 데이터', `${s.count}명 준비됨`, 'green',
       `[그랜드라운딩] 오늘 회진 대상 환자 ${s.count}명 준비됨`),
+    reportBoxesElId: 'reportRmBoxes', reportStatusElId: 'reportRmStatus',
+    reportExportBtnId: 'reportRmExportBtn', toolExportBtnId: 'grandExportSelectedBtn',
   },
   acting: {
     label: '치료기록 QA',
@@ -41,6 +43,8 @@ const TOOLS = {
     ],
     alertRow: (s) => s && alertRow('치료기록 오류', `${s.count}건`, s.count ? 'red' : 'green',
       s.count ? `[치료기록 QA] 치료기록 오류 ${s.count}건 발견 — 재활치료부 앱에서 확인` : null),
+    reportBoxesElId: 'reportActingBoxes', reportStatusElId: 'reportActingStatus',
+    reportExportBtnId: 'reportActingExportBtn', toolExportBtnId: 'downloadCsvBtn',
   },
   cross: {
     label: '교차검증',
@@ -62,6 +66,8 @@ const TOOLS = {
     ],
     alertRow: (s) => s && alertRow('교차검증 결과', `${s.count}건`, s.count ? 'orange' : 'green',
       s.count ? `[교차검증] 불일치 ${s.count}건 발견 — 재활치료부 앱에서 확인` : null),
+    reportBoxesElId: 'reportCrossBoxes', reportStatusElId: 'reportCrossStatus',
+    reportExportBtnId: 'reportCrossExportBtn', toolExportBtnId: 'btnExcel',
   },
 };
 // 홈 화면 "오늘 확인할 항목" 표시 순서(오류/불일치를 먼저 보여준다) — TOOLS 순서와는 별개로 관리.
@@ -171,6 +177,7 @@ function showView(key) {
   if (key === 'home') renderHome();
   if (key === 'data') renderDataView();
   if (key === 'settings') renderSettingsView();
+  if (key === 'report') renderReportView();
 }
 
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => showView(n.dataset.nav)));
@@ -313,6 +320,39 @@ function renderDataView() {
   document.getElementById('dataStatus').textContent = lastScan
     ? `마지막 확인: 폴더 ${lastScan.folders.length}개 · 미인식 파일 ${lastScan.unmatched.length}건`
     : '아직 불러오지 않았습니다.';
+}
+
+// 보고서/출력 화면 — 각 도구가 이미 분석해둔 결과를 요약해 보여주고, 그 도구의 실제 내보내기 버튼을
+// (화면으로 이동하지 않고) 여기서 그대로 눌러준다. 새 내보내기 로직을 만들지 않고 기존 버튼을 그대로 재사용.
+function renderReportView() {
+  for (const key of Object.keys(TOOLS)) {
+    const t = TOOLS[key];
+    const s = readToolSummary(key);
+    const boxesEl = document.getElementById(t.reportBoxesElId);
+    if (boxesEl) boxesEl.innerHTML = t.statBoxes(s).map(b =>
+      `<div class="statbox ${b.cls}"><span class="num">${b.num}</span><span class="lbl">${b.lbl}</span></div>`).join('');
+    const statusEl = document.getElementById(t.reportStatusElId);
+    if (statusEl) statusEl.textContent = loadedTools.has(key)
+      ? '' : '아직 이 화면을 안 열었습니다 — "화면 열기"에서 먼저 데이터를 불러와 주세요.';
+  }
+}
+
+// 내보내기 버튼은 정적 요소라 한 번만 연결한다(렌더마다 다시 붙일 필요 없음).
+for (const key of Object.keys(TOOLS)) {
+  const t = TOOLS[key];
+  const btn = document.getElementById(t.reportExportBtnId);
+  if (!btn) continue;
+  btn.addEventListener('click', () => {
+    const statusEl = document.getElementById(t.reportStatusElId);
+    const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg; };
+    if (!loadedTools.has(key)) { setStatus('먼저 사이드바에서 화면을 한 번 열어 데이터를 불러와 주세요.'); return; }
+    const iframe = document.querySelector(`iframe[data-tool="${key}"]`);
+    const toolBtn = iframe?.contentDocument?.getElementById(t.toolExportBtnId);
+    if (!toolBtn || toolBtn.disabled) { setStatus(`${t.label} 화면에서 먼저 파일을 업로드/분석해 주세요.`); return; }
+    toolBtn.click();
+    setStatus(`${t.label} 내보내기를 실행했습니다 — 다운로드를 확인해 주세요.`);
+    logActivity(t.label, '보고서 화면에서 내보내기 실행');
+  });
 }
 
 async function renderSettingsView() {

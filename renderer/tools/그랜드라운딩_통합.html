@@ -254,7 +254,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
           <div class="grand-archive">
             <div class="grand-archive-title">📚 일정 보관함 <small>— 매일 업로드하는 시간표를 저장해뒀다가, 나중에 여러 날짜를 한꺼번에 조회·추출합니다</small></div>
             <div class="grand-ot-upload">
-              <span class="label">이 시간표 보관</span>
+              <span class="label">이 시간표 보관 <small style="font-weight:600;color:#7a8798">(위 ③ 대회진 RM에서 선택한 RM 환자만 저장됩니다)</small></span>
               <input id="grandArchiveDateInput" type="date">
               <button id="grandArchiveSaveBtn" class="btn" type="button">이 시간표 보관하기</button>
               <span id="grandArchiveSaveStatus" class="status"></span>
@@ -1115,7 +1115,12 @@ async function grandArchiveSave(){
   if(!allPatients.length){ if(status) status.textContent='먼저 시간표를 업로드해 주세요.'; return; }
   const dateKey=document.getElementById('grandArchiveDateInput').value;
   if(!dateKey){ if(status) status.textContent='보관할 날짜를 선택해 주세요.'; return; }
-  try{ const r=await api.save(dateKey,allPatients); if(status) status.textContent=`${dateKey} · ${r.count}명 보관 완료.`; renderGrandArchiveList(); }
+  // 그랜드라운딩 화면에서 지금 선택돼 있는 RM(대회진 대상)에 해당하는 환자만 보관한다 — 전체 병원
+  // 환자가 아니라 "오늘 이 RM의 그랜드라운딩 대상자"를 저장하는 게 목적이라 이렇게 범위를 좁힌다.
+  const rm=document.getElementById('grandRmSelect')?.value||'ALL', rmKey=normalizeGrandRm(rm);
+  const scoped=allPatients.filter(p=>p.category!=='외래'&&(rm==='ALL'||normalizeGrandRm(p.rm)===rmKey));
+  if(!scoped.length){ if(status) status.textContent=`${rm==='ALL'?'전체 RM':rm} 조건에 맞는 환자가 없어 보관하지 않았습니다.`; return; }
+  try{ const r=await api.save(dateKey,scoped); if(status) status.textContent=`${dateKey} · ${rm==='ALL'?'전체 RM':rm} · ${r.count}명 보관 완료.`; renderGrandArchiveList(); }
   catch(err){ if(status) status.textContent=`보관 실패: ${err.message}`; }
 }
 async function grandArchiveLoadRange(){
@@ -1659,8 +1664,22 @@ function grandHandoverMapFromLiveRecords(records){
   for(const rec of map.values()) rec.entries.sort((a,b)=>String(a.treatment).localeCompare(String(b.treatment),'ko')||String(a.therapist).localeCompare(String(b.therapist),'ko'));
   return map;
 }
+// 인수인계 조회는 Google Apps Script 콜드스타트 때문에 5~15초씩 걸릴 수 있다(서버 응답속도라 우리가 못 줄임) —
+// 대신 마지막으로 성공한 응답을 localStorage에 캐시해뒀다가, 다음에 열 때는 그 캐시로 즉시 화면을 채우고
+// 뒤에서 진짜 최신 데이터로 조용히 갱신한다(체감 속도 개선). 같은 출처(app://rehab-shell)라 교차검증
+// 화면과 캐시를 공유해서, 둘 중 하나만 최근에 열어봤어도 다른 화면도 곧바로 빨라진다.
+const HANDOVER_CACHE_KEY='rehab_handover_cache_v1';
+function loadHandoverCache(){ try{ const raw=localStorage.getItem(HANDOVER_CACHE_KEY); if(!raw) return null; const obj=JSON.parse(raw); return Array.isArray(obj?.records)?obj:null; }catch(e){ return null; } }
+function saveHandoverCache(records){ try{ localStorage.setItem(HANDOVER_CACHE_KEY,JSON.stringify({records,fetchedAt:Date.now()})); }catch(e){ /* 저장 실패해도 기능엔 지장 없음 */ } }
 async function fetchGrandHandoverLive(){
   const st=document.getElementById('grandHandoverStatus');
+  const cached=loadHandoverCache();
+  if(cached){
+    grandHandoverMap=grandHandoverMapFromLiveRecords(cached.records);
+    grandHandoverLiveOk=true; grandHandoverFileName='OT인수인계서(통합)'; grandHandoverSheetName='실시간 연동(캐시 · 갱신 중…)';
+    updateGrandHandoverStatus();
+    if(allPatients.length) renderGrandTable();
+  }
   try{
     const res=await fetch(GRAND_HANDOVER_LIVE_URL,{cache:'no-store'});
     if(!res.ok) throw new Error('HTTP '+res.status);
@@ -1668,11 +1687,12 @@ async function fetchGrandHandoverLive(){
     const records=Array.isArray(data.records)?data.records:(Array.isArray(data)?data:[]);
     grandHandoverMap=grandHandoverMapFromLiveRecords(records);
     grandHandoverLiveOk=true; grandHandoverFileName='OT인수인계서(통합)'; grandHandoverSheetName='실시간 연동';
+    saveHandoverCache(records);
     updateGrandHandoverStatus();
     if(allPatients.length) renderGrandTable();
   }catch(err){
     console.error(err);
-    if(!grandHandoverBook){ if(st){st.className='grand-handover-status warn';st.textContent=`실시간 인수인계 조회 실패: ${err.message} · 인터넷 연결을 확인하거나, 아래에서 엑셀로 대신 업로드해 주세요.`;} }
+    if(!grandHandoverBook&&!cached){ if(st){st.className='grand-handover-status warn';st.textContent=`실시간 인수인계 조회 실패: ${err.message} · 인터넷 연결을 확인하거나, 아래에서 엑셀로 대신 업로드해 주세요.`;} }
   }
 }
 function grandHandoverData(p){

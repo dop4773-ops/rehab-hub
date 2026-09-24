@@ -1891,6 +1891,11 @@ async function parseHandoverSheet(book){
 }
 // 그랜드라운딩 도구와 같은 OT인수인계서(통합) 실시간 연동 엔드포인트 — 파일 업로드 없이 자동으로 가져온다.
 const HANDOVER_LIVE_URL='https://script.google.com/macros/s/AKfycbwXwWquKYEy5irNjdQjZLYUsBl94L5yJZ_aD-UZLCHDonJDZ-smmCnSghILn9c15AN0OQ/exec';
+// Google Apps Script 콜드스타트로 5~15초씩 걸릴 수 있어서, 마지막 성공 응답을 localStorage에 캐시해뒀다가
+// 열자마자 그걸로 먼저 채우고 뒤에서 갱신한다. 그랜드라운딩 화면과 같은 출처(app://rehab-shell)라 캐시 공유됨.
+const HANDOVER_CACHE_KEY='rehab_handover_cache_v1';
+function loadHandoverCache(){ try{ const raw=localStorage.getItem(HANDOVER_CACHE_KEY); if(!raw) return null; const obj=JSON.parse(raw); return Array.isArray(obj?.records)?obj:null; }catch(e){ return null; } }
+function saveHandoverCache(records){ try{ localStorage.setItem(HANDOVER_CACHE_KEY,JSON.stringify({records,fetchedAt:Date.now()})); }catch(e){ /* 저장 실패해도 기능엔 지장 없음 */ } }
 function handoverListFromLiveRecords(records){
   const list=[];
   for(const r of records){
@@ -1905,7 +1910,12 @@ function handoverListFromLiveRecords(records){
 }
 async function fetchHandoverLive(){
   const badge=document.getElementById('badge-handoverBook'), sub=document.getElementById('sub-handoverBook');
-  if(!state.handoverBook&&badge&&sub){ badge.textContent='불러오는 중…'; badge.className='prep-badge busy'; sub.textContent='환자별 담당치료사·주치의 대조(선택) · 실시간 연동 확인 중…'; }
+  const cached=loadHandoverCache();
+  if(cached&&!state.handoverBook){
+    state.handoverLiveList=handoverListFromLiveRecords(cached.records);
+    state.handoverLiveOk=true;
+    if(badge&&sub){ badge.textContent='실시간 연동됨'; badge.className='prep-badge ok'; sub.textContent=`환자별 담당치료사·주치의 대조(선택) · 캐시 ${cached.records.length}건 · 갱신 중…`; }
+  }else if(!state.handoverBook&&badge&&sub){ badge.textContent='불러오는 중…'; badge.className='prep-badge busy'; sub.textContent='환자별 담당치료사·주치의 대조(선택) · 실시간 연동 확인 중…'; }
   try{
     const res=await fetch(HANDOVER_LIVE_URL,{cache:'no-store'});
     if(!res.ok) throw new Error('HTTP '+res.status);
@@ -1913,11 +1923,16 @@ async function fetchHandoverLive(){
     const records=Array.isArray(data.records)?data.records:(Array.isArray(data)?data:[]);
     state.handoverLiveList=handoverListFromLiveRecords(records);
     state.handoverLiveOk=true;
+    saveHandoverCache(records);
     if(!state.handoverBook&&badge&&sub){ badge.textContent='실시간 연동됨'; badge.className='prep-badge ok'; sub.textContent=`환자별 담당치료사·주치의 대조(선택) · 실시간 ${records.length}건`; }
   }catch(err){
     console.error(err);
-    state.handoverLiveOk=false;
-    if(!state.handoverBook&&sub) sub.textContent='환자별 담당치료사·주치의 대조(선택) · 실시간 연동 실패 — 인터넷 연결을 확인하거나 엑셀로 업로드해 주세요.';
+    // 캐시가 있으면 이번 새로고침이 실패해도 캐시 데이터로 계속 동작하게 두고(완전히 끊기지 않음),
+    // 캐시조차 없을 때만 진짜 "연동 실패" 상태로 표시한다.
+    if(!cached){
+      state.handoverLiveOk=false;
+      if(!state.handoverBook&&sub) sub.textContent='환자별 담당치료사·주치의 대조(선택) · 실시간 연동 실패 — 인터넷 연결을 확인하거나 엑셀로 업로드해 주세요.';
+    }
   }
   refreshRunButton();
 }
