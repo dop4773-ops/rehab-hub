@@ -1,0 +1,45 @@
+{
+  "name": "rehab-hub",
+  "version": "0.1.0",
+  "description": "재활치료부 업무 통합 시스템 — 그랜드라운딩·치료기록 QA·교차검증 데스크톱 앱",
+  "main": "main/main.js",
+  "author": "",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "node node_modules/electron/cli.js .",
+    "build:win": "electron-builder --win nsis --x64",
+    "release:win": "electron-builder --win nsis --x64 --publish always",
+    "test": "node scripts/run-tests.js",
+    "postinstall": "node scripts/postinstall-electron-fix.js"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.rehabteam.rehabhub",
+    "productName": "재활치료부 통합 시스템",
+    "files": [
+      "main/**/*",
+      "renderer/**/*",
+      "preload.js",
+      "build/icon.png"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "dop4773-ops",
+      "repo": "rehab-hub",
+      "releaseType": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true
+    }
+  }
+}

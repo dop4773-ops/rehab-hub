@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>재활치료부 통합 시스템</title>
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand">
+    <img class="logo" src="icon.png" alt="">
+    <div>
+      <div class="title">재활치료부 업무 통합 시스템</div>
+      <div class="tag">데이터로 더 정확하게, 더 효율적인 재활치료</div>
+    </div>
+  </div>
+  <div class="right">
+    <span id="todayDate"></span>
+  </div>
+</div>
+
+<div id="app">
+  <nav id="sidebar">
+    <div class="nav-item active" data-nav="home">🏠 홈</div>
+    <div class="nav-item" data-nav="data">📦 데이터 준비</div>
+    <div class="nav-item" data-nav="rm">👤 그랜드라운딩</div>
+    <div class="nav-item" data-nav="acting">📋 치료기록 QA</div>
+    <div class="nav-item" data-nav="cross">🔍 교차검증</div>
+    <div class="nav-item" data-nav="settings">⚙️ 설정</div>
+  </nav>
+
+  <main id="content">
+
+    <section class="view active" data-view="home">
+      <div class="grid3">
+        <div class="card">
+          <h2>📦 오늘의 데이터</h2>
+          <div id="homeFileList"></div>
+          <div style="margin-top:10px;display:flex;justify-content:flex-end">
+            <button class="btn primary" id="homeScanBtn">🔄 자동 불러오기</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>📅 오늘의 업무 현황</h2>
+          <div class="donut-wrap">
+            <div class="donut" id="homeDonut">-</div>
+            <div class="checklist" id="homeChecklist"></div>
+          </div>
+          <div class="alert-list" id="homeAlerts" style="margin-top:10px"></div>
+        </div>
+        <div class="card">
+          <h2>⚡ 빠른 실행</h2>
+          <div class="quick-list">
+            <button class="btn primary" data-goto="rm">그랜드라운딩 바로가기</button>
+            <button class="btn green" data-goto="acting">치료기록 QA 바로가기</button>
+            <button class="btn purple" data-goto="cross">교차검증 바로가기</button>
+            <button class="btn" data-goto="settings">폴더 설정</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid3b">
+        <div class="card feature-card">
+          <h2>👤 그랜드라운딩</h2>
+          <div class="muted">환자별 회진 정보와 치료 일정을 한눈에.</div>
+          <ul><li>전체 환자 시간표</li><li>RM/회차별 명단</li><li>치료사·팀별 분류</li><li>OT 인수인계(실시간)</li></ul>
+          <div class="stat" id="rmStat">환자 데이터: <b>-</b></div>
+          <button class="btn primary" data-goto="rm">그랜드라운딩 화면 열기 →</button>
+        </div>
+        <div class="card feature-card">
+          <h2>📋 치료기록 QA</h2>
+          <div class="muted">치료기록의 오류와 누락을 자동으로 검증.</div>
+          <ul><li>치료내용 누락 확인</li><li>시작/종료 시간 오류</li><li>중복처방·검사시간 중복</li><li>언어/심리 별도 분류(ST)</li></ul>
+          <div class="stat" id="actingStat">오늘의 오류: <b>-</b></div>
+          <button class="btn green" data-goto="acting">오류 확인하기 →</button>
+        </div>
+        <div class="card feature-card">
+          <h2>🔍 교차검증</h2>
+          <div class="muted">여러 파일의 데이터를 비교해 불일치를 찾아냄.</div>
+          <ul><li>개수·위치 검증</li><li>치료사 검증</li><li>인수인계 검증</li><li>토요일/공휴일 검증</li></ul>
+          <div class="stat" id="crossStat">검증 결과: <b>-</b></div>
+          <button class="btn purple" data-goto="cross">검증 시작하기 →</button>
+        </div>
+      </div>
+
+      <div class="grid3c">
+        <div class="card">
+          <h2>🕒 최근 작업내역</h2>
+          <table class="mini"><thead><tr><th>시간</th><th>기능</th><th>내용</th></tr></thead><tbody id="activityBody"></tbody></table>
+        </div>
+        <div class="card">
+          <h2 id="statsTitle">📊 요약</h2>
+          <div id="statsBody" class="muted">파일을 불러오면 표시됩니다.</div>
+        </div>
+        <div class="card">
+          <h2>📢 안내</h2>
+          <ul style="font-size:12px;color:var(--sub);padding-left:16px;margin:0">
+            <li>이 화면은 개발 중인 데스크톱 앱 1단계입니다.</li>
+            <li>보고서/출력 화면은 각 도구의 내보내기 버튼으로 대신합니다(2단계 예정).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="data">
+      <div class="card">
+        <h2>📦 데이터 준비</h2>
+        <p class="muted">등록된 폴더에서 자동으로 파일을 찾아 3개 화면(그랜드라운딩·치료기록 QA·교차검증)에 채워 넣습니다.</p>
+        <div id="dataFileList"></div>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" data-goto="settings">폴더 관리 →</button>
+          <button class="btn primary" id="dataScanBtn">🔄 자동 불러오기</button>
+        </div>
+        <div class="status-line" id="dataStatus"></div>
+      </div>
+    </section>
+
+    <section class="view" data-view="rm"><iframe class="tool-frame" data-tool="rm"></iframe></section>
+    <section class="view" data-view="acting"><iframe class="tool-frame" data-tool="acting"></iframe></section>
+    <section class="view" data-view="cross"><iframe class="tool-frame" data-tool="cross"></iframe></section>
+
+    <section class="view" data-view="settings">
+      <div class="card">
+        <h2>⚙️ 폴더 연결 설정</h2>
+        <p class="muted">시간표·현황 파일이 있는 폴더를 등록해 두면, "자동 불러오기"로 매번 자동 인식합니다. 여러 폴더를 등록할 수 있습니다.</p>
+        <div id="folderList"></div>
+        <div style="margin-top:10px;display:flex;justify-content:flex-end">
+          <button class="btn primary" id="addFolderBtn">+ 폴더 추가</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>⬆️ 업데이트</h2>
+        <p class="muted">현재 버전: <span id="updaterVersion">-</span></p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn primary" id="updaterCheckBtn">지금 확인</button>
+          <button class="btn" id="updaterInstallBtn" style="display:none">지금 재시작하고 설치</button>
+        </div>
+        <div class="status-line" id="updaterStatus"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="shell.js"></script>
+</body>
+</html>

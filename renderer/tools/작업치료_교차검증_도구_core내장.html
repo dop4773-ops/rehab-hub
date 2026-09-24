@@ -1,0 +1,3311 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>작업치료 교차검증</title>
+<style>
+:root{
+  --navy:#17345f;--blue:#2f6fce;--line:#e3e8f0;--bg:#f3f6fb;--text:#1b2434;--muted:#707d92;
+  --green:#1f8f5f;--green-bg:#e6f7ee;
+  --count:#d23a4f;--count-bg:#fdecee;
+  --loc:#2f6fce;--loc-bg:#e8f1fd;
+  --record:#d9720f;--record-bg:#fdead2;
+  --ther:#c79a12;--ther-bg:#fbf5df;
+  --handover:#0e8a8a;--handover-bg:#e3f5f5;
+  --excess:#a83e9c;--excess-bg:#f8e8f5;
+  --eval:#4a5578;--eval-bg:#e9ebf5;
+  --card-r:16px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);font-family:"Pretendard","Malgun Gothic","맑은 고딕",Arial,sans-serif;color:var(--text);font-size:14px}
+button{font-family:inherit}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#c7d1e0;border-radius:6px}
+
+.app{max-width:1880px;margin:0 auto;padding:16px 22px 30px}
+
+/* ===== 헤더 ===== */
+.header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.header h1{margin:0;font-size:20px;letter-spacing:.2px;color:var(--navy)}
+.header .sub{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:#33445c;padding:8px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer}
+.hbtn:hover{background:#f4f8fd}
+.hbtn.link{border:none;background:none;color:var(--blue);padding:8px 4px}
+select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 10px;font-size:12.5px;font-weight:700;color:#33445c}
+
+/* ===== 상단 3분할 패널 ===== */
+.toprow{display:grid;grid-template-columns:280px 1fr 260px;gap:14px;margin-bottom:14px;align-items:stretch}
+@media(max-width:1400px){.toprow{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:var(--card-r);padding:16px;box-shadow:0 2px 10px rgba(20,40,70,.04)}
+.panel h3{margin:0 0 10px;font-size:13.5px;color:#2a3850;display:flex;align-items:center;gap:6px}
+
+/* 데이터 준비 */
+.prep-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.prep-item{display:flex;align-items:center;gap:8px;padding:8px 9px;border:1px dashed #d3dcea;border-radius:9px;background:#fafcff;cursor:pointer;transition:.12s}
+.prep-item:hover{background:#eef4ff;border-color:#a9c3ea}
+.prep-item.drag{background:#e7f0ff;border-color:var(--blue)}
+.prep-item input{display:none}
+.prep-icon{width:20px;text-align:center;font-size:13px;flex-shrink:0}
+.prep-label{flex:1;font-size:12.3px;font-weight:700;color:#33445c}
+.prep-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.prep-badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;background:#eef2f7;color:#68758a;white-space:nowrap}
+.prep-badge.ok{background:var(--green-bg);color:var(--green)}
+.prep-badge.err{background:var(--count-bg);color:var(--count)}
+.prep-badge.busy{background:#eef2f7;color:#68758a}
+.prep-foot{font-size:10.5px;color:var(--muted);line-height:1.6;margin:6px 0 10px}
+.prep-actions{display:flex;flex-direction:column;gap:8px}
+.folder-status{font-size:12px;color:var(--muted);padding:2px 2px 4px;line-height:1.5}
+.folder-status b{color:#2a3850}
+.btn{border:1px solid #cbd6e4;border-radius:9px;background:#fff;color:#24344d;padding:10px 14px;font-weight:800;cursor:pointer;font-size:12.5px}
+.btn.block{width:100%}
+.btn.primary{background:linear-gradient(120deg,#1c3f6f,#2f6fce);color:#fff;border-color:transparent}
+.btn.primary:disabled{opacity:.4;cursor:not-allowed;background:#9aa8bd}
+.btn.sm{padding:6px 10px;font-size:11.5px}
+.run-progress{margin-top:10px;font-size:11.5px;color:#48586e;line-height:2;display:none}
+.run-progress.show{display:block}
+.run-progress .stepline{display:flex;align-items:center;gap:6px}
+.run-progress .dot{width:8px;height:8px;border-radius:50%;background:#cfd8e6;flex-shrink:0}
+.run-progress .stepline.done .dot{background:var(--green)}
+.run-progress .stepline.now .dot{background:var(--blue);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* 교차검증 결과 */
+.result-grid{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.donut{width:128px;height:128px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:conic-gradient(var(--green) calc(var(--pct)*1%), #e7ecf3 0)}
+.donut-inner{width:96px;height:96px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.donut-inner b{font-size:21px;color:var(--navy)}
+.donut-inner span{font-size:10.5px;color:var(--muted);margin-top:2px}
+.result-nums{display:flex;gap:26px}
+.result-nums .n{text-align:center}
+.result-nums .n b{display:block;font-size:24px;color:var(--navy)}
+.result-nums .n.problem b{color:var(--count)}
+.result-nums .n.ok b{color:var(--green)}
+.result-nums .n span{font-size:11.5px;color:var(--muted)}
+.cat-chips{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.cat-chip{flex:1;min-width:150px;border-radius:12px;padding:11px 14px;cursor:pointer;border:1px solid transparent;transition:.12s}
+.cat-chip:hover{filter:brightness(.97)}
+.cat-chip.active{border-color:currentColor}
+.cat-chip.count{background:var(--count-bg);color:var(--count)}
+.cat-chip.location{background:var(--loc-bg);color:var(--loc)}
+.cat-chip.therapist{background:var(--ther-bg);color:var(--ther)}
+.cat-chip.handover{background:var(--handover-bg);color:var(--handover)}
+.cat-chip.eval{background:var(--eval-bg);color:var(--eval)}
+.cat-chip .cc-label{font-size:11.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+.cat-chip .cc-num{font-size:21px;font-weight:800;margin-top:3px}
+.cat-chip .cc-breakdown{margin-top:6px;font-size:10.5px;font-weight:700;opacity:.85;display:flex;gap:8px;flex-wrap:wrap}
+.cat-chip .cc-breakdown span{background:rgba(255,255,255,.55);border-radius:999px;padding:1px 7px}
+.dotmark{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
+
+/* 층별 요약 */
+.floor-list{display:flex;flex-direction:column;gap:8px}
+.floor-row2{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;background:#f7f9fc;border:1px solid var(--line);cursor:pointer}
+.floor-row2:hover{background:#eef4ff}
+.floor-row2.active{background:#e7f0ff;border-color:#9dbceb}
+.floor-row2 .fl-name{font-weight:800;font-size:12.5px;color:#33445c}
+.floor-row2 .fl-num{font-weight:800;font-size:14px}
+.floor-row2 .fl-num.zero{color:var(--green)}
+.floor-row2 .fl-num.some{color:var(--count)}
+
+/* ===== 필터바 ===== */
+.filterbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:12px}
+.seg{display:flex;gap:4px;background:#f1f4f9;border-radius:10px;padding:3px}
+.seg button{border:none;background:transparent;padding:7px 13px;border-radius:8px;font-size:12px;font-weight:700;color:#4c5b70;cursor:pointer}
+.seg button.active{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(20,40,70,.12)}
+.filterbar .right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.searchbox{position:relative}
+.searchbox input{width:230px;height:34px;border:1px solid #cbd6e4;border-radius:9px;padding:0 12px 0 30px;font-size:12.5px}
+.searchbox::before{content:"🔍";position:absolute;left:9px;top:8px;font-size:11px;opacity:.6}
+
+/* ===== 본문 2단 ===== */
+.mainsplit{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:14px;align-items:start}
+@media(max-width:1200px){.mainsplit{grid-template-columns:1fr}}
+.listpanel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;min-height:520px;max-height:78vh;display:flex;flex-direction:column}
+.listhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.listhead .cnt{font-weight:800;font-size:13px;color:#2a3850}
+.listhead select{border:1px solid #cbd6e4;border-radius:8px;padding:5px 8px;font-size:11.5px}
+.issuelist{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+.issuecard{border:1px solid var(--line);border-radius:12px;padding:11px 12px;cursor:pointer;position:relative;transition:.1s}
+.issuecard:hover{border-color:#a9c3ea;background:#fafcff}
+.issuecard.selected{border-color:var(--blue);background:#eef4ff}
+.issuecard .row1{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.issuecard .sevdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.issuecard .pname{font-weight:800;font-size:13px;flex:1 1 auto;min-width:60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.issuecard .proom{font-size:11.5px;color:var(--muted);flex-shrink:0}
+.issuecard .cattag{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;flex-shrink:0;white-space:normal;text-align:right;line-height:1.4}
+.issuecard .cattag.count{background:var(--count-bg);color:var(--count)}
+.issuecard .cattag.location{background:var(--loc-bg);color:var(--loc)}
+.issuecard .cattag.therapist{background:var(--ther-bg);color:var(--ther)}
+.issuecard .cattag.handover{background:var(--handover-bg);color:var(--handover)}
+.issuecard .cattag.hdoctor{background:var(--loc-bg);color:var(--loc)}
+.issuecard .cattag.horphan{background:var(--record-bg);color:var(--record)}
+.issuecard .cattag.hexcess{background:var(--excess-bg);color:var(--excess)}
+.issuecard .cattag.eval{background:var(--eval-bg);color:var(--eval)}
+.issuecard .cattag.vname{background:var(--count-bg);color:var(--count)}
+.issuecard .cattag.vrecord{background:var(--record-bg);color:var(--record)}
+.issuecard .cattag.vloc{background:var(--loc-bg);color:var(--loc)}
+.issuecard .row2{font-size:12px;color:#3d4b60;margin-top:5px;font-weight:600;white-space:pre-line}
+.issuecard .row2 b.bad{color:var(--count)}
+.issuecard .row3{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.issuecard .time{font-size:10.5px;color:var(--muted)}
+.issuecard .arrow{color:#a9b6c9;font-weight:800}
+.empty-ok{margin:auto;text-align:center;padding:40px 20px;color:#3d4b60}
+.empty-ok .big{font-size:34px;margin-bottom:10px}
+.empty-ok h4{margin:6px 0;font-size:15px}
+.empty-ok p{font-size:12px;color:var(--muted);line-height:1.7}
+.pager{display:flex;justify-content:center;align-items:center;gap:4px;margin-top:10px;flex-wrap:wrap}
+.pager button{border:1px solid var(--line);background:#fff;border-radius:8px;min-width:30px;height:30px;font-size:11.5px;cursor:pointer;color:#3d4b60}
+.pager button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+
+/* 환자별 그룹 카드 */
+.pgroup{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:2px}
+.pgroup-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pgroup-head b{font-size:13px}
+.pgroup-head .proom{font-size:11px;color:var(--muted)}
+.pgroup-head .pgcount{margin-left:auto;font-size:10.5px;font-weight:800;color:var(--count);background:var(--count-bg);padding:2px 8px;border-radius:999px}
+.pgroup .sub-issue{padding:7px 8px 7px 6px;border-left:3px solid var(--line);margin-top:4px;border-radius:6px;cursor:pointer;font-size:12px;white-space:pre-line}
+.pgroup .sub-issue:hover{background:#f7f9fc}
+.pgroup .sub-issue b{font-weight:800}
+.pgroup .sub-issue.count{border-color:var(--count)}
+.pgroup .sub-issue.location{border-color:var(--loc)}
+.pgroup .sub-issue.therapist{border-color:var(--ther)}
+
+/* 상세 패널 */
+.detailpanel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;min-height:520px;max-height:78vh;overflow:auto;position:sticky;top:14px}
+.detailpanel .dclose{position:absolute;right:14px;top:14px;border:none;background:#f1f4f9;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;color:#4c5b70}
+.detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:480px;color:var(--muted);text-align:center;gap:8px}
+.detail-empty .big{font-size:30px}
+.dhead{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.dhead .dname{font-size:19px;font-weight:800}
+.dhead .droom{font-size:12.5px;color:var(--muted);background:#f1f4f9;padding:3px 9px;border-radius:999px}
+.dhead .dtag{margin-left:auto;font-size:11px;font-weight:800;padding:5px 11px;border-radius:999px}
+.dhead .dtag.count{background:var(--count-bg);color:var(--count)}
+.dhead .dtag.location{background:var(--loc-bg);color:var(--loc)}
+.dhead .dtag.therapist{background:var(--ther-bg);color:var(--ther)}
+.dhead .dtag.handover{background:var(--handover-bg);color:var(--handover)}
+.dhead .dtag.hdoctor{background:var(--loc-bg);color:var(--loc)}
+.dhead .dtag.horphan{background:var(--record-bg);color:var(--record)}
+.dhead .dtag.hexcess{background:var(--excess-bg);color:var(--excess)}
+.dhead .dtag.eval{background:var(--eval-bg);color:var(--eval)}
+.dhead .dtag.vname{background:var(--count-bg);color:var(--count)}
+.dhead .dtag.vrecord{background:var(--record-bg);color:var(--record)}
+.dhead .dtag.vloc{background:var(--loc-bg);color:var(--loc)}
+.dsub{font-size:11.5px;color:var(--muted);margin-bottom:16px}
+.diffbox{display:flex;align-items:center;gap:14px;justify-content:center;background:#f7f9fc;border-radius:12px;padding:18px;margin-bottom:16px}
+.diffbox .db{text-align:center;min-width:110px}
+.diffbox .db .lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
+.diffbox .db .val{font-size:24px;font-weight:800;color:var(--navy)}
+.diffbox .db.diff .val{color:var(--count)}
+.diffbox .op{font-size:20px;color:#a9b6c9;font-weight:300}
+.diffbox.match .db .val{color:var(--green)}
+.matchline{text-align:center;padding:16px;background:var(--green-bg);color:var(--green);border-radius:12px;margin-bottom:16px;font-weight:800;font-size:14px}
+.kv-table{width:100%;border-collapse:collapse;margin-bottom:14px}
+.kv-table td{padding:8px 10px;font-size:12.5px;border-bottom:1px solid #eef1f6}
+.kv-table td:first-child{color:var(--muted);width:110px;font-weight:700}
+.compare-box{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.compare-box .cb{border:1px solid var(--line);border-radius:12px;padding:12px}
+.compare-box .cb .cbt{font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700}
+.compare-box .cb .cbv{font-size:16px;font-weight:800}
+.compare-box .cb.bad{border-color:#f3c1c9;background:var(--count-bg)}
+.compare-box .cb.bad .cbv{color:var(--count)}
+.compare-box .cb.good{border-color:#b9e3cb;background:var(--green-bg)}
+.compare-box .cb.good .cbv{color:var(--green)}
+.verdict-banner{font-size:12.5px;font-weight:800;padding:9px 14px;border-radius:10px;margin-bottom:14px;display:inline-block}
+.verdict-banner.vname{background:var(--count-bg);color:var(--count)}
+.verdict-banner.vrecord{background:var(--record-bg);color:var(--record)}
+.verdict-banner.vloc{background:var(--loc-bg);color:var(--loc)}
+.evidence-cards{display:flex;align-items:stretch;gap:12px;margin:6px 0 14px}
+.ev-card{flex:1;border-radius:12px;padding:16px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center}
+.ev-card.filled{background:#f7f9fc;border:1px solid var(--line)}
+.ev-card.empty{background:transparent;border:2px dashed #cbd6e4}
+.ev-label{font-size:10.5px;color:var(--muted);margin-bottom:6px;font-weight:800;letter-spacing:.2px}
+.ev-name{font-size:16px;font-weight:800;color:var(--navy);word-break:keep-all}
+.ev-name.muted{color:#a9b6c9;font-size:13.5px;font-weight:700}
+.ev-icon{font-size:22px;margin-bottom:2px}
+.ev-arrow{align-self:center;font-size:17px;color:#c3ccd9;font-weight:300}
+.timeline-row{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px}
+.tl-chip{flex-shrink:0;border:1px solid var(--line);border-radius:10px;padding:7px 12px;text-align:center;background:#fff}
+.tl-chip.clickable{cursor:pointer}
+.tl-chip.clickable:hover{filter:brightness(.96)}
+.tl-chip.erdt-bad{border-color:var(--record);background:var(--record-bg)}
+.tl-chip.erdt-bad .tl-loc{color:var(--record)}
+.tl-chip.ccrt-discharged{border-color:#7a1f2b;background:#7a1f2b;color:#fff}
+.tl-chip.ccrt-discharged .tl-loc{color:#fdd}
+.tl-chip.hl{border-color:var(--navy);background:#eef4ff;box-shadow:0 0 0 2px rgba(23,52,95,.15)}
+.tl-time{display:block;font-size:10.5px;color:var(--muted);font-weight:700}
+.tl-loc{display:block;font-size:13px;font-weight:800;color:#2a3850;margin-top:2px}
+.ccrt-groups{display:flex;flex-direction:column;gap:14px}
+.ccrt-kind-block{border:1px solid var(--line);border-radius:12px;padding:12px 14px 14px;background:#fbfcfe}
+.ccrt-kind-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ccrt-kind-badge{font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px;color:#fff;letter-spacing:.2px}
+.ccrt-kind-badge.k10ccrt{background:#17345f}
+.ccrt-kind-badge.k3ccrt{background:#3d63a3}
+.ccrt-kind-badge.k3better{background:#1f9d7c}
+.ccrt-kind-badge.k3comcog{background:#b8721f}
+.ccrt-kind-badge.kother{background:#6b7280}
+.ccrt-kind-count{font-size:12px;color:var(--muted);font-weight:700}
+.ccrt-grid-scroll{overflow-x:auto}
+.ccrt-time-grid{display:grid;min-width:max-content}
+.ccrt-grid-head{font-size:11px;font-weight:800;color:var(--muted);text-align:center;padding:4px 4px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ccrt-grid-head.corner{border-bottom:none}
+.ccrt-grid-daylabel{font-size:12px;font-weight:800;color:#2a3850;display:flex;align-items:center;padding:6px 6px 6px 0;border-top:1px dashed #e6eaf1;white-space:nowrap}
+.ccrt-grid-cell{display:flex;flex-direction:column;gap:4px;justify-content:center;padding:5px 3px;border-top:1px dashed #e6eaf1;min-height:34px}
+.ccrt-cell-chip{font-size:12px;font-weight:700;text-align:center;padding:5px 6px;border-radius:8px;background:#eef2f8;color:#2a3850;cursor:pointer}
+.ccrt-cell-chip.ccrt-discharged{background:#7a1f2b;color:#fff}
+.ccrt-cell-chip.erdt-bad{background:#fde3e3;color:#8a2020}
+.verdictbox{padding:12px 14px;border-radius:10px;background:#fff7ec;border:1px solid #f0d9a6;font-size:12.5px;color:#7a4a08;margin-bottom:14px;font-weight:600}
+.occ-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
+.occ-table th,.occ-table td{border:1px solid #eef1f6;padding:7px 9px;text-align:left}
+.occ-table th{background:#f7f9fc;color:#4c5b70;font-size:11px}
+.occ-title{font-size:12px;font-weight:800;color:#2a3850;margin:14px 0 6px}
+.dnav{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid #eef1f6}
+.dnav .pos{font-size:12.5px;color:var(--muted);font-weight:700}
+
+.displayModeBar{margin-bottom:10px}
+.gp-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.gp-tabs button{border:1px solid var(--line);background:#fff;padding:8px 15px;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer;color:#3d4b60}
+.gp-tabs button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.gp-legend{display:flex;gap:18px;margin-bottom:12px;font-size:12px;color:#3d4b60;flex-wrap:wrap;align-items:center}
+.gp-dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+.gp-dot.ok{background:var(--green-bg);border:1px solid var(--green)}
+.gp-dot.wrongloc{background:var(--loc-bg);border:1px solid var(--loc)}
+.gp-dot.mismatch{background:var(--count-bg);border:1px solid var(--count)}
+.gp-dot.missing{background:var(--record-bg);border:1px solid var(--record)}
+.gp-dot.duplicate{background:#fff;border:2.5px solid #8a4fd6}
+.gridPreviewWrap{overflow:auto;max-height:600px;border:1px solid var(--line);border-radius:12px}
+.gpTable{border-collapse:collapse;font-size:11px;width:100%}
+.gpTable th,.gpTable td{border:1px solid #e3e9f0;text-align:center;min-width:56px;height:32px;padding:2px 4px;white-space:nowrap}
+.gpTable thead th{background:#f4f7fb;position:sticky;top:0;z-index:2;font-weight:800;color:#3d4b60}
+.gpTable th.timecol{position:sticky;left:0;top:0;z-index:3;min-width:74px}
+.gpTable td.timecell{background:#f4f7fb;position:sticky;left:0;z-index:1;font-weight:800;color:#3d4b60}
+.gpcell{cursor:default;font-size:11px}
+.gpcell.ok{background:#e6f7ee;color:#1f6b46}
+.gpcell.mismatch{background:var(--count-bg);color:var(--count);font-weight:800}
+.gpcell.wrongloc{background:var(--loc-bg);color:var(--loc);font-weight:800}
+.gpcell.cardonly{background:#f2f4f8;color:#8895a8}
+.gpcell.rule{background:#7a1f2b;color:#fff;font-weight:800}
+.gpcell.missing{background:var(--record-bg);color:var(--record);font-weight:800}
+.gpcell.duplicate{outline:2.5px solid #8a4fd6;outline-offset:-2.5px}
+.gpcell.codeborder{box-shadow:inset 0 0 0 2.5px var(--loc)}
+.gpcell.clickable{cursor:pointer}
+.gpcell.clickable:hover{filter:brightness(.92);box-shadow:inset 0 0 0 2px rgba(23,52,95,.35)}
+.gpcell.empty{background:#fbfcfe;color:#c3ccd9}
+
+.info-toggle{margin-top:0;border:none;background:none;color:var(--blue);font-size:11.5px;font-weight:800;cursor:pointer;padding:0}
+.info-box{display:none;margin-top:10px;padding:14px 16px;background:#f7f9fc;border-radius:10px;font-size:11.8px;line-height:1.85;color:#48586e}
+.info-box.show{display:block}
+.info-box h4{margin:10px 0 4px;font-size:12.5px;color:#2a3850}
+.info-box ul{margin:4px 0;padding-left:18px}
+.modal-overlay{position:fixed;inset:0;background:rgba(15,25,45,.45);display:none;align-items:center;justify-content:center;z-index:50}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:16px;max-width:640px;width:92%;max-height:80vh;overflow:auto;padding:22px 24px}
+.modal-box h3{margin-top:0}
+.modal-close{float:right;border:none;background:#f1f4f9;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px}
+.dropOverlay{position:fixed;inset:0;background:rgba(17,35,64,.88);z-index:200;display:none;align-items:center;justify-content:center;pointer-events:none}
+.dropOverlay.show{display:flex}
+.dropOverlay-inner{text-align:center;color:#fff;border:2.5px dashed rgba(255,255,255,.7);border-radius:22px;padding:50px 70px}
+.dropOverlay-inner .ic{font-size:46px;margin-bottom:14px}
+.dropOverlay-inner .t1{font-size:19px;font-weight:800}
+.dropOverlay-inner .t2{font-size:13px;color:#cfe0fb;margin-top:6px}
+
+#printReport{display:none}
+.madeBy{position:fixed;right:14px;bottom:10px;font-size:10.5px;color:#a9b6c9;font-weight:600;letter-spacing:.2px;z-index:5;pointer-events:none;user-select:none}
+@media print{
+  body.printing > *:not(#printReport){display:none !important}
+  #printReport{display:block !important;padding:20px;font-family:"Malgun Gothic",sans-serif}
+  #printReport table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+  #printReport th,#printReport td{border:1px solid #999;padding:5px 7px;text-align:left}
+  #printReport h1{font-size:18px;margin-bottom:2px}
+  #printReport .meta{font-size:11px;color:#444;margin-bottom:14px}
+  #printReport .sumrow{display:flex;gap:18px;margin:10px 0 16px;font-size:12px}
+}
+</style>
+<style>
+/* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard 폰트로 화면 3개(그랜드라운딩·치료기록 QA·교차검증) 폰트 통일 */
+@font-face{font-family:"Pretendard Variable";src:url("../fonts/PretendardVariable.woff2") format("woff2-variations"),url("../fonts/PretendardVariable.woff2") format("woff2");font-weight:45 920;font-style:normal;font-display:swap;}
+html,body{font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Arial,sans-serif !important;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div>
+      <h1>작업치료 교차검증</h1>
+      <p class="sub">스케줄 · 위치 · 치료사 자동 검증</p>
+    </div>
+    <div class="header-actions">
+      <span class="hbtn" style="cursor:default;background:#eef4ff;color:#234f87;border-color:#c7dbf7">📌 매트/테이블: 원본 시트 기준</span>
+      <button class="hbtn" id="btnCopy">📋 결과 복사</button>
+      <button class="hbtn" id="btnExcel" title="현재 선택된 필터(탭)만 저장됩니다 — 예: '인수인계 불일치' 탭에서 누르면 인수인계 문제만 저장">📊 Excel 저장</button>
+      <button class="hbtn" id="btnPrint">🖨️ 인쇄</button>
+      <button class="hbtn link" id="btnCriteria">ⓘ 검증 기준 보기</button>
+    </div>
+  </div>
+
+  <div class="toprow">
+    <div class="panel" id="prepPanel">
+      <h3>📁 데이터 준비</h3>
+      <div class="prep-list" id="prepList"></div>
+
+
+      <div class="prep-foot">칸을 클릭하거나 파일을 끌어다 놓으세요.<br><b>화면 아무 곳에나 여러 파일을 한 번에 끌어다 놓아도</b> 파일명을 보고 자동으로 알맞은 칸에 채워줍니다.</div>
+      <div class="prep-actions">
+        <button class="btn block" id="btnPickFolder">📁 폴더에서 불러오기</button>
+        <div class="folder-status" id="folderStatus"></div>
+        <button class="btn block" id="btnResetFiles">↻ 파일 다시 선택</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>🧭 교차검증 결과</h3>
+      <div id="resultEmpty" style="padding:30px 10px;text-align:center;color:var(--muted)">
+        <div style="font-size:28px;margin-bottom:8px">📥</div>
+        파일을 업로드하고 <b>전체 교차검증 실행</b> 버튼을 눌러주세요.
+        <div style="margin-top:16px"><button class="btn primary" id="btnRun" disabled>전체 교차검증 실행</button></div>
+        <div class="run-progress" id="runProgress">
+          <div class="stepline" id="stepCount"><span class="dot"></span> 개수 비교</div>
+          <div class="stepline" id="stepLoc"><span class="dot"></span> 위치 검증</div>
+          <div class="stepline" id="stepTher"><span class="dot"></span> 치료사 매칭 검증</div>
+        </div>
+      </div>
+      <div id="resultBody" style="display:none">
+        <div class="result-grid">
+          <div class="donut" id="donut" style="--pct:0"><div class="donut-inner"><b id="pctText">0%</b><span>정상률</span></div></div>
+          <div class="result-nums">
+            <div class="n"><b id="numTotal">0</b><span>전체 검증</span></div>
+            <div class="n ok"><b id="numOk">0</b><span>정상</span></div>
+            <div class="n problem"><b id="numProblem">0</b><span>확인 필요</span></div>
+          </div>
+          <div style="margin-left:auto"><button class="btn sm" id="btnRerun">🔄 다시 검증</button></div>
+        </div>
+        <div class="cat-chips">
+          <div class="cat-chip count active" data-cat="count">
+            <div class="cc-label"><span class="dotmark"></span>개수 불일치</div>
+            <div class="cc-num" id="chipCount">0</div>
+            <div class="cc-breakdown" id="chipCountBreak"></div>
+          </div>
+          <div class="cat-chip location active" data-cat="location">
+            <div class="cc-label"><span class="dotmark"></span>위치 불일치</div>
+            <div class="cc-num" id="chipLoc">0</div>
+            <div class="cc-breakdown" id="chipLocBreak"></div>
+          </div>
+          <div class="cat-chip therapist active" data-cat="therapist"><div class="cc-label"><span class="dotmark"></span>치료사 불일치</div><div class="cc-num" id="chipTher">0</div></div>
+          <div class="cat-chip handover active" data-cat="handover">
+            <div class="cc-label"><span class="dotmark"></span>인수인계 불일치</div>
+            <div class="cc-num" id="chipHandover">0</div>
+            <div class="cc-breakdown" id="chipHandoverBreak"></div>
+          </div>
+          <div class="cat-chip eval active" data-cat="eval"><div class="cc-label"><span class="dotmark"></span>평가메인 불일치</div><div class="cc-num" id="chipEval">0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>🏢 층별 요약</h3>
+      <div class="floor-list" id="floorList">
+        <div class="floor-row2 active" data-floor="all"><span class="fl-name">전체</span><span class="fl-num zero" id="floorAllNum">0건</span></div>
+        <div class="floor-row2" data-floor="10"><span class="fl-name">10F</span><span class="fl-num zero" id="floor10Num">0건</span></div>
+        <div class="floor-row2" data-floor="3"><span class="fl-name">3F</span><span class="fl-num zero" id="floor3Num">0건</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mainArea" style="display:none">
+    <div class="displayModeBar">
+      <div class="seg" id="displayModeSeg">
+        <button class="active" data-mode="list">📋 목록 보기</button>
+        <button data-mode="preview">🎨 매트/테이블 미리보기</button>
+      </div>
+    </div>
+    <div class="filterbar" id="filterbarWrap">
+      <div class="seg" id="catSeg">
+        <button class="active" data-cat="all">전체 문제</button>
+        <button data-cat="count">개수 불일치</button>
+        <button data-cat="location">위치 불일치</button>
+        <button data-cat="therapist">치료사 불일치</button>
+        <button data-cat="handover">인수인계 불일치</button>
+        <button data-cat="eval">평가메인 불일치</button>
+      </div>
+      <div class="seg" id="fieldSeg" style="display:none">
+        <button class="active" data-field="all">전체</button>
+        <button data-field="sot">SOT</button>
+        <button data-field="rdt">RDT</button>
+        <button data-field="erdt">ERDT</button>
+        <button data-field="ccrt">CCRT</button>
+        <button data-field="lang">언어</button>
+        <button data-field="discharge">퇴원오류</button>
+      </div>
+      <div class="seg" id="locSourceSeg" style="display:none">
+        <button class="active" data-source="all">전체</button>
+        <button data-source="grid">매트/테이블현황 대조</button>
+        <button data-source="schedule">평일시간표(원본) 대조</button>
+        <button data-source="saturday">토요일&공휴일 시간표 대조</button>
+      </div>
+      <div class="seg" id="handoverSourceSeg" style="display:none">
+        <button class="active" data-hsource="all">전체</button>
+        <button data-hsource="therapist">담당 치료사</button>
+        <button data-hsource="doctor">주치의</button>
+        <button data-hsource="orphan">근거 없음</button>
+        <button data-hsource="excess">작성자 수 초과</button>
+      </div>
+      <div class="right">
+        <div class="seg" id="viewSeg">
+          <button class="active" data-view="type">문제 유형별</button>
+          <button data-view="patient">환자별</button>
+        </div>
+        <div class="searchbox"><input type="text" id="searchInput" placeholder="환자명 / 병실 / 시간 / 위치 / 치료사 검색"></div>
+      </div>
+    </div>
+
+    <div class="mainsplit" id="mainSplitWrap">
+      <div class="listpanel">
+        <div class="listhead">
+          <span class="cnt" id="listCount">전체 0건</span>
+          <select id="sortSelect">
+            <option value="priority">정렬: 중요도 순</option>
+            <option value="name">정렬: 환자명 순</option>
+            <option value="time">정렬: 시간 순</option>
+          </select>
+        </div>
+        <div class="issuelist" id="issueList"></div>
+        <div class="pager" id="pager"></div>
+      </div>
+
+      <div class="detailpanel" id="detailPanel">
+        <div class="detail-empty">
+          <div class="big">👈</div>
+          왼쪽 목록에서 문제를 선택하면<br>여기에 상세 내용이 표시됩니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="gridPreviewPanel" style="display:none;min-height:680px;max-height:82vh;overflow:auto"></div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="criteriaModal">
+  <div class="modal-box">
+    <button class="modal-close" id="criteriaClose">✕</button>
+    <h3>ⓘ 검증 기준</h3>
+    <h4>① 작업치료현황 개수 비교</h4>
+    <p style="margin:2px 0 8px;font-size:11.5px;color:var(--muted)">‘현황(회복기)’ 시트의 기대 횟수와, ‘평일시간표(원본)’ 메인 표(아래 규칙)에서 실제로 집계되는 횟수를 비교합니다.</p>
+    <ul>
+      <li><b>SOT</b>: 메인 표에서 이름 뒤에 ST/SM/SB가 붙거나 위치코드(a,b,c,가,나,T 등)만 있는 셀 → SOT 1회</li>
+      <li><b>RDT</b>: 메인 표에서 이름 뒤(또는 붙여쓰기)에 단독 “R”이 붙은 셀 → RDT 1회</li>
+      <li><b>제외</b>: 이름 뒤에 “E”가 붙은 셀은 집계하지 않습니다</li>
+      <li><b>ERDT</b>: 하단 “10F) ERDT” / “3F) ERDT” 표에서 이름이 나온 칸의 개수(요일이 “화목”처럼 표기되어 있으면 그 요일 수만큼) 합산</li>
+      <li><b>CCRT</b>: 하단 “10F) CCRT” / “3F) CCRT” / “3F) BETTER” / “3F) COMCOG” 표에서 월~금 요일칸에 이름이 나온 횟수 합산</li>
+      <li><b>언어</b>: 다른 항목과 달리 평일시간표(원본)이 아니라 <b>전체시간표(원본)</b>에서 집계합니다 — 환자 카드의 요일칸에 “언어치료”라는 글자가 들어간 칸의 개수. 전체시간표(원본)에서 그 환자 카드 자체를 찾지 못하면 판정 불가로 보고 통계에 넣지 않습니다</li>
+      <li>퇴원(구분=퇴원) 환자는 비교 대상에서 제외합니다</li>
+      <li><b>외래(구분=외래) 환자</b>: 평일시간표(원본)에는 나오지 않으므로 횟수 비교 대신, 전체시간표(원본)의 “외래” 시트 카드 요일칸에 해당 치료(SOT→작업치료/RDT→연하치료/ERDT→연하전기/CCRT→인지치료) 문구가 있는지(있음/없음)만 확인합니다</li>
+    </ul>
+    <h4>② 위치 검증 (두 가지)</h4>
+    <p style="margin:2px 0 8px;font-size:11.5px;color:var(--muted)">여기서 <b>전체시간표(원본)</b>은 10F/3F <b>환자전체시간표(원본).xlsx</b> 파일(환자별로 위치·담당치료사가 정리된 자료)을 말하고, <b>평일시간표(원본)</b>은 작업치료현황.xlsx 안의 치료사×시간 표를 말합니다. 두 “원본”은 서로 다른 파일이니 혼동하지 않도록 주의해 주세요.</p>
+    <ul>
+      <li><b>매트/테이블현황 대조</b>: 전체시간표(원본)의 시간·위치 기록과 매트/테이블현황(원본 시트)의 같은 칸을 비교
+        <ul>
+          <li>이름불일치: 매트/테이블현황의 같은 시간·위치 칸에 적힌 이름이 전체시간표(원본)와 다름</li>
+          <li>매트/테이블현황에만 있음: 매트/테이블현황에는 이름이 있는데 전체시간표(원본) 어디에도 같은 시간·위치 기록이 없음</li>
+          <li>전기/기립대/슬라이딩/워크메이트 등 매트·테이블이 아닌 위치는 제외, 10F/3F는 해당 층 파일끼리만 비교</li>
+        </ul>
+      </li>
+      <li><b>평일시간표(원본) 대조</b>: 작업치료현황의 “평일시간표(원본)” 메인 표에 적힌 치료위치와 전체시간표(원본)의 같은 환자·같은 시간 치료위치를 비교
+        <ul>
+          <li>위치 불일치: 두 자료에 적힌 치료위치(예: B-13, T-9)가 서로 다름</li>
+          <li>전체시간표(원본)에 기록 없음: 평일시간표(원본)에는 그 시간에 배정이 있는데 전체시간표(원본)에서 같은 시간 기록을 찾지 못함</li>
+        </ul>
+      </li>
+      <li><b>토요일&공휴일 시간표 대조</b>: 작업치료현황의 “토요일&공휴일 시간표”에 나온 환자가 전체시간표(원본)에 실제로 있는지 확인합니다. 자세한 비교(시간·SM/ST 코드·중복 등)는 결과 화면의 “매트/테이블 미리보기” 안 “토요일&공휴일” 탭에서 볼 수 있습니다.
+        <ul>
+          <li>회복기 아닌 환자 SOT/RDT 배정(규칙 위반): 병원 규칙상 토요일엔 회복기 환자만 참여할 수 있고, 회복기가 아닌 환자는 전기치료만 가능합니다(연하도 불가) — “현황(회복기)” 명단에 없는 환자가 SOT 또는 RDT 코드로 배정되어 있으면 규칙 위반으로 표시합니다</li>
+          <li>전체시간표(원본)에 없음: 토요일 시간표엔 있는데 전체시간표(원본) 전체에서 그 환자를 찾지 못한 경우(퇴원 등)</li>
+        </ul>
+      </li>
+    </ul>
+    <h4>③ 치료사 · 시간 매칭 검증</h4>
+    <ul>
+      <li><b>작업(SOT)</b>: 평일시간표(원본) 메인 표에서 SOT로 분류된 칸의 치료사 vs 전체시간표(원본)의 ‘작업치료’ 담당자</li>
+      <li><b>연하(RDT)</b>: 평일시간표(원본) 메인 표에서 RDT(R)로 분류된 칸의 치료사 vs 전체시간표(원본)의 ‘연하치료’ 담당자</li>
+      <li><b>인지(CCRT)</b>: 평일시간표(원본) 하단 CCRT/BETTER/COMCOG 표의 요일별 치료사 vs 전체시간표(원본)의 ‘인지치료’ 담당자</li>
+      <li>전체시간표(원본)에 담당자가 아예 기재되어 있지 않거나 전체시간표(원본) 자체가 없으면 “확인 필요” 통계·문제 목록에서 제외합니다(판정 불가로 간주, 별도 집계하지 않음)</li>
+    </ul>
+    <h4>④ 인수인계 대조 (OT 인수인계 파일을 올렸을 때만)</h4>
+    <ul>
+      <li><b>담당 치료사</b>: 인수인계 시트의 환자별 담당 치료사 vs 평일시간표(원본)에서 그 환자·그 종류(SOT/RDT/CCRT)로 실제 배정된 치료사. 평일시간표(원본)에 그 환자·종류 배정 자체가 없으면 “인수인계 있음(평일시간표에 배정 없음)”으로 따로 표시합니다</li>
+      <li><b>주치의</b>: 인수인계 시트의 주치의(RM#) vs 전체시간표(원본) 카드의 주치의(RM#)</li>
+      <li>같은 환자가 인수인계 시트에 여러 번(시간이 지나며) 다시 기록된 경우, 가장 최근(맨 위) 항목만 사용합니다</li>
+    </ul>
+    <h4>⑤ 평가메인 대조</h4>
+    <ul>
+      <li>작업치료현황의 “평일시간표(원본)”에서 <b>볼드체(굵게)</b>로 표시된 환자 명단과, “평가메인” 시트에 실제로 적혀있는 환자 명단을 서로 비교합니다</li>
+      <li><b>평가메인 누락</b>: 평일시간표(원본)엔 볼드로 표시돼 있는데 평가메인 시트엔 이름이 없는 경우</li>
+      <li><b>평가메인 초과</b>: 평가메인 시트엔 있는데 평일시간표(원본)엔 볼드로 표시돼 있지 않은 경우</li>
+      <li>“평가메인” 시트가 없는 파일이면 이 검증은 건너뜁니다</li>
+    </ul>
+    <h4>정상률 계산 방식</h4>
+    <p>개수·위치·치료사·인수인계·평가메인 다섯 검증은 서로 다른 단위로 수행됩니다(개수=환자×SOT/RDT/ERDT/CCRT 4개 항목 + 전체시간표(원본)에서 확인 가능한 환자의 언어 항목, 위치=시간·칸 단위, 치료사·인수인계·평가메인=건 단위). 정상률은 다섯 검증의 <b>전체 검사 건수 합</b> 대비 <b>문제 건수 합</b>으로 계산하며, 같은 건을 두 번 세지 않습니다.</p>
+  </div>
+</div>
+
+
+<div id="printReport"></div>
+
+<div class="dropOverlay" id="dropOverlay">
+  <div class="dropOverlay-inner">
+    <div class="ic">📥</div>
+    <div class="t1">여기에 파일을 놓으세요</div>
+    <div class="t2">여러 개를 한 번에 놓아도 파일명을 보고 자동으로 알맞은 칸에 채워줍니다</div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="gridDetailModal">
+  <div class="modal-box">
+    <button class="modal-close" id="gridDetailClose">✕</button>
+    <h3>🔎 오류 근거</h3>
+    <div id="gridDetailBody"></div>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
+   ====================================================================== */
+/* ===== core/xlsx_core.js 내장 (수정하지 말고 core에서 고친 뒤 node core/build_embed.js 로 다시 만드세요) ===== */
+// xlsx_core.js — RM 회진 v3.2.30 / 작업치료 교차검증 도구의 공통 XLSX 읽기(read-only) 파서.
+// 두 도구의 코드를 그대로 합친 것(decodeXml=교차검증판(null 안전), ZipArchive=RM판). 로직 변경 없음.
+// 브라우저: <script src="core/xlsx_core.js"> 로 전역 함수 사용 / Node: require() (테스트용)
+const UTF8 = new TextDecoder('utf-8');
+function decodeXml(s){
+  s = s||'';
+  return s.replace(/&#(x?[0-9A-Fa-f]+);|&(?:lt|gt|amp|quot|apos);/g, m => {
+    if (m.startsWith('&#x')) return String.fromCodePoint(parseInt(m.slice(3,-1),16));
+    if (m.startsWith('&#')) return String.fromCodePoint(parseInt(m.slice(2,-1),10));
+    return {'&lt;':'<','&gt;':'>','&amp;':'&','&quot;':'"','&apos;':"'"}[m] || m;
+  });
+}
+function getAttr(attrs, name) {
+  const re = new RegExp('(?:^|\\s)'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'="([^"]*)"');
+  const m = attrs.match(re); return m ? decodeXml(m[1]) : '';
+}
+function colToNum(col) { let n=0; for(const ch of col) n=n*26+(ch.charCodeAt(0)-64); return n; }
+function numToCol(n) { let s=''; while(n){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26);} return s; }
+function splitRef(ref){ const m=/^([A-Z]+)(\d+)$/.exec(ref); return m?{col:colToNum(m[1]),row:+m[2]}:null; }
+class ZipArchive {
+  constructor(arrayBuffer){ this.u8=new Uint8Array(arrayBuffer); this.dv=new DataView(arrayBuffer); this.entries=new Map(); this._parse(); }
+  _u16(o){return this.dv.getUint16(o,true)} _u32(o){return this.dv.getUint32(o,true)}
+  _parse(){
+    let eocd=-1; const min=Math.max(0,this.u8.length-22-65535);
+    for(let i=this.u8.length-22;i>=min;i--){ if(this._u32(i)===0x06054b50){ eocd=i; break; } }
+    if(eocd<0) throw new Error('ZIP 끝정보를 찾지 못했습니다. 올바른 XLSX 파일인지 확인하세요.');
+    const total=this._u16(eocd+10), cdOffset=this._u32(eocd+16); let p=cdOffset;
+    for(let i=0;i<total;i++){
+      if(this._u32(p)!==0x02014b50) throw new Error('XLSX 압축 구조가 손상되었습니다.');
+      const flags=this._u16(p+8), method=this._u16(p+10), compSize=this._u32(p+20), uncompSize=this._u32(p+24);
+      const nameLen=this._u16(p+28), extraLen=this._u16(p+30), commentLen=this._u16(p+32), localOffset=this._u32(p+42);
+      const name=UTF8.decode(this.u8.slice(p+46,p+46+nameLen)); this.entries.set(name,{name,flags,method,compSize,uncompSize,localOffset});
+      p+=46+nameLen+extraLen+commentLen;
+    }
+  }
+  has(name){return this.entries.has(name)}
+  async bytes(name){
+    const e=this.entries.get(name); if(!e) throw new Error(`XLSX 내부 파일이 없습니다: ${name}`);
+    const p=e.localOffset; if(this._u32(p)!==0x04034b50) throw new Error('XLSX 로컬 압축 헤더가 손상되었습니다.');
+    const nameLen=this._u16(p+26), extraLen=this._u16(p+28), start=p+30+nameLen+extraLen; const data=this.u8.slice(start,start+e.compSize);
+    if(e.method===0) return data;
+    if(e.method===8){
+      if(typeof DecompressionStream==='undefined') throw new Error('현재 브라우저가 XLSX 압축 해제를 지원하지 않습니다. 최신 Edge 또는 Chrome을 사용해 주세요.');
+      const ds=new DecompressionStream('deflate-raw'); const ab=await new Response(new Blob([data]).stream().pipeThrough(ds)).arrayBuffer(); return new Uint8Array(ab);
+    }
+    throw new Error(`지원하지 않는 XLSX 압축 방식입니다 (${e.method}).`);
+  }
+  async text(name){ return UTF8.decode(await this.bytes(name)); }
+}
+function parseSharedStrings(xml){
+  const out=[]; const siRe=/<si\b[^>]*>([\s\S]*?)<\/si>/g; let m;
+  while((m=siRe.exec(xml))){ let s=''; const tRe=/<t\b[^>]*>([\s\S]*?)<\/t>/g; let tm; while((tm=tRe.exec(m[1]))) s+=decodeXml(tm[1]); out.push(s); }
+  return out;
+}
+function parseWorksheet(xml, shared){
+  const cells=new Map(); xml=xml.replace(/<c\b[^>]*\/>/g,''); const re=/<c\b([^>]*)>([\s\S]*?)<\/c>/g; let m;
+  while((m=re.exec(xml))){
+    const attrs=m[1], body=m[2], ref=getAttr(attrs,'r'); if(!ref) continue; const type=getAttr(attrs,'t'); let value='';
+    if(type==='inlineStr'){ const tr=/<t\b[^>]*>([\s\S]*?)<\/t>/g; let tm; while((tm=tr.exec(body))) value+=decodeXml(tm[1]); }
+    else { const vm=/<v\b[^>]*>([\s\S]*?)<\/v>/.exec(body); if(!vm) continue; const raw=decodeXml(vm[1]); if(type==='s'){ const idx=parseInt(raw,10); value=Number.isFinite(idx)?(shared[idx]??''):raw; } else if(type==='b') value=raw==='1'?'TRUE':'FALSE'; else value=raw; }
+    if(value!=='') cells.set(ref,value);
+  }
+  return cells;
+}
+function normalizePartTarget(t){ t=decodeXml(t||'').replace(/^\//,''); if(t.startsWith('xl/')) return t; return 'xl/'+t.replace(/^\.\//,''); }
+async function readWorkbookFile(file){
+  const arrayBuffer=await file.arrayBuffer(), zip=new ZipArchive(arrayBuffer); const wbXml=await zip.text('xl/workbook.xml'), relXml=await zip.text('xl/_rels/workbook.xml.rels');
+  const relMap=new Map(); const rr=/<Relationship\b([^>]*)\/?\s*>/g; let m;
+  while((m=rr.exec(relXml))){ const id=getAttr(m[1],'Id'), target=getAttr(m[1],'Target'); if(id&&target) relMap.set(id,normalizePartTarget(target)); }
+  const sheets=[]; const sr=/<sheet\b([^>]*)\/?\s*>/g;
+  while((m=sr.exec(wbXml))){ const name=getAttr(m[1],'name'), rid=getAttr(m[1],'r:id'); if(name&&rid&&relMap.has(rid)) sheets.push({name,path:relMap.get(rid)}); }
+  let shared=[]; if(zip.has('xl/sharedStrings.xml')) shared=parseSharedStrings(await zip.text('xl/sharedStrings.xml'));
+  return {fileName:file.name,zip,shared,sheets,sheetCache:new Map()};
+}
+async function getSheetCells(book,sheetName){ if(book.sheetCache.has(sheetName)) return book.sheetCache.get(sheetName); const sh=book.sheets.find(s=>s.name===sheetName); if(!sh) return null; const cells=parseWorksheet(await book.zip.text(sh.path),book.shared); book.sheetCache.set(sheetName,cells); return cells; }
+
+/* ===== core 내장 끝 ===== */
+function normalizeText(v){ return (v==null?'':String(v)).replace(/\r/g,'').trim(); }
+
+// 볼드체(굵게) 서식 확인용: 기존 판독기는 셀 값만 읽고 서식(styles.xml)은 안 읽고 있었으므로 별도로 읽는다.
+async function parseStylesXml(book){
+  if(book._styles) return book._styles;
+  if(!book.zip.has('xl/styles.xml')){ book._styles={fontsBold:[false], cellXfFontId:[0]}; return book._styles; }
+  const xml = await book.zip.text('xl/styles.xml');
+  const fontsBold=[];
+  const fontsBlock=/<fonts[^>]*>([\s\S]*?)<\/fonts>/.exec(xml);
+  if(fontsBlock){
+    const fontRe=/<font>([\s\S]*?)<\/font>/g; let fm;
+    while((fm=fontRe.exec(fontsBlock[1]))) fontsBold.push(/<b\s*\/?>/.test(fm[1]));
+  }
+  const cellXfFontId=[];
+  const xfsBlock=/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/.exec(xml);
+  if(xfsBlock){
+    const xfRe=/<xf\b([^>]*?)(?:\/>|>)/g; let xm;
+    while((xm=xfRe.exec(xfsBlock[1]))){ const fid=getAttr(xm[1],'fontId'); cellXfFontId.push(fid?parseInt(fid,10):0); }
+  }
+  book._styles={fontsBold, cellXfFontId};
+  return book._styles;
+}
+async function getSheetBoldRefs(book, sheetName){
+  if(!book._boldCache) book._boldCache={};
+  if(book._boldCache[sheetName]) return book._boldCache[sheetName];
+  const sh=book.sheets.find(s=>s.name===sheetName);
+  if(!sh){ book._boldCache[sheetName]=new Set(); return book._boldCache[sheetName]; }
+  const styles=await parseStylesXml(book);
+  let xml=await book.zip.text(sh.path);
+  xml=xml.replace(/<c\b[^>]*\/>/g,'');
+  const boldRefs=new Set();
+  const cRe=/<c\b([^>]*)>([\s\S]*?)<\/c>/g; let m;
+  while((m=cRe.exec(xml))){
+    const ref=getAttr(m[1],'r'); if(!ref) continue;
+    const sAttr=getAttr(m[1],'s');
+    const styleIdx=sAttr?parseInt(sAttr,10):0;
+    const fontId=styles.cellXfFontId[styleIdx]??0;
+    if(styles.fontsBold[fontId]) boldRefs.add(ref);
+  }
+  book._boldCache[sheetName]=boldRefs;
+  return boldRefs;
+}
+function getCell(cells,row,col){ return cells.get(`${numToCol(col)}${row}`) ?? ''; }
+function excelTimeToHHMM(v){ const n=Number(v); if(!Number.isFinite(n)) return ''; let mins=Math.round((n-Math.floor(n))*1440); mins=((mins%1440)+1440)%1440; return `${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`; }
+function timeStart(raw){
+  const s=normalizeText(raw); if(!s) return '';
+  if(/^[0-9.]+$/.test(s)) return excelTimeToHHMM(Number(s));
+  const m=/^(\d{1,2}:\d{2})/.exec(s); return m?m[1]:s;
+}
+function normKey(name){ return normalizeText(name).replace(/[\s·ㆍ\-\(\)\[\]{}.,\/\\]/g,'').toUpperCase(); }
+
+/* ======================================================================
+   검증 로직 (Tab1/Tab2/Tab3) — 기존 구현과 동일한 판정 규칙, 변경 없음
+   ====================================================================== */
+async function parseStatusSheet(book){
+  const sh = book.sheets.find(s=>/현황/.test(s.name)&&/회복기/.test(s.name)) || book.sheets.find(s=>/현황/.test(s.name));
+  if(!sh) throw new Error('현황(회복기) 시트를 찾지 못했습니다.');
+  const cells = await getSheetCells(book, sh.name);
+  let headerRow=null;
+  for(const [ref,val] of cells.entries()){
+    if(normalizeText(val).replace(/\s+/g,'')==='성명'){ const rc=splitRef(ref); if(rc){ headerRow=rc.row; break; } }
+  }
+  if(headerRow==null) throw new Error('현황 시트에서 "성명" 헤더를 찾지 못했습니다.');
+  const headerMap={};
+  for(let c=1;c<=25;c++){ const v=normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,''); if(v) headerMap[v]=c; }
+  const nameCol=headerMap['성명'], roomCol=headerMap['병실'], admitCol=headerMap['입원'];
+  const typeCols={sot:headerMap['SOT'], rdt:headerMap['RDT'], erdt:headerMap['ERDT'], ccrt:headerMap['CCRT'], lang:headerMap['언어']};
+  const list=[]; const dischargedList=[]; let maxRow=headerRow;
+  for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc && rc.row>maxRow) maxRow=rc.row; }
+  for(let r=headerRow+1;r<=maxRow;r++){
+    const name=normalizeText(getCell(cells,r,nameCol)); if(!name) continue;
+    const admit=admitCol?normalizeText(getCell(cells,r,admitCol)):'';
+    const room=normalizeText(getCell(cells,r,roomCol));
+    if(admit==='퇴원'){ dischargedList.push({name, room, admit}); continue; }
+    const rec={name, room, admit};
+    for(const k of Object.keys(typeCols)){ const col=typeCols[k]; const raw=col?getCell(cells,r,col):''; const num=parseInt(raw,10); rec[k]=Number.isFinite(num)?num:0; }
+    list.push(rec);
+  }
+  return {sheetName:sh.name, list, dischargedList, hasLang:!!headerMap['언어']};
+}
+function findScheduleSheet(book){
+  return book.sheets.find(s=>normalizeText(s.name).replace(/\s+/g,'')==='평일시간표(원본)');
+}
+function likelyTherapistName(v){
+  const s=normalizeText(v).replace(/\s+/g,'');
+  if(!/^[가-힣]{2,6}$/.test(s)) return false;
+  return !/^(빈타임|치료시간|평가메인|연하치료|점심시간|팀구분|퇴원예정자|환자특이사항|치료사)$/.test(s);
+}
+function extractPatientAssignment(raw){
+  const r=normalizeText(raw); if(!r) return null;
+  const first=r.split('\n')[0].trim();
+  if(/CCRT|ERDT|BETTER|COMCOG|육아휴직|휴직|회의|교육|점심|치료실|빈타임|근무|VAC|OFF|외래|평가/i.test(first)) return null;
+  let isE=/(?:^|\s)E(?:$|\s)/i.test(first);
+  let isR=/(?:^|\s)R(?:$|\s)/i.test(first);
+  let name=first.replace(/\s+(?:ST|SM|SB|R|E|NWB|PWB|TEST)\b.*$/i,'').replace(/(?:ST|SM|SB|TEST)$/i,'').trim();
+  name=name.replace(/[^가-힣A-Za-z0-9]/g,'');
+  if(!isR && !isE && /^[가-힣]{2,6}R$/.test(name)){ isR=true; name=name.slice(0,-1); } // 공백없이 붙은 'R' 오기 보정
+  if(!/^[가-힣]{2,6}[A-Za-z0-9]{0,2}$/.test(name)) return null;
+  if(isE) return {name, type:'skip'};
+  if(isR) return {name, type:'rdt'};
+  return {name, type:'sot'};
+}
+function extractLocationFromRaw(raw){
+  const lines=normalizeText(raw).split('\n');
+  if(lines.length<2) return '';
+  return normLoc(lines[1]);
+}
+function extractCodeToken(raw){
+  // 이름 뒤에 붙는 ST/SM/SB/R 코드만 뽑는다(MSK 등은 대상 아님 — 신경쓰지 않아도 되는 코드)
+  const first=normalizeText(raw).split('\n')[0].trim();
+  const m=/(?:^|\s)(ST|SM|SB|R)(?:\s|$)/i.exec(first);
+  return m ? m[1].toUpperCase() : '';
+}
+async function parseMainTable(cells, boldRefs){
+  let header=null;
+  for(const [ref,val] of cells.entries()){
+    if(normalizeText(val).replace(/\s+/g,'')!=='치료시간') continue;
+    const rc=splitRef(ref); if(rc && rc.row<=6 && (!header || rc.row<header.row)) header=rc;
+  }
+  if(!header) throw new Error('평일시간표(원본)에서 "치료시간" 헤더를 찾지 못했습니다.');
+  const therapistRow=header.row+1, startRow=therapistRow+1;
+  let endRow=startRow+20;
+  for(let r=startRow;r<=startRow+25;r++){
+    const marker=normalizeText(getCell(cells,r,header.col)).replace(/\s+/g,'');
+    if(marker==='빈타임'||marker==='평가메인'||marker==='연하치료'){ endRow=r-1; break; }
+  }
+  const floorSplitCol = (()=>{
+    for(const [ref,val] of cells.entries()){ if(/3층\s*치료실/.test(normalizeText(val))){ const rc=splitRef(ref); if(rc) return rc.col; } }
+    return null;
+  })();
+  const therapistCols=[];
+  for(let c=header.col+1;c<=header.col+70;c++){
+    const v=getCell(cells,therapistRow,c);
+    if(likelyTherapistName(v)) therapistCols.push({col:c,name:normalizeText(v).replace(/\s+/g,''), floor: (floorSplitCol && c>=floorSplitCol)?3:10});
+  }
+  const occ=[];
+  for(const tc of therapistCols){
+    for(let r=startRow;r<=endRow;r++){
+      const raw=getCell(cells,r,tc.col); const asn=extractPatientAssignment(raw); if(!asn||asn.type==='skip') continue;
+      const time=normalizeText(getCell(cells,r,header.col));
+      const ref=numToCol(tc.col)+r;
+      occ.push({name:asn.name, type:asn.type, therapist:tc.name, therapistCol:tc.col, floor:tc.floor, time, timeKey:timeStart(time), loc:extractLocationFromRaw(raw), code:extractCodeToken(raw), bold: !!(boldRefs && boldRefs.has(ref)), row:r});
+    }
+  }
+  return occ;
+}
+function findLowerSections(cells){
+  const out=[];
+  for(const [ref,val] of cells.entries()){
+    const s=normalizeText(val).replace(/\s+/g,''); const rc=splitRef(ref); if(!rc||rc.row<20) continue;
+    let kind=null;
+    if(/^10F\)?ERDT$/.test(s)) kind='10F_ERDT'; else if(/^10F\)?CCRT$/.test(s)) kind='10F_CCRT';
+    else if(/^3F\)?ERDT$/.test(s)) kind='3F_ERDT'; else if(/^3F\)?BETTER$/.test(s)) kind='3F_BETTER'; else if(/^3F\)?COMCOG$/.test(s)) kind='3F_COMCOG';
+    if(!kind) continue; out.push({kind, row:rc.row, col:rc.col});
+  }
+  return out;
+}
+function parseSectionHeader(cells, labelRow, labelCol){
+  // 일부 시트(예: "3F) BETTER")는 "치료시간" 글자 자체가 비어있는 서식 오류가 있어
+  // "치료시간" 텍스트가 아니라 "치료사" 텍스트를 기준으로 헤더 행을 찾는다.
+  // 치료시간 열은 항상 구분 라벨(예: "3F) BETTER")과 같은 열에서 시작한다.
+  let headerRow=0, therapistCol=0;
+  for(let r=labelRow+1;r<=labelRow+3;r++){
+    for(let c=labelCol; c<=labelCol+10; c++){
+      if(normalizeText(getCell(cells,r,c)).replace(/\s+/g,'')==='치료사'){ headerRow=r; therapistCol=c; break; }
+    }
+    if(headerRow) break;
+  }
+  if(!headerRow) return null;
+  const timeCol=labelCol;
+  const subCols=[];
+  for(let c=therapistCol+1; c<=therapistCol+8; c++){ const v=normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,''); if(/^S\d$/.test(v) || ['월','화','수','목','금'].includes(v)) subCols.push({col:c,label:v}); }
+  if(!subCols.length) return null;
+  return {headerRow, timeCol, therapistCol, subCols, style: /^S\d$/.test(subCols[0].label)?'slot':'weekday'};
+}
+function extractLowerName(raw){
+  const first=normalizeText(raw).split('\n')[0].trim(); if(!first) return '';
+  if(/CCRT|ERDT|BETTER|COMCOG|점심|치료시간|치료사/i.test(first)) return '';
+  const cleaned=first.replace(/[^가-힣A-Za-z0-9]/g,'');
+  if(!/^[가-힣]{2,6}[A-Za-z0-9]{0,2}$/.test(cleaned)) return '';
+  return cleaned;
+}
+function dayCountFromRaw(raw){ const lines=normalizeText(raw).split('\n'); if(lines.length<2) return 5; const days=(lines[1].match(/[월화수목금]/g)||[]); return days.length?days.length:5; }
+function daysFromRaw(raw){ const lines=normalizeText(raw).split('\n'); if(lines.length<2) return []; return lines[1].match(/[월화수목금]/g)||[]; }
+async function parseLowerAll(cells){
+  const sections=findLowerSections(cells);
+  const erdt=[], ccrt=[];
+  for(const sec of sections){
+    const parsed=parseSectionHeader(cells, sec.row, sec.col); if(!parsed) continue;
+    const floor = sec.kind.startsWith('10F')?10:3;
+    for(let r=parsed.headerRow+1; r<=parsed.headerRow+20; r++){
+      for(const sc of parsed.subCols){
+        const raw=getCell(cells,r,sc.col); const nm=extractLowerName(raw); if(!nm) continue;
+        const therapist=normalizeText(getCell(cells,r,parsed.therapistCol)).replace(/\s+/g,'');
+        const time=normalizeText(getCell(cells,r,parsed.timeCol));
+        if(parsed.style==='slot'){ erdt.push({kind:sec.kind, floor, name:nm, count:dayCountFromRaw(raw), days:daysFromRaw(raw), therapist, time, timeKey:timeStart(time), slot:sc.label}); }
+        else { ccrt.push({kind:sec.kind, floor, name:nm, day:sc.label, therapist, time, timeKey:timeStart(time)}); }
+      }
+    }
+  }
+  return {erdt, ccrt};
+}
+async function buildScheduleData(book){
+  const sh=findScheduleSheet(book);
+  if(!sh) throw new Error('"평일시간표(원본)" 시트를 찾지 못했습니다.');
+  const cells=await getSheetCells(book, sh.name);
+  const boldRefs=await getSheetBoldRefs(book, sh.name);
+  const occ=await parseMainTable(cells, boldRefs);
+  const lower=await parseLowerAll(cells);
+  return {occ, erdt:lower.erdt, ccrt:lower.ccrt};
+}
+// "평가메인" 시트는 평일시간표(원본)에서 볼드로 표시된 환자만 따로 옮겨 적어둔 시트다(구조는 메인 표와 동일).
+// 이름 목록만 필요하므로 parseMainTable을 그대로 재사용한다.
+async function parseEvalMainNames(book){
+  const sh = book.sheets.find(s=>/평가\s*메인/.test(s.name));
+  if(!sh) return null; // 시트가 없으면 검증 불가(null)
+  const cells = await getSheetCells(book, sh.name);
+  if(!cells || !cells.size) return new Set();
+  let occ=[];
+  try{ occ = await parseMainTable(cells); }catch(e){ return new Set(); }
+  const names=new Set();
+  for(const o of occ) names.add(normKey(o.name));
+  return names;
+}
+// 연하전기(ERDT)는 "총 세션 수"가 아니라 "프로그램이 몇 개인지"를 현황에 1/2로 적는다.
+// 요일 정보가 없는 슬롯은 "평일 5일 모두"를 뜻하고, 요일이 적혀있으면 그 요일에만 시행한다는 뜻이다.
+// 같은 환자의 여러 슬롯 중 요일이 서로 겹치지 않는 것들은 "요일마다 담당/시간만 다른 같은 프로그램"으로 보고 하나로 합치고,
+// 요일이 겹치는 슬롯(또는 이미 평일 5일을 다 쓰는 슬롯과 겹치는 경우)은 별도의(추가) 프로그램으로 센다.
+function computeErdtProgramCount(entries){
+  const groups=[];
+  for(const e of entries){
+    const days = (e.days && e.days.length) ? e.days : ['월','화','수','목','금'];
+    let merged=false;
+    for(const g of groups){
+      if(!days.some(d=>g.has(d))){ days.forEach(d=>g.add(d)); merged=true; break; }
+    }
+    if(!merged) groups.push(new Set(days));
+  }
+  return groups.length;
+}
+function buildActualCounts(sched){
+  const actual=new Map();
+  function ensure(key,name){ if(!actual.has(key)) actual.set(key,{sot:0,rdt:0,erdt:0,ccrt:0,name}); return actual.get(key); }
+  for(const o of sched.occ){ if(o.type==='sot'||o.type==='rdt') ensure(normKey(o.name),o.name)[o.type]++; }
+  const erdtByName=new Map();
+  for(const e of sched.erdt){ const k=normKey(e.name); if(!erdtByName.has(k)) erdtByName.set(k,{name:e.name, list:[]}); erdtByName.get(k).list.push(e); }
+  for(const [k,{name,list}] of erdtByName){ ensure(k,name).erdt = computeErdtProgramCount(list); }
+  for(const c of sched.ccrt){ ensure(normKey(c.name),c.name).ccrt += 1; }
+  return actual;
+}
+// 외래 환자는 "평일시간표(원본)"에 아예 나오지 않으므로(입원 환자용 표), 개수를 그대로 비교할 수 없다.
+// 대신 전체시간표(원본)의 "외래" 카드 요일칸에 해당 치료 문구가 있는지(있음/없음)로 확인한다.
+function buildOutpatientActual(card){
+  if(!card) return {sot:false, rdt:false, erdt:false, ccrt:false};
+  return {
+    sot: (card.sotWeekdayEntries||[]).length>0,
+    rdt: (card.rdtWeekdayEntries||[]).length>0,
+    erdt: (card.erdtWeekdayEntries||[]).length>0,
+    ccrt: (card.cogWeekdayEntries||[]).length>0
+  };
+}
+function normDoctor(raw){
+  // "주치의" 값이 문자("RM6")로 저장된 경우와 서식(표시형식)만 RM#으로 보이고 실제 값은 숫자(6)로 저장된
+  // 경우가 섞여 있어서, 숫자만 뽑아 "RM"+숫자 형태로 통일해서 비교한다.
+  const s=normalizeText(raw); if(!s) return '';
+  const m=/(\d+)/.exec(s);
+  return m ? 'RM'+m[1] : s.toUpperCase();
+}
+function normLoc(raw){
+  const s=normalizeText(raw).replace(/\n/g,' ');
+  const m=/^([가-힣A-Za-z]+)\s*-\s*0*(\d+)/.exec(s);
+  return m?`${m[1]}-${m[2]}`:'';
+}
+// 외래 카드는 "치료위치" 칸이 따로 없고, 치료명 뒤 괄호 안에 위치가 붙어있는 경우가 있다.
+// 예: "운동치료(나-14)" → 위치 "나-14". 괄호 안이 "T"처럼 구체 위치가 아니면 빈 문자열을 돌려준다.
+function extractParenLoc(raw){
+  const s=normalizeText(raw);
+  const m=/\(([^)]+)\)\s*$/.exec(s);
+  return m ? normLoc(m[1]) : '';
+}
+function locCategory(loc){
+  if(/^[A-D]-\d+$/i.test(loc)) return 'mat10';
+  if(/^가-\d+$/.test(loc) || /^나-\d+$/.test(loc)) return 'mat3';
+  if(/^T-\d+$/i.test(loc)) return 'table';
+  if(/^연하-\d+$/.test(loc)) return 'table';
+  return null;
+}
+async function parsePatientCards(book, floor){
+  const results=[];
+  // 전체시간표(원본) 파일에는 입원/외래/퇴원/인쇄(/7병동) 등 여러 시트가 섞여 있는데,
+  // 검증에는 현재 입원 중인 환자 시트("입원", 3F는 "7병동"도 포함)와, 외래로 다니는 환자 시트("외래")를 사용한다.
+  // 혹시 파일 구성이 달라 이 시트들을 못 찾으면, 안전장치로 기존 방식(매트위치 제외 전체)으로 대체한다.
+  const targetSheets = book.sheets.filter(s=>{
+    const n=normalizeText(s.name);
+    return n==='입원' || n==='7병동' || n==='외래';
+  });
+  const sheetsToUse = targetSheets.length ? targetSheets : book.sheets.filter(s=>s.name!=='매트위치');
+  for(const sh of sheetsToUse){
+    const isOutpatient = normalizeText(sh.name)==='외래';
+    const cells=await getSheetCells(book, sh.name); if(!cells || !cells.size) continue;
+    // 이 시트는 보통 한 줄에 환자 카드 1개(A열 시작)지만, 일부 환자는 지면을 아끼려고
+    // 같은 행대에 카드가 하나 더(예: X열 시작) 나란히 인쇄되어 있다. 검증 기준은 항상
+    // 맨 앞(A~V열)에 있는 카드이므로, "이름"이 나오는 여러 열 중 가장 왼쪽 열 하나만 사용한다.
+    const nameCols=new Set();
+    for(const [ref,val] of cells.entries()){
+      if(normalizeText(val)==='이름'){
+        const rc=splitRef(ref);
+        if(rc && normalizeText(getCell(cells,rc.row,rc.col+3))==='등록번호') nameCols.add(rc.col);
+      }
+    }
+    if(!nameCols.size) continue;
+    const nameCol = Math.min(...nameCols); // 가장 왼쪽(A열에 가장 가까운) 카드열만 사용
+    {
+      const blockStarts=[];
+      for(const [ref,val] of cells.entries()){
+        if(normalizeText(val)!=='이름') continue;
+        const rc=splitRef(ref);
+        if(rc && rc.col===nameCol && normalizeText(getCell(cells,rc.row,nameCol+3))==='등록번호') blockStarts.push(rc.row);
+      }
+      blockStarts.sort((a,b)=>a-b);
+      for(let i=0;i<blockStarts.length;i++){
+        const start=blockStarts[i]; const end=(i+1<blockStarts.length)?blockStarts[i+1]-1:start+40;
+        const name=normalizeText(getCell(cells,start+1,nameCol)); if(!name) continue;
+        const room=normalizeText(getCell(cells,start+1,nameCol+6));
+        const doctor=normDoctor(getCell(cells,start+5,nameCol));
+        const therapists={};
+        for(let r=start;r<=Math.min(end,start+12);r++){
+          for(let c=nameCol;c<=nameCol+24;c++){
+            const v=normalizeText(getCell(cells,r,c));
+            if(['운동치료','작업치료','연하치료','인지치료','도수치료','언어/심리'].includes(v)){
+              const nm=normalizeText(getCell(cells,r,c+2));
+              if(nm) therapists[v]=(therapists[v]||[]).concat(nm.split('/').map(x=>x.trim()).filter(Boolean));
+            }
+          }
+        }
+        // "입원"/"7병동" 카드는 "시간|치료위치|월~금|토" 구성이지만, "외래" 카드는 "치료위치" 칸이 없어서
+        // "시간|월~금|토" 순서로 두 칸씩 당겨져 있다 — 어느 구성인지 먼저 판별한다.
+        let hdrRow=0, hasLocCol=true;
+        for(let r=start;r<=end;r++){
+          if(normalizeText(getCell(cells,r,nameCol))!=='시간') continue;
+          if(/치료위치/.test(normalizeText(getCell(cells,r,nameCol+2)))){ hdrRow=r; hasLocCol=true; break; }
+          if(/월요일/.test(normalizeText(getCell(cells,r,nameCol+2)))){ hdrRow=r; hasLocCol=false; break; }
+        }
+        const dayCols = hasLocCol
+          ? {월:nameCol+4, 화:nameCol+7, 수:nameCol+10, 목:nameCol+13, 금:nameCol+16}
+          : {월:nameCol+2, 화:nameCol+5, 수:nameCol+8, 목:nameCol+11, 금:nameCol+14};
+        const satCol = hasLocCol ? nameCol+19 : nameCol+17;
+        const entries=[];
+        let langCount=0; const langOccurrences=[];
+        const satEntries=[]; // 카드의 "토요일/공휴일" 칸(월~금과 같은 줄)에 치료 문구가 있는 시간 목록 — 외래 카드는 안내문구가 섞여있어 수집하지 않음
+        const erdtWeekdayEntries=[]; // 카드의 평일 요일칸에 "연하전기"가 있는 (시간, 요일) 목록
+        const cogWeekdayEntries=[]; // 카드의 평일 요일칸에 "인지치료"가 있는 (시간, 요일) 목록
+        const sotWeekdayEntries=[]; // 카드의 평일 요일칸에 "작업치료"가 있는 (시간, 요일) 목록 — 외래 SOT 확인용
+        const rdtWeekdayEntries=[]; // 카드의 평일 요일칸에 "연하치료"가 있는 (시간, 요일) 목록 — 외래 RDT 확인용
+        if(hdrRow){
+          for(let r=hdrRow+1;r<=end;r++){
+            const timeRaw=getCell(cells,r,nameCol); if(timeRaw==='') continue;
+            const time=timeStart(timeRaw); if(!/^\d{1,2}:\d{2}$/.test(time)) continue;
+            const loc=hasLocCol ? normLoc(getCell(cells,r,nameCol+2)) : '';
+            const days={월:normalizeText(getCell(cells,r,dayCols.월)),화:normalizeText(getCell(cells,r,dayCols.화)),수:normalizeText(getCell(cells,r,dayCols.수)),목:normalizeText(getCell(cells,r,dayCols.목)),금:normalizeText(getCell(cells,r,dayCols.금))};
+            const satVal=normalizeText(getCell(cells,r,satCol));
+            // 언어치료·연하전기·인지치료는 매트/테이블 위치 없이(치료위치 칸이 비어있는 채로) 요일칸에만 표시되는 경우가 많아
+            // entries(위치 검증용)와는 별도로 여기서 직접 요일별 문구를 확인한다.
+            for(const day of ['월','화','수','목','금']){
+              if(/언어치료/.test(days[day])){ langCount++; langOccurrences.push({time, day}); }
+              if(/연하전기/.test(days[day])) erdtWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
+              if(/인지치료/.test(days[day])) cogWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
+              if(/작업치료/.test(days[day])) sotWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
+              if(/연하치료/.test(days[day])) rdtWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
+            }
+            if(hasLocCol && satVal) satEntries.push({time, treatment:satVal});
+            if(loc) entries.push({time, loc, days});
+          }
+        }
+        results.push({name, room, floor, doctor, therapists, entries, langCount, langOccurrences, satEntries, erdtWeekdayEntries, cogWeekdayEntries, sotWeekdayEntries, rdtWeekdayEntries, isOutpatient});
+      }
+    }
+  }
+  return results;
+}
+async function parseLocationGrid(cells){
+  const headerRows=[];
+  for(const [ref,val] of cells.entries()){ if(normalizeText(val).replace(/\s+/g,'')==='치료시간'){ const rc=splitRef(ref); if(rc) headerRows.push(rc); } }
+  const entries=[];
+  for(const hr of headerRows){
+    let blankRun=0;
+    for(let c=hr.col+1;c<hr.col+40;c++){
+      const label=getCell(cells,hr.row,c); const labelNorm=normalizeText(label).replace(/\s+/g,'');
+      if(labelNorm==='치료시간') break;
+      if(labelNorm===''){ blankRun++; if(blankRun>=3) break; continue; }
+      blankRun=0;
+      const loc=normLoc(label); if(!loc) continue;
+      for(let r=hr.row+1;r<=hr.row+30;r++){
+        const timeRaw=getCell(cells,r,hr.col);
+        if(normalizeText(timeRaw)===''){ break; }
+        const time=timeStart(timeRaw); if(!/^\d{1,2}:\d{2}$/.test(time)) continue;
+        const name=normalizeText(getCell(cells,r,c)); if(!name) continue;
+        entries.push({time,loc,name});
+      }
+    }
+  }
+  return entries;
+}
+async function collectGridEntries(book, sheetName){
+  if(!book) return [];
+  const cells=await getSheetCells(book, sheetName || book.sheets[0].name);
+  if(!cells) return [];
+  return parseLocationGrid(cells);
+}
+function compareFloor(cards, gridEntries, floor){
+  const out=[];
+  const gridMap=new Map();
+  for(const g of gridEntries){ const key=g.time+'|'+g.loc; if(!gridMap.has(key)) gridMap.set(key,[]); gridMap.get(key).push(g.name); }
+  for(const card of cards){
+    for(const entry of card.entries){
+      const cat=locCategory(entry.loc); if(!cat) continue;
+      const key=entry.time+'|'+entry.loc;
+      const names=gridMap.get(key)||[];
+      const found=names.some(n=>normKey(n)===normKey(card.name));
+      if(!found){
+        out.push({kind:'mismatch', floor, patient:card.name, room:card.room, time:entry.time, loc:entry.loc, gridNames:names.join(', ')||'(없음)'});
+      }
+    }
+  }
+  const cardByKey=new Map();
+  for(const card of cards){ for(const entry of card.entries){ const cat=locCategory(entry.loc); if(!cat) continue; const key=entry.time+'|'+entry.loc; if(!cardByKey.has(key)) cardByKey.set(key,new Set()); cardByKey.get(key).add(normKey(card.name)); } }
+  for(const g of gridEntries){
+    if(!locCategory(g.loc)) continue;
+    const key=g.time+'|'+g.loc;
+    const set=cardByKey.get(key);
+    if(!set || !set.has(normKey(g.name))){
+      out.push({kind:'missing', floor, patient:g.name, room:'', time:g.time, loc:g.loc, gridNames:g.name});
+    }
+  }
+  return out;
+}
+// 위치 검증의 전체 검사 건수(분모) 계산 — compareFloor의 판정 로직은 그대로 두고, 통계용으로만 별도 집계
+function countLocationChecks(cards, gridEntries){
+  let n=0;
+  for(const card of cards) for(const e of card.entries) if(locCategory(e.loc)) n++;
+  for(const g of gridEntries) if(locCategory(g.loc)) n++;
+  return n;
+}
+
+/* ======================================================================
+   상태 / 파일 업로드 (드래그앤드롭)
+   ====================================================================== */
+const FILES_META = [
+  {key:'statusBook',   icon:'📋', label:'작업치료현황',        sub:'현황(회복기) · 평일시간표(원본)', match:[/현황/]},
+  {key:'card10Book',   icon:'🛏️', label:'10F 전체시간표(원본)',  sub:'“입원” 시트만 사용', match:[/10\s*F?/i, /전체시간표|카드/], floor:10},
+  {key:'card3Book',    icon:'🛏️', label:'3F 전체시간표(원본)',   sub:'“입원”+“7병동” 시트 사용', match:[/3\s*F?/i, /전체시간표|카드/], floor:3},
+  {key:'mat10Book',    icon:'🟩', label:'10F 매트현황',        sub:'원본 시트 사용', match:[/10\s*F?/i, /매트/]},
+  {key:'table10Book',  icon:'🟦', label:'10F 테이블현황',      sub:'원본 시트 사용', match:[/10\s*F?/i, /테이블/]},
+  {key:'mt3Book',      icon:'🟨', label:'3F 매트·테이블현황',   sub:'매트/테이블 사용현황(3층) 시트 사용', match:[/3\s*F?/i, /매트|테이블/]},
+  {key:'handoverBook', icon:'📝', label:'OT 인수인계',         sub:'환자별 담당치료사·주치의 대조(선택)', match:[/인수인계/]},
+];
+const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null, table10Book:null, mt3Book:null, handoverBook:null, dateSheetOf:{} };
+let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentView='type', currentPage=1;
+let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
+let previewSaturday={occs:[], weekdayCode:new Map()};
+let previewWeekdayErdt={erdt:[], ccrt:[]};
+let previewDischarged=new Set();
+const PAGE_SIZE=8;
+const PAGE_SIZE_PATIENT=6;
+
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fileMeta(key){ return FILES_META.find(f=>f.key===key); }
+
+function renderPrepList(){
+  const list=document.getElementById('prepList');
+  list.innerHTML = FILES_META.map(f=>`
+    <label class="prep-item" data-key="${f.key}">
+      <input type="file" accept=".xlsx,.xlsm" data-key="${f.key}">
+      <span class="prep-icon">${f.icon}</span>
+      <span style="flex:1">
+        <div class="prep-label">${f.label}</div>
+        <div class="prep-sub" id="sub-${f.key}">${f.sub}</div>
+      </span>
+      <span class="prep-badge" id="badge-${f.key}">미업로드</span>
+    </label>`).join('');
+  // 클릭 → 파일선택(input). 드래그는 화면 전체 자동인식(window drop) 한 곳에서만 처리한다.
+  // (개별 칸에 드롭해도 그 칸으로 강제 지정하지 않음 — 파일명으로 항상 동일하게 인식되도록)
+  list.querySelectorAll('.prep-item').forEach(item=>{
+    const key=item.dataset.key;
+    const input=item.querySelector('input');
+    input.addEventListener('change', ()=>{ if(input.files&&input.files[0]) loadFile(key, input.files[0]); });
+    item.addEventListener('dragover', e=>{ e.preventDefault(); item.classList.add('drag'); });
+    item.addEventListener('dragleave', ()=> item.classList.remove('drag'));
+    item.addEventListener('drop', e=>{
+      e.preventDefault(); // 기본 동작(새 탭에서 파일 열기 등)만 막고, 처리는 window의 drop 핸들러로 넘긴다
+      item.classList.remove('drag');
+    });
+  });
+}
+function guessKeyFromFilename(name){
+  // macOS(Finder)에서 끌어온 한글 파일명은 자모가 풀어써진(NFD) 형태로 들어오는 경우가 있어
+  // "현황" 같은 글자가 문자열로는 다르게 보여 매칭에 실패할 수 있다 → 정규화(NFC) 후 비교한다.
+  const n=(name||'').normalize('NFC').replace(/\.[^.]+$/,'');
+  const is3=/(?:^|[^0-9])3\s*(?:F|층)(?![0-9])/i.test(n);
+  const is10=/(?:^|[^0-9])10\s*(?:F|층)(?![0-9])/i.test(n);
+  if(/전체시간표/.test(n)) return is3 && !is10 ? 'card3Book' : 'card10Book';
+  if(/매트/.test(n) && /테이블/.test(n)) return 'mt3Book';
+  if(/매트/.test(n)) return (is3 && !is10) ? 'mt3Book' : 'mat10Book';
+  if(/테이블/.test(n)) return (is3 && !is10) ? 'mt3Book' : 'table10Book';
+  if(/인수인계/.test(n)) return 'handoverBook';
+  if(/현황/.test(n)) return 'statusBook';
+  return null;
+}
+// 화면 어디에 파일을 끌어다 놓아도(여러 개를 한 번에 놓아도, 목록 칸 위에 놓아도) 파일명으로 자동 인식해서 알맞은 칸에 채운다.
+// 실제 라우팅은 항상 이 window 레벨 drop 핸들러 한 곳에서만 처리한다(칸별 강제 지정 없음 → 인식 결과가 항상 동일).
+let dragDepth=0;
+function hasFilesInDrag(e){ return e.dataTransfer && Array.from(e.dataTransfer.types||[]).includes('Files'); }
+window.addEventListener('dragenter', e=>{
+  if(!hasFilesInDrag(e)) return;
+  e.preventDefault(); dragDepth++;
+  document.getElementById('dropOverlay').classList.add('show');
+});
+window.addEventListener('dragover', e=>{ if(hasFilesInDrag(e)) e.preventDefault(); });
+window.addEventListener('dragleave', e=>{
+  if(!hasFilesInDrag(e)) return;
+  dragDepth=Math.max(0,dragDepth-1);
+  if(dragDepth===0) document.getElementById('dropOverlay').classList.remove('show');
+});
+window.addEventListener('drop', async e=>{
+  if(!hasFilesInDrag(e)) return;
+  e.preventDefault();
+  dragDepth=0;
+  document.getElementById('dropOverlay').classList.remove('show');
+  document.querySelectorAll('.prep-item.drag').forEach(el=>el.classList.remove('drag'));
+  const files=[...(e.dataTransfer.files||[])];
+  if(!files.length) return;
+  const matched=[], unmatched=[];
+  for(const f of files){
+    const key=guessKeyFromFilename(f.name);
+    if(key){ await loadFile(key, f); matched.push(`${f.name} → ${fileMeta(key).label}`); }
+    else unmatched.push(f.name);
+  }
+  if(unmatched.length){
+    let msg='다음 파일은 이름으로 자동 인식하지 못했습니다. 목록에서 해당 칸을 클릭해서 올려주세요:\n\n'+unmatched.join('\n');
+    if(matched.length) msg+='\n\n(인식된 파일: '+matched.length+'개)\n'+matched.join('\n');
+    alert(msg);
+  }
+});
+async function loadFile(key, file){
+  const badge=document.getElementById('badge-'+key), sub=document.getElementById('sub-'+key);
+  badge.textContent='읽는 중…'; badge.className='prep-badge busy';
+  try{
+    const book=await readWorkbookFile(file);
+    state[key]=book;
+    badge.textContent='완료'; badge.className='prep-badge ok';
+    sub.textContent = file.name;
+  }catch(err){
+    badge.textContent='오류'; badge.className='prep-badge err';
+    sub.textContent='읽기 실패: '+err.message;
+    console.error(err);
+  }
+  refreshRunButton();
+}
+function resetAllFiles(){
+  FILES_META.forEach(f=>{ state[f.key]=null; });
+  renderPrepList();
+  issues=[]; filteredIssues=[]; selectedIssueId=null;
+  document.getElementById('resultBody').style.display='none';
+  document.getElementById('resultEmpty').style.display='block';
+  document.getElementById('mainArea').style.display='none';
+  refreshRunButton();
+}
+function refreshRunButton(){
+  const btn=document.getElementById('btnRun');
+  const ready = !!state.statusBook || !!state.card10Book || !!state.card3Book;
+  btn.disabled = !ready;
+}
+
+/* ======================================================================
+   원드라이브(로컬 동기화 폴더)에서 한 번에 불러오기
+   - File System Access API(showDirectoryPicker)로 폴더 하나를 지정해두면,
+     그 안(및 바로 아래 하위폴더)에서 파일명으로 6개 파일을 자동으로 찾아 채운다.
+   - 폴더 핸들은 IndexedDB에 저장해두고, 다음에 열 때도(다시 고르지 않고)
+     권한만 재확인해서 재사용한다. 폴더/파일이 사라졌거나 권한이 거부되면
+     다시 선택하도록 안내한다.
+   ====================================================================== */
+const FOLDER_DB_NAME='ot-cross-check-folder', FOLDER_STORE='handles', FOLDER_KEY='dataFolder';
+function openFolderDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(FOLDER_DB_NAME,1);
+    req.onupgradeneeded=()=>{ req.result.createObjectStore(FOLDER_STORE); };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function idbGet(key){
+  const db=await openFolderDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(FOLDER_STORE,'readonly');
+    const r=tx.objectStore(FOLDER_STORE).get(key);
+    r.onsuccess=()=>resolve(r.result||null); r.onerror=()=>reject(r.error);
+  });
+}
+async function idbSet(key,val){
+  const db=await openFolderDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(FOLDER_STORE,'readwrite');
+    tx.objectStore(FOLDER_STORE).put(val,key);
+    tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);
+  });
+}
+// 폴더(및 하위 2단계까지)를 훑어서 엑셀 파일을 모두 모은다. 하위 폴더까지 뒤지는 이유는
+// "10F"/"3F"처럼 층별로 하위 폴더를 나눠 쓰는 경우가 많기 때문.
+async function collectExcelFiles(dirHandle, depth){
+  const out=[];
+  for await (const [name, handle] of dirHandle.entries()){
+    if(handle.kind==='file'){
+      if(/\.(xlsx|xlsm)$/i.test(name) && !name.startsWith('~$')) out.push(await handle.getFile());
+    } else if(handle.kind==='directory' && depth>0){
+      out.push(...await collectExcelFiles(handle, depth-1));
+    }
+  }
+  return out;
+}
+async function pickAndLoadFromFolder(reuseHandle){
+  const statusEl=document.getElementById('folderStatus');
+  if(!window.showDirectoryPicker){
+    alert('이 브라우저는 폴더 선택 기능(showDirectoryPicker)을 지원하지 않습니다. 최신 Chrome 또는 Edge를 사용해 주세요.');
+    return;
+  }
+  let dirHandle=reuseHandle;
+  try{
+    if(!dirHandle){
+      dirHandle = await window.showDirectoryPicker();
+      await idbSet(FOLDER_KEY, dirHandle);
+    } else {
+      let perm = await dirHandle.queryPermission({mode:'read'});
+      if(perm!=='granted') perm = await dirHandle.requestPermission({mode:'read'});
+      if(perm!=='granted') throw new Error('폴더 접근 권한이 거부되었습니다.');
+    }
+  }catch(err){
+    if(err && err.name==='AbortError') return; // 사용자가 선택 취소
+    statusEl.textContent = `⚠️ 폴더를 열 수 없습니다(${err.message}). 폴더를 다시 선택해 주세요.`;
+    // 저장된 핸들이 더 이상 유효하지 않으면(폴더 이동/삭제 등) 다시 고를 수 있도록 지움
+    if(reuseHandle) await idbSet(FOLDER_KEY, null);
+    return;
+  }
+  statusEl.innerHTML = `📁 <b>${esc(dirHandle.name)}</b> 폴더에서 찾는 중…`;
+  let files;
+  try{ files = await collectExcelFiles(dirHandle, 2); }
+  catch(err){ statusEl.textContent = `⚠️ 폴더를 읽는 중 오류: ${err.message}`; return; }
+  // 같은 항목에 해당하는 파일이 여러 개(예: 구버전 백업)면 가장 최근에 수정된 파일을 쓴다.
+  const bestByKey={};
+  for(const f of files){
+    const key=guessKeyFromFilename(f.name); if(!key) continue;
+    if(!bestByKey[key] || f.lastModified > bestByKey[key].lastModified) bestByKey[key]=f;
+  }
+  const loadedLabels=[], missing=[];
+  for(const meta of FILES_META){
+    const f=bestByKey[meta.key];
+    if(f){ await loadFile(meta.key, f); loadedLabels.push(meta.label); }
+    else if(meta.key!=='handoverBook') missing.push(meta.label); // 인수인계는 선택 항목이라 없어도 됨
+  }
+  statusEl.innerHTML = `📁 <b>${esc(dirHandle.name)}</b> 폴더 · ${loadedLabels.length}개 불러옴`
+    + (missing.length ? `<br>⚠️ 폴더에서 못 찾음: ${missing.map(esc).join(', ')} — 목록에서 직접 올려주세요.` : '');
+}
+document.getElementById('btnPickFolder').addEventListener('click', async ()=>{
+  const saved = await idbGet(FOLDER_KEY).catch(()=>null);
+  await pickAndLoadFromFolder(saved||null);
+});
+(async function initFolderStatus(){
+  const statusEl=document.getElementById('folderStatus');
+  try{
+    const saved=await idbGet(FOLDER_KEY);
+    if(saved) statusEl.innerHTML = `📁 이전에 선택한 폴더: <b>${esc(saved.name)}</b> — "폴더에서 불러오기"를 누르면 다시 사용합니다.`;
+  }catch(e){ /* IndexedDB를 못 쓰는 환경이면 조용히 무시 */ }
+})();
+
+
+/* 매트/테이블현황 파일은 날짜별 스냅샷이 아니라 항상 "원본"(마스터) 시트만 사용한다.
+   - 10F 매트현황.xlsx  → 이름에 "원본"이 들어간 시트
+   - 10F 테이블현황.xlsx → 이름에 "원본"이 들어간 시트
+   - 3F 매트_테이블현황.xlsx → "매트 사용현황(3층)" / "테이블 사용현황(3층)" 시트(=3F의 원본 시트)
+   3F 파일처럼 매트/테이블이 한 파일 안에 같이 있는 경우, 이름에 "매트"/"테이블"이 뭐가 들어있는지부터
+   먼저 구분해서 찾아야 한다 — 그러지 않으면 "원본"이라는 글자만 보고 매트/테이블 둘 다 같은 시트를
+   골라버려서 두 탭이 똑같아 보이는 문제가 생길 수 있다. */
+function pickOriginalMatSheet(book){
+  if(!book) return null;
+  const s = book.sheets.find(s=>/매트\s*사용현황/.test(s.name))
+    || book.sheets.find(s=>/원본/.test(s.name) && /매트/.test(s.name))
+    || book.sheets.find(s=>/원본/.test(s.name) && !/테이블/.test(s.name));
+  return s ? s.name : book.sheets[0].name;
+}
+function pickOriginalTableSheet(book){
+  if(!book) return null;
+  const s = book.sheets.find(s=>/테이블\s*사용현황/.test(s.name))
+    || book.sheets.find(s=>/원본/.test(s.name) && /테이블/.test(s.name));
+  return s ? s.name : null;
+}
+
+renderPrepList();
+document.getElementById('btnResetFiles').addEventListener('click', resetAllFiles);
+
+/* ======================================================================
+   통합 검증 실행
+   ====================================================================== */
+function setStep(id, cls){ const el=document.getElementById(id); el.className='stepline '+cls; }
+async function runAllVerifications(){
+  const progress=document.getElementById('runProgress'); progress.classList.add('show');
+  setStep('stepCount',''); setStep('stepLoc',''); setStep('stepTher','');
+  const allIssues=[];
+  let countChecked=0, countProblems=0, locChecked=0, locProblems=0, therChecked=0, therProblems=0, handoverChecked=0, handoverProblems=0, evalChecked=0, evalProblems=0;
+  const floorCount={10:0,3:0};
+
+  let sched=null, status=null, actual=null;
+  let cardsByFloor={10:[], 3:[]};
+  let cardIndex={10:new Map(), 3:new Map()};
+
+  // 카드 파일 먼저 파싱 (위치·치료사 단계에서 공용으로 사용)
+  if(state.card10Book){ cardsByFloor[10]=await parsePatientCards(state.card10Book, 10); cardsByFloor[10].forEach(c=>{ if(!cardIndex[10].has(normKey(c.name))) cardIndex[10].set(normKey(c.name), c); }); }
+  if(state.card3Book){ cardsByFloor[3]=await parsePatientCards(state.card3Book, 3); cardsByFloor[3].forEach(c=>{ if(!cardIndex[3].has(normKey(c.name))) cardIndex[3].set(normKey(c.name), c); }); }
+  function findCard(name, floor){ return (floor && cardIndex[floor] && cardIndex[floor].get(normKey(name))) || cardIndex[10].get(normKey(name)) || cardIndex[3].get(normKey(name)) || null; }
+  let scheduleFloorByName=new Map(); // 평일시간표(원본)의 "팀 구분"(1·2팀=10F, 3팀=3F)에서 얻은 환자별 층 정보 — 카드 파일이 없어도 층을 판정할 수 있게 하는 보조 자료
+  function floorOfPatient(name, fallbackFloor){
+    if(cardIndex[10].has(normKey(name))) return 10;
+    if(cardIndex[3].has(normKey(name))) return 3;
+    const sf=scheduleFloorByName.get(normKey(name));
+    if(sf) return sf;
+    return fallbackFloor || null;
+  }
+
+  // ---- ① 개수 비교 ----
+  setStep('stepCount','now');
+  previewDischarged=new Set();
+  if(state.statusBook){
+    status=await parseStatusSheet(state.statusBook);
+    sched=await buildScheduleData(state.statusBook);
+    actual=buildActualCounts(sched);
+    previewWeekdayErdt={erdt: sched.erdt, ccrt: sched.ccrt};
+    previewDischarged = new Set(status.dischargedList.map(r=>normKey(r.name)));
+    // "평일시간표(원본)"은 1팀·2팀=10층, 3팀=3층으로 나뉘어 있고, 이미 각 배정 건에 floor가 태깅되어 있다.
+    // 이걸 환자명 → 층 지도로 만들어 두면, 전체시간표(원본) 카드 파일이 없어도 개수 불일치의 층을 판정할 수 있다.
+    for(const o of sched.occ){ if(!scheduleFloorByName.has(normKey(o.name))) scheduleFloorByName.set(normKey(o.name), o.floor); }
+    for(const e of sched.erdt){ if(!scheduleFloorByName.has(normKey(e.name))) scheduleFloorByName.set(normKey(e.name), e.floor); }
+    for(const c2 of sched.ccrt){ if(!scheduleFloorByName.has(normKey(c2.name))) scheduleFloorByName.set(normKey(c2.name), c2.floor); }
+    const fieldNames={sot:'SOT',rdt:'RDT',erdt:'ERDT',ccrt:'CCRT'};
+    for(const rec of status.list){
+      const isOutp = rec.admit==='외래';
+      if(isOutp){
+        // 외래 환자: "평일시간표(원본)"엔 나오지 않으므로, 전체시간표(원본)의 "외래" 카드 요일칸에
+        // 해당 치료 문구가 있는지(있음/없음)로 확인한다 — 입원 환자처럼 정확한 횟수 비교는 하지 않는다.
+        const card=findCard(rec.name);
+        const oa=buildOutpatientActual(card);
+        const fl=card ? card.floor : floorOfPatient(rec.name, null);
+        const outpTherapistLabel={sot:'작업치료', rdt:'연하치료', erdt:'', ccrt:'인지치료'};
+        const outpEntries={sot:'sotWeekdayEntries', rdt:'rdtWeekdayEntries', erdt:'erdtWeekdayEntries', ccrt:'cogWeekdayEntries'};
+        for(const key of ['sot','rdt','erdt','ccrt']){
+          countChecked++;
+          const expected=rec[key]>0, actualFound=!!oa[key];
+          if(expected!==actualFound){
+            countProblems++;
+            if(fl) floorCount[fl]++;
+            const lbl=outpTherapistLabel[key];
+            const therapistNames=(lbl && card && card.therapists[lbl]) ? card.therapists[lbl].join(' / ') : '';
+            const dayEntries=(card ? (card[outpEntries[key]]||[]) : []);
+            allIssues.push({
+              id:'count-'+allIssues.length, category:'count', field:key, floor:fl,
+              patient:rec.name, room:rec.room,
+              title:`${fieldNames[key]} 외래 확인 필요`,
+              line: actualFound ? `현황엔 없음 → 외래 카드엔 ${fieldNames[key]} 일정이 있어요` : `현황 ${rec[key]}회 → 외래 카드에서 못 찾았어요`,
+              time:'', searchText:normKey(rec.name+' '+rec.room+' '+fieldNames[key]),
+              severityRank:1,
+              detail:{kind:'count', field:fieldNames[key], expected:rec[key], actual:actualFound?'외래 카드에 있음':'외래 카드에 없음', room:rec.room, occurrences:[], source:'outpatient', hasCard:!!card, therapist:therapistNames, dayEntries}
+            });
+          }
+        }
+      } else {
+      const a=actual.get(normKey(rec.name)) || {sot:0,rdt:0,erdt:0,ccrt:0};
+      for(const key of ['sot','rdt','erdt','ccrt']){
+        countChecked++;
+        if(rec[key]!==a[key]){
+          countProblems++;
+          const diff=a[key]-rec[key];
+          const fl=floorOfPatient(rec.name, null);
+          if(fl) floorCount[fl]++;
+          const occurrences=collectFieldOccurrences(sched, rec.name, key);
+          allIssues.push({
+            id:'count-'+allIssues.length, category:'count', field:key, floor:fl,
+            patient:rec.name, room:rec.room,
+            title:`${fieldNames[key]} 횟수 불일치`,
+            line:`현황 ${rec[key]}회 → 실제 ${a[key]}회`,
+            time:'', searchText:normKey(rec.name+' '+rec.room+' '+fieldNames[key]),
+            severityRank:Math.abs(diff),
+            detail:{kind:'count', field:fieldNames[key], expected:rec[key], actual:a[key], diff, room:rec.room, occurrences}
+          });
+        }
+      }
+      }
+      // 언어치료는 평일시간표(원본)이 아니라 전체시간표(원본) 카드에서 집계한다.
+      // 카드 자체를 찾지 못하면(판정 불가) 통계에 넣지 않는다 — ③ 치료사 매칭과 동일한 원칙.
+      if(status.hasLang){
+        const card=findCard(rec.name);
+        if(card){
+          countChecked++;
+          const actualLang=card.langCount||0;
+          if(rec.lang!==actualLang){
+            countProblems++;
+            const diff=actualLang-rec.lang;
+            const fl=floorOfPatient(rec.name, card.floor);
+            if(fl) floorCount[fl]++;
+            const occurrences=(card.langOccurrences||[]).map(o=>({time:o.time, therapist:'', extra:o.day+'요일'}));
+            allIssues.push({
+              id:'count-'+allIssues.length, category:'count', field:'lang', floor:fl,
+              patient:rec.name, room:rec.room,
+              title:'언어 횟수 불일치',
+              line:`현황 ${rec.lang}회 → 실제 ${actualLang}회`,
+              time:'', searchText:normKey(rec.name+' '+rec.room+' 언어'),
+              severityRank:Math.abs(diff),
+              detail:{kind:'count', field:'언어', expected:rec.lang, actual:actualLang, diff, room:rec.room, occurrences, source:'card'}
+            });
+          }
+        }
+      }
+    }
+    // ---- ①-1.5 인지치료(CCRT/BETTER/COMCOG 통합) 미리보기 기반 문제 목록에도 반영 ----
+    if(state.card10Book || state.card3Book){
+      const ccrtCardByName=new Map([...(cardsByFloor[10]||[]), ...(cardsByFloor[3]||[])].map(c=>[normKey(c.name),c]));
+      for(const c of sched.ccrt){
+        countChecked++;
+        const key=normKey(c.name);
+        const card=ccrtCardByName.get(key);
+        let bad=false, kind='', line='';
+        if(previewDischarged.has(key)){
+          bad=true; kind='ccrt_discharged';
+          line=`퇴원 처리된 환자인데 인지치료 배정이 아직 남아있어요`;
+        } else if(!card){
+          bad=true; kind='ccrt_noname';
+          line=`전체시간표(원본)에서 이 환자 카드를 찾지 못했어요`;
+        } else {
+          const ok=(card.cogWeekdayEntries||[]).some(x=>x.time===c.timeKey && x.day===c.day);
+          if(!ok){ bad=true; kind='ccrt_daymismatch'; line=`전체시간표(원본) 요일칸에 인지치료로 표시되어 있지 않아요`; }
+        }
+        if(bad){
+          countProblems++;
+          const fl=c.floor || floorOfPatient(c.name, null); if(fl) floorCount[fl]++;
+          allIssues.push({
+            id:'ccrt-'+allIssues.length, category:'count', field: kind==='ccrt_discharged'?'discharge':'ccrt', floor:fl,
+            patient:c.name, room:card?card.room:'',
+            title: kind==='ccrt_discharged' ? '퇴원 후 인지치료 잔존' : kind==='ccrt_noname' ? '인지치료 카드 못 찾음' : '인지치료 요일 불일치',
+            line, time:c.time, searchText:normKey(`${c.name} ${c.day} ${c.time}`),
+            severityRank:0,
+            detail:{kind:'ccrt_issue', patient:c.name, day:c.day, time:c.time, therapist:c.therapist, verdict:line}
+          });
+        }
+      }
+    }
+    // ---- ①-2 퇴원 동기화 확인(양방향): 현황(회복기) 활성/퇴원 명단 vs 전체시간표(원본) 카드 존재 여부 ----
+    if(state.card10Book || state.card3Book){
+      for(const rec of status.list){
+        countChecked++;
+        const card=findCard(rec.name);
+        if(!card){
+          countProblems++;
+          allIssues.push({
+            id:'discharge-'+allIssues.length, category:'count', field:'discharge', floor:null,
+            patient:rec.name, room:rec.room,
+            title:'퇴원처리 누락',
+            line:`전체시간표(원본)에 카드가 없어요 · 퇴원 처리 필요로 보여요`,
+            time:'', searchText:normKey(`${rec.name} ${rec.room}`),
+            severityRank:0,
+            detail:{kind:'discharge_notmarked', patient:rec.name, room:rec.room}
+          });
+        }
+      }
+      for(const rec of status.dischargedList){
+        countChecked++;
+        const card=findCard(rec.name);
+        // 퇴원 후에도 외래로 계속 다니는 경우 "외래" 카드가 남아있는 건 정상이므로(카드 정리 대상 아님),
+        // 입원(입원/7병동) 카드가 남아있을 때만 문제로 본다.
+        if(card && !card.isOutpatient){
+          countProblems++;
+          allIssues.push({
+            id:'discharge-'+allIssues.length, category:'count', field:'discharge', floor:card.floor,
+            patient:rec.name, room:card.room||rec.room,
+            title:'퇴원 후 카드 잔존',
+            line:`전체시간표(원본)에 카드가 아직 남아있어요 · 카드 정리 필요`,
+            time:'', searchText:normKey(`${rec.name} ${rec.room}`),
+            severityRank:0,
+            detail:{kind:'discharge_stillactive', patient:rec.name, room:card.room||rec.room, floor:card.floor}
+          });
+        }
+      }
+    }
+    // ---- ①-2 볼드체 대조: 평일시간표(원본)에서 볼드로 표시된 환자 vs "평가메인" 시트 명단 ----
+    const evalNames = await parseEvalMainNames(state.statusBook);
+    if(evalNames){
+      const boldByKey=new Map(); // normKey -> 대표 이름(표시용)
+      for(const o of sched.occ){ if(o.bold && !boldByKey.has(normKey(o.name))) boldByKey.set(normKey(o.name), o.name); }
+      for(const [key, name] of boldByKey){
+        evalChecked++;
+        if(!evalNames.has(key)){
+          evalProblems++;
+          const fl=floorOfPatient(name, null); if(fl) floorCount[fl]++;
+          allIssues.push({
+            id:'eval-'+allIssues.length, category:'eval', source:'missing', floor:fl,
+            patient:name, room:'',
+            title:'볼드 환자가 평가메인에 없음',
+            line:`평일시간표(원본)엔 볼드로 표시돼 있는데, "평가메인" 시트엔 없어요`,
+            time:'', searchText:normKey(name),
+            severityRank:0,
+            detail:{kind:'eval_missing', patient:name}
+          });
+        }
+      }
+      for(const key of evalNames){
+        evalChecked++;
+        if(!boldByKey.has(key)){
+          evalProblems++;
+          const rec = status.list.find(r=>normKey(r.name)===key);
+          const dispName = rec ? rec.name : key;
+          const fl=floorOfPatient(dispName, null); if(fl) floorCount[fl]++;
+          allIssues.push({
+            id:'eval-'+allIssues.length, category:'eval', source:'extra', floor:fl,
+            patient:dispName, room:rec?rec.room:'',
+            title:'평가메인엔 있는데 볼드가 아님',
+            line:`"평가메인" 시트엔 있는데, 평일시간표(원본)엔 이 환자가 볼드로 표시돼 있지 않아요`,
+            time:'', searchText:normKey(dispName),
+            severityRank:0,
+            detail:{kind:'eval_extra', patient:dispName}
+          });
+        }
+      }
+    }
+  }
+  setStep('stepCount','done');
+
+  // ---- ② 위치 검증 (매트/테이블현황은 항상 "원본" 시트 기준) ----
+  setStep('stepLoc','now');
+  previewStore = {10:{mat:[], table:[]}, 3:{mat:[], table:[]}};
+  previewCards = cardsByFloor;
+  if(state.card10Book && (state.mat10Book || state.table10Book)){
+    let matEntries=[], tableEntries=[];
+    if(state.mat10Book){ const sn=pickOriginalMatSheet(state.mat10Book); matEntries=await collectGridEntries(state.mat10Book, sn); }
+    if(state.table10Book){ const sn=pickOriginalTableSheet(state.table10Book); tableEntries=await collectGridEntries(state.table10Book, sn); }
+    previewStore[10].mat=matEntries; previewStore[10].table=tableEntries;
+    const gridEntries=matEntries.concat(tableEntries);
+    locChecked += countLocationChecks(cardsByFloor[10], gridEntries);
+    for(const r of compareFloor(cardsByFloor[10], gridEntries, 10)){
+      locProblems++; floorCount[10]++;
+      allIssues.push(buildLocationIssue(r, allIssues.length, findCard(r.patient, 10)));
+    }
+  }
+  if(state.card3Book && state.mt3Book){
+    const matSn=pickOriginalMatSheet(state.mt3Book);
+    const matEntries=await collectGridEntries(state.mt3Book, matSn);
+    const tableSn=pickOriginalTableSheet(state.mt3Book);
+    const tableEntries = tableSn ? await collectGridEntries(state.mt3Book, tableSn) : [];
+    previewStore[3].mat=matEntries; previewStore[3].table=tableEntries;
+    let gridEntries=matEntries.concat(tableEntries);
+    locChecked += countLocationChecks(cardsByFloor[3], gridEntries);
+    for(const r of compareFloor(cardsByFloor[3], gridEntries, 3)){
+      locProblems++; floorCount[3]++;
+      allIssues.push(buildLocationIssue(r, allIssues.length, findCard(r.patient, 3)));
+    }
+  }
+  // ---- ②-2 위치 검증(두 번째): 작업치료현황 "평일시간표(원본)" vs 전체시간표(원본) 위치 대조 ----
+  if(sched && (state.card10Book || state.card3Book)){
+    const schedLoc = buildScheduleLocationChecks(sched.occ, cardIndex);
+    locChecked += schedLoc.checked;
+    for(const r of schedLoc.out){
+      locProblems++; floorCount[r.floor]++;
+      allIssues.push(buildScheduleLocationIssue(r, allIssues.length));
+    }
+  }
+  // ---- ②-3 위치 검증(세 번째): 작업치료현황 "토요일&공휴일 시간표" vs 전체시간표(원본) 위치 대조 ----
+  previewSaturday={occs:[], weekdayCode:new Map(), recoverySet:new Set()};
+  if(status){
+    // "현황(회복기)" 시트에 있는 환자 = 회복기 환자. 토요일엔 회복기 환자만 정규 배정(SOT/RDT 등) 가능하고,
+    // 회복기가 아닌 환자는 연하·전기치료만 가능하다는 병원 규칙을 판정에 반영한다.
+    for(const rec of status.list) previewSaturday.recoverySet.add(normKey(rec.name));
+  }
+  if(state.statusBook){
+    const satOccs = await parseSaturdayScheduleSheet(state.statusBook);
+    previewSaturday.occs = satOccs;
+    if(sched){
+      for(const o of sched.occ){
+        if((o.type==='sot'||o.type==='rdt') && o.code){
+          // 환자 이름만으로 코드를 저장하면, 그 환자가 평일에 R(연하)과 ST/SM(작업)을 각각 다른 시간에
+          // 둘 다 받는 경우 먼저 발견된 쪽 코드가 다른 종류 비교에도 잘못 쓰이는 문제가 있었다.
+          // 이름+종류(sot/rdt)로 따로 저장해서, 토요일 ST는 반드시 평일 ST/SM끼리만 비교하게 한다.
+          const k=normKey(o.name)+'|'+o.type;
+          if(!previewSaturday.weekdayCode.has(k)) previewSaturday.weekdayCode.set(k, o.code);
+        }
+      }
+    }
+    if(state.card10Book || state.card3Book){
+      const satLoc = buildSaturdayLocationChecks(satOccs, findCard, previewSaturday.recoverySet);
+      locChecked += satLoc.checked;
+      for(const r of satLoc.out){
+        locProblems++; if(r.floor) floorCount[r.floor]++;
+        allIssues.push(buildSaturdayLocationIssue(r, allIssues.length));
+      }
+    }
+  }
+  setStep('stepLoc','done');
+
+
+  // ---- ③ 치료사 매칭 검증 ----
+  setStep('stepTher','now');
+  if(sched && (state.card10Book || state.card3Book)){
+    const typeMap={sot:'작업치료', rdt:'연하치료'};
+    for(const o of sched.occ){
+      if(o.type!=='sot' && o.type!=='rdt') continue;
+      const card=findCard(o.name, o.floor); if(!card) continue;
+      const label=typeMap[o.type]; const expected=card.therapists[label]||[];
+      if(!expected.length) continue;
+      therChecked++;
+      const ok=expected.some(n=>normKey(n)===normKey(o.therapist));
+      if(!ok){
+        therProblems++; floorCount[o.floor]++;
+        allIssues.push({
+          id:'ther-'+allIssues.length, category:'therapist', floor:o.floor,
+          patient:o.name, room:card.room,
+          title: o.type==='sot' ? '작업치료 치료사 불일치' : '연하치료 치료사 불일치',
+          line:`${o.time} · ${o.type==='sot'?'작업치료':'연하치료'}`,
+          time:o.time, searchText:normKey(`${o.name} ${card.room} ${o.time} ${o.therapist} ${expected.join(' ')}`),
+          severityRank:0,
+          detail:{kind:'therapist', floor:o.floor, kindLabel:o.type==='sot'?'작업(SOT)':'연하(RDT)', patient:o.name, room:card.room, day:'', time:o.time, origin:o.therapist, expected:expected.join(' / ')}
+        });
+      }
+    }
+    for(const c of sched.ccrt){
+      const card=findCard(c.name, c.floor); if(!card) continue;
+      const expected=card.therapists['인지치료']||[];
+      if(!expected.length) continue;
+      therChecked++;
+      const ok=expected.some(n=>normKey(n)===normKey(c.therapist));
+      if(!ok){
+        therProblems++; floorCount[c.floor]++;
+        allIssues.push({
+          id:'ther-'+allIssues.length, category:'therapist', floor:c.floor,
+          patient:c.name, room:card.room,
+          title:'인지치료(CCRT) 치료사 불일치',
+          line:`${c.day}요일 · ${c.time} · 인지치료`,
+          time:c.time, searchText:normKey(`${c.name} ${card.room} ${c.time} ${c.day} ${c.therapist} ${expected.join(' ')}`),
+          severityRank:0,
+          detail:{kind:'therapist', floor:c.floor, kindLabel:'인지(CCRT)', patient:c.name, room:card.room, day:c.day, time:c.time, origin:c.therapist, expected:expected.join(' / ')}
+        });
+      }
+    }
+  }
+  // ---- ④ 인수인계 대조: 담당 치료사(vs 평일시간표(원본)) · 주치의(vs 전체시간표(원본)) ----
+  if(state.handoverBook){
+    const handoverList = await parseHandoverSheet(state.handoverBook);
+    const handoverMap = buildHandoverIndex(handoverList);
+    if(sched){
+      const htRes = buildHandoverTherapistChecks(handoverMap, sched.occ, sched.ccrt, findCard);
+      handoverChecked += htRes.checked;
+      for(const r of htRes.out){
+        handoverProblems++;
+        const fl = floorOfPatient(r.name, null);
+        if(fl) floorCount[fl]++;
+        const typeLabel = r.type==='sot'?'작업(SOT)':r.type==='rdt'?'연하(RDT)':'인지(CCRT)';
+        if(r.kind==='orphan'){
+          allIssues.push({
+            id:'handover-'+allIssues.length, category:'handover', source:'orphan', floor:fl,
+            patient:r.name, room:'',
+            title:`${typeLabel} 인수인계만 있음 (평일시간표·전체시간표 모두 없음)`,
+            line:`인수인계 담당 ${r.handoverTherapist}`,
+            time:'', searchText:normKey(`${r.name} ${r.handoverTherapist}`),
+            severityRank:0,
+            detail:{kind:'handover_orphan', patient:r.name, type:typeLabel, handoverTherapist:r.handoverTherapist, hasCard:r.hasCard}
+          });
+          continue;
+        }
+        allIssues.push({
+          id:'handover-'+allIssues.length, category:'handover', source:'therapist', floor:fl,
+          patient:r.name, room:'',
+          title: r.kind==='noSched' ? `${typeLabel} 인수인계 있음(평일시간표에 배정 없음)` : `${typeLabel} 담당 치료사 불일치`,
+          line: r.kind==='noSched' ? `인수인계 담당 ${r.handoverTherapist}` : `인수인계 ${r.handoverTherapist} → 평일시간표 ${r.schedTherapists}`,
+          time:'', searchText:normKey(`${r.name} ${r.handoverTherapist} ${r.schedTherapists||''}`),
+          severityRank:0,
+          detail:{kind:'handover_therapist', patient:r.name, type:typeLabel, handoverTherapist:r.handoverTherapist, schedTherapists:r.schedTherapists||'(평일시간표에 배정 없음)'}
+        });
+      }
+    }
+    if(sched){
+      const exRes = buildHandoverExcessChecks(handoverList, sched.occ, sched.ccrt);
+      handoverChecked += exRes.checked;
+      for(const r of exRes.out){
+        handoverProblems++;
+        const fl = floorOfPatient(r.name, null);
+        if(fl) floorCount[fl]++;
+        const typeLabel = r.type==='sot'?'작업(SOT)':r.type==='rdt'?'연하(RDT)':'인지(CCRT)';
+        allIssues.push({
+          id:'handover-'+allIssues.length, category:'handover', source:'excess', floor:fl,
+          patient:r.name, room:'',
+          title:`${typeLabel} 인수인계 작성자 수 초과 (${r.writerCount}명 작성 / 실제 배정 ${r.realCount}명)`,
+          line:`작성자: ${r.writers.join(', ')} · 실제 배정: ${r.realTherapists.join(', ')||'(없음)'}`,
+          time:'', searchText:normKey(`${r.name} ${r.writers.join(' ')} ${r.realTherapists.join(' ')}`),
+          severityRank:r.writerCount-r.realCount,
+          detail:{kind:'handover_excess', patient:r.name, type:typeLabel, writerCount:r.writerCount, realCount:r.realCount, writers:r.writers, realTherapists:r.realTherapists, extra:r.extra}
+        });
+      }
+    }
+    if(state.card10Book || state.card3Book){
+      const drRes = buildDoctorChecks(handoverList, findCard);
+      handoverChecked += drRes.checked;
+      for(const r of drRes.out){
+        handoverProblems++; if(r.floor) floorCount[r.floor]++;
+        allIssues.push({
+          id:'handover-'+allIssues.length, category:'handover', source:'doctor', floor:r.floor,
+          patient:r.name, room:r.room,
+          title:'주치의 불일치',
+          line:`인수인계 ${r.handoverDoctor} → 전체시간표 ${r.cardDoctor}`,
+          time:'', searchText:normKey(`${r.name} ${r.room} ${r.handoverDoctor} ${r.cardDoctor}`),
+          severityRank:0,
+          detail:{kind:'handover_doctor', patient:r.name, room:r.room, handoverDoctor:r.handoverDoctor, cardDoctor:r.cardDoctor}
+        });
+      }
+    }
+  }
+  setStep('stepTher','done');
+
+  issues=allIssues;
+  // 데스크톱 앱 홈 대시보드가 이 화면의 요약(검증 불일치 건수)을 읽기 위한 훅. top-level let은 window에
+  // 안 붙어서 iframe.contentWindow로 직접 못 읽기 때문에 명시적으로 저장한다. 화면 자체 로직에는 영향 없음.
+  window.__crossSummary = { issueCount: issues.length };
+  return {
+    stats:{countChecked,countProblems,locChecked,locProblems,therChecked,therProblems,handoverChecked,handoverProblems,evalChecked,evalProblems},
+    floorCount
+  };
+}
+function collectFieldOccurrences(sched, name, field){
+  const key=normKey(name);
+  if(field==='sot'||field==='rdt'){
+    return sched.occ.filter(o=>o.type===field && normKey(o.name)===key).map(o=>({time:o.time, therapist:o.therapist}));
+  }
+  if(field==='erdt'){
+    return sched.erdt.filter(e=>normKey(e.name)===key).map(e=>({time:e.time, therapist:e.therapist, extra:`${e.count}회분`}));
+  }
+  return sched.ccrt.filter(c=>normKey(c.name)===key).map(c=>({time:c.time, therapist:c.therapist, extra:c.day+'요일'}));
+}
+function buildLocationIssue(r, idx, card){
+  const dayEntries = card ? card.entries : [];
+  if(r.kind==='mismatch'){
+    return {
+      id:'loc-'+idx, category:'location', source:'grid', floor:r.floor,
+      patient:r.patient, room:r.room,
+      title:'이름 불일치 (매트/테이블현황 기준)',
+      line:`${r.floor}F · ${r.time} · ${r.loc}`,
+      time:r.time, searchText:normKey(`${r.patient} ${r.room} ${r.time} ${r.loc} ${r.gridNames}`),
+      severityRank:0,
+      detail:{kind:'mismatch', floor:r.floor, time:r.time, loc:r.loc, patient:r.patient, room:r.room, gridNames:r.gridNames, dayEntries}
+    };
+  }
+  return {
+    id:'loc-'+idx, category:'location', source:'grid', floor:r.floor,
+    patient:r.patient, room:r.room||'',
+    title:'기록 없음 (매트/테이블현황 기준)',
+    line:`${r.floor}F · ${r.time} · ${r.loc}`,
+    time:r.time, searchText:normKey(`${r.patient} ${r.time} ${r.loc}`),
+    severityRank:0,
+    detail:{kind:'missing', floor:r.floor, time:r.time, loc:r.loc, patient:r.patient, gridNames:r.gridNames, dayEntries}
+  };
+}
+// 두 번째 위치검증: 작업치료현황의 "평일시간표(원본)"에 적힌 치료위치와
+// 전체시간표(원본)의 같은 환자·같은 시간 치료위치가 서로 일치하는지 대조한다.
+function buildScheduleLocationChecks(occs, cardIndex){
+  const out=[]; let checked=0;
+  for(const o of occs){
+    if(o.type!=='sot' && o.type!=='rdt') continue;
+    if(!o.loc) continue; // 위치코드를 읽을 수 없는 셀(예: 워크메이트 등 서식 예외)은 비교 대상에서 제외
+    // 같은 이름이라도 반드시 자기 층 카드를 우선 사용한다(층별로 위치 번호 체계가 겹칠 수 있으므로).
+    const card = cardIndex[o.floor]?.get(normKey(o.name)) || cardIndex[10].get(normKey(o.name)) || cardIndex[3].get(normKey(o.name));
+    if(!card) continue;
+    checked++;
+    const entry = card.entries.find(e=>e.time===o.timeKey);
+    if(!entry){
+      out.push({kind:'sched_missing', floor:o.floor, patient:o.name, room:card.room, time:o.timeKey, loc:o.loc, dayEntries:card.entries});
+    } else if(entry.loc !== o.loc){
+      out.push({kind:'sched_mismatch', floor:o.floor, patient:o.name, room:card.room, time:o.timeKey, scheduleLoc:o.loc, cardLoc:entry.loc, dayEntries:card.entries});
+    }
+  }
+  return {out, checked};
+}
+function buildScheduleLocationIssue(r, idx){
+  if(r.kind==='sched_mismatch'){
+    return {
+      id:'locsched-'+idx, category:'location', source:'schedule', floor:r.floor,
+      patient:r.patient, room:r.room,
+      title:'위치 불일치 (평일시간표 기준)',
+      line:`${r.floor}F · ${r.time} · 평일시간표 ${r.scheduleLoc} → 전체시간표 ${r.cardLoc}`,
+      time:r.time, searchText:normKey(`${r.patient} ${r.room} ${r.time} ${r.scheduleLoc} ${r.cardLoc}`),
+      severityRank:0,
+      detail:{kind:'sched_mismatch', floor:r.floor, time:r.time, patient:r.patient, room:r.room, scheduleLoc:r.scheduleLoc, cardLoc:r.cardLoc, dayEntries:r.dayEntries||[], sourceLabel:'평일시간표(원본)'}
+    };
+  }
+  return {
+    id:'locsched-'+idx, category:'location', source:'schedule', floor:r.floor,
+    patient:r.patient, room:r.room||'',
+    title:'전체시간표(원본)에 기록 없음',
+    line:`${r.floor}F · ${r.time} · 평일시간표 위치 ${r.loc}`,
+    time:r.time, searchText:normKey(`${r.patient} ${r.time} ${r.loc}`),
+    severityRank:0,
+    detail:{kind:'sched_missing', floor:r.floor, time:r.time, loc:r.loc, patient:r.patient, room:r.room, dayEntries:r.dayEntries||[], sourceLabel:'평일시간표(원본)'}
+  };
+}
+
+// OT 인수인계 시트: 환자성함/치료사/주치의/치료종류(SOT·RDT·CCRT)가 한 줄에 정리돼 있고,
+// 같은 환자가 시간이 지나며 여러 번(타임스탬프 최신순으로 위에서부터) 다시 등록된다.
+// 환자·치료종류별로 "가장 위(=가장 최근)" 항목 하나만 사용한다.
+async function parseHandoverSheet(book){
+  const sh = book.sheets.find(s=>/인수인계/.test(s.name)) || book.sheets[0];
+  if(!sh) return [];
+  const cells = await getSheetCells(book, sh.name);
+  if(!cells || !cells.size) return [];
+  let headerRow=null;
+  for(const [ref,val] of cells.entries()){
+    if(normalizeText(val)==='환자성함'){ const rc=splitRef(ref); if(rc){ headerRow=rc.row; break; } }
+  }
+  if(headerRow==null) return [];
+  const headerMap={};
+  for(let c=1;c<=20;c++){ const v=normalizeText(getCell(cells,headerRow,c)); if(v) headerMap[v]=c; }
+  const nameCol=headerMap['환자성함'], therCol=headerMap['치료사'], doctorCol=headerMap['주치의'], typeCol=headerMap['치료종류'];
+  if(!nameCol) return [];
+  let maxRow=headerRow; for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc && rc.row>maxRow) maxRow=rc.row; }
+  const list=[];
+  for(let r=headerRow+1;r<=maxRow;r++){
+    const name=normalizeText(getCell(cells,r,nameCol)); if(!name) continue;
+    const therapist=therCol?normalizeText(getCell(cells,r,therCol)):'';
+    const doctor=doctorCol?normDoctor(getCell(cells,r,doctorCol)):'';
+    const typeRaw=typeCol?normalizeText(getCell(cells,r,typeCol)):'';
+    const type = /RDT/i.test(typeRaw) ? 'rdt' : /CCRT/i.test(typeRaw) ? 'ccrt' : /SOT/i.test(typeRaw) ? 'sot' : '';
+    list.push({name, therapist, doctor, type, row:r});
+  }
+  return list;
+}
+function buildHandoverIndex(list){
+  const map=new Map(); // normKey(name)+'|'+type -> 최신 항목
+  for(const e of list){
+    if(!e.type) continue;
+    const key=normKey(e.name)+'|'+e.type;
+    if(!map.has(key)) map.set(key, e); // 파일이 최신순 정렬이라 먼저 나온 것이 최신
+  }
+  return map;
+}
+// 인수인계의 담당 치료사 vs 평일시간표(원본)에서 실제로 그 환자·그 종류(SOT/RDT)를 맡은 치료사 비교
+function buildSchedTherapistIndex(schedOcc, schedCcrt){
+  const schedByKey=new Map();
+  for(const o of schedOcc){
+    if(o.type!=='sot' && o.type!=='rdt') continue;
+    const k=normKey(o.name)+'|'+o.type;
+    if(!schedByKey.has(k)) schedByKey.set(k, new Set());
+    schedByKey.get(k).add(o.therapist);
+  }
+  for(const c of schedCcrt){
+    const k=normKey(c.name)+'|ccrt';
+    if(!schedByKey.has(k)) schedByKey.set(k, new Set());
+    schedByKey.get(k).add(c.therapist);
+  }
+  return schedByKey;
+}
+function buildHandoverTherapistChecks(handoverMap, schedOcc, schedCcrt, findCardFn){
+  const out=[]; let checked=0;
+  const schedByKey=buildSchedTherapistIndex(schedOcc, schedCcrt);
+  const typeMap={sot:'작업치료', rdt:'연하치료', ccrt:'인지치료'};
+  for(const [key, e] of handoverMap){
+    if(!e.therapist) continue;
+    const schedTherapists=schedByKey.get(key);
+    checked++;
+    if(!schedTherapists || !schedTherapists.size){
+      // 평일시간표(원본)엔 이 환자·종류 배정이 아예 없다. 그런데 전체시간표(원본) 카드에도
+      // 이 환자 자체가 없거나 그 치료 종류의 담당자가 아예 없다면, 인수인계서만 혼자 있는(근거 없는)
+      // 항목으로 따로 분류한다 — 담당 치료사가 아닌 사람이 인수인계를 적었을 가능성이 있다.
+      const card = findCardFn ? findCardFn(e.name) : null;
+      const cardHasType = card && card.therapists && (card.therapists[typeMap[e.type]]||[]).length>0;
+      if(!card || !cardHasType){
+        out.push({kind:'orphan', name:e.name, type:e.type, handoverTherapist:e.therapist, hasCard:!!card});
+      } else {
+        out.push({kind:'noSched', name:e.name, type:e.type, handoverTherapist:e.therapist});
+      }
+    } else if(![...schedTherapists].some(t=>normKey(t)===normKey(e.therapist))){
+      out.push({kind:'mismatch', name:e.name, type:e.type, handoverTherapist:e.therapist, schedTherapists:[...schedTherapists].join(' / ')});
+    }
+  }
+  return {out, checked};
+}
+// "치료 개수 이상의 인수인계서" 확인: 같은 환자·같은 종류(SOT/RDT/CCRT)에 대해 실제로 지금
+// 평일시간표(원본)에 배정된 치료사 수보다, 인수인계서에 이름을 적은 서로 다른 치료사 수가 더 많으면
+// (=지금 배정된 인원 외에 누군가 더 적어놓은 것) 목록으로 뽑아서 보여준다. 인수인계서는 시간이 지나며
+// 계속 다시 작성되므로, 여기서는 "현재까지 등록된 모든 항목"에서 등장한 치료사 전체를 센다.
+function buildHandoverExcessChecks(handoverList, schedOcc, schedCcrt){
+  const schedByKey=buildSchedTherapistIndex(schedOcc, schedCcrt);
+  const groups=new Map(); // key -> {name, type, writers:Map(normKey->원래표기)}
+  for(const e of handoverList){
+    if(!e.type || !e.therapist) continue;
+    const key=normKey(e.name)+'|'+e.type;
+    if(!groups.has(key)) groups.set(key, {name:e.name, type:e.type, writers:new Map()});
+    const g=groups.get(key);
+    const wk=normKey(e.therapist);
+    if(!g.writers.has(wk)) g.writers.set(wk, e.therapist);
+  }
+  const out=[]; let checked=0;
+  for(const [key, g] of groups){
+    checked++;
+    const realSet=schedByKey.get(key) || new Set();
+    const realKeySet=new Set([...realSet].map(t=>normKey(t)));
+    if(g.writers.size > realSet.size){
+      const extra=[...g.writers.entries()].filter(([wk])=>!realKeySet.has(wk)).map(([,name])=>name);
+      out.push({
+        name:g.name, type:g.type,
+        writerCount:g.writers.size, realCount:realSet.size,
+        writers:[...g.writers.values()], realTherapists:[...realSet], extra
+      });
+    }
+  }
+  return {out, checked};
+}
+// 인수인계의 주치의(RM#) vs 전체시간표(원본) 카드의 주치의(RM#) 비교
+function buildDoctorChecks(handoverList, findCardFn){
+  const out=[]; let checked=0;
+  const seen=new Set();
+  for(const e of handoverList){
+    const key=normKey(e.name);
+    if(seen.has(key)) continue; seen.add(key); // 환자당 1회만(가장 위=최신 항목 기준)
+    if(!e.doctor) continue;
+    const card=findCardFn(e.name);
+    if(!card || !card.doctor) continue; // 판정 불가는 집계하지 않음
+    checked++;
+    if(card.doctor!==e.doctor) out.push({name:e.name, handoverDoctor:e.doctor, cardDoctor:card.doctor, floor:card.floor, room:card.room});
+  }
+  return {out, checked};
+}
+
+// 평일시간표(원본)와 표 레이아웃이 조금 다르고, 10F/3F 층 구분 없이 한 팀(0팀)으로 통합돼 있다.
+// 그래서 여기서는 층을 열 위치가 아니라 전체시간표(원본) 카드에서 찾은 층을 그대로 쓴다.
+async function parseSaturdayScheduleSheet(book){
+  const sh = book.sheets.find(s=>/토요일/.test(s.name) && /공휴일/.test(s.name));
+  if(!sh) return [];
+  const cells = await getSheetCells(book, sh.name);
+  if(!cells || !cells.size) return [];
+  let header=null;
+  for(const [ref,val] of cells.entries()){
+    if(normalizeText(val).replace(/\s+/g,'')!=='치료시간') continue;
+    const rc=splitRef(ref); if(rc && rc.row<=4 && (!header || rc.row<header.row)) header=rc;
+  }
+  if(!header) return [];
+  const therapistRow=header.row; // 평일시간표(원본)와 달리 헤더와 같은 행에 치료사 이름이 있다
+  const startRow=header.row+1;
+  let endRow=startRow-1;
+  for(let r=startRow;r<=startRow+30;r++){
+    if(normalizeText(getCell(cells,r,header.col))==='') break;
+    endRow=r;
+  }
+  const therapistCols=[];
+  for(let c=header.col+1;c<=header.col+60;c++){
+    const v=getCell(cells,therapistRow,c);
+    const nv=normalizeText(v).replace(/\s+/g,'');
+    if(likelyTherapistName(v) && nv!=='추가') therapistCols.push({col:c,name:nv});
+  }
+  const occ=[];
+  for(const tc of therapistCols){
+    for(let r=startRow;r<=endRow;r++){
+      const raw=getCell(cells,r,tc.col); const asn=extractPatientAssignment(raw); if(!asn||asn.type==='skip') continue;
+      const time=normalizeText(getCell(cells,r,header.col));
+      occ.push({name:asn.name, type:asn.type, therapist:tc.name, therapistCol:tc.col, time, timeKey:timeStart(time), loc:extractLocationFromRaw(raw), code:extractCodeToken(raw), row:r});
+    }
+  }
+  occ.push(...parseSaturdayErdtSection(cells));
+  return occ;
+}
+// 토요일&공휴일 시간표에는 메인 표(SOT/RDT) 옆에 "ERDT"(연하전기) 구역이 별도로 있다.
+// 이 구역은 "치료사" 글자가 두 번(S1~S4용, S5~S8용) 나오는 구조라 메인 표와는 다르게 파싱해야 한다.
+function parseSaturdayErdtSection(cells){
+  let labelRef=null;
+  for(const [ref,val] of cells.entries()){
+    if(normalizeText(val).replace(/\s+/g,'')==='ERDT'){ const rc=splitRef(ref); if(rc && rc.row<=3){ labelRef=rc; break; } }
+  }
+  if(!labelRef) return [];
+  const timeCol=labelRef.col;
+  const headerRow=labelRef.row+1;
+  const therapistCols=[];
+  for(let c=timeCol+1;c<=timeCol+30;c++){
+    if(normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,'')==='치료사') therapistCols.push(c);
+  }
+  if(!therapistCols.length) return [];
+  const blocks=[];
+  for(let i=0;i<therapistCols.length;i++){
+    const tCol=therapistCols[i];
+    const nextT=therapistCols[i+1] || (tCol+20);
+    const slots=[];
+    for(let c=tCol+1;c<nextT;c++){
+      const lbl=normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,'');
+      if(/^S\d+$/i.test(lbl)) slots.push({col:c, label:lbl.toUpperCase()});
+    }
+    blocks.push({tCol, slots});
+  }
+  let endRow=headerRow;
+  for(let r=headerRow+1;r<=headerRow+20;r++){
+    if(normalizeText(getCell(cells,r,timeCol))==='') break;
+    endRow=r;
+  }
+  const out=[];
+  for(let r=headerRow+1;r<=endRow;r++){
+    const timeRaw=getCell(cells,r,timeCol);
+    const time=normalizeText(timeRaw);
+    const timeKey=timeStart(timeRaw);
+    if(!/^\d{1,2}:\d{2}$/.test(timeKey)) continue; // 점심시간 등 제외
+    for(const block of blocks){
+      const therapist=normalizeText(getCell(cells,r,block.tCol));
+      for(const sc of block.slots){
+        const nm=extractLowerName(getCell(cells,r,sc.col));
+        if(!nm) continue;
+        out.push({name:nm, type:'erdt', therapist, therapistCol:block.tCol, time, timeKey, loc:'', code:'', slot:sc.label});
+      }
+    }
+  }
+  return out;
+}
+// 토요일&공휴일 시간표엔 위치(매트/테이블 번호)가 기록되지 않고 이름+코드(ST/SM/MSK 등)만 있어서
+// 시간·위치까지 비교할 수는 없다. 대신 "이 시간표에 있는 환자가 전체시간표(원본)에 실제로 있는지"를 확인한다
+// (퇴원했는데 아직 토요일 배정표에 남아있거나, 이름이 다르게 적힌 경우 등을 잡아낼 수 있다).
+function buildSaturdayLocationChecks(occs, findCardFn, recoverySet){
+  const out=[]; let checked=0;
+  const seen=new Set();
+  for(const o of occs){
+    if(o.type!=='sot' && o.type!=='rdt' && o.type!=='erdt') continue;
+    const key=normKey(o.name);
+    const isRecovery = !recoverySet || recoverySet.size===0 || recoverySet.has(key);
+    // 병원 규칙: 토요일엔 회복기 환자만 참여 가능하고, 회복기가 아닌 환자는 전기치료(연하전기=ERDT)만 가능하다.
+    // ERDT는 그 예외 항목 자체이므로 규칙 위반 대상에서 제외한다.
+    if(o.type!=='erdt' && !isRecovery){
+      checked++;
+      out.push({kind:'rule', patient:o.name, time:o.timeKey, therapist:o.therapist, code:o.code, type:o.type});
+      continue; // 회복기가 아니면애초에 회복기 전용 카드가 없을 수 있어 존재 확인은 의미가 없다
+    }
+    if(seen.has(key)) continue; seen.add(key); // 같은 환자가 여러 시간대에 나올 수 있어 1인 1회만 확인
+    checked++;
+    const card=findCardFn(o.name);
+    if(!card) out.push({kind:'exist', patient:o.name, time:o.timeKey, therapist:o.therapist});
+  }
+  return {out, checked};
+}
+function buildSaturdayLocationIssue(r, idx){
+  if(r.kind==='rule'){
+    const typeLabel = r.type==='rdt' ? '연하(RDT)' : '작업(SOT)';
+    return {
+      id:'locsat-'+idx, category:'location', source:'saturday', floor:null,
+      patient:r.patient, room:'',
+      title:`회복기 아닌 환자 ${typeLabel} 배정 (토요일 규칙 위반)`,
+      line:`${r.time} · 담당 ${r.therapist} · 코드 ${r.code||'-'}`,
+      time:r.time, searchText:normKey(`${r.patient} ${r.time} ${r.therapist}`),
+      severityRank:0,
+      detail:{kind:'sat_rule', time:r.time, patient:r.patient, therapist:r.therapist, code:r.code, type:r.type}
+    };
+  }
+  return {
+    id:'locsat-'+idx, category:'location', source:'saturday', floor:null,
+    patient:r.patient, room:'',
+    title:'전체시간표(원본)에 없음 (토요일&공휴일 시간표 기준)',
+    line:`${r.time} · 담당 ${r.therapist}`,
+    time:r.time, searchText:normKey(`${r.patient} ${r.time} ${r.therapist}`),
+    severityRank:0,
+    detail:{kind:'sat_missing', time:r.time, patient:r.patient, therapist:r.therapist}
+  };
+}
+
+/* ======================================================================
+   매트/테이블 미리보기 (색칠된 그리드)
+   ====================================================================== */
+function computeGridPreview(floor, type){
+  const gridEntries = (previewStore[floor] && previewStore[floor][type]) || [];
+  // 10F와 3F는 매트/테이블 번호 체계(T-1, T-2 …)가 서로 겹치는 별개의 물리적 위치이므로,
+  // 반드시 같은 층 카드로만 대조해야 한다(다른 층 카드를 섞으면 같은 번호끼리 층이 뒤바뀌어 잘못 매칭될 수 있음).
+  const cards = previewCards[floor] || [];
+  const cardByName=new Map();
+  for(const c of cards){ if(!cardByName.has(normKey(c.name))) cardByName.set(normKey(c.name), c); }
+  const cardSlotMap=new Map(), cardNameTimeLocSet=new Set();
+  for(const card of cards){
+    for(const e of card.entries){
+      if(!locCategory(e.loc)) continue;
+      const key=e.time+'|'+e.loc;
+      if(!cardSlotMap.has(key)) cardSlotMap.set(key, card.name);
+      cardNameTimeLocSet.add(normKey(card.name)+'|'+key);
+    }
+  }
+  const cellMap=new Map();
+  for(const g of gridEntries){
+    const key=g.time+'|'+g.loc;
+    const nkey=normKey(g.name)+'|'+key;
+    // 근거 자료: 이 환자 본인의 전체시간표(원본)에 같은 시간대 기록이 있는지 먼저 확인한다.
+    const ownCard=cardByName.get(normKey(g.name));
+    let ownEntryLoc=null;
+    if(ownCard){ const own=ownCard.entries.find(e=>e.time===g.time && locCategory(e.loc)); if(own) ownEntryLoc=own.loc; }
+    let status, expected='';
+    if(cardNameTimeLocSet.has(nkey)){
+      status='ok';
+    } else if(ownEntryLoc && ownEntryLoc!==g.loc){
+      // 같은 환자·같은 시간인데 번호(위치)만 다른 경우 → "기록 없음"이 아니라 "위치 불일치"로 봐야 헷갈리지 않는다.
+      status='wrongloc';
+    } else if(cardSlotMap.has(key)){
+      status='mismatch'; expected=cardSlotMap.get(key);
+    } else {
+      status='missing';
+    }
+    cellMap.set(key, {time:g.time, loc:g.loc, name:g.name, status, expected, hasOwnCard:!!ownCard, ownEntryLoc});
+  }
+  const byNameTime=new Map();
+  for(const g of gridEntries){
+    const k=normKey(g.name)+'|'+g.time;
+    if(!byNameTime.has(k)) byNameTime.set(k, []);
+    byNameTime.get(k).push({loc:g.loc, key:g.time+'|'+g.loc});
+  }
+  for(const [,arr] of byNameTime){
+    if(arr.length>1){
+      for(const item of arr){
+        const c=cellMap.get(item.key);
+        if(c){ c.duplicate=true; c.duplicateLocs=arr.filter(x=>x.key!==item.key).map(x=>x.loc); }
+      }
+    }
+  }
+  const times=[...new Set(gridEntries.map(g=>g.time))].sort();
+  const locs=[]; const seen=new Set();
+  for(const g of gridEntries){ if(!seen.has(g.loc)){ seen.add(g.loc); locs.push(g.loc); } }
+  locs.sort((a,b)=>{
+    const pa=/^([가-힣A-Za-z]+)-(\d+)/.exec(a), pb=/^([가-힣A-Za-z]+)-(\d+)/.exec(b);
+    if(pa && pb){ if(pa[1]!==pb[1]) return pa[1].localeCompare(pb[1]); return (+pa[2])-(+pb[2]); }
+    return a.localeCompare(b);
+  });
+  return {times, locs, cellMap};
+}
+let previewFloor=10, previewType='mat', lastPreview=null;
+// 미리보기 탭 전환은 이 함수 하나로만 처리한다 — 예전엔 탭 종류(매트/테이블/토요일/연하전기)별로
+// 클릭 핸들러를 따로 만들다 보니 'all'(평일 연하전기) 같은 floor 값을 못 알아듣는 핸들러가 섞여 있었고,
+// 그 경우 +'all' 이 NaN이 되면서 아무 탭도 못 찾아 10F 매트로 조용히 되돌아가는 오류가 있었다.
+function switchPreviewTab(floorRaw, type){
+  previewFloor = (floorRaw==='sat' || floorRaw==='all') ? floorRaw : +floorRaw;
+  previewType = type;
+  renderGridPreview();
+}
+function bindPreviewTabClicks(wrap){
+  wrap.querySelectorAll('.gp-tabs button').forEach(b=>b.addEventListener('click', ()=>{
+    switchPreviewTab(b.dataset.floor, b.dataset.type);
+  }));
+}
+function renderGridPreview(){
+  const wrap=document.getElementById('gridPreviewPanel');
+  const combos=[];
+  if(previewStore[10].mat.length) combos.push({floor:10,type:'mat',label:'10F 매트'});
+  if(previewStore[10].table.length) combos.push({floor:10,type:'table',label:'10F 테이블'});
+  if(previewStore[3].mat.length) combos.push({floor:3,type:'mat',label:'3F 매트'});
+  if(previewStore[3].table.length) combos.push({floor:3,type:'table',label:'3F 테이블'});
+  if(previewWeekdayErdt.erdt.length) combos.push({floor:'all',type:'werdt',label:'평일 연하전기'});
+  if((previewWeekdayErdt.ccrt||[]).length) combos.push({floor:'all',type:'ccrt',label:'인지치료'});
+  if(previewSaturday.occs.some(o=>o.type==='erdt')) combos.push({floor:'sat',type:'saterdt',label:'토요일 연하전기'});
+  if(previewSaturday.occs.length) combos.push({floor:'sat',type:'sat',label:'토요일&공휴일'});
+  if(!combos.length){
+    wrap.innerHTML=`<div class="empty-ok"><div class="big">🗂️</div><h4>미리볼 데이터가 없습니다</h4><p>매트현황·테이블현황·전체시간표(원본)·작업치료현황 파일을 올리고<br>검증을 실행해 주세요.</p></div>`;
+    return;
+  }
+  if(!combos.some(c=>c.floor===previewFloor && c.type===previewType)){ previewFloor=combos[0].floor; previewType=combos[0].type; }
+  const tabsHtml=`<div class="gp-tabs">`+combos.map(c=>`<button class="${c.floor===previewFloor&&c.type===previewType?'active':''}" data-floor="${c.floor}" data-type="${c.type}">${c.label}</button>`).join('')+`</div>`;
+
+  if(previewType==='sat'){
+    renderSaturdayPreview(wrap, tabsHtml, combos);
+    return;
+  }
+  if(previewType==='werdt'){
+    renderWeekdayErdtPreview(wrap, tabsHtml);
+    return;
+  }
+  if(previewType==='ccrt'){
+    renderCcrtPreview(wrap, tabsHtml);
+    return;
+  }
+  if(previewType==='saterdt'){
+    renderSaturdayErdtPreview(wrap, tabsHtml);
+    return;
+  }
+
+  const {times, locs, cellMap} = computeGridPreview(previewFloor, previewType);
+  lastPreview={floor:previewFloor, type:previewType, cellMap};
+  let html=tabsHtml;
+  html+=`<div class="gp-legend">
+    <span><i class="gp-dot ok"></i>정상</span>
+    <span><i class="gp-dot wrongloc"></i>위치 불일치</span>
+    <span><i class="gp-dot mismatch"></i>이름 불일치</span>
+    <span><i class="gp-dot missing"></i>기록 없음</span>
+    <span><i class="gp-dot duplicate"></i>중복(같은 시간에 다른 위치에도 있음)</span>
+    <span style="color:var(--muted)">· 색칠된 칸을 클릭하면 오류 근거를 볼 수 있습니다</span>
+  </div>`;
+  if(!times.length || !locs.length){
+    html+=`<div class="empty-ok" style="padding:30px"><div class="big">🗂️</div><h4>이 표에는 표시할 데이터가 없습니다</h4></div>`;
+  } else {
+    html+=`<div class="gridPreviewWrap"><table class="gpTable"><thead><tr><th class="timecol">시간</th>${locs.map(l=>`<th>${esc(l)}</th>`).join('')}</tr></thead><tbody>`;
+    for(const t of times){
+      html+=`<tr><td class="timecell">${esc(t)}</td>`;
+      for(const l of locs){
+        const c=cellMap.get(t+'|'+l);
+        if(!c){ html+=`<td class="gpcell empty"></td>`; continue; }
+        const cls='gpcell '+c.status+(c.duplicate?' duplicate':'')+(c.status!=='ok'||c.duplicate?' clickable':'');
+        const title = c.status==='ok' ? `${c.name} · 정상`
+          : c.status==='wrongloc' ? `${c.name} · 전체시간표(원본)엔 ${c.ownEntryLoc}(으)로 되어있음 · 클릭하면 근거 보기`
+          : c.status==='mismatch' ? `${c.name} (전체시간표(원본) 기준: ${c.expected||'없음'}) · 클릭하면 근거 보기`
+          : `${c.name} · 전체시간표(원본)에서 이 시간·위치 기록을 찾지 못함 · 클릭하면 근거 보기`;
+        html+=`<td class="${cls}" title="${esc(title)}" data-t="${esc(t)}" data-l="${esc(l)}">${esc(c.name)}</td>`;
+      }
+      html+=`</tr>`;
+    }
+    html+=`</tbody></table></div>`;
+  }
+  wrap.innerHTML=html;
+  bindPreviewTabClicks(wrap);
+  wrap.querySelectorAll('.gpcell.clickable').forEach(td=>td.addEventListener('click', ()=>{
+    const c=lastPreview.cellMap.get(td.dataset.t+'|'+td.dataset.l);
+    if(c) showGridCellDetail(c, lastPreview.floor, lastPreview.type);
+  }));
+}
+function gridCellVerdictHtml(c){
+  const lines=[];
+  if(c.status==='wrongloc'){
+    lines.push(`매트/테이블현황에는 <b>${esc(c.time)} · ${esc(c.loc)}</b> 칸에 <b>${esc(c.name)}</b> 환자로 기재되어 있습니다.`);
+    lines.push(`전체시간표(원본)에서 ${esc(c.name)} 환자의 ${esc(c.time)} 기록을 확인해 보면, 위치가 <b>${esc(c.ownEntryLoc)}</b>(으)로 되어 있어 서로 다릅니다.`);
+    lines.push(`같은 환자, 같은 시간이고 <b>위치 번호만</b> 다른 경우입니다.`);
+  } else if(c.status==='mismatch'){
+    lines.push(`매트/테이블현황에는 <b>${esc(c.time)} · ${esc(c.loc)}</b> 칸에 <b>${esc(c.name)}</b> 환자로 기재되어 있습니다.`);
+    lines.push(`하지만 전체시간표(원본)에서 같은 시간·위치를 확인해 보면, 그 자리는 <b>${esc(c.expected||'(비어 있음)')}</b> 환자로 되어 있습니다.`);
+    if(c.hasOwnCard){
+      if(c.ownEntryLoc) lines.push(`참고: ${esc(c.name)} 환자 본인의 전체시간표(원본)를 보면 ${esc(c.time)}에는 <b>${esc(c.ownEntryLoc)}</b> 위치로 기록되어 있습니다.`);
+      else lines.push(`참고: ${esc(c.name)} 환자의 전체시간표(원본)에는 ${esc(c.time)} 시간대 기록 자체가 없습니다.`);
+    } else {
+      lines.push(`참고: 전체시간표(원본)에서 ${esc(c.name)} 환자 정보 자체를 찾지 못했습니다.`);
+    }
+  } else if(c.status==='missing'){
+    lines.push(`매트/테이블현황에는 <b>${esc(c.time)} · ${esc(c.loc)}</b> 칸에 <b>${esc(c.name)}</b> 환자로 기재되어 있습니다.`);
+    if(c.hasOwnCard){
+      lines.push(`전체시간표(원본)에 ${esc(c.name)} 환자는 있지만, ${esc(c.time)} 시간대 기록을 찾지 못했습니다.`);
+    } else {
+      lines.push(`전체시간표(원본) 전체에서 ${esc(c.name)} 환자를 찾지 못했습니다.`);
+    }
+  } else {
+    lines.push(`매트/테이블현황과 전체시간표(원본)가 이 시간·위치에서 서로 일치합니다.`);
+  }
+  if(c.duplicate){
+    lines.push(`<span style="color:#8a4fd6">※ 중복: ${esc(c.name)} 환자는 같은 시간(${esc(c.time)})에 다른 위치에도 등록되어 있습니다 → ${c.duplicateLocs.map(esc).join(', ')}</span>`);
+  }
+  return lines.map(l=>`<p style="margin:0 0 10px;line-height:1.6">${l}</p>`).join('');
+}
+function computeSaturdayPreview(){
+  const gridOccs = previewSaturday.occs.filter(o=>o.type==='sot'||o.type==='rdt');
+  const erdtOccs = previewSaturday.occs.filter(o=>o.type==='erdt');
+  const allOccs = gridOccs.concat(erdtOccs); // 존재 여부 판정(카드전용 명단 등)에는 ERDT도 포함
+  const cardsAll = [...(previewCards[10]||[]), ...(previewCards[3]||[])];
+  const cardByName = new Map();
+  cardsAll.forEach(c=>{ if(!cardByName.has(normKey(c.name))) cardByName.set(normKey(c.name), c); });
+
+  function judge(o, card){
+    const hasCardSat = o.type==='rdt'
+      ? !!(card && (card.satEntries||[]).some(e=>e.time===o.timeKey && /연하/.test(e.treatment)))
+      : !!(card && (card.satEntries||[]).some(e=>e.time===o.timeKey));
+    const isRecovery = !previewSaturday.recoverySet || previewSaturday.recoverySet.size===0 || previewSaturday.recoverySet.has(normKey(o.name));
+    if(!isRecovery) return 'rule';   // 회복기가 아닌 환자는 토요일에 전기치료(연하전기)만 가능 — 규칙 위반
+    if(!card) return 'mismatch';           // 3. 전체시간표(원본)에서 환자 자체를 못 찾음(이름이 없는 경우)
+    if(!hasCardSat) return 'missing'; // 2. 토요일시간표에만 있고 전체시간표엔 없음
+    return 'ok';                      // 1. 정상
+  }
+
+  // ── SOT/RDT: (시간×치료사) 그리드 — 칸마다 환자 1명 배정이라 그리드로 표현 가능 ──
+  const cellMap=new Map(); // "time|therapist" -> cell
+  const therapistOrder=new Map(); // therapist -> 최소 열번호(등장 순서 정렬용)
+  for(const o of gridOccs){
+    if(!therapistOrder.has(o.therapist) || o.therapistCol<therapistOrder.get(o.therapist)) therapistOrder.set(o.therapist, o.therapistCol);
+    const key=o.time+'|'+o.therapist;
+    const card=cardByName.get(normKey(o.name));
+    const status=judge(o, card);
+    // 참고: 토요일 담당 치료사는 평일 담당과 달리 주말 당번제로 배정되는 경우가 많아,
+    // 담당자 이름 자체를 정답 비교 기준으로 쓰면 오탐이 너무 많아진다 → 존재/시간 일치만 1차 판정으로 쓴다.
+    const weekdayCode=previewSaturday.weekdayCode.get(normKey(o.name)+'|'+o.type)||'';
+    // 5. SM/ST 코드가 평일원본과 다름 — R(연하)은 코드 비교 대상이 아니다.
+    const codeMismatch = !!(o.type==='sot' && o.code && weekdayCode && o.code!==weekdayCode);
+    cellMap.set(key, {time:o.time, timeKey:o.timeKey, therapist:o.therapist, name:o.name, status, code:o.code, type:o.type, weekdayCode, codeMismatch, hasCard:!!card});
+  }
+  // 4. 중복: 같은 환자, 같은 시간에 다른 치료사 칸에도 등장
+  const byNameTime=new Map();
+  for(const o of gridOccs){ const k=normKey(o.name)+'|'+o.timeKey; if(!byNameTime.has(k)) byNameTime.set(k,[]); byNameTime.get(k).push(o.time+'|'+o.therapist); }
+  for(const [,keys] of byNameTime){ if(keys.length>1){ for(const k of keys){ const c=cellMap.get(k); if(c) c.duplicate=true; } } }
+
+  const times=[...new Set(gridOccs.map(o=>o.time))].sort();
+  const therapists=[...therapistOrder.keys()].sort((a,b)=>therapistOrder.get(a)-therapistOrder.get(b));
+
+  // 전체시간표(원본)엔 토요일 일정이 있는데, 이번 토요일&공휴일 시간표 어디에도 안 나오는 환자(참고용 목록 — 그리드엔 넣을 자리가 없어 따로 표시)
+  // 단, 카드의 토요일란이 작업치료/연하치료/인지치료/연하전기(=토요일 시간표에서 실제로 확인 가능한 종류)가 아니면
+  // 애초에 토요일 시간표에 나올 이유가 없는 항목이므로 이 명단에서 제외한다.
+  const TRACKABLE_SAT_TREATMENT=/작업치료|연하치료|인지치료|연하전기/;
+  const satNameSet=new Set(allOccs.map(o=>normKey(o.name)));
+  const cardOnlyList=[];
+  for(const c of cardsAll){
+    if(!(c.satEntries && c.satEntries.some(e=>TRACKABLE_SAT_TREATMENT.test(e.treatment)))) continue;
+    if(satNameSet.has(normKey(c.name))) continue;
+    cardOnlyList.push(c);
+  }
+  return {times, therapists, cellMap, cardOnlyList};
+}
+let lastSatPreview=null;
+
+// ── 연하전기(ERDT) 공용: (시간×슬롯) 그리드 빌더 — 평일/토요일 둘 다 이 함수를 재사용한다.
+// 슬롯(S1~S8)은 실제 시트의 칸 위치라서 같은 시간에 같은 치료사가 여러 환자를 맡아도 칸이 겹치지 않는다.
+function buildErdtGridCells(entries, cardByName, judgeFn){
+  const cellMap=new Map(); // "time|slot" -> cell
+  const slotOrder=new Set();
+  for(const o of entries){
+    const slot=o.slot||'S1';
+    slotOrder.add(slot);
+    const key=o.time+'|'+slot;
+    const card=cardByName.get(normKey(o.name));
+    const status=judgeFn(o, card);
+    cellMap.set(key, {time:o.time, timeKey:o.timeKey, slot, therapist:o.therapist, name:o.name, type:'erdt', status, hasCard:!!card, days:o.days||null});
+  }
+  const times=[...new Set(entries.map(o=>o.time))].sort();
+  const slots=[...slotOrder].sort((a,b)=>{
+    const na=parseInt(String(a).replace(/\D/g,''),10)||0, nb=parseInt(String(b).replace(/\D/g,''),10)||0;
+    return na-nb;
+  });
+  return {times, slots, cellMap};
+}
+function erdtTableHtml(g, gridKey, emptyMsg){
+  if(!g.times.length || !g.slots.length) return `<p style="color:var(--muted);font-size:12.5px;padding:6px 2px">${esc(emptyMsg)}</p>`;
+  let html=`<div class="gridPreviewWrap"><table class="gpTable"><thead><tr><th class="timecol">시간</th>${g.slots.map(s=>`<th>${esc(s)}</th>`).join('')}</tr></thead><tbody>`;
+  for(const t of g.times){
+    html+=`<tr><td class="timecell">${esc(t)}</td>`;
+    for(const s of g.slots){
+      const c=g.cellMap.get(t+'|'+s);
+      if(!c){ html+=`<td class="gpcell empty"></td>`; continue; }
+      const cls='gpcell '+(c.status==='ok'?'ok':c.status==='missing'?'missing':'mismatch')+' clickable';
+      const title=c.status==='ok' ? `${c.name} · 정상` : c.status==='missing' ? `${c.name} · 전체시간표(원본)에 연하전기로 안 되어있음` : `${c.name} · 전체시간표(원본)에서 환자를 찾지 못함`;
+      html+=`<td class="${cls}" title="${esc(title)+' · 클릭하면 근거 보기'}" data-grid="${gridKey}" data-t="${esc(t)}" data-s="${esc(s)}">${esc(c.name)}</td>`;
+    }
+    html+=`</tr>`;
+  }
+  html+=`</tbody></table></div>`;
+  return html;
+}
+function erdtLegendHtml(extra){
+  return `<div class="gp-legend">
+    <span><i class="gp-dot ok"></i>정상</span>
+    <span><i class="gp-dot missing"></i>전체시간표(원본)에 연하전기로 안 되어있음</span>
+    <span><i class="gp-dot mismatch"></i>이름 없음(전체시간표에 환자 자체가 없음)</span>
+    ${extra||''}
+    <span style="color:var(--muted)">· 칸을 클릭하면 근거를 볼 수 있습니다</span>
+  </div>`;
+}
+function bindErdtGridClicks(wrap, grids){
+  wrap.querySelectorAll('.gpcell.clickable[data-grid]').forEach(td=>td.addEventListener('click', ()=>{
+    const g=grids[td.dataset.grid];
+    const c=g && g.cellMap.get(td.dataset.t+'|'+td.dataset.s);
+    if(c) showSaturdayCellDetail(Object.assign({}, c, {context:td.dataset.grid==='sat'?'sat':'weekday'}));
+  }));
+  bindPreviewTabClicks(wrap);
+}
+// 평일 연하전기: 10F/3F를 탭으로 나누지 않고 한 화면에 표 두 개로 같이 보여준다(자료 크기가 크지 않아서).
+function renderWeekdayErdtPreview(wrap, tabsHtml){
+  function judge(o, card){
+    if(!card) return 'mismatch';
+    const dayList = (o.days&&o.days.length) ? o.days : ['월','화','수','목','금'];
+    const ok=(card.erdtWeekdayEntries||[]).some(x=>x.time===timeStart(o.time) && dayList.includes(x.day));
+    return ok?'ok':'missing';
+  }
+  const cardByName10=new Map((previewCards[10]||[]).map(c=>[normKey(c.name),c]));
+  const cardByName3=new Map((previewCards[3]||[]).map(c=>[normKey(c.name),c]));
+  const g10=buildErdtGridCells(previewWeekdayErdt.erdt.filter(e=>e.floor===10), cardByName10, judge);
+  const g3=buildErdtGridCells(previewWeekdayErdt.erdt.filter(e=>e.floor===3), cardByName3, judge);
+  let html=tabsHtml + erdtLegendHtml('');
+  html += `<div class="occ-title">10F</div>` + erdtTableHtml(g10, 'w10', '10F에는 평일 연하전기(ERDT) 데이터가 없습니다.');
+  html += `<div class="occ-title">3F</div>` + erdtTableHtml(g3, 'w3', '3F에는 평일 연하전기(ERDT) 데이터가 없습니다.');
+  wrap.innerHTML=html;
+  bindErdtGridClicks(wrap, {w10:g10, w3:g3});
+}
+// 토요일 연하전기: 평일과 같은 형식(시간×슬롯 표)으로 별도 탭에 보여준다.
+function computeCcrtPreview(){
+  const cardByName=new Map([...(previewCards[10]||[]), ...(previewCards[3]||[])].map(c=>[normKey(c.name),c]));
+  const list=(previewWeekdayErdt.ccrt||[]).map((c,idx)=>{
+    const key=normKey(c.name);
+    const card=cardByName.get(key);
+    let status;
+    if(previewDischarged.has(key)) status='discharged'; // 퇴원인데 인지치료가 평일시간표에 남아있음
+    else if(!card) status='mismatch'; // 전체시간표(원본)에 환자 자체가 없음
+    else{
+      const ok=(card.cogWeekdayEntries||[]).some(x=>x.time===c.timeKey && x.day===c.day);
+      status = ok ? 'ok' : 'missing'; // 요일이 전체시간표(원본)와 다르거나 아예 없음
+    }
+    return {id:'ccrt-'+idx, time:c.time, timeKey:c.timeKey, day:c.day, therapist:c.therapist, name:c.name, kind:c.kind, floor:c.floor, status, hasCard:!!card};
+  });
+  return {list};
+}
+const CCRT_KIND_META={
+  '10F_CCRT':{label:'10F · 인지치료(CCRT)', cls:'k10ccrt'},
+  '3F_CCRT':{label:'3F · 인지치료(CCRT)', cls:'k3ccrt'},
+  '3F_BETTER':{label:'3F · BETTER', cls:'k3better'},
+  '3F_COMCOG':{label:'3F · COMCOG', cls:'k3comcog'}
+};
+const CCRT_KIND_ORDER=['10F_CCRT','3F_CCRT','3F_BETTER','3F_COMCOG'];
+const CCRT_DAY_ORDER=['월','화','수','목','금'];
+function renderCcrtPreview(wrap, tabsHtml){
+  const {list}=computeCcrtPreview();
+  lastSatPreview={cellMap:new Map(), erdtList:list};
+  let html=tabsHtml;
+  html+=`<div class="gp-legend">
+    <span><i class="gp-dot ok"></i>정상</span>
+    <span><i class="gp-dot missing"></i>전체시간표(원본)의 요일과 다름/없음</span>
+    <span><i class="gp-dot mismatch"></i>이름 없음(전체시간표에 환자 자체가 없음)</span>
+    <span><i class="gp-dot" style="background:#7a1f2b"></i>퇴원 처리된 환자인데 남아있음</span>
+    <span style="color:var(--muted)">· 칸을 클릭하면 근거를 볼 수 있습니다</span>
+  </div>`;
+  if(!list.length){
+    html+=`<div class="empty-ok" style="padding:30px"><div class="big">🗂️</div><h4>인지치료(CCRT/BETTER/COMCOG) 데이터가 없습니다</h4></div>`;
+  } else {
+    const byKind=new Map();
+    for(const e of list){ if(!byKind.has(e.kind)) byKind.set(e.kind, []); byKind.get(e.kind).push(e); }
+    const orderedKinds=CCRT_KIND_ORDER.filter(k=>byKind.has(k))
+      .concat([...byKind.keys()].filter(k=>!CCRT_KIND_ORDER.includes(k)));
+    html+='<div class="ccrt-groups">';
+    for(const k of orderedKinds){
+      const items=byKind.get(k);
+      const meta=CCRT_KIND_META[k]||{label:k, cls:'kother'};
+      html+=`<div class="ccrt-kind-block">
+        <div class="ccrt-kind-head"><span class="ccrt-kind-badge ${meta.cls}">${esc(meta.label)}</span><span class="ccrt-kind-count">${items.length}건</span></div>`;
+      const byDay=new Map();
+      for(const e of items){ const d=e.day||'기타'; if(!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(e); }
+      const dayKeys=[...byDay.keys()].sort((a,b)=>{
+        const ia=CCRT_DAY_ORDER.indexOf(a), ib=CCRT_DAY_ORDER.indexOf(b);
+        if(ia===-1 && ib===-1) return a.localeCompare(b);
+        if(ia===-1) return 1; if(ib===-1) return -1; return ia-ib;
+      });
+      // 요일마다 각자 왼쪽으로 당겨서 나열하면(빈 칸을 없애버리면) 같은 시간대가 요일별로 다른 위치에 오게 되어
+      // 헷갈린다 — 그래서 이 구역(kind-block) 전체에서 나온 시간대를 모아 "시간 열"을 고정해두고,
+      // 요일별로 그 시간에 해당하는 칸에만 채우고 없으면 비워둔다(당겨서 채우지 않음).
+      const timeKeys=[...new Set(items.map(e=>e.timeKey))].sort();
+      const timeLabel=new Map();
+      for(const e of items){ if(!timeLabel.has(e.timeKey)) timeLabel.set(e.timeKey, e.time); }
+      html+=`<div class="ccrt-grid-scroll"><div class="ccrt-time-grid" style="grid-template-columns:52px repeat(${timeKeys.length}, minmax(92px,1fr))">`;
+      html+=`<div class="ccrt-grid-head corner"></div>`;
+      html+=timeKeys.map(tk=>`<div class="ccrt-grid-head">${esc(timeLabel.get(tk))}</div>`).join('');
+      for(const d of dayKeys){
+        const byTime=new Map();
+        for(const e of byDay.get(d)){ if(!byTime.has(e.timeKey)) byTime.set(e.timeKey, []); byTime.get(e.timeKey).push(e); }
+        html+=`<div class="ccrt-grid-daylabel">${esc(d)}요일</div>`;
+        html+=timeKeys.map(tk=>{
+          const arr=byTime.get(tk)||[];
+          if(!arr.length) return `<div class="ccrt-grid-cell"></div>`;
+          return `<div class="ccrt-grid-cell">${arr.map(e=>{
+            const cls='ccrt-cell-chip erdt-row clickable '+(e.status==='ok'?'':e.status==='discharged'?'ccrt-discharged':'erdt-bad');
+            return `<div class="${cls}" data-erdt="${e.id}" title="클릭하면 근거 보기">${esc(e.name)}</div>`;
+          }).join('')}</div>`;
+        }).join('');
+      }
+      html+='</div></div>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  wrap.innerHTML=html;
+  wrap.querySelectorAll('.erdt-row').forEach(el=>el.addEventListener('click', ()=>{
+    const item=lastSatPreview.erdtList.find(e=>e.id===el.dataset.erdt);
+    if(item) showSaturdayCellDetail(Object.assign({}, item, {context:'ccrt'}));
+  }));
+  bindPreviewTabClicks(wrap);
+}
+function renderSaturdayErdtPreview(wrap, tabsHtml){
+  function judge(o, card){
+    if(!card) return 'mismatch';
+    const ok=(card.satEntries||[]).some(e=>e.time===o.timeKey && /연하전기/.test(e.treatment));
+    return ok?'ok':'missing';
+  }
+  const cardByName=new Map([...(previewCards[10]||[]), ...(previewCards[3]||[])].map(c=>[normKey(c.name),c]));
+  const entries=previewSaturday.occs.filter(o=>o.type==='erdt');
+  const g=buildErdtGridCells(entries, cardByName, judge);
+  let html=tabsHtml + erdtLegendHtml('') + erdtTableHtml(g, 'sat', '토요일 연하전기(ERDT) 데이터가 없습니다.');
+  wrap.innerHTML=html;
+  bindErdtGridClicks(wrap, {sat:g});
+}
+function renderSaturdayPreview(wrap, tabsHtml){
+  const {times, therapists, cellMap, cardOnlyList} = computeSaturdayPreview();
+  lastSatPreview = {cellMap};
+  let html = tabsHtml;
+  html += `<div class="gp-legend">
+    <span><i class="gp-dot ok"></i>정상</span>
+    <span><i class="gp-dot missing"></i>토요일시간표에만 있음(전체시간표에 없음)</span>
+    <span><i class="gp-dot mismatch"></i>이름 없음(전체시간표에 환자 자체가 없음)</span>
+    <span><i class="gp-dot" style="background:#7a1f2b"></i>회복기 아닌 환자 SOT/RDT 배정(규칙 위반)</span>
+    <span><i class="gp-dot duplicate"></i>중복(같은 시간 다른 치료사에도 있음)</span>
+    <span><i class="gp-dot" style="background:#fff;border:2px solid var(--loc)"></i>SM/ST 코드가 평일원본과 다름(테두리, R 제외)</span>
+    <span style="color:var(--muted)">· 칸을 클릭하면 근거를 볼 수 있습니다</span>
+  </div>`;
+  if(!times.length || !therapists.length){
+    html += `<div class="empty-ok" style="padding:30px"><div class="big">🗂️</div><h4>토요일 관련 데이터가 없습니다</h4><p>작업치료현황과 전체시간표(원본) 파일을 함께 올리고 검증을 실행해 주세요.</p></div>`;
+  } else {
+    html += `<div class="gridPreviewWrap"><table class="gpTable"><thead><tr><th class="timecol">시간</th>${therapists.map(t=>`<th>${esc(t)}</th>`).join('')}</tr></thead><tbody>`;
+    for(const t of times){
+      html += `<tr><td class="timecell">${esc(t)}</td>`;
+      for(const th of therapists){
+        const c = cellMap.get(t+'|'+th);
+        if(!c){ html += `<td class="gpcell empty"></td>`; continue; }
+        const cls='gpcell '+c.status+(c.duplicate?' duplicate':'')+(c.codeMismatch?' codeborder':'')+' clickable';
+        const title = c.status==='ok' ? `${c.name} · 정상`
+          : c.status==='missing' ? `${c.name} · 전체시간표(원본) 토요일란에 이 시간 기록 없음`
+          : c.status==='rule' ? `${c.name} · 회복기 아닌 환자에게 ${c.type==='rdt'?'RDT':'SOT'} 배정됨(규칙 위반)`
+          : `${c.name} · 전체시간표(원본)에서 환자를 찾지 못함`;
+        html += `<td class="${cls}" title="${esc(title)+' · 클릭하면 근거 보기'}" data-t="${esc(t)}" data-th="${esc(th)}">${esc(c.name)}</td>`;
+      }
+      html += `</tr>`;
+    }
+    html += `</tbody></table></div>`;
+    if(cardOnlyList.length){
+      html += `<div class="occ-title">전체시간표(원본)엔 토요일 일정이 있는데 이번 토요일&공휴일 시간표엔 없는 환자 (참고용 · ${cardOnlyList.length}명)</div>
+      <div class="timeline-row">${cardOnlyList.map(c=>`<div class="tl-chip"><span class="tl-time">${esc(c.name)}</span><span class="tl-loc">${esc(c.room||'')}</span></div>`).join('')}</div>`;
+    }
+  }
+  wrap.innerHTML = html;
+  bindPreviewTabClicks(wrap);
+  wrap.querySelectorAll('.gpcell.clickable').forEach(td=>td.addEventListener('click', ()=>{
+    const c = lastSatPreview.cellMap.get(td.dataset.t+'|'+td.dataset.th);
+    if(c) showSaturdayCellDetail(c);
+  }));
+}
+function showSaturdayCellDetail(c){
+  const isWeekday = c.context==='weekday';
+  const isCcrt = c.context==='ccrt';
+  const statusLabel = c.status==='ok' ? '정상' : c.status==='discharged' ? '퇴원 처리됨' : c.status==='missing' ? '기록 없음' : c.status==='rule' ? '규칙 위반' : '이름 불일치';
+  const statusStyle = c.status==='ok' ? 'background:var(--green-bg);color:var(--green)' : c.status==='discharged' ? 'background:#7a1f2b;color:#fff' : c.status==='missing' ? 'background:var(--record-bg);color:var(--record)' : c.status==='rule' ? 'background:#7a1f2b;color:#fff' : 'background:var(--count-bg);color:var(--count)';
+  const badgeCss='font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;margin-right:6px;display:inline-block';
+  let verdict='';
+  if(c.status==='discharged') verdict=`현황(회복기) 시트엔 이 환자가 <b>퇴원</b>으로 표시돼 있는데, 평일시간표(원본)엔 ${esc(c.day)}요일 ${esc(c.time)}에 인지치료(${esc(c.kind||'CCRT')}) 배정이 아직 남아있어요.`;
+  else if(c.status==='missing') verdict = isCcrt
+    ? `평일시간표(원본)엔 ${esc(c.day)}요일 ${esc(c.time)}에 인지치료 배정이 있는데, 전체시간표(원본)의 요일칸에는 이 시간·요일에 “인지치료”로 되어있지 않아요.`
+    : isWeekday
+    ? `평일시간표(원본)엔 이 시간에 연하전기(ERDT) 배정이 있는데, 전체시간표(원본)의 ${(c.days&&c.days.length)?c.days.join('/')+'요일':'평일'} 칸에는 이 시간에 “연하전기”로 되어있지 않아요.`
+    : c.type==='rdt'
+    ? '토요일&공휴일 시간표엔 이 시간에 연하(RDT) 배정이 있는데, 전체시간표(원본)의 토요일란에는 이 시간에 “연하치료”로 되어있지 않아요.'
+    : c.type==='erdt'
+    ? '토요일&공휴일 시간표엔 이 시간에 연하전기(ERDT) 배정이 있는데, 전체시간표(원본)의 토요일란에는 이 시간에 “연하전기”로 되어있지 않아요.'
+    : '토요일&공휴일 시간표엔 이 시간에 배정이 있는데, 전체시간표(원본)의 토요일란에는 이 시간 기록이 없어요.';
+  else if(c.status==='rule') verdict=`이 환자는 “현황(회복기)” 명단에 없는(회복기가 아닌) 환자인데, 토요일에 ${c.type==='rdt'?'연하(RDT)':'작업(SOT)'} 치료 코드로 배정되어 있어요. 병원 규칙상 토요일엔 회복기 환자만 참여할 수 있고, 회복기가 아닌 환자는 전기치료만 가능합니다(연하도 불가).`;
+  else if(c.status==='mismatch'){
+    verdict = `전체시간표(원본) 전체에서 "${esc(c.name)}" 환자를 찾지 못했어요. 퇴원했거나 이름이 다르게 적혀있을 수 있어요.`;
+  }
+  let codeHtml='';
+  if(isCcrt){
+    codeHtml = `<div class="occ-title">인지치료(CCRT/BETTER/COMCOG 통합)</div><p style="color:var(--muted);font-size:12.5px">10F CCRT, 3F CCRT/BETTER/COMCOG 구역을 모두 합쳐서 보여줘요. 담당 치료사: ${esc(c.therapist||'-')}</p>`;
+  } else if(isWeekday){
+    codeHtml = `<div class="occ-title">연하전기(ERDT · 평일)</div><p style="color:var(--muted);font-size:12.5px">이 항목은 “평일시간표(원본)”의 ERDT(연하전기) 구역에 있는 배정이에요. 요일 표기가 없으면 월~금 중 하나라도 그 시간에 “연하전기”로 되어있으면 정상으로 봤어요.</p>`;
+  } else if(c.type==='rdt'){
+    codeHtml = `<div class="occ-title">2순위 확인: 연하(RDT)</div><p style="color:var(--muted);font-size:12.5px">R(연하)은 SM/ST 코드 비교 대상이 아니에요 — 대신 위에서 전체시간표(원본)에 “연하치료”로 되어있는지를 이미 확인했습니다.</p>`;
+  } else if(c.type==='erdt'){
+    codeHtml = `<div class="occ-title">연하전기(ERDT)</div><p style="color:var(--muted);font-size:12.5px">연하전기는 SM/ST 코드 비교 대상이 아니고, 회복기 여부와 상관없이 참여 가능한 항목이에요 — 위에서 전체시간표(원본)에 “연하전기”로 되어있는지를 이미 확인했습니다.</p>`;
+  } else if(c.code || c.weekdayCode){
+    codeHtml = `
+      <div class="occ-title">2순위 확인: 평일 · 토요일 코드(ST/SM) 비교</div>
+      <div class="compare-box">
+        <div class="cb ${!c.codeMismatch?'good':'bad'}"><div class="cbt">평일시간표(원본) 코드</div><div class="cbv">${esc(c.weekdayCode||'-')}</div></div>
+        <div class="cb ${!c.codeMismatch?'good':'bad'}"><div class="cbt">토요일 코드</div><div class="cbv">${esc(c.code||'-')}</div></div>
+      </div>
+      ${c.codeMismatch?'<div class="verdictbox">평일과 토요일의 치료 코드가 서로 달라요. (MSK 등 다른 코드는 비교 대상이 아니에요)</div>':''}
+    `;
+  }
+  document.getElementById('gridDetailBody').innerHTML = `
+    <table class="kv-table">
+      <tr><td>환자</td><td>${esc(c.name)}</td></tr>
+      <tr><td>시간</td><td>${esc(c.time)}</td></tr>
+      ${isWeekday?`<tr><td>요일</td><td>${(c.days&&c.days.length)?esc(c.days.join(', ')+'요일'):'표기 없음(평일 중 아무 요일)'}</td></tr>`:''}
+      ${isCcrt?`<tr><td>요일</td><td>${esc(c.day)}요일</td></tr>`:''}
+      <tr><td>${(isWeekday||isCcrt)?'담당 치료사':'담당(토요일)'}</td><td>${esc(c.therapist)}</td></tr>
+      <tr><td>상태</td><td><span style="${badgeCss};${statusStyle}">${esc(statusLabel)}</span>${c.duplicate?`<span style="${badgeCss};background:#f1e8fb;color:#6b2f8f">중복</span>`:''}</td></tr>
+    </table>
+    ${verdict?`<div class="verdictbox">${verdict}</div>`:''}
+    ${codeHtml}
+  `;
+  document.getElementById('gridDetailModal').classList.add('show');
+}
+function showGridCellDetail(c, floor, type){
+  const typeLabel = type==='mat' ? '매트' : '테이블';
+  const statusStyle = c.status==='ok'
+    ? 'background:var(--green-bg);color:var(--green)'
+    : c.status==='wrongloc' ? 'background:var(--loc-bg);color:var(--loc)'
+    : c.status==='mismatch' ? 'background:var(--count-bg);color:var(--count)'
+    : 'background:var(--record-bg);color:var(--record)';
+  const statusLabel = {ok:'정상', wrongloc:'위치 불일치', mismatch:'이름 불일치', missing:'기록 없음'}[c.status] || c.status;
+  const badgeCss='font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;margin-right:6px;display:inline-block';
+  document.getElementById('gridDetailBody').innerHTML = `
+    <table class="kv-table">
+      <tr><td>환자</td><td>${esc(c.name)}</td></tr>
+      <tr><td>위치</td><td>${floor}F ${typeLabel} · ${esc(c.loc)}</td></tr>
+      <tr><td>시간</td><td>${esc(c.time)}</td></tr>
+      <tr><td>상태</td><td>
+        <span style="${badgeCss};${statusStyle}">${esc(statusLabel)}</span>
+        ${c.duplicate?`<span style="${badgeCss};background:#f1e8fb;color:#6b2f8f">중복</span>`:''}
+      </td></tr>
+    </table>
+    <div class="occ-title">근거</div>
+    ${gridCellVerdictHtml(c)}
+  `;
+  document.getElementById('gridDetailModal').classList.add('show');
+}
+document.getElementById('gridDetailClose').addEventListener('click', ()=> document.getElementById('gridDetailModal').classList.remove('show'));
+document.getElementById('gridDetailModal').addEventListener('click', e=>{ if(e.target.id==='gridDetailModal') e.currentTarget.classList.remove('show'); });
+document.getElementById('displayModeSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#displayModeSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const mode=btn.dataset.mode;
+  document.getElementById('filterbarWrap').style.display = mode==='list' ? 'flex' : 'none';
+  document.getElementById('mainSplitWrap').style.display = mode==='list' ? 'grid' : 'none';
+  document.getElementById('gridPreviewPanel').style.display = mode==='preview' ? 'block' : 'none';
+  if(mode==='preview') renderGridPreview();
+});
+
+/* ======================================================================
+   실행 버튼 / 진행상태
+   ====================================================================== */
+let running=false;
+async function handleRun(){
+  if(running) return;
+  running=true;
+  const btn=document.getElementById('btnRun'), btnRerun=document.getElementById('btnRerun');
+  if(btn){ btn.disabled=true; btn.textContent='검증 중…'; }
+  if(btnRerun){ btnRerun.disabled=true; }
+  try{
+    const {stats, floorCount} = await runAllVerifications();
+    renderDashboard(stats, floorCount);
+    document.getElementById('resultEmpty').style.display='none';
+    document.getElementById('resultBody').style.display='block';
+    document.getElementById('mainArea').style.display='block';
+    currentCat='all'; currentFloor='all'; currentField='all'; currentSource='all'; currentHSource='all'; currentPage=1; selectedIssueId=null;
+    document.querySelectorAll('#catSeg button').forEach(b=>b.classList.toggle('active', b.dataset.cat==='all'));
+    document.getElementById('fieldSeg').style.display='none';
+    document.getElementById('locSourceSeg').style.display='none';
+    document.getElementById('handoverSourceSeg').style.display='none';
+    document.querySelectorAll('.floor-row2').forEach(el=>el.classList.toggle('active', el.dataset.floor==='all'));
+    applyFilters();
+  }catch(err){
+    alert('검증 중 오류가 발생했습니다: '+err.message);
+    console.error(err);
+  }
+  running=false;
+  if(btn){ btn.disabled=false; btn.textContent='전체 교차검증 실행'; }
+  if(btnRerun){ btnRerun.disabled=false; }
+}
+document.getElementById('btnRun').addEventListener('click', handleRun);
+document.getElementById('btnRerun').addEventListener('click', handleRun);
+
+function renderDashboard(stats, floorCount){
+  const total = stats.countChecked+stats.locChecked+stats.therChecked+stats.handoverChecked+stats.evalChecked;
+  const problems = stats.countProblems+stats.locProblems+stats.therProblems+stats.handoverProblems+stats.evalProblems;
+  const ok = total-problems;
+  const pct = total? Math.round((ok/total)*1000)/10 : 100;
+  document.getElementById('donut').style.setProperty('--pct', pct);
+  document.getElementById('pctText').textContent = pct+'%';
+  document.getElementById('numTotal').textContent = total.toLocaleString();
+  document.getElementById('numOk').textContent = ok.toLocaleString();
+  document.getElementById('numProblem').textContent = problems.toLocaleString();
+  document.getElementById('chipCount').textContent = stats.countProblems;
+  const fieldNamesKo={sot:'SOT',rdt:'RDT',erdt:'ERDT',ccrt:'CCRT',lang:'언어',discharge:'퇴원오류'};
+  const fieldCounts={sot:0,rdt:0,erdt:0,ccrt:0,lang:0,discharge:0};
+  issues.filter(i=>i.category==='count').forEach(i=>{ if(fieldCounts[i.field]!=null) fieldCounts[i.field]++; });
+  document.getElementById('chipCountBreak').innerHTML = ['sot','rdt','erdt','ccrt','lang','discharge']
+    .map(k=>`<span>${fieldNamesKo[k]} ${fieldCounts[k]}</span>`).join('');
+  document.querySelectorAll('#fieldSeg button').forEach(b=>{
+    const f=b.dataset.field;
+    b.textContent = f==='all' ? `전체 ${stats.countProblems}` : `${fieldNamesKo[f]} ${fieldCounts[f]}`;
+  });
+  document.getElementById('chipLoc').textContent = stats.locProblems;
+  const locCounts={grid:0, schedule:0, saturday:0};
+  issues.filter(i=>i.category==='location').forEach(i=>{ if(locCounts[i.source]!=null) locCounts[i.source]++; });
+  document.getElementById('chipLocBreak').innerHTML = `<span>매트/테이블 ${locCounts.grid}</span><span>평일시간표 ${locCounts.schedule}</span><span>토요일 ${locCounts.saturday}</span>`;
+  const locSourceLabel={grid:'매트/테이블현황 대조', schedule:'평일시간표(원본) 대조', saturday:'토요일&공휴일 시간표 대조'};
+  document.querySelectorAll('#locSourceSeg button').forEach(b=>{
+    const s=b.dataset.source;
+    b.textContent = s==='all' ? `전체 ${stats.locProblems}` : `${locSourceLabel[s]} ${locCounts[s]}`;
+  });
+  document.getElementById('chipTher').textContent = stats.therProblems;
+  document.getElementById('chipHandover').textContent = stats.handoverProblems;
+  const handoverCounts={therapist:0, doctor:0, orphan:0, excess:0};
+  issues.filter(i=>i.category==='handover').forEach(i=>{ if(handoverCounts[i.source]!=null) handoverCounts[i.source]++; });
+  document.getElementById('chipHandoverBreak').innerHTML = `<span>담당 치료사 ${handoverCounts.therapist}</span><span>주치의 ${handoverCounts.doctor}</span><span>근거 없음 ${handoverCounts.orphan}</span><span>작성자 수 초과 ${handoverCounts.excess}</span>`;
+  const handoverSourceLabel={therapist:'담당 치료사', doctor:'주치의', orphan:'근거 없음', excess:'작성자 수 초과'};
+  document.querySelectorAll('#handoverSourceSeg button').forEach(b=>{
+    const s=b.dataset.hsource;
+    b.textContent = s==='all' ? `전체 ${stats.handoverProblems}` : `${handoverSourceLabel[s]} ${handoverCounts[s]}`;
+  });
+  document.getElementById('chipEval').textContent = stats.evalProblems;
+
+  const f10=(floorCount[10]||0), f3=(floorCount[3]||0), fAll=f10+f3;
+  document.getElementById('floorAllNum').textContent=fAll+'건';
+  document.getElementById('floorAllNum').className='fl-num '+(fAll?'some':'zero');
+  document.getElementById('floor10Num').textContent=f10+'건';
+  document.getElementById('floor10Num').className='fl-num '+(f10?'some':'zero');
+  document.getElementById('floor3Num').textContent=f3+'건';
+  document.getElementById('floor3Num').className='fl-num '+(f3?'some':'zero');
+  window.__lastStats = stats;
+}
+
+/* ======================================================================
+   필터 / 정렬 / 검색 / 목록 렌더링
+   ====================================================================== */
+document.getElementById('catSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#catSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentCat=btn.dataset.cat; currentField='all'; currentSource='all'; currentHSource='all'; currentPage=1;
+  document.getElementById('fieldSeg').style.display = currentCat==='count' ? 'flex' : 'none';
+  document.getElementById('locSourceSeg').style.display = currentCat==='location' ? 'flex' : 'none';
+  document.getElementById('handoverSourceSeg').style.display = currentCat==='handover' ? 'flex' : 'none';
+  document.querySelectorAll('#fieldSeg button').forEach(b=>b.classList.toggle('active', b.dataset.field==='all'));
+  document.querySelectorAll('#locSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.source==='all'));
+  document.querySelectorAll('#handoverSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.hsource==='all'));
+  applyFilters();
+});
+document.getElementById('fieldSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#fieldSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentField=btn.dataset.field; currentPage=1; applyFilters();
+});
+document.getElementById('locSourceSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#locSourceSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentSource=btn.dataset.source; currentPage=1; applyFilters();
+});
+document.getElementById('handoverSourceSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#handoverSourceSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentHSource=btn.dataset.hsource; currentPage=1; applyFilters();
+});
+document.getElementById('viewSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentView=btn.dataset.view; currentPage=1; applyFilters();
+});
+document.getElementById('floorList').addEventListener('click', e=>{
+  const row=e.target.closest('.floor-row2'); if(!row) return;
+  document.querySelectorAll('.floor-row2').forEach(el=>el.classList.remove('active'));
+  row.classList.add('active'); currentFloor=row.dataset.floor; currentPage=1; applyFilters();
+});
+document.querySelectorAll('.cat-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    currentCat=chip.dataset.cat; currentField='all'; currentSource='all'; currentHSource='all'; currentPage=1;
+    document.querySelectorAll('#catSeg button').forEach(b=>b.classList.toggle('active', b.dataset.cat===currentCat));
+    document.getElementById('fieldSeg').style.display = currentCat==='count' ? 'flex' : 'none';
+    document.getElementById('locSourceSeg').style.display = currentCat==='location' ? 'flex' : 'none';
+    document.getElementById('handoverSourceSeg').style.display = currentCat==='handover' ? 'flex' : 'none';
+    document.querySelectorAll('#fieldSeg button').forEach(b=>b.classList.toggle('active', b.dataset.field==='all'));
+    document.querySelectorAll('#locSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.source==='all'));
+    document.querySelectorAll('#handoverSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.hsource==='all'));
+    applyFilters();
+  });
+});
+document.getElementById('searchInput').addEventListener('input', ()=>{ currentPage=1; applyFilters(); });
+document.getElementById('sortSelect').addEventListener('change', ()=>{ applyFilters(); });
+
+const CAT_RANK={count:0, location:1, therapist:2, handover:3, eval:4};
+function sortIssues(list, mode){
+  const arr=[...list];
+  if(mode==='name') arr.sort((a,b)=> a.patient.localeCompare(b.patient,'ko') || CAT_RANK[a.category]-CAT_RANK[b.category]);
+  else if(mode==='time') arr.sort((a,b)=> (a.time||'99:99').localeCompare(b.time||'99:99') || CAT_RANK[a.category]-CAT_RANK[b.category]);
+  else arr.sort((a,b)=> CAT_RANK[a.category]-CAT_RANK[b.category] || b.severityRank-a.severityRank || a.patient.localeCompare(b.patient,'ko'));
+  return arr;
+}
+function applyFilters(){
+  let list=issues;
+  if(currentCat!=='all') list=list.filter(i=>i.category===currentCat);
+  if(currentCat==='count' && currentField!=='all') list=list.filter(i=>i.field===currentField);
+  if(currentCat==='location' && currentSource!=='all') list=list.filter(i=>i.source===currentSource);
+  if(currentCat==='handover' && currentHSource!=='all') list=list.filter(i=>i.source===currentHSource);
+  if(currentFloor!=='all') list=list.filter(i=>String(i.floor)===currentFloor);
+  const q=normKey(document.getElementById('searchInput').value.trim());
+  if(q) list=list.filter(i=>i.searchText.includes(q));
+  list=sortIssues(list, document.getElementById('sortSelect').value);
+  filteredIssues=list;
+  document.getElementById('listCount').textContent = `전체 ${list.length}건`;
+  renderList();
+}
+function renderList(){
+  const box=document.getElementById('issueList');
+  const pager=document.getElementById('pager');
+  if(!filteredIssues.length){
+    box.innerHTML = issues.length
+      ? `<div class="empty-ok"><div class="big">🔍</div><h4>조건에 맞는 문제가 없습니다</h4><p>필터나 검색어를 조정해 보세요.</p></div>`
+      : `<div class="empty-ok"><div class="big">✅</div><h4>모든 검증 완료</h4><p>확인이 필요한 항목이 없습니다.<br>현재 데이터에서 개수 · 위치 · 치료사 매칭이<br>모두 정상입니다.</p></div>`;
+    pager.innerHTML='';
+    return;
+  }
+  if(currentView==='patient'){
+    // 환자별 보기도 목록형과 똑같이 페이지를 나눈다 — 안 그러면 명단이 길어질 때
+    // 전체 화면이 같이 밀려 내려가서 오른쪽 상세 패널이 안 보이게 된다.
+    const groups=buildPatientGroups(filteredIssues);
+    const totalPages=Math.max(1, Math.ceil(groups.length/PAGE_SIZE_PATIENT));
+    if(currentPage>totalPages) currentPage=totalPages;
+    const start=(currentPage-1)*PAGE_SIZE_PATIENT;
+    const pageGroups=groups.slice(start, start+PAGE_SIZE_PATIENT);
+    box.innerHTML = renderPatientGroupsHtml(pageGroups);
+    renderPager(totalPages);
+    return;
+  }
+
+  const totalPages=Math.max(1, Math.ceil(filteredIssues.length/PAGE_SIZE));
+  if(currentPage>totalPages) currentPage=totalPages;
+  const start=(currentPage-1)*PAGE_SIZE;
+  const pageItems=filteredIssues.slice(start, start+PAGE_SIZE);
+  box.innerHTML = pageItems.map(issueCardHtml).join('');
+  renderPager(totalPages);
+}
+const LOC_VERDICT = {
+  mismatch:       {label:'이름 불일치', cls:'vname'},
+  missing:        {label:'기록 없음',   cls:'vrecord'},
+  sched_mismatch: {label:'위치 불일치', cls:'vloc'},
+  sched_missing:  {label:'기록 없음',   cls:'vrecord'},
+  sat_missing:    {label:'기록 없음',   cls:'vrecord'},
+  sat_rule:       {label:'규칙 위반',   cls:'vname'},
+};
+function locVerdictOf(issue){ return LOC_VERDICT[issue.detail && issue.detail.kind] || null; }
+const HANDOVER_VERDICT={
+  therapist: {label:'치료사 다름', cls:'handover', cvar:'--handover'},
+  doctor:    {label:'주치의 다름', cls:'hdoctor',  cvar:'--loc'},
+  orphan:    {label:'근거 없음',   cls:'horphan',  cvar:'--record'},
+  excess:    {label:'작성자 초과', cls:'hexcess',  cvar:'--excess'},
+};
+function handoverVerdictOf(issue){ return HANDOVER_VERDICT[issue.source] || null; }
+function catColorVar(cat, issue){
+  if(cat==='location' && issue){ const v=locVerdictOf(issue); if(v) return v.cls==='vname'?'--count':v.cls==='vrecord'?'--record':'--loc'; }
+  if(cat==='handover' && issue){ const v=handoverVerdictOf(issue); if(v) return v.cvar; }
+  return cat==='count'?'--count':cat==='location'?'--loc':cat==='handover'?'--handover':cat==='eval'?'--eval':'--ther';
+}
+const EVAL_BADGE_LABEL={missing:'평가메인 누락', extra:'평가메인 초과'};
+function cardBadgeText(i){
+  if(i.category==='location'){ const v=locVerdictOf(i); if(v) return v.label; }
+  if(i.category==='handover'){ const v=handoverVerdictOf(i); if(v) return v.label; }
+  if(i.category==='eval') return EVAL_BADGE_LABEL[i.source] || i.title;
+  return i.title;
+}
+function excessRow2Html(d){
+  const extraSet = new Set((d.extra||[]).map(n=>normKey(n)));
+  const writersHtml = d.writers.map(w=> extraSet.has(normKey(w)) ? `<b class="bad">${esc(w)}</b>` : esc(w)).join(', ');
+  const realHtml = d.realTherapists.length ? d.realTherapists.map(esc).join(', ') : '(없음)';
+  return `작성자: ${writersHtml}\n실제 배정: ${realHtml}`;
+}
+function issueCardHtml(i){
+  const sel = i.id===selectedIssueId ? ' selected' : '';
+  const v = i.category==='location' ? locVerdictOf(i) : i.category==='handover' ? handoverVerdictOf(i) : null;
+  const tagCls = v ? v.cls : i.category;
+  const tagText = cardBadgeText(i);
+  const row2 = (i.detail && i.detail.kind==='handover_excess') ? excessRow2Html(i.detail) : esc(i.line);
+  return `<div class="issuecard${sel}" data-id="${i.id}">
+    <div class="row1">
+      <span class="sevdot" style="background:var(${catColorVar(i.category, i)})"></span>
+      <span class="pname" title="${esc(i.patient)}">${esc(i.patient)}</span>
+      <span class="proom">${esc(i.room||'')}</span>
+      <span class="cattag ${tagCls}">${esc(tagText)}</span>
+    </div>
+    <div class="row2">${row2}</div>
+    <div class="row3"><span class="time">${i.floor?i.floor+'F':''} ${esc(i.time||'')}</span><span class="arrow">›</span></div>
+  </div>`;
+}
+function renderPager(totalPages){
+  const pager=document.getElementById('pager');
+  if(totalPages<=1){ pager.innerHTML=''; return; }
+  let html=`<button ${currentPage===1?'disabled':''} data-p="${currentPage-1}">‹</button>`;
+  for(let p=1;p<=totalPages;p++){
+    if(totalPages>7 && Math.abs(p-currentPage)>2 && p!==1 && p!==totalPages){
+      if(p===2||p===totalPages-1) html+=`<span style="padding:0 4px;color:#a9b6c9">…</span>`;
+      continue;
+    }
+    html+=`<button class="${p===currentPage?'active':''}" data-p="${p}">${p}</button>`;
+  }
+  html+=`<button ${currentPage===totalPages?'disabled':''} data-p="${currentPage+1}">›</button>`;
+  pager.innerHTML=html;
+}
+document.getElementById('pager').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn||btn.disabled) return;
+  currentPage=parseInt(btn.dataset.p,10); renderList();
+});
+document.getElementById('issueList').addEventListener('click', e=>{
+  const card=e.target.closest('.issuecard'); if(card){ openDetail(card.dataset.id); return; }
+  const sub=e.target.closest('.sub-issue'); if(sub){ openDetail(sub.dataset.id); return; }
+});
+
+function buildPatientGroups(list){
+  const groups=new Map();
+  for(const i of list){
+    const key=i.patient+'|'+(i.room||'');
+    if(!groups.has(key)) groups.set(key, {patient:i.patient, room:i.room, items:[]});
+    groups.get(key).items.push(i);
+  }
+  return [...groups.values()].sort((a,b)=> b.items.length-a.items.length || a.patient.localeCompare(b.patient,'ko'));
+}
+function renderPatientGroupsHtml(arr){
+  return arr.map(g=>`
+    <div class="pgroup">
+      <div class="pgroup-head"><b>${esc(g.patient)}</b><span class="proom">${esc(g.room||'')}</span><span class="pgcount">🔴 ${g.items.length}건</span></div>
+      ${g.items.map(i=>`<div class="sub-issue ${i.category}" data-id="${i.id}"><b>${esc(i.title)}</b><br>${(i.detail && i.detail.kind==='handover_excess') ? excessRow2Html(i.detail) : esc(i.line)}</div>`).join('')}
+    </div>`).join('');
+}
+
+/* ======================================================================
+   상세 패널
+   ====================================================================== */
+function openDetail(id){
+  selectedIssueId=id;
+  document.querySelectorAll('.issuecard').forEach(el=>el.classList.toggle('selected', el.dataset.id===id));
+  renderDetail();
+}
+function closeDetail(){
+  selectedIssueId=null;
+  document.querySelectorAll('.issuecard').forEach(el=>el.classList.remove('selected'));
+  document.getElementById('detailPanel').innerHTML = `<div class="detail-empty"><div class="big">👈</div>왼쪽 목록에서 문제를 선택하면<br>여기에 상세 내용이 표시됩니다.</div>`;
+}
+function evidenceCardsHtml(leftLabel, leftVal, rightLabel, rightVal, rightEmpty){
+  return `<div class="evidence-cards">
+    <div class="ev-card filled"><div class="ev-label">${esc(leftLabel)}</div><div class="ev-name">${esc(leftVal)}</div></div>
+    <div class="ev-arrow">≠</div>
+    <div class="ev-card ${rightEmpty?'empty':'filled'}">
+      <div class="ev-label">${esc(rightLabel)}</div>
+      ${rightEmpty?`<div class="ev-icon">❓</div><div class="ev-name muted">${esc(rightVal)}</div>`:`<div class="ev-name">${esc(rightVal)}</div>`}
+    </div>
+  </div>`;
+}
+function dayTimelineHtml(dayEntries, highlightTime, title){
+  if(!dayEntries || !dayEntries.length){
+    return `<div class="occ-title">${esc(title)}</div><p style="color:var(--muted);font-size:12.5px">전체시간표(원본)에서 이 환자의 카드 자체를 찾지 못했습니다.</p>`;
+  }
+  const sorted=[...dayEntries].sort((a,b)=>a.time.localeCompare(b.time));
+  const chips = sorted.map(e=>`<div class="tl-chip${e.time===highlightTime?' hl':''}"><span class="tl-time">${esc(e.time)}</span><span class="tl-loc">${esc(e.loc)}</span></div>`).join('');
+  return `<div class="occ-title">${esc(title)}</div><div class="timeline-row">${chips}</div>`;
+}
+function renderDetail(){
+  const panel=document.getElementById('detailPanel');
+  const issue=issues.find(i=>i.id===selectedIssueId);
+  if(!issue){ closeDetail(); return; }
+  const idxInFiltered=filteredIssues.findIndex(i=>i.id===issue.id);
+  const posText = idxInFiltered>=0 ? `${idxInFiltered+1} / ${filteredIssues.length}` : '';
+
+  let bodyHtml='';
+  if(issue.detail.kind==='count' && issue.detail.source==='outpatient'){
+    const d=issue.detail;
+    const found = d.actual==='외래 카드에 있음';
+    bodyHtml = `
+      ${evidenceCardsHtml('현황(작업치료현황)', `${esc(d.field)} ${d.expected}회`, '외래 카드(전체시간표)', d.hasCard ? d.actual : '카드를 찾지 못함', !d.hasCard)}
+      <table class="kv-table">
+        <tr><td>항목</td><td>${esc(d.field)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+        <tr><td>담당 치료사</td><td>${esc(d.therapist||'-')}</td></tr>
+        <tr><td>위치</td><td>${esc((d.dayEntries||[]).map(e=>e.loc).find(Boolean) || '-')}</td></tr>
+      </table>
+      <div class="verdictbox">${d.hasCard ? (found ? `현황(회복기)엔 ${esc(d.field)}가 없는데, 전체시간표(원본)의 외래 카드엔 ${esc(d.field)} 일정이 있어요.` : `현황(회복기)엔 ${esc(d.field)} ${d.expected}회로 되어있는데, 전체시간표(원본)의 외래 카드 요일칸에선 ${esc(d.field)}를 찾지 못했어요.`) : `전체시간표(원본)의 "외래" 시트에서 이 환자의 카드 자체를 찾지 못했어요.`}</div>
+      ${d.dayEntries && d.dayEntries.length ? `<div class="occ-title">외래 카드 · ${esc(d.field)} 요일 · ${d.dayEntries.length}건</div>
+      <div class="timeline-row">${d.dayEntries.map(e=>`<div class="tl-chip"><span class="tl-time">${esc(e.day)}요일</span><span class="tl-loc">${esc(e.time)}${e.loc?' · '+esc(e.loc):''}</span></div>`).join('')}</div>` : ''}
+    `;
+  } else if(issue.detail.kind==='count'){
+    const d=issue.detail;
+    const actualLabel = d.source==='card' ? '실제 (전체시간표(원본))' : '실제 (평일시간표(원본))';
+    const occTitle = d.source==='card' ? '전체시간표(원본) 상세' : '평일시간표(원본) 상세';
+    bodyHtml = `
+      <div class="diffbox">
+        <div class="db"><div class="lbl">현황 (작업치료현황)</div><div class="val">${d.expected}회</div></div>
+        <div class="op">−</div>
+        <div class="db"><div class="lbl">${actualLabel}</div><div class="val">${d.actual}회</div></div>
+        <div class="op">=</div>
+        <div class="db diff"><div class="lbl">차이</div><div class="val">${d.diff>0?'+':''}${d.diff}회</div></div>
+      </div>
+      <table class="kv-table">
+        <tr><td>항목</td><td>${esc(d.field)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+        <tr><td>비고</td><td>현황과 실제 시간표의 횟수가 다릅니다.</td></tr>
+      </table>
+      ${d.occurrences.length? `<div class="occ-title">${occTitle} · ${d.occurrences.length}건</div>
+      <table class="occ-table"><thead><tr><th>시간</th><th>치료사</th><th>비고</th></tr></thead><tbody>
+        ${d.occurrences.map(o=>`<tr><td>${esc(o.time)}</td><td>${esc(o.therapist)}</td><td>${esc(o.extra||'')}</td></tr>`).join('')}
+      </tbody></table>` : `<div class="occ-title">시간표 상세</div><p style="color:var(--muted);font-size:12.5px">실제 시간표에서 해당 항목 기록을 찾지 못했습니다.</p>`}
+    `;
+  } else if(issue.detail.kind==='mismatch'){
+    const d=issue.detail;
+    bodyHtml = `
+      ${evidenceCardsHtml('전체시간표(원본)', d.patient, '매트/테이블 현황', d.gridNames, false)}
+      <table class="kv-table">
+        <tr><td>시간</td><td>${esc(d.time)}</td></tr>
+        <tr><td>위치</td><td>${esc(d.loc)} (${d.floor}F)</td></tr>
+      </table>
+      <div class="verdictbox">매트/테이블 현황의 이 시간·자리엔 “${esc(d.gridNames)}”로 적혀있지만, 전체시간표(원본)엔 “${esc(d.patient)}”로 되어있어요.</div>
+      ${dayTimelineHtml(d.dayEntries, d.time, `${esc(d.patient)} 님의 전체시간표(원본) 하루 일정`)}
+    `;
+  } else if(issue.detail.kind==='missing'){
+    const d=issue.detail;
+    bodyHtml = `
+      ${evidenceCardsHtml('매트/테이블 현황', d.patient, '전체시간표(원본)', '기록 없음', true)}
+      <table class="kv-table">
+        <tr><td>시간</td><td>${esc(d.time)}</td></tr>
+        <tr><td>위치</td><td>${esc(d.loc)} (${d.floor}F)</td></tr>
+      </table>
+      <div class="verdictbox">매트/테이블 현황엔 “${esc(d.patient)}”로 적혀있지만, 전체시간표(원본)엔 이 시간·자리 기록이 없어요.</div>
+      ${dayTimelineHtml(d.dayEntries, d.time, `${esc(d.patient)} 님의 전체시간표(원본) 하루 일정`)}
+    `;
+  } else if(issue.detail.kind==='sched_mismatch'){
+    const d=issue.detail;
+    const srcLabel = d.sourceLabel || '평일시간표(원본)';
+    bodyHtml = `
+      ${evidenceCardsHtml(srcLabel, d.scheduleLoc, '전체시간표(원본)', d.cardLoc, false)}
+      <table class="kv-table">
+        <tr><td>시간</td><td>${esc(d.time)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+      </table>
+      <div class="verdictbox">${esc(srcLabel)}엔 위치가 “${esc(d.scheduleLoc)}”인데, 전체시간표(원본)엔 “${esc(d.cardLoc)}”로 되어있어요.</div>
+      ${dayTimelineHtml(d.dayEntries, d.time, `${esc(d.patient)} 님의 전체시간표(원본) 하루 일정`)}
+    `;
+  } else if(issue.detail.kind==='sched_missing'){
+    const d=issue.detail;
+    const srcLabel = d.sourceLabel || '평일시간표(원본)';
+    bodyHtml = `
+      ${evidenceCardsHtml(srcLabel, d.loc, '전체시간표(원본)', '기록 없음', true)}
+      <table class="kv-table">
+        <tr><td>시간</td><td>${esc(d.time)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+      </table>
+      <div class="verdictbox">${esc(srcLabel)}엔 이 시간에 “${esc(d.loc)}”로 배정이 있는데, 전체시간표(원본)엔 이 시간 기록이 없어요.</div>
+      ${dayTimelineHtml(d.dayEntries, d.time, `${esc(d.patient)} 님의 전체시간표(원본) 하루 일정`)}
+    `;
+  } else if(issue.detail.kind==='sat_missing'){
+    const d=issue.detail;
+    bodyHtml = `
+      ${evidenceCardsHtml('토요일&공휴일 시간표', d.patient, '전체시간표(원본)', '기록 없음', true)}
+      <table class="kv-table">
+        <tr><td>시간</td><td>${esc(d.time)}</td></tr>
+        <tr><td>담당 치료사</td><td>${esc(d.therapist)}</td></tr>
+      </table>
+      <div class="verdictbox">토요일&공휴일 시간표엔 이 시간에 배정이 있는데, 전체시간표(원본) 전체에서 “${esc(d.patient)}” 환자 카드를 찾지 못했어요. 퇴원했거나 이름이 다르게 적혀있을 수 있어요.</div>
+    `;
+  } else if(issue.detail.kind==='sat_rule'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>시간</td><td>${esc(d.time)}</td></tr>
+        <tr><td>담당 치료사</td><td>${esc(d.therapist)}</td></tr>
+        <tr><td>코드</td><td>${esc(d.code||'-')}</td></tr>
+      </table>
+      <div class="verdictbox">이 환자는 “현황(회복기)” 명단에 없는(회복기가 아닌) 환자인데, 토요일에 ${d.type==='rdt'?'연하(RDT)':'작업(SOT)'} 치료(${esc(d.code||'-')}) 코드로 배정되어 있어요. 병원 규칙상 토요일엔 회복기 환자만 참여할 수 있고, 회복기가 아닌 환자는 전기치료만 가능합니다(연하도 불가).</div>
+    `;
+  } else if(issue.detail.kind==='therapist'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>구분</td><td>${esc(d.kindLabel)}</td></tr>
+        ${d.day?`<tr><td>요일</td><td>${esc(d.day)}요일</td></tr>`:''}
+        <tr><td>시간</td><td>${esc(d.time)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+      </table>
+      <div class="compare-box">
+        <div class="cb bad"><div class="cbt">평일시간표(원본) 치료사</div><div class="cbv">${esc(d.origin)}</div></div>
+        <div class="cb good"><div class="cbt">전체시간표(원본) 담당 치료사</div><div class="cbv">${esc(d.expected)}</div></div>
+      </div>
+      <div class="verdictbox">판정: 전체시간표(원본)의 담당 치료사와 평일시간표(원본)에 배정된 치료사 이름이 다릅니다.</div>
+    `;
+  } else if(issue.detail.kind==='handover_therapist'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>구분</td><td>${esc(d.type)}</td></tr>
+      </table>
+      <div class="compare-box">
+        <div class="cb bad"><div class="cbt">인수인계 담당 치료사</div><div class="cbv">${esc(d.handoverTherapist)}</div></div>
+        <div class="cb good"><div class="cbt">평일시간표(원본) 치료사</div><div class="cbv">${esc(d.schedTherapists)}</div></div>
+      </div>
+      <div class="verdictbox">판정: OT 인수인계에 적힌 담당 치료사와 평일시간표(원본)에 배정된 치료사가 달라요.</div>
+    `;
+  } else if(issue.detail.kind==='handover_orphan'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>구분</td><td>${esc(d.type)}</td></tr>
+        <tr><td>인수인계 담당</td><td>${esc(d.handoverTherapist)}</td></tr>
+      </table>
+      <div class="verdictbox">판정: 평일시간표(원본)에 이 환자·이 종류(${esc(d.type)}) 배정이 없고, 전체시간표(원본)에도 ${d.hasCard?'이 환자 카드는 있지만 이 치료 종류의 담당자가 아예 적혀있지 않아요':'이 환자 자체가 없어요'}. 인수인계서만 혼자 작성돼 있는 상태라 실제 담당 치료사가 아닌 사람이 적었을 가능성이 있어요.</div>
+    `;
+  } else if(issue.detail.kind==='handover_excess'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>구분</td><td>${esc(d.type)}</td></tr>
+        <tr><td>인수인계 작성자 수</td><td>${d.writerCount}명</td></tr>
+        <tr><td>실제 배정 인원 수</td><td>${d.realCount}명</td></tr>
+      </table>
+      <div class="compare-box">
+        <div class="cb bad"><div class="cbt">인수인계 작성자 전체</div><div class="cbv" style="font-size:13px">${(()=>{const ex=new Set((d.extra||[]).map(n=>normKey(n)));return d.writers.map(w=>ex.has(normKey(w))?`<b style="color:var(--count)">${esc(w)}</b>`:esc(w)).join(', ');})()}</div></div>
+        <div class="cb good"><div class="cbt">평일시간표(원본) 실제 배정</div><div class="cbv" style="font-size:13px">${d.realTherapists.length?esc(d.realTherapists.join(', ')):'(없음)'}</div></div>
+      </div>
+      <div class="verdictbox">판정: 이 환자의 이 치료(${esc(d.type)})에 인수인계서를 작성한 사람이 ${d.writerCount}명인데, 실제 평일시간표(원본)에 배정된 사람은 ${d.realCount}명뿐이에요. ${d.extra&&d.extra.length?`특히 <b>${esc(d.extra.join(', '))}</b>은(는) 실제 배정 목록에 없는데 인수인계를 작성했어요.`:''}</div>
+    `;
+  } else if(issue.detail.kind==='handover_doctor'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+      </table>
+      <div class="compare-box">
+        <div class="cb bad"><div class="cbt">인수인계 주치의</div><div class="cbv">${esc(d.handoverDoctor)}</div></div>
+        <div class="cb good"><div class="cbt">전체시간표(원본) 주치의</div><div class="cbv">${esc(d.cardDoctor)}</div></div>
+      </div>
+      <div class="verdictbox">판정: OT 인수인계에 적힌 주치의와 전체시간표(원본) 카드의 주치의가 달라요.</div>
+    `;
+  } else if(issue.detail.kind==='eval_missing'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+      </table>
+      <div class="verdictbox">판정: 평일시간표(원본)에는 이 환자가 볼드체로 표시돼 있는데, "평가메인" 시트에는 이 환자 이름이 없어요. 평가메인 시트를 업데이트하지 않았을 수 있어요.</div>
+    `;
+  } else if(issue.detail.kind==='eval_extra'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+      </table>
+      <div class="verdictbox">판정: "평가메인" 시트에는 이 환자가 있는데, 평일시간표(원본)에는 이 환자가 볼드체로 표시돼 있지 않아요. 평일시간표(원본)에 볼드 표시를 빠뜨렸거나, 평가메인 시트에서 이 환자를 빼야 할 수 있어요.</div>
+    `;
+  } else if(issue.detail.kind==='discharge_notmarked'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+      </table>
+      <div class="verdictbox">판정: 현황(회복기) 시트엔 이 환자가 활성(입원 중) 환자로 남아있는데, 전체시간표(원본) 전체에서 이 환자 카드를 찾지 못했어요. 실제로는 퇴원했는데 현황 시트에서 퇴원 처리를 안 했을 가능성이 있어요.</div>
+    `;
+  } else if(issue.detail.kind==='discharge_stillactive'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+      </table>
+      <div class="verdictbox">판정: 현황(회복기) 시트엔 이 환자가 퇴원으로 표시돼 있는데, 전체시간표(원본)엔 이 환자 카드가 아직 남아있어요. 전체시간표(원본)에서 카드를 정리하지 않았을 가능성이 있어요.</div>
+    `;
+  } else if(issue.detail.kind==='ccrt_issue'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>요일</td><td>${esc(d.day)}요일</td></tr>
+        <tr><td>시간</td><td>${esc(d.time)}</td></tr>
+        <tr><td>담당 치료사</td><td>${esc(d.therapist||'-')}</td></tr>
+      </table>
+      <div class="verdictbox">판정: ${esc(d.verdict)}</div>
+    `;
+  }
+
+  const headV = issue.category==='location' ? locVerdictOf(issue) : issue.category==='handover' ? handoverVerdictOf(issue) : null;
+  const headTagCls = headV ? headV.cls : issue.category;
+  const headTagText = headV ? headV.label : issue.title;
+  panel.innerHTML = `
+    <button class="dclose" id="dCloseBtn">✕</button>
+    <div class="dhead">
+      <span class="dname">${esc(issue.patient)}</span>
+      <span class="droom">${esc(issue.room||'')}</span>
+      <span class="dtag ${headTagCls}">${headTagText}</span>
+    </div>
+    <div class="dsub">${issue.floor?issue.floor+'F · ':''}${esc(issue.line)}</div>
+    ${bodyHtml}
+    <div class="dnav">
+      <button class="btn sm" id="dPrev">← 이전 문제</button>
+      <span class="pos">${posText}</span>
+      <button class="btn sm" id="dNext">다음 문제 →</button>
+    </div>
+  `;
+  document.getElementById('dCloseBtn').addEventListener('click', closeDetail);
+  document.getElementById('dPrev').addEventListener('click', ()=> stepDetail(-1));
+  document.getElementById('dNext').addEventListener('click', ()=> stepDetail(1));
+}
+function stepDetail(dir){
+  if(!filteredIssues.length) return;
+  let idx=filteredIssues.findIndex(i=>i.id===selectedIssueId);
+  if(idx<0) idx=0; else idx=(idx+dir+filteredIssues.length)%filteredIssues.length;
+  const target=filteredIssues[idx];
+  const neededPage=Math.floor(idx/PAGE_SIZE)+1;
+  if(neededPage!==currentPage && currentView==='type'){ currentPage=neededPage; renderList(); }
+  openDetail(target.id);
+}
+
+/* ======================================================================
+   검증 기준 모달
+   ====================================================================== */
+document.getElementById('btnCriteria').addEventListener('click', ()=> document.getElementById('criteriaModal').classList.add('show'));
+document.getElementById('criteriaClose').addEventListener('click', ()=> document.getElementById('criteriaModal').classList.remove('show'));
+document.getElementById('criteriaModal').addEventListener('click', e=>{ if(e.target.id==='criteriaModal') e.currentTarget.classList.remove('show'); });
+
+/* ======================================================================
+   내보내기: 복사 / Excel(CSV) / 인쇄
+   ====================================================================== */
+function currentDateLabel(){
+  return new Date().toLocaleDateString('ko-KR');
+}
+function summaryText(){
+  const s=window.__lastStats;
+  if(!s) return '검증을 먼저 실행해 주세요.';
+  const total=s.countChecked+s.locChecked+s.therChecked, problems=s.countProblems+s.locProblems+s.therProblems;
+  let out=`작업치료 교차검증 결과\n검증 날짜: ${currentDateLabel()}\n\n`;
+  out+=`전체 검증 ${total}건 · 정상 ${total-problems}건 · 확인 필요 ${problems}건\n`;
+  out+=`개수 불일치 ${s.countProblems}건 · 위치 불일치 ${s.locProblems}건 · 치료사 불일치 ${s.therProblems}건 · 인수인계 불일치 ${s.handoverProblems}건 · 평가메인 불일치 ${s.evalProblems}건\n\n`;
+  out+=`[문제 목록]\n`;
+  sortIssues(issues,'priority').forEach((i,idx)=>{
+    out+=`${idx+1}. [${i.title}] ${i.patient}(${i.room||'-'}) ${i.floor?i.floor+'F ':''}${i.line}\n`;
+  });
+  return out;
+}
+document.getElementById('btnCopy').addEventListener('click', async ()=>{
+  const text=summaryText();
+  try{
+    await navigator.clipboard.writeText(text);
+    flashBtn('btnCopy','✅ 복사됨');
+  }catch(_){
+    const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); flashBtn('btnCopy','✅ 복사됨'); }catch(e){ alert('복사에 실패했습니다.'); }
+    document.body.removeChild(ta);
+  }
+});
+function flashBtn(id, text){
+  const btn=document.getElementById(id); const orig=btn.textContent;
+  btn.textContent=text; setTimeout(()=>btn.textContent=orig, 1400);
+}
+document.getElementById('btnExcel').addEventListener('click', ()=>{
+  if(!issues.length){ alert('먼저 검증을 실행해 주세요.'); return; }
+  // 현재 화면에 적용된 필터(카테고리·서브필터·층·검색어) 그대로 내보낸다 —
+  // 예: "인수인계 불일치" 탭을 눌러둔 상태로 저장하면 인수인계 문제만 담긴 파일이 나온다.
+  const list = filteredIssues;
+  if(!list.length){ alert('현재 필터 조건에 맞는 항목이 없습니다. 필터를 조정한 뒤 다시 시도해 주세요.'); return; }
+  const catLabel={all:'전체',count:'개수',location:'위치',therapist:'치료사',handover:'인수인계'}[currentCat]||'전체';
+  const rows=[['구분','층','환자명','병실','제목','내용','시간']];
+  sortIssues(list,'priority').forEach(i=>{
+    rows.push([{count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인'}[i.category], i.floor?i.floor+'F':'', i.patient, i.room||'', i.title, i.line, i.time||'']);
+  });
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob=new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`작업치료_교차검증_결과_${catLabel}.csv`; a.click();
+});
+document.getElementById('btnPrint').addEventListener('click', ()=>{
+  if(!issues.length){ alert('먼저 검증을 실행해 주세요.'); return; }
+  const s=window.__lastStats;
+  const total=s.countChecked+s.locChecked+s.therChecked, problems=s.countProblems+s.locProblems+s.therProblems;
+  const rows=sortIssues(issues,'priority').map((i,idx)=>`<tr><td>${idx+1}</td><td>${esc({count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인'}[i.category])}</td><td>${i.floor?i.floor+'F':''}</td><td>${esc(i.patient)}</td><td>${esc(i.room||'')}</td><td>${esc(i.title)}</td><td>${esc(i.line)}</td></tr>`).join('');
+  document.getElementById('printReport').innerHTML = `
+    <h1>작업치료 교차검증 결과</h1>
+    <div class="meta">검증일: ${esc(currentDateLabel())} · 출력일시: ${new Date().toLocaleString('ko-KR')}</div>
+    <div class="sumrow">
+      <div>전체 검증 : <b>${total}</b></div><div>정상 : <b>${total-problems}</b></div><div>확인 필요 : <b>${problems}</b></div>
+    </div>
+    <div class="sumrow">
+      <div>개수 불일치 : <b>${s.countProblems}</b></div><div>위치 불일치 : <b>${s.locProblems}</b></div><div>치료사 불일치 : <b>${s.therProblems}</b></div><div>인수인계 불일치 : <b>${s.handoverProblems}</b></div><div>평가메인 불일치 : <b>${s.evalProblems}</b></div>
+    </div>
+    <h3>문제 목록</h3>
+    <table><thead><tr><th>#</th><th>구분</th><th>층</th><th>환자명</th><th>병실</th><th>제목</th><th>내용</th></tr></thead><tbody>${rows}</tbody></table>
+  `;
+  document.body.classList.add('printing');
+  window.print();
+  setTimeout(()=>document.body.classList.remove('printing'), 300);
+});
+
+</script>
+</body></html>
