@@ -8,7 +8,9 @@
   "scripts": {
     "start": "node node_modules/electron/cli.js .",
     "build:win": "electron-builder --win nsis --x64",
+    "postbuild:win": "npm run rebuild",
     "release:win": "electron-builder --win nsis --x64 --publish always",
+    "postrelease:win": "npm run rebuild",
     "test": "node scripts/run-tests.js",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3 && node scripts/postinstall-electron-fix.js"

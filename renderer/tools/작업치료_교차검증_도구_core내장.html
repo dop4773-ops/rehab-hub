@@ -1107,6 +1107,7 @@ const FILES_META = [
   {key:'handoverBook', icon:'📝', label:'OT 인수인계',         sub:'환자별 담당치료사·주치의 대조(선택)', match:[/인수인계/]},
 ];
 const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null, table10Book:null, mt3Book:null, handoverBook:null, handoverLiveList:null, handoverLiveOk:false, dateSheetOf:{} };
+let handoverLiveFetchPromise=null; // 검증 실행 전 이 fetch가 끝나길 기다려서, 타이밍에 따라 인수인계 인식이 됐다 안 됐다 하는 걸 막는다
 let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentView='type', currentPage=1;
 let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
 let previewSaturday={occs:[], weekdayCode:new Map()};
@@ -1216,7 +1217,7 @@ function resetAllFiles(){
   document.getElementById('resultEmpty').style.display='block';
   document.getElementById('mainArea').style.display='none';
   refreshRunButton();
-  fetchHandoverLive(); // 인수인계 파일을 초기화해도, 자동 업로드가 아닌 실시간 연동 표시는 다시 붙여준다
+  handoverLiveFetchPromise=fetchHandoverLive(); // 인수인계 파일을 초기화해도, 자동 업로드가 아닌 실시간 연동 표시는 다시 붙여준다
 }
 function refreshRunButton(){
   const btn=document.getElementById('btnRun');
@@ -1354,6 +1355,7 @@ document.getElementById('btnResetFiles').addEventListener('click', resetAllFiles
    ====================================================================== */
 function setStep(id, cls){ const el=document.getElementById(id); el.className='stepline '+cls; }
 async function runAllVerifications(){
+  if(handoverLiveFetchPromise) await handoverLiveFetchPromise; // 실시간 인수인계 조회가 끝날 때까지 기다려서, 타이밍에 따라 인식이 됐다 안 됐다 하지 않게 한다
   const progress=document.getElementById('runProgress'); progress.classList.add('show');
   setStep('stepCount',''); setStep('stepLoc',''); setStep('stepTher','');
   const allIssues=[];
@@ -1900,6 +1902,7 @@ function handoverListFromLiveRecords(records){
 }
 async function fetchHandoverLive(){
   const badge=document.getElementById('badge-handoverBook'), sub=document.getElementById('sub-handoverBook');
+  if(!state.handoverBook&&badge&&sub){ badge.textContent='불러오는 중…'; badge.className='prep-badge busy'; sub.textContent='환자별 담당치료사·주치의 대조(선택) · 실시간 연동 확인 중…'; }
   try{
     const res=await fetch(HANDOVER_LIVE_URL,{cache:'no-store'});
     if(!res.ok) throw new Error('HTTP '+res.status);
@@ -3339,6 +3342,6 @@ document.getElementById('btnPrint').addEventListener('click', ()=>{
   setTimeout(()=>document.body.classList.remove('printing'), 300);
 });
 
-fetchHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
+handoverLiveFetchPromise=fetchHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
 </script>
 </body></html>
