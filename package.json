@@ -1,6 +1,6 @@
 {
   "name": "rehab-hub",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "재활치료부 업무 통합 시스템 — 그랜드라운딩·치료기록 QA·교차검증 데스크톱 앱",
   "main": "main/main.js",
   "author": "",
