@@ -1106,7 +1106,7 @@ const FILES_META = [
   {key:'mt3Book',      icon:'🟨', label:'3F 매트·테이블현황',   sub:'매트/테이블 사용현황(3층) 시트 사용', match:[/3\s*F?/i, /매트|테이블/]},
   {key:'handoverBook', icon:'📝', label:'OT 인수인계',         sub:'환자별 담당치료사·주치의 대조(선택)', match:[/인수인계/]},
 ];
-const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null, table10Book:null, mt3Book:null, handoverBook:null, dateSheetOf:{} };
+const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null, table10Book:null, mt3Book:null, handoverBook:null, handoverLiveList:null, handoverLiveOk:false, dateSheetOf:{} };
 let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentView='type', currentPage=1;
 let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
 let previewSaturday={occs:[], weekdayCode:new Map()};
@@ -1216,6 +1216,7 @@ function resetAllFiles(){
   document.getElementById('resultEmpty').style.display='block';
   document.getElementById('mainArea').style.display='none';
   refreshRunButton();
+  fetchHandoverLive(); // 인수인계 파일을 초기화해도, 자동 업로드가 아닌 실시간 연동 표시는 다시 붙여준다
 }
 function refreshRunButton(){
   const btn=document.getElementById('btnRun');
@@ -1697,8 +1698,8 @@ async function runAllVerifications(){
     }
   }
   // ---- ④ 인수인계 대조: 담당 치료사(vs 평일시간표(원본)) · 주치의(vs 전체시간표(원본)) ----
-  if(state.handoverBook){
-    const handoverList = await parseHandoverSheet(state.handoverBook);
+  if(state.handoverBook||state.handoverLiveOk){
+    const handoverList = state.handoverBook ? await parseHandoverSheet(state.handoverBook) : state.handoverLiveList;
     const handoverMap = buildHandoverIndex(handoverList);
     if(sched){
       const htRes = buildHandoverTherapistChecks(handoverMap, sched.occ, sched.ccrt, findCard);
@@ -1882,6 +1883,37 @@ async function parseHandoverSheet(book){
     list.push({name, therapist, doctor, type, row:r});
   }
   return list;
+}
+// 그랜드라운딩 도구와 같은 OT인수인계서(통합) 실시간 연동 엔드포인트 — 파일 업로드 없이 자동으로 가져온다.
+const HANDOVER_LIVE_URL='https://script.google.com/macros/s/AKfycbwXwWquKYEy5irNjdQjZLYUsBl94L5yJZ_aD-UZLCHDonJDZ-smmCnSghILn9c15AN0OQ/exec';
+function handoverListFromLiveRecords(records){
+  const list=[];
+  for(const r of records){
+    const name=normalizeText(r.name||''); if(!name) continue;
+    const therapist=normalizeText(r.therapist||'');
+    const doctor=normDoctor(r.doctor||'');
+    const typeRaw=normalizeText(r.type||'');
+    const type = /RDT/i.test(typeRaw) ? 'rdt' : /CCRT/i.test(typeRaw) ? 'ccrt' : /SOT/i.test(typeRaw) ? 'sot' : '';
+    list.push({name, therapist, doctor, type, row:0});
+  }
+  return list;
+}
+async function fetchHandoverLive(){
+  const badge=document.getElementById('badge-handoverBook'), sub=document.getElementById('sub-handoverBook');
+  try{
+    const res=await fetch(HANDOVER_LIVE_URL,{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const records=Array.isArray(data.records)?data.records:(Array.isArray(data)?data:[]);
+    state.handoverLiveList=handoverListFromLiveRecords(records);
+    state.handoverLiveOk=true;
+    if(!state.handoverBook&&badge&&sub){ badge.textContent='실시간 연동됨'; badge.className='prep-badge ok'; sub.textContent=`환자별 담당치료사·주치의 대조(선택) · 실시간 ${records.length}건`; }
+  }catch(err){
+    console.error(err);
+    state.handoverLiveOk=false;
+    if(!state.handoverBook&&sub) sub.textContent='환자별 담당치료사·주치의 대조(선택) · 실시간 연동 실패 — 인터넷 연결을 확인하거나 엑셀로 업로드해 주세요.';
+  }
+  refreshRunButton();
 }
 function buildHandoverIndex(list){
   const map=new Map(); // normKey(name)+'|'+type -> 최신 항목
@@ -3307,5 +3339,6 @@ document.getElementById('btnPrint').addEventListener('click', ()=>{
   setTimeout(()=>document.body.classList.remove('printing'), 300);
 });
 
+fetchHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
 </script>
 </body></html>

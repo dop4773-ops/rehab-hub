@@ -14,12 +14,13 @@
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Malgun Gothic","맑은 고딕",Arial,sans-serif;font-size:14px}
 button,input,select{font:inherit}
 button{cursor:pointer}
-.app-header{background:linear-gradient(120deg,#17345f,#244e84 58%,#2d65aa);color:#fff;padding:22px 28px 20px;box-shadow:0 2px 14px rgba(18,44,79,.16)}
-.header-inner{max-width:1680px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
-.brand{display:flex;gap:14px;align-items:center}.logo{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;border:1px solid rgba(255,255,255,.22)}
-.brand h1{font-size:22px;margin:0 0 5px;font-weight:800}.brand p{margin:0;color:#dce9fa;font-size:12px}.version{font-size:11px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);padding:7px 10px;border-radius:999px;white-space:nowrap}
+.header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1680px;margin:22px auto 0;padding:0 18px 14px}
+.header h1{margin:0;font-size:20px;letter-spacing:.2px;color:var(--navy)}
+.header .sub{margin:4px 0 0;font-size:12px;color:var(--muted);max-width:720px}
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:#33445c;padding:8px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:default;white-space:nowrap}
 main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 4px 18px rgba(28,55,88,.055);margin-bottom:14px;overflow:hidden}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 10px rgba(20,40,70,.04);margin-bottom:14px;overflow:hidden}
 .panel-head{padding:15px 18px;border-bottom:1px solid #e7edf5;display:flex;align-items:center;justify-content:space-between;gap:12px}.panel-head h2{font-size:15px;margin:0}.panel-body{padding:17px 18px}
 .step{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:8px;background:#e7effa;color:var(--navy);font-weight:800;margin-right:8px}
 .upload-grid{display:grid;grid-template-columns:minmax(420px,1.3fr) minmax(350px,.7fr);gap:16px}
@@ -38,7 +39,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .footer-note{font-size:10px;color:#7c899a;line-height:1.6;padding:0 2px}
 .mode-tabs{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.mode-tab{border:1px solid #c8d5e5;background:#f7f9fc;color:#40516a;border-radius:9px;padding:8px 12px;font-weight:800}.mode-tab.active{background:#17345f;border-color:#17345f;color:#fff}.mode-view{display:block}.grand-route-guide{padding:11px 18px 13px;border-top:1px solid #edf1f6;background:#fbfcfe}.grand-route-title{font-size:10px;font-weight:800;color:#64748b;margin-bottom:7px}.route-flow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.route-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;border:1px solid #d8e2ee;background:#fff;font-size:10px;font-weight:700;color:#42536b}.route-arrow{color:#8a97a8;font-size:11px}.grand-table-wrap{overflow:auto;max-height:66vh;border-top:1px solid #edf1f6;position:relative}.grand-table{border-collapse:separate;border-spacing:0;min-width:1640px;width:100%;font-size:11px}.grand-table th,.grand-table td{border-right:1px solid #e2e8f0;border-bottom:1px solid #e6ebf2;padding:7px 7px;vertical-align:middle;text-align:center}.grand-table th{position:sticky;top:0;z-index:4;background:#244e84;color:#fff;font-weight:800}.grand-table td{background:#fff;min-height:46px}.grand-table td.patient{font-size:12px;font-weight:800}
 .grand-table th:nth-child(3),.grand-table td:nth-child(3){min-width:86px}.grand-table tr.route-break td{border-top:3px solid #17345f}.grand-table td.route-area{font-weight:800;color:#17345f;background:#f4f8fd}.grand-table td.now-tx{font-weight:700}.grand-note{width:100%;min-width:190px;min-height:46px;resize:vertical;border:1px solid #d7e0eb;border-radius:7px;padding:6px 7px;font:inherit;line-height:1.35;background:#fff}.grand-note:focus{outline:2px solid #b9d1ef;border-color:#6f9ed7}.grand-help{font-size:11px;color:#64748b;line-height:1.55;padding:0 18px 12px}.field select,.field input[type=text],.field input[type=time],.field input[type=date]{height:36px;border:1px solid #cdd8e5;border-radius:8px;background:#fff;padding:0 10px;min-width:135px;color:#1d2b40}.grand-missing{color:#9aa6b5}.route-10{background:#edf5ff!important}.route-ward{background:#f8f6ef!important}.route-3{background:#f1f8f3!important}.route-other{background:#f8f3f7!important}
-@media(max-width:900px){.upload-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.export-group{margin-left:0;width:100%}.header-inner{align-items:flex-start}.brand h1{font-size:18px}}
+@media(max-width:900px){.upload-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.export-group{margin-left:0;width:100%}.header{align-items:flex-start}.header h1{font-size:18px}}
 
 /* v2.9 grand rounding: full-day schedule always visible + rounding-time active range */
 .grand-shell{background:#f7f9fc;border-top:1px solid #e5ebf3}
@@ -93,6 +94,17 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-handover-status{font-size:10px;color:#5f7086;font-weight:700}.grand-handover-status.ok{color:#18704a}.grand-handover-status.warn{color:#a05d12}
 .grand-handover-summary{flex-basis:100%;padding:7px 9px;border-radius:7px;background:#fff;border:1px solid #e0e7ef;color:#596b80;font-size:9px;line-height:1.5;white-space:normal}
 .grand-handover-summary.warn{background:#fff8ed;border-color:#efd6aa;color:#8c5a17}.grand-handover-summary.ok{background:#f4fbf7;border-color:#d6eadf;color:#2d6448}
+.grand-handover-summary.grand-handover-groups{display:flex;flex-direction:column;gap:5px;padding:0;background:transparent;border:none}
+.grand-handover-group{border:1px solid #e0e7ef;border-radius:7px;background:#fff;overflow:hidden}
+.grand-handover-group summary{cursor:pointer;list-style:none;padding:6px 9px;font-size:9px;font-weight:800;color:#596b80;display:flex;align-items:center;gap:6px}
+.grand-handover-group summary::-webkit-details-marker{display:none}
+.grand-handover-group summary::before{content:'▶';font-size:7px;color:#9aa7b8;transition:transform .15s}
+.grand-handover-group[open] summary::before{transform:rotate(90deg)}
+.grand-handover-group summary .cnt{padding:1px 6px;border-radius:999px;background:#eef2f7;color:#45536a;font-size:8px;font-weight:900}
+.grand-handover-group.notwritten summary .cnt,.grand-handover-group.empty summary .cnt{background:#fdecee;color:#a3394a}
+.grand-handover-group.rmmismatch summary .cnt{background:#fff3d6;color:#8a5a10}
+.grand-handover-group.partial summary .cnt{background:#fff8ed;color:#8c5a17}
+.grand-handover-group ul{margin:0;padding:6px 9px 8px 22px;font-size:9px;color:#3d4a5c;line-height:1.6}
 .grand-matrix th.handover-head{background:#6b5d8d}.grand-matrix th.brief-head{background:#315f72}.grand-matrix td.handover-goal-cell,.grand-matrix td.handover-round-cell,.grand-matrix td.handover-brief-cell{min-width:220px;max-width:320px;white-space:pre-wrap;text-align:left;vertical-align:top;line-height:1.45;font-size:9px}
 .grand-matrix td.handover-goal-cell{background:#faf8ff;color:#40385b}.grand-matrix td.handover-round-cell{background:#fff9f0;color:#59462e;min-width:280px;max-width:380px}.grand-matrix td.handover-brief-cell{background:#f1f7fb;color:#243d52;min-width:320px;max-width:430px;font-size:11px;line-height:1.5}.grand-brief-text{width:100%;min-width:310px;min-height:64px;resize:vertical;border:1px solid #cddce8;border-radius:7px;padding:7px 8px;font:inherit;font-size:11px;line-height:1.5;background:#fff;text-align:left;color:#21384d}.grand-brief-text:focus{outline:2px solid #bfd8ea;border-color:#6f9fbe}.grand-brief-help{display:block;margin-top:4px;font-size:8px;color:#6f8293;line-height:1.35}
 .grand-pt-status-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.grand-pt-status-group .status{padding:3px 6px;border-radius:6px;background:#fff;border:1px solid #e0e8e3}
@@ -100,7 +112,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-subtabs{display:flex;gap:8px;align-items:center;padding:11px 18px;background:#eef3f9;border-bottom:1px solid #dce5ef}.grand-subtab{border:1px solid #bdcada;background:#fff;color:#40526a;border-radius:9px;padding:8px 15px;font-size:11px;font-weight:900}.grand-subtab:hover{background:#f8fbff}.grand-subtab.active{background:#17345f;border-color:#17345f;color:#fff;box-shadow:0 2px 7px rgba(23,52,95,.16)}.grand-dept-tools[hidden]{display:none!important}.grand-clinical-tools{margin-top:10px;padding:10px 12px;border:1px solid #dce4ed;border-radius:9px;background:#fbfcfe;color:#50637a;font-size:10px;line-height:1.55}.grand-clinical-tools b{color:#27435f}.grand-print-period select{min-width:190px!important;font-weight:900;color:#17345f;border-width:2px!important}
 @media(max-width:1180px){.grand-board{overflow:auto}.grand-matrix{min-width:1800px}}
 @page{size:A4 portrait;margin:8mm}
-@media print{.app-header,.panel:not(#resultPanel),#normalRoundView,.mode-tabs,.grand-subtabs,.grand-controls,.grand-hero .grand-route-overview,.footer-note{display:none!important}body{background:#fff}.panel{border:0;box-shadow:none}.grand-board{padding:0}.grand-matrix-wrap{max-height:none;overflow:visible;border:0}.grand-matrix{font-size:7px;min-width:0}.grand-matrix th{position:static}.grand-report,.grand-therapist-text{border-color:#bfc8d2;resize:none}}
+@media print{.header,.panel:not(#resultPanel),#normalRoundView,.mode-tabs,.grand-subtabs,.grand-controls,.grand-hero .grand-route-overview,.footer-note{display:none!important}body{background:#fff}.panel{border:0;box-shadow:none}.grand-board{padding:0}.grand-matrix-wrap{max-height:none;overflow:visible;border:0}.grand-matrix{font-size:7px;min-width:0}.grand-matrix th{position:static}.grand-report,.grand-therapist-text{border-color:#bfc8d2;resize:none}}
 
 
 .grand-map-panel{margin:0 18px 12px;border:1px solid #dbe4ee;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 2px 12px rgba(35,58,88,.04)}
@@ -116,17 +128,15 @@ html,body{font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Aria
 </style>
 </head>
 <body>
-<header class="app-header">
-  <div class="header-inner">
-    <div class="brand">
-      <div class="logo" aria-hidden="true">
-        <svg width="29" height="29" viewBox="0 0 29 29" fill="none"><path d="M5 8.5h19M5 14.5h19M5 20.5h19" stroke="white" stroke-width="2.2" stroke-linecap="round"/><circle cx="9" cy="8.5" r="2.3" fill="#9bd7ff"/><circle cx="17" cy="14.5" r="2.3" fill="#b9f1d2"/><circle cx="13" cy="20.5" r="2.3" fill="#ffd69e"/></svg>
-      </div>
-      <div><h1>그랜드 라운딩 통합 도구</h1><p>3층·10층 환자전체시간표 통합 → 지정 시각 그랜드 라운딩 동선 자동 정렬 (RM 회진표 v3.2.30에서 회진표 기능을 뺀 그랜드 라운딩 전용판)</p></div>
-    </div>
-    <div class="version">그랜드 라운딩 전용판 · RM 회진 v3.2.30 기반</div>
+<div class="header">
+  <div>
+    <h1>그랜드 라운딩 통합 도구</h1>
+    <p class="sub">3층·10층 환자전체시간표 통합 → 지정 시각 그랜드 라운딩 동선 자동 정렬 (RM 회진표 v3.2.30에서 회진표 기능을 뺀 그랜드 라운딩 전용판)</p>
   </div>
-</header>
+  <div class="header-actions">
+    <span class="hbtn">그랜드 라운딩 전용판 · RM 회진 v3.2.30 기반</span>
+  </div>
+</div>
 <main>
   <section class="panel">
     <div class="panel-head"><h2><span class="step">1</span>환자전체시간표 업로드</h2><button id="resetBtn" class="btn small" type="button">초기화</button></div>
@@ -187,6 +197,7 @@ html,body{font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Aria
           </select></div>
           <div class="field"><label>③ 대회진 RM</label><select id="grandRmSelect"><option value="ALL">전체 RM</option></select></div>
           <div class="field"><label>④ 병동</label><select id="grandWardSelect"><option value="ALL">회차 전체 병동</option></select></div>
+          <div class="field"><label>⑤ 언어치료</label><button id="grandLangOnlyToggle" class="btn" type="button">언어치료 대상만 보기</button> <button id="grandLangOnlyExportBtn" class="btn primary" type="button" style="display:none">언어치료만 Excel</button></div>
           <div class="field"><label>회진일</label><input id="grandDateInput" type="date"></div>
           <div class="field"><label>회진 요일</label><select id="grandDaySelect"></select></div>
           <div class="field grand-print-period"><label>Excel 출력 시간대</label><select id="grandPrintPeriodSelect">
@@ -370,6 +381,7 @@ const GRAND_3_T_ORDER = ['T-1','T-2','T-3','T-4','T-5','T-6','T-8','T-7','T-9','
 
 let grandOtBook=null, grandOtFileName='', grandOtSheetName='';
 let grandTeamRoster=new Map(), grandSelectedTeams=new Set(), grandLangColOn=false; // 팀별·언어치료 분류(2026-09-24 추가)
+let grandLanguageOnlyMode=false; // 언어치료 대상만 보기(화면+내보내기 완전 분리, 2026-09-24 추가)
 let grandOtTherapistMap=new Map();
 let grandSwallowTherapistMap=new Map();
 let grandCogTherapistMap=new Map();
@@ -1025,9 +1037,31 @@ function exportGrandByClassification(){
   }
   if(!groups.size){ if(statusEl) statusEl.textContent=`조건에 맞는 ${keyLabel} 배정 환자가 없어 Excel을 만들지 않았습니다.`; return; }
   const defs=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko')).map(([name,patients])=>({name,title:`${name} · ${keyLabel}`,patients}));
+  const overviewPatients=[...new Set([...groups.values()].flat())];
+  const allDefs=[buildGrandOverviewSheetDef(overviewPatients),...defs];
   const date=document.getElementById('grandDateInput').value||dateStamp(), period=grandPrintPeriodKey(), periodInfo=grandPrintPeriodInfo(period), dept=grandDepartmentLabel();
-  downloadBytes(buildGrandWorkbookXlsx(defs,day,hour,routeKey,period),`그랜드라운딩_${keyLabel}별_${grandRouteProfile(routeKey).roundLabel}_${date}_${periodInfo.label}.xlsx`);
+  downloadBytes(buildGrandWorkbookXlsx(allDefs,day,hour,routeKey,period),`그랜드라운딩_${keyLabel}별_${grandRouteProfile(routeKey).roundLabel}_${date}_${periodInfo.label}.xlsx`);
   if(statusEl) statusEl.textContent=`${keyLabel} 기준 ${defs.length}명 · 치료사별 시트로 Excel을 만들었습니다.${grandSelectedTeams.size?` (선택 팀: ${[...grandSelectedTeams].join(', ')})`:''}`;
+}
+// "언어치료 대상만 보기" — 팀·치료사별 분류와 완전히 별도로, 화면 전체를 언어치료 대상 환자로만 필터링한다.
+function toggleGrandLanguageOnly(){
+  grandLanguageOnlyMode=!grandLanguageOnlyMode;
+  const btn=document.getElementById('grandLangOnlyToggle'), exportBtn=document.getElementById('grandLangOnlyExportBtn');
+  if(btn){ btn.textContent=grandLanguageOnlyMode?'전체 보기로 돌아가기':'언어치료 대상만 보기'; btn.classList.toggle('primary',grandLanguageOnlyMode); }
+  if(exportBtn) exportBtn.style.display=grandLanguageOnlyMode?'':'none';
+  if(allPatients.length) renderGrandTable();
+}
+function exportGrandLanguageOnly(){
+  const statusEl=document.getElementById('grandClassifyStatus');
+  if(!allPatients.length){ if(statusEl) statusEl.textContent='먼저 시간표를 업로드해 주세요.'; return; }
+  syncGrandInputsFromDom();
+  const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1';
+  const patients=grandFilteredPatients({ignoreRm:true,routeKey}).filter(grandIsLanguagePatient);
+  if(!patients.length){ if(statusEl) statusEl.textContent='조건에 맞는 언어치료 대상 환자가 없어 Excel을 만들지 않았습니다.'; return; }
+  const defs=[{name:'언어치료',title:'언어치료 대상',patients}];
+  const date=document.getElementById('grandDateInput').value||dateStamp(), period=grandPrintPeriodKey(), periodInfo=grandPrintPeriodInfo(period);
+  downloadBytes(buildGrandWorkbookXlsx(defs,day,hour,routeKey,period),`그랜드라운딩_언어치료_${grandRouteProfile(routeKey).roundLabel}_${date}_${periodInfo.label}.xlsx`);
+  if(statusEl) statusEl.textContent=`언어치료 대상 ${patients.length}명 · Excel을 만들었습니다.`;
 }
 function grandTherapistMapAdd(map,name,therapist){
   const key=grandResolvePatientKey?grandResolvePatientKey(name):normalizeGrandOtPatientKey(name);
@@ -1551,7 +1585,18 @@ function grandHandoverExcelRowHeight(p){
   const briefHeight=estimate(brief,30)*18;
   return Math.max(92,Math.min(408,26+Math.max(bodyHeight,briefHeight)));
 }
-function grandShortNameList(names,max=10){ const arr=[...new Set(names)].filter(Boolean); return arr.length<=max?arr.join(', '):`${arr.slice(0,max).join(', ')} 외 ${arr.length-max}명`; }
+function grandHandoverGroupHtml(cls,label,items){
+  if(!items.length) return '';
+  const lis=items.map(t=>`<li>${xmlEscape(t)}</li>`).join('');
+  return `<details class="grand-handover-group ${cls}"><summary>${xmlEscape(label)} <span class="cnt">${items.length}</span></summary><ul>${lis}</ul></details>`;
+}
+// missing(현재 환자인데 인수인계 정확매칭 실패)을 "진짜 미작성"과 "치료사가 인수인계는 썼는데 RM을 다르게
+// 기입해 매칭 실패"로 나눈다 — grandHandoverData()의 이름-only fallback을 재사용해 RM만 다른 레코드를 찾는다.
+function grandHandoverMissingDetail(p){
+  const rec=grandHandoverData(p);
+  if(rec && normalizeGrandRm(rec.rm)!==normalizeGrandRm(p.rm)) return {type:'rmMismatch',foundRm:rec.rm};
+  return {type:'notWritten'};
+}
 function updateGrandHandoverStatus(){
   const st=document.getElementById('grandHandoverStatus'), box=document.getElementById('grandHandoverMatchSummary'); if(!st||!box) return;
   if(!grandHandoverBook&&!grandHandoverLiveOk){ st.className='grand-handover-status'; st.textContent='불러오는 중 · OT인수인계서(통합)에서 실시간으로 Goal / 그랜드라운딩을 가져옵니다. 환자명+주치의 기준으로 치료별로 매칭합니다.'; box.style.display='none'; return; }
@@ -1563,18 +1608,25 @@ function updateGrandHandoverStatus(){
   const matched=records.filter(x=>currentKeys.has(grandHandoverKey(x.rm,x.name)));
   const unmatched=records.filter(x=>!currentKeys.has(grandHandoverKey(x.rm,x.name)));
   const missing=current.filter(p=>!grandHandoverMap.has(grandHandoverKey(p.rm,p.name)));
+  const missingClassified=missing.map(p=>({p,...grandHandoverMissingDetail(p)}));
+  const notWritten=missingClassified.filter(x=>x.type==='notWritten').map(x=>x.p.name);
+  const rmMismatch=missingClassified.filter(x=>x.type==='rmMismatch');
   const empty=matched.filter(x=>!grandHandoverHasAnyContent(x));
   const partial=grandHandoverPartialItems(matched);
   const hasWarn=unmatched.length||missing.length||partial.length;
   st.className=`grand-handover-status ${hasWarn?'warn':'ok'}`;
   st.textContent=`${grandHandoverFileName} · ${grandHandoverSheetName||'인수인계'} · ${rm==='ALL'?'전체 RM':rm} · 인수인계 ${records.length}명 / 현재 환자 ${matched.length}명 매칭 · 치료행 ${matched.reduce((n,x)=>n+grandHandoverEntries(x).length,0)}건`;
-  const parts=[];
-  if(unmatched.length) parts.push(`현재 환자에 미반영 ${unmatched.length}명(퇴원·전원 가능): ${grandShortNameList(unmatched.map(x=>x.name))}`);
-  if(missing.length) parts.push(`현재 환자 중 인수인계 없음 ${missing.length}명: ${grandShortNameList(missing.map(x=>x.name))}`);
-  if(empty.length) parts.push(`매칭됐지만 모든 치료행의 Goal·그랜드라운딩이 빈칸 ${empty.length}명: ${grandShortNameList(empty.map(x=>x.name))}`);
-  if(partial.length){ const labels=partial.slice(0,8).map(x=>`${x.name}(${x.label}·${x.missing} 미작성)`); parts.push(`치료별 일부 미작성 ${partial.length}건: ${labels.join(', ')}${partial.length>8?` 외 ${partial.length-8}건`:''}`); }
-  if(!parts.length) parts.push('선택한 주치의의 현재 환자와 인수인계 치료행이 모두 매칭되었고 Goal·그랜드라운딩도 모두 작성되어 있습니다.');
-  box.style.display='block';box.className=`grand-handover-summary ${hasWarn?'warn':'ok'}`;box.textContent=parts.join(' · ');
+  const groups=[
+    grandHandoverGroupHtml('unmatched','미반영 (퇴원·전원 가능)',unmatched.map(x=>x.name)),
+    grandHandoverGroupHtml('notwritten','미작성',notWritten),
+    grandHandoverGroupHtml('rmmismatch','RM 오기입 의심',rmMismatch.map(x=>`${x.p.name} (환자 RM: ${x.p.rm||'-'} · 인수인계엔 ${x.foundRm||'-'}로 기입됨)`)),
+    grandHandoverGroupHtml('empty','매칭됐지만 전체 공란',empty.map(x=>x.name)),
+    grandHandoverGroupHtml('partial','치료별 일부 미작성',partial.map(x=>`${x.name} (${x.label} · ${x.missing} 미작성)`)),
+  ].join('');
+  box.style.display='block';
+  if(!groups){ box.className='grand-handover-summary ok'; box.textContent='선택한 주치의의 현재 환자와 인수인계 치료행이 모두 매칭되었고 Goal·그랜드라운딩도 모두 작성되어 있습니다.'; return; }
+  box.className=`grand-handover-summary grand-handover-groups ${hasWarn?'warn':'ok'}`;
+  box.innerHTML=groups;
 }
 async function handleGrandHandoverFile(file){
   if(!file) return; const st=document.getElementById('grandHandoverStatus');
@@ -1759,6 +1811,7 @@ function grandFilteredPatients({ignoreRm=false,routeKey=null}={}){
   const state=grandFilterState(), rm=state.rm, ward=state.ward, profile=grandRouteProfile(routeKey||state.routeKey);
   return allPatients.filter(p=>{
     if(p.category==='외래') return false;
+    if(grandLanguageOnlyMode&&!grandIsLanguagePatient(p)) return false;
     if(!(ignoreRm||rm==='ALL'||p.rm===rm)) return false;
     const wf=roomFloor(p.room);
     if(!profile.targetWards.includes(wf)) return false;
@@ -2057,14 +2110,17 @@ function buildGrandWorkbookXlsx(sheetDefs,day,hour,routeKey,period=grandPrintPer
   files.push({name:'xl/media/image2.png',data:base64ToU8(GRAND_MAP_3_PNG_BASE64)});
   return makeZip(files);
 }
+// 내보내기 맨 앞에 항상 붙는 "전체" 시트 — 치료사별/RM별로 나누기 전, 그 범위의 전체 환자를 한 시트로 모은다.
+function buildGrandOverviewSheetDef(patients,label='전체'){ return {name:label,title:label,patients}; }
 function exportGrandSelected(){
   if(!allPatients.length) return; syncGrandInputsFromDom(); const day=document.getElementById('grandDaySelect').value,hour=document.getElementById('grandTimeInput').value||'09',routeKey=document.getElementById('grandRouteSelect').value||'round1',rm=document.getElementById('grandRmSelect').value,date=document.getElementById('grandDateInput').value||dateStamp(),period=grandPrintPeriodKey(),periodInfo=grandPrintPeriodInfo(period),dept=grandDepartmentLabel(),ward=grandSelectedWard(),wardLabel=ward==='ALL'?'회차전체':`${ward}병동`;
   if(rm==='ALL'){ exportGrandAll(); return; } const list=grandFilteredPatients({routeKey}); if(!list.length){ setStatus('선택한 RM·병동 조건에 맞는 입원 환자가 없어 Excel을 만들지 않았습니다.','warn'); return; }
-  downloadBytes(buildGrandWorkbookXlsx([{name:rm,title:`${rm} · ${ward==='ALL'?grandRouteProfile(routeKey).targetLabel:ward+'병동'}`,patients:list}],day,hour,routeKey,period),`그랜드라운딩_${dept.replace('/','_')}_${grandRouteProfile(routeKey).roundLabel}_${wardLabel}_${rm}_${date}_${periodInfo.label}.xlsx`); const clinical=grandDepartmentMode==='clinical', filterText=ward==='ALL'?'회차 전체 병동':`${ward}병동`, orientation='A4 세로', noteText=clinical&&ward!=='ALL'?' · 특이사항 기입칸 포함':''; setStatus(`그랜드 라운딩 Excel 생성 완료: ${dept} · ${grandRouteProfile(routeKey).roundLabel} · ${filterText} · ${rm} · ${periodInfo.label} ${periodInfo.range} · ${list.length}명 · 환자표 1개 + 치료실 도면 1개 · ${orientation} 1장 맞춤${noteText}`,'success');
+  const selectedDefs=[buildGrandOverviewSheetDef(list),{name:rm,title:`${rm} · ${ward==='ALL'?grandRouteProfile(routeKey).targetLabel:ward+'병동'}`,patients:list}];
+  downloadBytes(buildGrandWorkbookXlsx(selectedDefs,day,hour,routeKey,period),`그랜드라운딩_${dept.replace('/','_')}_${grandRouteProfile(routeKey).roundLabel}_${wardLabel}_${rm}_${date}_${periodInfo.label}.xlsx`); const clinical=grandDepartmentMode==='clinical', filterText=ward==='ALL'?'회차 전체 병동':`${ward}병동`, orientation='A4 세로', noteText=clinical&&ward!=='ALL'?' · 특이사항 기입칸 포함':''; setStatus(`그랜드 라운딩 Excel 생성 완료: ${dept} · ${grandRouteProfile(routeKey).roundLabel} · ${filterText} · ${rm} · ${periodInfo.label} ${periodInfo.range} · ${list.length}명 · 환자표 1개 + 치료실 도면 1개 · ${orientation} 1장 맞춤${noteText}`,'success');
 }
 function exportGrandAll(){
   if(!allPatients.length) return; syncGrandInputsFromDom(); const day=document.getElementById('grandDaySelect').value,hour=document.getElementById('grandTimeInput').value||'09',routeKey=document.getElementById('grandRouteSelect').value||'round1',base=grandFilteredPatients({ignoreRm:true,routeKey}),date=document.getElementById('grandDateInput').value||dateStamp(),period=grandPrintPeriodKey(),periodInfo=grandPrintPeriodInfo(period),dept=grandDepartmentLabel(),ward=grandSelectedWard(),wardLabel=ward==='ALL'?'회차전체':`${ward}병동`;
-  if(!base.length){ setStatus('선택한 회차·병동 조건에 표시할 입원 환자가 없어 Excel을 만들지 않았습니다.','warn'); return; } const rms=[...new Set(base.map(p=>p.rm))].sort(rmSort), defs=rms.map(r=>({name:r,title:`${r} · ${ward==='ALL'?grandRouteProfile(routeKey).targetLabel:ward+'병동'}`,patients:base.filter(p=>p.rm===r)}));
+  if(!base.length){ setStatus('선택한 회차·병동 조건에 표시할 입원 환자가 없어 Excel을 만들지 않았습니다.','warn'); return; } const rms=[...new Set(base.map(p=>p.rm))].sort(rmSort), rmDefs=rms.map(r=>({name:r,title:`${r} · ${ward==='ALL'?grandRouteProfile(routeKey).targetLabel:ward+'병동'}`,patients:base.filter(p=>p.rm===r)})), defs=[buildGrandOverviewSheetDef(base),...rmDefs];
   downloadBytes(buildGrandWorkbookXlsx(defs,day,hour,routeKey,period),`그랜드라운딩_${dept.replace('/','_')}_${grandRouteProfile(routeKey).roundLabel}_${wardLabel}_전체RM_${date}_${periodInfo.label}.xlsx`); const clinical=grandDepartmentMode==='clinical',filterText=ward==='ALL'?'회차 전체 병동':`${ward}병동`,orientation='A4 세로',noteText=clinical&&ward!=='ALL'?' · 특이사항 기입칸 포함':''; setStatus(`그랜드 라운딩 Excel 생성 완료: ${dept} · ${grandRouteProfile(routeKey).roundLabel} · ${filterText} · ${periodInfo.label} ${periodInfo.range} · ${rms.length}개 RM · RM별 환자표 + 치료실 도면 공통 1개 · ${orientation} 1장 맞춤${noteText}`,'success');
 }
 
@@ -2088,6 +2144,8 @@ document.getElementById('grandClassifyExportBtn').addEventListener('click',expor
 document.getElementById('grandLangColCheck').addEventListener('change',e=>{ grandLangColOn=e.target.checked; renderGrandTable(); });
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')}); dz.addEventListener('dragleave',()=>dz.classList.remove('drag')); dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');handleFiles(e.dataTransfer.files)});
 document.getElementById('grandRouteSelect').addEventListener('change',()=>{updateGrandWardOptions();renderGrandTable();}); ['grandTimeInput','grandRmSelect','grandWardSelect'].forEach(id=>document.getElementById(id).addEventListener('change',renderGrandTable)); document.getElementById('grandDaySelect').addEventListener('change',async()=>{if(grandOtBook) await rebuildGrandOtTherapistMap();renderGrandTable();}); document.getElementById('grandPrintPeriodSelect').addEventListener('change',()=>{updateGrandExportButtonLabels();renderGrandTable();});
+document.getElementById('grandLangOnlyToggle').addEventListener('click',toggleGrandLanguageOnly);
+document.getElementById('grandLangOnlyExportBtn').addEventListener('click',exportGrandLanguageOnly);
 grandDateInput.addEventListener('change',async()=>{ const d=grandDateToDay(grandDateInput.value); if(d) grandDaySel.value=d; if(grandOtBook) await rebuildGrandOtTherapistMap(); if(grandPtBooks[10]||grandPtBooks[3]) await rebuildGrandPtTherapistMap(); renderGrandTable(); });
 document.getElementById('grandTableWrap').addEventListener('input',e=>{
   if(e.target.classList.contains('grand-report')) setGrandNoteByKey(decodeURIComponent(e.target.dataset.vkey||''),e.target.value);
