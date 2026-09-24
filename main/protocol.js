@@ -23,7 +23,9 @@ function registerProtocolHandler() {
     if (url.host !== HOST) return new Response('not found', { status: 404 });
     const relPath = decodeURIComponent(url.pathname || '/index.html');
     const filePath = path.normalize(path.join(RENDERER_ROOT, relPath));
-    if (!filePath.startsWith(RENDERER_ROOT)) return new Response('forbidden', { status: 403 }); // 상위 폴더 접근(../) 차단
+    // 상위 폴더 접근(../) 차단. startsWith(RENDERER_ROOT)만 쓰면 "renderer_evil" 같은 형제 폴더도
+    // 문자열이 접두어로 겹쳐서 통과해버린다 — 구분자까지 포함해서 검사해야 진짜 하위 경로만 허용된다.
+    if (filePath !== RENDERER_ROOT && !filePath.startsWith(RENDERER_ROOT + path.sep)) return new Response('forbidden', { status: 403 });
     return net.fetch(pathToFileURL(filePath).toString());
   });
 }

@@ -2,35 +2,70 @@
 // shell.js — 사이드바 화면 전환 + 폴더 자동 연결 + 3개 도구(iframe) 자동 채움 + 홈 대시보드.
 // window.rehab.* 는 preload.js가 노출한 메인프로세스 API(폴더 선택/스캔/파일 읽기)만 제공한다.
 
-// 각 도구 화면의 실제 업로드 칸 selector. core/build_folder_connector.js(HTML판)와 동일한 매핑을 그대로 씀.
-const TOOL_TARGETS = {
-  rm: [
-    { roles: ['card3', 'card10'], selector: '#fileInput' },
-    { role: 'status', selector: '#grandOtFileInput' },
-    { role: 'handover', selector: '#grandHandoverFileInput' },
-    { role: 'pt10', selector: '#grandPt10FileInput' },
-    { role: 'pt3', selector: '#grandPt3FileInput' },
-  ],
-  acting: [
-    { role: 'acting', selector: '#fileInput' },
-    { role: 'dailyStats', selector: '#dcFileInput' },
-  ],
-  cross: [
-    { role: 'status', selector: 'input[data-key="statusBook"]' },
-    { role: 'card10', selector: 'input[data-key="card10Book"]' },
-    { role: 'card3', selector: 'input[data-key="card3Book"]' },
-    { role: 'mat10', selector: 'input[data-key="mat10Book"]' },
-    { role: 'table10', selector: 'input[data-key="table10Book"]' },
-    { role: 'mt3', selector: 'input[data-key="mt3Book"]' },
-    { role: 'handover', selector: 'input[data-key="handoverBook"]' },
-  ],
+// 도구(iframe) 하나를 새로 추가하려면: 여기 TOOLS에 항목 하나 추가 + index.html에 사이드바
+// 메뉴/뷰 섹션/iframe/기능 카드(통계박스 id는 statBoxesElId와 맞출 것) + 그 도구 파일에 window.__xxxSummary
+// 훅 한 줄만 추가하면 된다. autoFillTool/ensureToolLoaded/readToolSummary/renderHome은 전부 이 표만 본다.
+const TOOLS = {
+  rm: {
+    label: '그랜드라운딩',
+    page: 'tools/그랜드라운딩_통합.html',
+    // 각 도구 화면의 실제 업로드 칸 selector. core/build_folder_connector.js(HTML판)와 동일한 매핑을 그대로 씀.
+    targets: [
+      { roles: ['card3', 'card10'], selector: '#fileInput' },
+      { role: 'status', selector: '#grandOtFileInput' },
+      { role: 'handover', selector: '#grandHandoverFileInput' },
+      { role: 'pt10', selector: '#grandPt10FileInput' },
+      { role: 'pt3', selector: '#grandPt3FileInput' },
+    ],
+    readSummary: (w) => w.__rmSummary ? { count: w.__rmSummary.patientCount, label: '환자', ...w.__rmSummary } : null,
+    statBoxesElId: 'rmStatBoxes',
+    statBoxes: (s) => [
+      { cls: 'neutral', num: s ? `${s.patientCount}명` : '-', lbl: '전체 환자' },
+      { cls: 'neutral', num: s ? `${s.floor10Count}명` : '-', lbl: '10F' },
+    ],
+    alertRow: (s) => s && alertRow('그랜드라운딩 데이터', `${s.count}명 준비됨`, 'green',
+      `[그랜드라운딩] 오늘 회진 대상 환자 ${s.count}명 준비됨`),
+  },
+  acting: {
+    label: '치료기록 QA',
+    page: 'tools/치료_액팅_기록_오류_확인_프로그램_언어분류.html',
+    targets: [
+      { role: 'acting', selector: '#fileInput' },
+      { role: 'dailyStats', selector: '#dcFileInput' },
+    ],
+    readSummary: (w) => w.__actingSummary ? { count: w.__actingSummary.errorCount, label: '오류', ...w.__actingSummary } : null,
+    statBoxesElId: 'actingStatBoxes',
+    statBoxes: (s) => [
+      { cls: 'red', num: s ? `${s.errorCount}건` : '-', lbl: '치료기록 오류' },
+      { cls: 'orange', num: s ? `${s.warnCount}건` : '-', lbl: '기타 오류' },
+    ],
+    alertRow: (s) => s && alertRow('치료기록 오류', `${s.count}건`, s.count ? 'red' : 'green',
+      s.count ? `[치료기록 QA] 치료기록 오류 ${s.count}건 발견 — 재활치료부 앱에서 확인` : null),
+  },
+  cross: {
+    label: '교차검증',
+    page: 'tools/작업치료_교차검증_도구_core내장.html',
+    targets: [
+      { role: 'status', selector: 'input[data-key="statusBook"]' },
+      { role: 'card10', selector: 'input[data-key="card10Book"]' },
+      { role: 'card3', selector: 'input[data-key="card3Book"]' },
+      { role: 'mat10', selector: 'input[data-key="mat10Book"]' },
+      { role: 'table10', selector: 'input[data-key="table10Book"]' },
+      { role: 'mt3', selector: 'input[data-key="mt3Book"]' },
+      { role: 'handover', selector: 'input[data-key="handoverBook"]' },
+    ],
+    readSummary: (w) => w.__crossSummary ? { count: w.__crossSummary.issueCount, label: '검증 결과', ...w.__crossSummary } : null,
+    statBoxesElId: 'crossStatBoxes',
+    statBoxes: (s) => [
+      { cls: 'green', num: s ? `${s.checkedTotal - s.problemTotal}건` : '-', lbl: '정상' },
+      { cls: 'red', num: s ? `${s.problemTotal}건` : '-', lbl: '불일치' },
+    ],
+    alertRow: (s) => s && alertRow('교차검증 결과', `${s.count}건`, s.count ? 'orange' : 'green',
+      s.count ? `[교차검증] 불일치 ${s.count}건 발견 — 재활치료부 앱에서 확인` : null),
+  },
 };
-const TOOL_PAGES = {
-  rm: 'tools/그랜드라운딩_통합.html',
-  acting: 'tools/치료_액팅_기록_오류_확인_프로그램_언어분류.html',
-  cross: 'tools/작업치료_교차검증_도구_core내장.html',
-};
-const TOOL_LABELS = { rm: '그랜드라운딩', acting: '치료기록 QA', cross: '교차검증' };
+// 홈 화면 "오늘 확인할 항목" 표시 순서(오류/불일치를 먼저 보여준다) — TOOLS 순서와는 별개로 관리.
+const ALERT_ORDER = ['acting', 'cross', 'rm'];
 
 let fileRoles = [];
 let lastScan = null; // {matched, unmatched, errors, folders}
@@ -68,7 +103,7 @@ function fillInput(doc, selector, files) {
 }
 
 async function autoFillTool(toolKey) {
-  const targets = TOOL_TARGETS[toolKey];
+  const targets = TOOLS[toolKey] && TOOLS[toolKey].targets;
   const iframe = document.querySelector(`iframe[data-tool="${toolKey}"]`);
   if (!targets || !lastScan || !iframe || !iframe.contentDocument) return 0;
   const doc = iframe.contentDocument;
@@ -85,7 +120,7 @@ async function autoFillTool(toolKey) {
 async function autoFillAllLoadedTools() {
   for (const key of loadedTools) {
     const n = await autoFillTool(key);
-    if (n) logActivity(TOOL_LABELS[key], `${n}개 칸 자동 채움`);
+    if (n) logActivity(TOOLS[key].label, `${n}개 칸 자동 채움`);
     waitForSummaryThenRender(key);
   }
 }
@@ -101,17 +136,17 @@ async function waitForSummaryThenRender(key, tries = 20) {
 
 // ── 사이드바 / 화면 전환 ───────────────────────────────────
 function ensureToolLoaded(key) {
-  if (!TOOL_PAGES[key]) return;
+  if (!TOOLS[key]) return;
   const iframe = document.querySelector(`iframe[data-tool="${key}"]`);
   if (!loadedTools.has(key)) {
     loadedTools.add(key);
     iframe.addEventListener('load', async () => {
       const n = await autoFillTool(key);
-      logActivity(TOOL_LABELS[key], n ? `화면 열림 · ${n}개 칸 자동 채움` : '화면 열림');
+      logActivity(TOOLS[key].label, n ? `화면 열림 · ${n}개 칸 자동 채움` : '화면 열림');
       renderHome();
       await waitForSummaryThenRender(key); // 도구의 분석은 change 이벤트 이후 비동기로 끝나므로, 끝날 때까지 기다렸다가 다시 그림
     });
-    iframe.src = TOOL_PAGES[key];
+    iframe.src = TOOLS[key].page;
   }
 }
 
@@ -183,12 +218,8 @@ function readToolSummary(key) {
   const iframe = document.querySelector(`iframe[data-tool="${key}"]`);
   try {
     const w = iframe.contentWindow;
-    if (!w) return null;
-    if (key === 'cross') return w.__crossSummary ? { count: w.__crossSummary.issueCount, label: '검증 결과', ...w.__crossSummary } : null;
-    if (key === 'rm') return w.__rmSummary ? { count: w.__rmSummary.patientCount, label: '환자', ...w.__rmSummary } : null;
-    if (key === 'acting') return w.__actingSummary ? { count: w.__actingSummary.errorCount, label: '오류', ...w.__actingSummary } : null;
+    return w ? TOOLS[key].readSummary(w) : null;
   } catch (e) { return null; }
-  return null;
 }
 
 // content가 있으면 "잇다로 보내기" 버튼을 같이 붙인다 — 자동으로 보내지 않고, 사용자가 누를 때만
@@ -224,32 +255,17 @@ function renderHome() {
     <div class="row"><span>필수 파일</span><b>${requiredFound}/${required.length}</b></div>
     <div class="row"><span>전체 파일</span><b>${Object.keys(matched).length}/${localFileRoles.length}</b></div>`;
 
-  const cross = readToolSummary('cross'), rm = readToolSummary('rm'), acting = readToolSummary('acting');
-  const alerts = [];
-  if (acting) alerts.push(alertRow('치료기록 오류', `${acting.count}건`, acting.count ? 'red' : 'green',
-    acting.count ? `[치료기록 QA] 치료기록 오류 ${acting.count}건 발견 — 재활치료부 앱에서 확인` : null));
-  if (cross) alerts.push(alertRow('교차검증 결과', `${cross.count}건`, cross.count ? 'orange' : 'green',
-    cross.count ? `[교차검증] 불일치 ${cross.count}건 발견 — 재활치료부 앱에서 확인` : null));
-  if (rm) alerts.push(alertRow('그랜드라운딩 데이터', `${rm.count}명 준비됨`, 'green',
-    `[그랜드라운딩] 오늘 회진 대상 환자 ${rm.count}명 준비됨`));
+  const summaries = {};
+  for (const key of Object.keys(TOOLS)) {
+    const s = readToolSummary(key);
+    summaries[key] = s;
+    const boxesEl = document.getElementById(TOOLS[key].statBoxesElId);
+    if (boxesEl) boxesEl.innerHTML = TOOLS[key].statBoxes(s).map(b =>
+      `<div class="statbox ${b.cls}"><span class="num">${b.num}</span><span class="lbl">${b.lbl}</span></div>`).join('');
+  }
+  const alerts = ALERT_ORDER.map(key => TOOLS[key].alertRow(summaries[key])).filter(Boolean);
   document.getElementById('homeAlerts').innerHTML = alerts.join('') || '<div class="muted">화면을 열면 요약이 표시됩니다.</div>';
   wireItdaPushButtons();
-
-  document.getElementById('rmStatBoxes').innerHTML = rm
-    ? `<div class="statbox neutral"><span class="num">${rm.patientCount}명</span><span class="lbl">전체 환자</span></div>
-       <div class="statbox neutral"><span class="num">${rm.floor10Count}명</span><span class="lbl">10F</span></div>`
-    : `<div class="statbox neutral"><span class="num">-</span><span class="lbl">전체 환자</span></div>
-       <div class="statbox neutral"><span class="num">-</span><span class="lbl">10F</span></div>`;
-  document.getElementById('actingStatBoxes').innerHTML = acting
-    ? `<div class="statbox red"><span class="num">${acting.errorCount}건</span><span class="lbl">치료기록 오류</span></div>
-       <div class="statbox orange"><span class="num">${acting.warnCount}건</span><span class="lbl">기타 오류</span></div>`
-    : `<div class="statbox red"><span class="num">-</span><span class="lbl">치료기록 오류</span></div>
-       <div class="statbox orange"><span class="num">-</span><span class="lbl">기타 오류</span></div>`;
-  document.getElementById('crossStatBoxes').innerHTML = cross
-    ? `<div class="statbox green"><span class="num">${cross.checkedTotal - cross.problemTotal}건</span><span class="lbl">정상</span></div>
-       <div class="statbox red"><span class="num">${cross.problemTotal}건</span><span class="lbl">불일치</span></div>`
-    : `<div class="statbox green"><span class="num">-</span><span class="lbl">정상</span></div>
-       <div class="statbox red"><span class="num">-</span><span class="lbl">불일치</span></div>`;
 
   const refreshNote = document.getElementById('homeRefreshNote');
   if (refreshNote) refreshNote.textContent = lastScan ? `마지막 확인: 폴더 ${lastScan.folders.length}개 · ${Object.keys(matched).length}/${localFileRoles.length}개 파일 인식` : '아직 자동 불러오기를 하지 않았습니다.';
@@ -258,11 +274,18 @@ function renderHome() {
   renderActivity();
 }
 
+let sysInfoRequestId = 0;
 async function renderSysInfo(matched, localFileRoles) {
   document.getElementById('sysTotalFiles').textContent = localFileRoles.length;
   document.getElementById('sysOkFiles').textContent = Object.keys(matched).length;
   document.getElementById('sysLastUpdate').textContent = lastScan ? new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
-  const folders = await window.rehab.folders.list();
+  // renderHome()이 폴링·스캔·탭전환마다 자주 겹쳐 불릴 수 있어서, 먼저 시작한 호출의 IPC 응답이
+  // 나중에 도착해 최신 상태를 덮어쓰지 않도록 요청번호로 마지막 호출만 반영한다.
+  const requestId = ++sysInfoRequestId;
+  let folders;
+  try { folders = await window.rehab.folders.list(); }
+  catch (e) { return; }
+  if (requestId !== sysInfoRequestId) return; // 그 사이 더 최신 renderHome()이 또 불렸으면 이 결과는 버린다
   const pathEl = document.getElementById('sysDataFolder');
   if (folders.length) pathEl.textContent = `데이터 폴더: ${folders[0].dirPath}${folders.length > 1 ? ` 외 ${folders.length - 1}개` : ''}`;
   else pathEl.textContent = '데이터 폴더: 등록된 폴더 없음';

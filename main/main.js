@@ -47,7 +47,10 @@ if (!gotLock) {
     registerFoldersIpc();
     registerItdaIpc();
     createWindow();
-    initUpdater(app, ipcMain, mainWindow);
+    // mainWindow를 그대로 넘기면 안 된다 — mac은 창을 닫아도 앱이 안 죽고, dock 클릭(activate)으로
+    // 새 창이 만들어지는데 그때도 이 참조는 여전히 "닫힌" 옛 창을 가리켜서 업데이트 알림이 조용히
+    // 안 뜨게 된다. 항상 현재 창을 다시 찾는 함수를 넘긴다.
+    initUpdater(app, ipcMain, () => mainWindow);
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });

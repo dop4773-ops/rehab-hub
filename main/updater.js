@@ -3,7 +3,7 @@
 // 상태가 없어서 itda의 "자동 모드/위젯 스냅샷/자동저장 플러시" 부분은 필요 없다 — 그 부분만 뺐다.
 'use strict';
 
-function initUpdater(app, ipcMain, mainWindow) {
+function initUpdater(app, ipcMain, getMainWindow) {
   ipcMain.handle('updater:getVersion', () => app.getVersion());
 
   // 개발 모드(패키징 안 된 상태)는 배포 메타데이터가 없어 electron-updater가 항상 에러만 낸다.
@@ -20,8 +20,9 @@ function initUpdater(app, ipcMain, mainWindow) {
   autoUpdater.autoDownload = true;
 
   function sendStatus(status, extra = {}) {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('updater:status', { status, ...extra });
+    const win = getMainWindow();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('updater:status', { status, ...extra });
     }
   }
 
