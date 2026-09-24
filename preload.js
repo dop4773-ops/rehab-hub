@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('rehab', {
     fileRoles: () => ipcRenderer.invoke('folders:fileRoles'),
     readFile: (path) => ipcRenderer.invoke('folders:readFile', path),
   },
+  itda: {
+    installed: () => ipcRenderer.invoke('itda:installed'),
+    pushInboxItem: (content) => ipcRenderer.invoke('itda:pushInboxItem', content),
+  },
   updater: {
     getVersion: () => ipcRenderer.invoke('updater:getVersion'),
     checkNow: () => ipcRenderer.invoke('updater:checkNow'),

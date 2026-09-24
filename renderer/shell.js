@@ -180,6 +180,24 @@ function readToolSummary(key) {
   return null;
 }
 
+// content가 있으면 "잇다로 보내기" 버튼을 같이 붙인다 — 자동으로 보내지 않고, 사용자가 누를 때만
+// 잇다의 Inbox에 한 줄 들어간다(잇다 Inbox 철학과 동일: 자동 분류 없음, 단순 저장).
+function alertRow(label, badgeText, badgeClass, content) {
+  const btn = content ? `<button class="btn" style="padding:3px 8px;font-size:11px;margin-left:6px" data-itda-push="${content.replace(/"/g, '&quot;')}">잇다로 보내기</button>` : '';
+  return `<div class="row"><span>${label}</span><span><span class="badge ${badgeClass}">${badgeText}</span>${btn}</span></div>`;
+}
+
+function wireItdaPushButtons() {
+  document.querySelectorAll('[data-itda-push]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = '보내는 중…';
+      const r = await window.rehab.itda.pushInboxItem(btn.dataset.itdaPush);
+      if (r.ok) { btn.textContent = '보냄 ✓'; logActivity('잇다 연동', '잇다 Inbox로 보냄'); }
+      else { btn.textContent = '실패'; btn.disabled = false; logActivity('잇다 연동', r.message); }
+    });
+  });
+}
+
 function renderHome() {
   document.getElementById('homeFileList').innerHTML = fileChecklistHtml();
 
@@ -194,10 +212,14 @@ function renderHome() {
 
   const cross = readToolSummary('cross'), rm = readToolSummary('rm'), acting = readToolSummary('acting');
   const alerts = [];
-  if (acting) alerts.push(`<div class="row"><span>치료기록 오류</span><span class="badge ${acting.count ? 'red' : 'green'}">${acting.count}건</span></div>`);
-  if (cross) alerts.push(`<div class="row"><span>교차검증 결과</span><span class="badge ${cross.count ? 'orange' : 'green'}">${cross.count}건</span></div>`);
-  if (rm) alerts.push(`<div class="row"><span>그랜드라운딩 데이터</span><span class="badge green">${rm.count}명 준비됨</span></div>`);
+  if (acting) alerts.push(alertRow('치료기록 오류', `${acting.count}건`, acting.count ? 'red' : 'green',
+    acting.count ? `[치료기록 QA] 치료기록 오류 ${acting.count}건 발견 — 재활치료부 앱에서 확인` : null));
+  if (cross) alerts.push(alertRow('교차검증 결과', `${cross.count}건`, cross.count ? 'orange' : 'green',
+    cross.count ? `[교차검증] 불일치 ${cross.count}건 발견 — 재활치료부 앱에서 확인` : null));
+  if (rm) alerts.push(alertRow('그랜드라운딩 데이터', `${rm.count}명 준비됨`, 'green',
+    `[그랜드라운딩] 오늘 회진 대상 환자 ${rm.count}명 준비됨`));
   document.getElementById('homeAlerts').innerHTML = alerts.join('') || '<div class="muted">화면을 열면 요약이 표시됩니다.</div>';
+  wireItdaPushButtons();
 
   document.getElementById('rmStat').innerHTML = `환자 데이터: <b>${rm ? rm.count + '명' : '-'}</b>`;
   document.getElementById('actingStat').innerHTML = `오늘의 오류: <b>${acting ? acting.count + '건' : '-'}</b>`;

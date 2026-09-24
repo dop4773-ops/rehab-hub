@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { registerSchemePrivileges, registerProtocolHandler, shellUrl } = require('./protocol');
 const { registerFoldersIpc } = require('./ipc/folders.ipc');
+const { registerItdaIpc } = require('./ipc/itda.ipc');
 const { initUpdater } = require('./updater');
 
 registerSchemePrivileges(); // app.whenReady() 전에 호출해야 함(Electron 요구사항)
@@ -44,6 +45,7 @@ if (!gotLock) {
   app.whenReady().then(() => {
     registerProtocolHandler();
     registerFoldersIpc();
+    registerItdaIpc();
     createWindow();
     initUpdater(app, ipcMain, mainWindow);
     app.on('activate', () => {
