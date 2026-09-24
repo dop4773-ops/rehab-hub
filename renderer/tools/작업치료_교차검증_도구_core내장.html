@@ -1775,7 +1775,11 @@ async function runAllVerifications(){
   issues=allIssues;
   // 데스크톱 앱 홈 대시보드가 이 화면의 요약(검증 불일치 건수)을 읽기 위한 훅. top-level let은 window에
   // 안 붙어서 iframe.contentWindow로 직접 못 읽기 때문에 명시적으로 저장한다. 화면 자체 로직에는 영향 없음.
-  window.__crossSummary = { issueCount: issues.length };
+  window.__crossSummary = {
+    issueCount: issues.length,
+    checkedTotal: countChecked+locChecked+therChecked+handoverChecked+evalChecked,
+    problemTotal: countProblems+locProblems+therProblems+handoverProblems+evalProblems,
+  };
   return {
     stats:{countChecked,countProblems,locChecked,locProblems,therChecked,therProblems,handoverChecked,handoverProblems,evalChecked,evalProblems},
     floorCount

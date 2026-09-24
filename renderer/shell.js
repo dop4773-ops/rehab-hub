@@ -39,8 +39,8 @@ const loadedTools = new Set();
 const activityLog = [];
 
 // ── 공용 유틸 ──────────────────────────────────────────────
-function logActivity(feature, detail) {
-  activityLog.unshift({ time: new Date(), feature, detail });
+function logActivity(feature, detail, ok = true) {
+  activityLog.unshift({ time: new Date(), feature, detail, ok });
   if (activityLog.length > 12) activityLog.length = 12;
   renderActivity();
 }
@@ -149,16 +149,20 @@ async function runScan(statusEl) {
 }
 
 // ── 렌더링 ─────────────────────────────────────────────────
+function formatFileTime(mtimeMs) {
+  const d = new Date(mtimeMs);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
 function fileChecklistHtml() {
   const matched = (lastScan && lastScan.matched) || {};
   return fileRoles.map(r => {
     // 인수인계는 그랜드라운딩·교차검증이 폴더의 파일 없이도 실시간 조회로 자동으로 가져온다 —
     // 폴더 스캔 결과("미발견")로 표시하면 항상 안 찾아진 것처럼 보여 혼란을 준다.
     if (r.key === 'handover') {
-      return `<div class="file-row"><span class="name">${r.label} <span class="muted">(선택)</span></span><span class="ok">🌐 실시간 자동연동</span></div>`;
+      return `<div class="file-card"><span class="ico">🌐</span><div class="info"><div class="n">${r.label}</div><div class="m">실시간 자동연동</div></div><span class="st ok">정상</span></div>`;
     }
     const m = matched[r.key];
-    return `<div class="file-row"><span class="name">${r.label}${r.required ? '' : ' <span class="muted">(선택)</span>'}</span><span class="${m ? 'ok' : 'miss'}">${m ? '✓ ' + m.name : '미발견'}</span></div>`;
+    return `<div class="file-card"><span class="ico">📊</span><div class="info"><div class="n">${r.label}${r.required ? '' : ' <span class="muted">(선택)</span>'}</div><div class="m">${m ? 'Excel · ' + formatFileTime(m.mtimeMs) : '아직 못 찾음'}</div></div><span class="st ${m ? 'ok' : 'miss'}">${m ? '정상' : '미발견'}</span></div>`;
   }).join('');
 }
 
@@ -166,8 +170,10 @@ function renderActivity() {
   const body = document.getElementById('activityBody');
   if (!body) return;
   body.innerHTML = activityLog.map(a =>
-    `<tr><td>${a.time.toTimeString().slice(0, 5)}</td><td>${a.feature}</td><td>${a.detail}</td></tr>`
-  ).join('') || '<tr><td colspan="3" class="muted">아직 작업 내역이 없습니다.</td></tr>';
+    `<tr><td>${a.time.toTimeString().slice(0, 5)}</td><td>${a.feature}</td><td>${a.detail}</td><td><span class="status-pill" style="color:${a.ok ? 'var(--green)' : 'var(--red)'}">${a.ok ? '✓ 완료' : '✗ 실패'}</span></td></tr>`
+  ).join('') || '<tr><td colspan="4" class="muted">아직 작업 내역이 없습니다.</td></tr>';
+  const sidebarUpdated = document.getElementById('sidebarUpdated');
+  if (sidebarUpdated && activityLog.length) sidebarUpdated.textContent = `마지막 업데이트 ${activityLog[0].time.toTimeString().slice(0, 5)}`;
 }
 
 // 세 도구 모두 top-level let으로 상태를 가지고 있어 iframe.contentWindow로 직접 못 읽는다(let/const는
@@ -178,9 +184,9 @@ function readToolSummary(key) {
   try {
     const w = iframe.contentWindow;
     if (!w) return null;
-    if (key === 'cross') return w.__crossSummary ? { count: w.__crossSummary.issueCount, label: '검증 결과' } : null;
-    if (key === 'rm') return w.__rmSummary ? { count: w.__rmSummary.patientCount, label: '환자' } : null;
-    if (key === 'acting') return w.__actingSummary ? { count: w.__actingSummary.errorCount, label: '오류' } : null;
+    if (key === 'cross') return w.__crossSummary ? { count: w.__crossSummary.issueCount, label: '검증 결과', ...w.__crossSummary } : null;
+    if (key === 'rm') return w.__rmSummary ? { count: w.__rmSummary.patientCount, label: '환자', ...w.__rmSummary } : null;
+    if (key === 'acting') return w.__actingSummary ? { count: w.__actingSummary.errorCount, label: '오류', ...w.__actingSummary } : null;
   } catch (e) { return null; }
   return null;
 }
@@ -198,7 +204,7 @@ function wireItdaPushButtons() {
       btn.disabled = true; btn.textContent = '보내는 중…';
       const r = await window.rehab.itda.pushInboxItem(btn.dataset.itdaPush);
       if (r.ok) { btn.textContent = '보냄 ✓'; logActivity('잇다 연동', '잇다 Inbox로 보냄'); }
-      else { btn.textContent = '실패'; btn.disabled = false; logActivity('잇다 연동', r.message); }
+      else { btn.textContent = '실패'; btn.disabled = false; logActivity('잇다 연동', r.message, false); }
     });
   });
 }
@@ -210,7 +216,8 @@ function renderHome() {
   const required = fileRoles.filter(r => r.required);
   const requiredFound = required.filter(r => matched[r.key]).length;
   const pct = required.length ? Math.round((requiredFound / required.length) * 100) : 0;
-  document.getElementById('homeDonut').textContent = lastScan ? `${pct}%` : '-';
+  document.getElementById('homeDonut').style.background = lastScan ? `conic-gradient(var(--green) ${pct}%, var(--border) 0)` : '';
+  document.getElementById('homeDonutText').textContent = lastScan ? `${pct}%` : '-';
   // 인수인계는 폴더 파일이 아니라 실시간 연동이라 "전체 파일" 분모/분자 어디에도 안 넣는다.
   const localFileRoles = fileRoles.filter(r => r.key !== 'handover');
   document.getElementById('homeChecklist').innerHTML = `
@@ -228,11 +235,40 @@ function renderHome() {
   document.getElementById('homeAlerts').innerHTML = alerts.join('') || '<div class="muted">화면을 열면 요약이 표시됩니다.</div>';
   wireItdaPushButtons();
 
-  document.getElementById('rmStat').innerHTML = `환자 데이터: <b>${rm ? rm.count + '명' : '-'}</b>`;
-  document.getElementById('actingStat').innerHTML = `오늘의 오류: <b>${acting ? acting.count + '건' : '-'}</b>`;
-  document.getElementById('crossStat').innerHTML = `검증 결과: <b>${cross ? cross.count + '건' : '-'}</b>`;
+  document.getElementById('rmStatBoxes').innerHTML = rm
+    ? `<div class="statbox neutral"><span class="num">${rm.patientCount}명</span><span class="lbl">전체 환자</span></div>
+       <div class="statbox neutral"><span class="num">${rm.floor10Count}명</span><span class="lbl">10F</span></div>`
+    : `<div class="statbox neutral"><span class="num">-</span><span class="lbl">전체 환자</span></div>
+       <div class="statbox neutral"><span class="num">-</span><span class="lbl">10F</span></div>`;
+  document.getElementById('actingStatBoxes').innerHTML = acting
+    ? `<div class="statbox red"><span class="num">${acting.errorCount}건</span><span class="lbl">치료기록 오류</span></div>
+       <div class="statbox orange"><span class="num">${acting.warnCount}건</span><span class="lbl">기타 오류</span></div>`
+    : `<div class="statbox red"><span class="num">-</span><span class="lbl">치료기록 오류</span></div>
+       <div class="statbox orange"><span class="num">-</span><span class="lbl">기타 오류</span></div>`;
+  document.getElementById('crossStatBoxes').innerHTML = cross
+    ? `<div class="statbox green"><span class="num">${cross.checkedTotal - cross.problemTotal}건</span><span class="lbl">정상</span></div>
+       <div class="statbox red"><span class="num">${cross.problemTotal}건</span><span class="lbl">불일치</span></div>`
+    : `<div class="statbox green"><span class="num">-</span><span class="lbl">정상</span></div>
+       <div class="statbox red"><span class="num">-</span><span class="lbl">불일치</span></div>`;
 
+  const refreshNote = document.getElementById('homeRefreshNote');
+  if (refreshNote) refreshNote.textContent = lastScan ? `마지막 확인: 폴더 ${lastScan.folders.length}개 · ${Object.keys(matched).length}/${localFileRoles.length}개 파일 인식` : '아직 자동 불러오기를 하지 않았습니다.';
+
+  renderSysInfo(matched, localFileRoles);
   renderActivity();
+}
+
+async function renderSysInfo(matched, localFileRoles) {
+  document.getElementById('sysTotalFiles').textContent = localFileRoles.length;
+  document.getElementById('sysOkFiles').textContent = Object.keys(matched).length;
+  document.getElementById('sysLastUpdate').textContent = lastScan ? new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+  const folders = await window.rehab.folders.list();
+  const pathEl = document.getElementById('sysDataFolder');
+  if (folders.length) pathEl.textContent = `데이터 폴더: ${folders[0].dirPath}${folders.length > 1 ? ` 외 ${folders.length - 1}개` : ''}`;
+  else pathEl.textContent = '데이터 폴더: 등록된 폴더 없음';
+  const openBtn = document.getElementById('sysOpenFolderBtn');
+  openBtn.disabled = !folders.length;
+  openBtn.onclick = () => folders.length && window.rehab.folders.openFolder(folders[0].dirPath);
 }
 
 function renderDataView() {
@@ -259,6 +295,8 @@ document.getElementById('addFolderBtn').addEventListener('click', async () => {
 });
 document.getElementById('homeScanBtn').addEventListener('click', () => runScan(null));
 document.getElementById('dataScanBtn').addEventListener('click', () => runScan(document.getElementById('dataStatus')));
+document.getElementById('homeRefreshBtn').addEventListener('click', () => runScan(null));
+document.getElementById('topbarSettingsBtn').addEventListener('click', () => showView('settings'));
 
 // ── 업데이트(GitHub Releases) ─────────────────────────────
 function updaterStatusText(s) {

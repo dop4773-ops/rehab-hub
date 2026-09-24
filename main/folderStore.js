@@ -4,7 +4,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { app, dialog } = require('electron');
+const { app, dialog, shell } = require('electron');
 const { FILE_ROLES, guessFileRole } = require('./fileRoles');
 const { scanFolders } = require('./scan');
 
@@ -50,4 +50,9 @@ function readFileBuffer(filePath) {
   return new Uint8Array(fs.readFileSync(filePath));
 }
 
-module.exports = { FILE_ROLES, guessFileRole, chooseFolder, listFolders, removeFolder, scanAll, readFileBuffer };
+// 홈 화면 "시스템 정보"의 "폴더 열기" 버튼 — 등록된 폴더를 OS 파일탐색기/Finder로 보여준다.
+function openFolder(dirPath) {
+  if (dirPath) shell.openPath(dirPath);
+}
+
+module.exports = { FILE_ROLES, guessFileRole, chooseFolder, listFolders, removeFolder, scanAll, readFileBuffer, openFolder };

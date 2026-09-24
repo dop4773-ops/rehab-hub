@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('rehab', {
     scanAll: () => ipcRenderer.invoke('folders:scanAll'),
     fileRoles: () => ipcRenderer.invoke('folders:fileRoles'),
     readFile: (path) => ipcRenderer.invoke('folders:readFile', path),
+    openFolder: (path) => ipcRenderer.invoke('folders:openFolder', path),
   },
   itda: {
     installed: () => ipcRenderer.invoke('itda:installed'),

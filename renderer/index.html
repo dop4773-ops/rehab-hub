@@ -16,27 +16,44 @@
     </div>
   </div>
   <div class="right">
-    <span id="todayDate"></span>
+    <span class="pill">📅 <span id="todayDate"></span></span>
+    <span class="pill">👤 작업치료팀 <span class="chev">▾</span></span>
+    <button class="icon-btn" id="topbarSettingsBtn" title="설정">⚙️</button>
   </div>
 </div>
 
 <div id="app">
   <nav id="sidebar">
-    <div class="nav-item active" data-nav="home">🏠 홈</div>
-    <div class="nav-item" data-nav="data">📦 데이터 준비</div>
-    <div class="nav-item" data-nav="rm">👤 그랜드라운딩</div>
-    <div class="nav-item" data-nav="acting">📋 치료기록 QA</div>
-    <div class="nav-item" data-nav="cross">🔍 교차검증</div>
-    <div class="nav-item" data-nav="settings">⚙️ 설정</div>
+    <div class="nav-list">
+      <div class="nav-item active" data-nav="home">🏠 홈</div>
+      <div class="nav-item" data-nav="data">📦 데이터 준비</div>
+      <div class="nav-item" data-nav="rm">👤 그랜드라운딩 <span class="chev">▾</span></div>
+      <div class="nav-item" data-nav="acting">📋 치료기록 QA <span class="chev">▾</span></div>
+      <div class="nav-item" data-nav="cross">🔍 교차검증 <span class="chev">▾</span></div>
+      <div class="nav-item" data-nav="report">🖨️ 보고서 / 출력</div>
+      <div class="nav-item" data-nav="settings">⚙️ 설정</div>
+    </div>
+    <div class="sidebar-status">
+      <div class="dot-row"><span class="dot"></span> 시스템 정상</div>
+      <div class="sub" id="sidebarUpdated">마지막 업데이트 -</div>
+    </div>
   </nav>
 
   <main id="content">
 
     <section class="view active" data-view="home">
+      <div class="welcome-banner">
+        <div>
+          <h2>안녕하세요! 👋</h2>
+          <p>오늘도 수고하시는 작업치료팀을 응원합니다.</p>
+        </div>
+        <div class="deco">🏥</div>
+      </div>
+
       <div class="grid3">
         <div class="card">
-          <h2>📦 오늘의 데이터</h2>
-          <div id="homeFileList"></div>
+          <h2>📦 오늘의 데이터 현황 <span class="link" data-goto="data">전체 파일 보기 →</span></h2>
+          <div id="homeFileList" class="file-grid"></div>
           <div style="margin-top:10px;display:flex;justify-content:flex-end">
             <button class="btn primary" id="homeScanBtn">🔄 자동 불러오기</button>
           </div>
@@ -44,18 +61,24 @@
         <div class="card">
           <h2>📅 오늘의 업무 현황</h2>
           <div class="donut-wrap">
-            <div class="donut" id="homeDonut">-</div>
+            <div class="donut-ring" id="homeDonut"><div class="donut-hole" id="homeDonutText">-</div></div>
             <div class="checklist" id="homeChecklist"></div>
           </div>
-          <div class="alert-list" id="homeAlerts" style="margin-top:10px"></div>
+          <div class="today-check-title">오늘 확인할 항목</div>
+          <div class="alert-list" id="homeAlerts"></div>
+          <div class="refresh-line">
+            <span id="homeRefreshNote">마지막 확인 정보가 여기 표시됩니다.</span>
+            <button id="homeRefreshBtn">🔄 새로고침</button>
+          </div>
         </div>
         <div class="card">
           <h2>⚡ 빠른 실행</h2>
           <div class="quick-list">
-            <button class="btn primary" data-goto="rm">그랜드라운딩 바로가기</button>
-            <button class="btn green" data-goto="acting">치료기록 QA 바로가기</button>
-            <button class="btn purple" data-goto="cross">교차검증 바로가기</button>
-            <button class="btn" data-goto="settings">폴더 설정</button>
+            <button class="btn primary" data-goto="rm">그랜드라운딩 바로가기 <span class="arrow">→</span></button>
+            <button class="btn green" data-goto="acting">치료기록 QA 바로가기 <span class="arrow">→</span></button>
+            <button class="btn purple" data-goto="cross">교차검증 바로가기 <span class="arrow">→</span></button>
+            <button class="btn" data-goto="report">보고서 / 출력 <span class="arrow">→</span></button>
+            <button class="btn" data-goto="settings">폴더 관리 <span class="arrow">→</span></button>
           </div>
         </div>
       </div>
@@ -64,40 +87,67 @@
         <div class="card feature-card">
           <h2>👤 그랜드라운딩</h2>
           <div class="muted">환자별 회진 정보와 치료 일정을 한눈에.</div>
-          <ul><li>전체 환자 시간표</li><li>RM/회차별 명단</li><li>치료사·팀별 분류</li><li>OT 인수인계(실시간)</li></ul>
-          <div class="stat" id="rmStat">환자 데이터: <b>-</b></div>
-          <button class="btn primary" data-goto="rm">그랜드라운딩 화면 열기 →</button>
+          <ul><li>전체 환자 시간표</li><li>병실/RM/치료 위치</li><li>OT 인수인계(실시간)</li><li>Goal / 그랜드라운딩</li></ul>
+          <div class="statbox-row" id="rmStatBoxes">
+            <div class="statbox neutral"><span class="num">-</span><span class="lbl">전체 환자</span></div>
+            <div class="statbox neutral"><span class="num">-</span><span class="lbl">10F</span></div>
+          </div>
+          <button class="btn primary" data-goto="rm">회진표 생성하기 →</button>
         </div>
         <div class="card feature-card">
           <h2>📋 치료기록 QA</h2>
           <div class="muted">치료기록의 오류와 누락을 자동으로 검증.</div>
-          <ul><li>치료내용 누락 확인</li><li>시작/종료 시간 오류</li><li>중복처방·검사시간 중복</li><li>언어/심리 별도 분류(ST)</li></ul>
-          <div class="stat" id="actingStat">오늘의 오류: <b>-</b></div>
+          <ul><li>치료내용 누락 확인</li><li>시작/종료 시간 오류</li><li>검사시간대 중복 처방</li><li>언어/심리 별도 분류</li></ul>
+          <div class="statbox-row" id="actingStatBoxes">
+            <div class="statbox red"><span class="num">-</span><span class="lbl">치료기록 오류</span></div>
+            <div class="statbox orange"><span class="num">-</span><span class="lbl">기타 오류</span></div>
+          </div>
           <button class="btn green" data-goto="acting">오류 확인하기 →</button>
         </div>
         <div class="card feature-card">
           <h2>🔍 교차검증</h2>
           <div class="muted">여러 파일의 데이터를 비교해 불일치를 찾아냄.</div>
-          <ul><li>개수·위치 검증</li><li>치료사 검증</li><li>인수인계 검증</li><li>토요일/공휴일 검증</li></ul>
-          <div class="stat" id="crossStat">검증 결과: <b>-</b></div>
+          <ul><li>개수·위치 검증</li><li>치료사 검증</li><li>인수인계 검증(실시간)</li><li>토요일/공휴일 검증</li></ul>
+          <div class="statbox-row" id="crossStatBoxes">
+            <div class="statbox green"><span class="num">-</span><span class="lbl">정상</span></div>
+            <div class="statbox red"><span class="num">-</span><span class="lbl">불일치</span></div>
+          </div>
           <button class="btn purple" data-goto="cross">검증 시작하기 →</button>
+        </div>
+        <div class="card feature-card">
+          <h2>🖨️ 보고서 / 출력</h2>
+          <div class="muted">분석 결과를 엑셀로 출력합니다.</div>
+          <ul><li>그랜드라운딩 Excel</li><li>치료기록 오류 리포트</li><li>교차검증 결과</li><li>각 화면의 내보내기 버튼 사용</li></ul>
+          <div class="statbox-row">
+            <div class="statbox neutral"><span class="num">3</span><span class="lbl">연결된 도구</span></div>
+          </div>
+          <button class="btn" data-goto="report">내보내기 모아보기 →</button>
         </div>
       </div>
 
       <div class="grid3c">
         <div class="card">
-          <h2>🕒 최근 작업내역</h2>
-          <table class="mini"><thead><tr><th>시간</th><th>기능</th><th>내용</th></tr></thead><tbody id="activityBody"></tbody></table>
+          <h2>🕒 최근 작업 내역</h2>
+          <table class="mini"><thead><tr><th>시간</th><th>기능</th><th>내용</th><th>상태</th></tr></thead><tbody id="activityBody"></tbody></table>
         </div>
         <div class="card">
-          <h2 id="statsTitle">📊 요약</h2>
-          <div id="statsBody" class="muted">파일을 불러오면 표시됩니다.</div>
+          <h2>📊 시스템 정보</h2>
+          <div class="sysinfo-grid">
+            <div class="sysinfo-box"><span class="num" id="sysTotalFiles">-</span><span class="lbl">총 파일수</span></div>
+            <div class="sysinfo-box green"><span class="num" id="sysOkFiles">-</span><span class="lbl">인식된 파일</span></div>
+          </div>
+          <div class="sysinfo-row"><span>마지막 업데이트</span><span id="sysLastUpdate">-</span></div>
+          <div class="sysinfo-path">
+            <span class="p" id="sysDataFolder">데이터 폴더: 등록된 폴더 없음</span>
+            <button class="btn" id="sysOpenFolderBtn">폴더 열기</button>
+          </div>
         </div>
         <div class="card">
-          <h2>📢 안내</h2>
-          <ul style="font-size:12px;color:var(--sub);padding-left:16px;margin:0">
-            <li>이 화면은 개발 중인 데스크톱 앱 1단계입니다.</li>
-            <li>보고서/출력 화면은 각 도구의 내보내기 버튼으로 대신합니다(2단계 예정).</li>
+          <h2>📢 공지사항</h2>
+          <ul class="notice-list">
+            <li><span class="d">09.24</span> 이 화면은 개발 중인 데스크톱 앱입니다. 사용하며 불편한 점을 알려주세요.</li>
+            <li><span class="d">09.24</span> 보고서/출력은 각 도구 화면의 내보내기 버튼으로 대신합니다.</li>
+            <li><span class="d">09.24</span> "설정"에서 업데이트를 확인할 수 있습니다.</li>
           </ul>
         </div>
       </div>
@@ -107,7 +157,7 @@
       <div class="card">
         <h2>📦 데이터 준비</h2>
         <p class="muted">등록된 폴더에서 자동으로 파일을 찾아 3개 화면(그랜드라운딩·치료기록 QA·교차검증)에 채워 넣습니다.</p>
-        <div id="dataFileList"></div>
+        <div id="dataFileList" class="file-grid"></div>
         <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
           <button class="btn" data-goto="settings">폴더 관리 →</button>
           <button class="btn primary" id="dataScanBtn">🔄 자동 불러오기</button>
@@ -119,6 +169,30 @@
     <section class="view" data-view="rm"><iframe class="tool-frame" data-tool="rm"></iframe></section>
     <section class="view" data-view="acting"><iframe class="tool-frame" data-tool="acting"></iframe></section>
     <section class="view" data-view="cross"><iframe class="tool-frame" data-tool="cross"></iframe></section>
+
+    <section class="view" data-view="report">
+      <div class="card">
+        <h2>🖨️ 보고서 / 출력</h2>
+        <p class="muted">통합 보고서 화면은 준비 중입니다. 지금은 각 도구 화면에서 직접 내보내기(Excel/인쇄)를 사용해 주세요.</p>
+      </div>
+      <div class="report-links">
+        <div class="card">
+          <h2>👤 그랜드라운딩</h2>
+          <p class="muted">회진표·치료사별 시트·언어치료 전용 Excel 내보내기</p>
+          <button class="btn primary" data-goto="rm">화면 열기 →</button>
+        </div>
+        <div class="card">
+          <h2>📋 치료기록 QA</h2>
+          <p class="muted">오류 리포트 CSV 내보내기</p>
+          <button class="btn green" data-goto="acting">화면 열기 →</button>
+        </div>
+        <div class="card">
+          <h2>🔍 교차검증</h2>
+          <p class="muted">검증 결과 Excel/인쇄</p>
+          <button class="btn purple" data-goto="cross">화면 열기 →</button>
+        </div>
+      </div>
+    </section>
 
     <section class="view" data-view="settings">
       <div class="card">

@@ -940,7 +940,7 @@ function updateAfterLoad(){
   document.getElementById('grandExportAllBtn').disabled=false; document.getElementById('grandExportSelectedBtn').disabled=false; renderGrandTable();
   // 데스크톱 앱 홈 대시보드가 이 화면의 요약(환자 수)을 읽기 위한 훅. top-level let은 window에 안 붙어서
   // iframe.contentWindow로 직접 못 읽기 때문에 명시적으로 저장한다. 화면 자체 로직에는 영향 없음.
-  window.__rmSummary = { patientCount: allPatients.length };
+  window.__rmSummary = { patientCount: allPatients.length, floor10Count: allPatients.filter(p=>p.floor===10).length, floor3Count: allPatients.filter(p=>p.floor===3).length };
 }
 function defaultDay(){ const d=new Date().getDay(); return d===1?'월요일':d===2?'화요일':d===3?'수요일':d===4?'목요일':d===5?'금요일':'토요일/공휴일'; }
 
