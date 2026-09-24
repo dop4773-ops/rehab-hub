@@ -152,6 +152,11 @@ async function runScan(statusEl) {
 function fileChecklistHtml() {
   const matched = (lastScan && lastScan.matched) || {};
   return fileRoles.map(r => {
+    // 인수인계는 그랜드라운딩·교차검증이 폴더의 파일 없이도 실시간 조회로 자동으로 가져온다 —
+    // 폴더 스캔 결과("미발견")로 표시하면 항상 안 찾아진 것처럼 보여 혼란을 준다.
+    if (r.key === 'handover') {
+      return `<div class="file-row"><span class="name">${r.label} <span class="muted">(선택)</span></span><span class="ok">🌐 실시간 자동연동</span></div>`;
+    }
     const m = matched[r.key];
     return `<div class="file-row"><span class="name">${r.label}${r.required ? '' : ' <span class="muted">(선택)</span>'}</span><span class="${m ? 'ok' : 'miss'}">${m ? '✓ ' + m.name : '미발견'}</span></div>`;
   }).join('');
@@ -206,9 +211,11 @@ function renderHome() {
   const requiredFound = required.filter(r => matched[r.key]).length;
   const pct = required.length ? Math.round((requiredFound / required.length) * 100) : 0;
   document.getElementById('homeDonut').textContent = lastScan ? `${pct}%` : '-';
+  // 인수인계는 폴더 파일이 아니라 실시간 연동이라 "전체 파일" 분모/분자 어디에도 안 넣는다.
+  const localFileRoles = fileRoles.filter(r => r.key !== 'handover');
   document.getElementById('homeChecklist').innerHTML = `
     <div class="row"><span>필수 파일</span><b>${requiredFound}/${required.length}</b></div>
-    <div class="row"><span>전체 파일</span><b>${Object.keys(matched).length}/${fileRoles.length}</b></div>`;
+    <div class="row"><span>전체 파일</span><b>${Object.keys(matched).length}/${localFileRoles.length}</b></div>`;
 
   const cross = readToolSummary('cross'), rm = readToolSummary('rm'), acting = readToolSummary('acting');
   const alerts = [];
