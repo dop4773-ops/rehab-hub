@@ -9,10 +9,10 @@ function storeDir() {
 }
 
 function registerSchedulesIpc() {
-  ipcMain.handle('schedules:save', (event, dateKey, patients) => store.saveSchedule(storeDir(), dateKey, patients));
+  ipcMain.handle('schedules:save', (event, entry) => store.saveSchedule(storeDir(), entry));
   ipcMain.handle('schedules:list', () => store.listSchedules(storeDir()));
-  ipcMain.handle('schedules:load', (event, dateKeys) => store.loadSchedules(storeDir(), dateKeys));
-  ipcMain.handle('schedules:delete', (event, dateKey) => { store.deleteSchedule(storeDir(), dateKey); return store.listSchedules(storeDir()); });
+  ipcMain.handle('schedules:load', (event, ids) => store.loadSchedules(storeDir(), ids));
+  ipcMain.handle('schedules:delete', (event, id) => { store.deleteSchedule(storeDir(), id); return store.listSchedules(storeDir()); });
 }
 
 module.exports = { registerSchedulesIpc };

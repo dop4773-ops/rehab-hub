@@ -14,10 +14,10 @@ contextBridge.exposeInMainWorld('rehab', {
     openFolder: (path) => ipcRenderer.invoke('folders:openFolder', path),
   },
   schedules: {
-    save: (dateKey, patients) => ipcRenderer.invoke('schedules:save', dateKey, patients),
+    save: (entry) => ipcRenderer.invoke('schedules:save', entry),
     list: () => ipcRenderer.invoke('schedules:list'),
-    load: (dateKeys) => ipcRenderer.invoke('schedules:load', dateKeys),
-    delete: (dateKey) => ipcRenderer.invoke('schedules:delete', dateKey),
+    load: (ids) => ipcRenderer.invoke('schedules:load', ids),
+    delete: (id) => ipcRenderer.invoke('schedules:delete', id),
   },
   itda: {
     installed: () => ipcRenderer.invoke('itda:installed'),

@@ -144,10 +144,10 @@ async function waitForSummaryThenRender(key, tries = 20) {
 // iframe.contentWindow에 함수를 직접 심어줄 수 있다. 지금은 그랜드라운딩의 "일정 보관함"만 쓰지만,
 // 모든 도구에 공통으로 심어둬서 나중에 다른 도구도 바로 쓸 수 있게 한다(TOOLS 레지스트리와 같은 확장 취지).
 const SCHEDULES_BRIDGE = {
-  save: (dateKey, patients) => window.rehab.schedules.save(dateKey, patients),
+  save: (entry) => window.rehab.schedules.save(entry),
   list: () => window.rehab.schedules.list(),
-  load: (dateKeys) => window.rehab.schedules.load(dateKeys),
-  delete: (dateKey) => window.rehab.schedules.delete(dateKey),
+  load: (ids) => window.rehab.schedules.load(ids),
+  delete: (id) => window.rehab.schedules.delete(id),
 };
 
 // ── 사이드바 / 화면 전환 ───────────────────────────────────
