@@ -222,6 +222,10 @@
       <div class="card" style="margin-top:14px;">
         <h2>⬆️ 업데이트</h2>
         <p class="muted">현재 버전: <span id="updaterVersion">-</span></p>
+        <label style="margin-bottom:10px;display:flex;align-items:center;gap:7px;font-size:13px;color:#43546d">
+          <input type="checkbox" id="updaterAutoToggle">
+          자동 업데이트 — 새 버전을 조용히 받아서 재시작할 때 바로 적용 (끄면 "지금 확인"을 눌렀을 때만 확인)
+        </label>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn primary" id="updaterCheckBtn">지금 확인</button>
           <button class="btn" id="updaterInstallBtn" style="display:none">지금 재시작하고 설치</button>

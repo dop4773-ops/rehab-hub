@@ -395,6 +395,7 @@ document.getElementById('homeRefreshBtn').addEventListener('click', () => runSca
 document.getElementById('topbarSettingsBtn').addEventListener('click', () => showView('settings'));
 
 // ── 업데이트(GitHub Releases) ─────────────────────────────
+let updaterMode = 'manual';
 function updaterStatusText(s) {
   switch (s.status) {
     case 'dev-mode': return s.message;
@@ -402,14 +403,17 @@ function updaterStatusText(s) {
     case 'available': return `새 버전 ${s.version} 다운로드 중…`;
     case 'not-available': return '최신 버전을 사용 중입니다.';
     case 'downloading': return `다운로드 중… ${s.percent ?? 0}%`;
-    case 'downloaded': return `새 버전 ${s.version} 설치 준비 완료 — "지금 재시작하고 설치"를 눌러주세요.`;
+    case 'downloaded': return updaterMode === 'auto'
+      ? `새 버전 ${s.version} 다운로드 완료 — 곧 자동으로 재시작해 설치합니다.`
+      : `새 버전 ${s.version} 설치 준비 완료 — "지금 재시작하고 설치"를 눌러주세요.`;
     case 'error': return `업데이트 확인 실패: ${s.message}`;
     default: return '';
   }
 }
 window.rehab.updater.onStatus(s => {
   document.getElementById('updaterStatus').textContent = updaterStatusText(s);
-  document.getElementById('updaterInstallBtn').style.display = s.status === 'downloaded' ? 'inline-block' : 'none';
+  // 자동 모드에서는 어차피 알아서 재시작되므로 수동 설치 버튼을 보여줄 필요가 없다.
+  document.getElementById('updaterInstallBtn').style.display = (s.status === 'downloaded' && updaterMode !== 'auto') ? 'inline-block' : 'none';
 });
 document.getElementById('updaterCheckBtn').addEventListener('click', async () => {
   document.getElementById('updaterStatus').textContent = '확인 중…';
@@ -417,12 +421,17 @@ document.getElementById('updaterCheckBtn').addEventListener('click', async () =>
   if (r.status === 'dev-mode' || r.status === 'error') document.getElementById('updaterStatus').textContent = r.message || updaterStatusText(r);
 });
 document.getElementById('updaterInstallBtn').addEventListener('click', () => window.rehab.updater.quitAndInstall());
+document.getElementById('updaterAutoToggle').addEventListener('change', async (e) => {
+  updaterMode = await window.rehab.updater.setMode(e.target.checked ? 'auto' : 'manual');
+});
 
 // ── 초기화 ─────────────────────────────────────────────────
 (async function init() {
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
   fileRoles = await window.rehab.folders.fileRoles();
   document.getElementById('updaterVersion').textContent = await window.rehab.updater.getVersion();
+  updaterMode = await window.rehab.updater.getMode();
+  document.getElementById('updaterAutoToggle').checked = updaterMode === 'auto';
   renderHome();
   // 교차검증 화면을 아직 한 번도 안 열었어도, 화면 밖에서 미리 로드해둬야 "자동 불러오기"가
   // 그 도구까지 채워줄 수 있다(loadedTools에 들어있는 도구만 autoFillAllLoadedTools 대상이 됨).
