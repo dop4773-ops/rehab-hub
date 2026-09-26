@@ -340,7 +340,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
             <label class="check"><input id="grandLangColCheck" type="checkbox"> 언어치료 대상 열 표시</label>
             <span id="grandClassifyStatus" class="status">여기서 고른 치료사·팀 기준은 아래 그랜드라운딩 보관함의 "팀별 추출"에 그대로 쓰입니다.</span>
           </div>
-          <details class="grand-archive">
+          <details class="grand-archive" open>
             <summary>
               <span class="ga-chev">▸</span>
               <span class="ga-title">📚 그랜드라운딩 보관함</span>
@@ -354,6 +354,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
                   <button id="grandArchiveBatchAllBtn" class="btn primary" type="button">전체 추출</button>
                   <button id="grandArchiveBatchTeamBtn" class="btn" type="button">팀별 추출</button>
                   <button id="grandArchiveBatchLangBtn" class="btn" type="button">언어별 추출</button>
+                  <button id="grandArchiveBatchDelBtn" class="btn danger" type="button">선택 삭제</button>
                 </span>
                 <span id="grandArchiveBatchStatus" class="status"></span>
               </div>
@@ -1141,9 +1142,19 @@ function grandArchiveWardLabel(patients){
 // 등록 시점의 미반영·미작성 명단을 이름+담당치료사와 함께 스냅샷으로 저장한다.
 function grandArchiveComputeIssues(scoped,rm){
   const rmKey=normalizeGrandRm(rm);
+  const routeKey=document.getElementById('grandRouteSelect')?.value||'round1', profile=grandRouteProfile(routeKey);
   const records=[...grandHandoverMap.values()].filter(x=>rm==='ALL'||normalizeGrandRm(x.rm)===rmKey);
+  // 같은 RM이라도 회차가 다르면(예: 1회차 8·9병동 vs 2회차 5·7병동) 병동이 다른 환자다 — 지금 현재
+  // 환자 명단에 남아있고 병동이 이번 회차 대상이 아니라면 그냥 "다른 회차" 환자이지 미반영(전원·퇴원)이 아니다.
+  const stillHereByKey=new Map(allPatients.map(p=>[grandHandoverKey(p.rm,p.name),p]));
   const currentKeys=new Set(scoped.map(p=>grandHandoverKey(p.rm,p.name)));
-  const unmatched=records.filter(x=>!currentKeys.has(grandHandoverKey(x.rm,x.name)));
+  const unmatched=records.filter(x=>{
+    const key=grandHandoverKey(x.rm,x.name);
+    if(currentKeys.has(key)) return false;
+    const stillHere=stillHereByKey.get(key);
+    if(stillHere&&!profile.targetWards.includes(roomFloor(stillHere.room))) return false;
+    return true;
+  });
   const missing=scoped.filter(p=>!grandHandoverMap.has(grandHandoverKey(p.rm,p.name)));
   const matched=records.filter(x=>currentKeys.has(grandHandoverKey(x.rm,x.name)));
   const unmatchedList=unmatched.map(x=>({name:x.name,therapist:[...new Set(grandHandoverEntries(x).map(e=>e.therapist).filter(Boolean))].join(' / ')||'-'}));
@@ -1255,13 +1266,20 @@ async function grandArchiveSave(){
 }
 // [전체]/[팀별]/[언어] — 행의 작은 버튼(id 1개)과 위 일괄 추출 바(체크된 id 여러 개)가 이 함수 하나를 같이 쓴다.
 // 회차·요일·시각은 각 항목을 등록할 당시 값을 그대로 써서(entry.day/hour/routeKey) 등록 시점과 같은 동선으로 뽑는다.
+// 1건이면 "날짜(RM)", 여러 건이면 "시작~끝(N건)" — 파일명만 봐도 어떤 기간을 묶은 건지 알 수 있게.
+function grandArchiveExportLabel(entries){
+  if(entries.length===1) return `${entries[0].dateKey}(${entries[0].rm})`;
+  const dates=[...new Set(entries.map(e=>e.dateKey))].sort();
+  const range=dates[0]===dates[dates.length-1]?dates[0]:`${dates[0]}~${dates[dates.length-1]}`;
+  return `${range}(${entries.length}건)`;
+}
 async function grandArchiveExport(ids,kind,btn){
   const api=grandArchiveApi(); if(!api||!ids.length) return;
   const oldText=btn?btn.textContent:'';
   const flash=(msg)=>{ if(!btn) return; btn.textContent=msg; setTimeout(()=>{btn.textContent=oldText;},1800); };
   const entries=await api.load(ids);
   if(!entries.length){ flash('불러오기 실패'); return; }
-  const period=grandPrintPeriodKey(), label=entries.length>1?`${entries.length}건`:`${entries[0].rm}_${entries[0].dateKey}`;
+  const period=grandPrintPeriodKey(), label=grandArchiveExportLabel(entries);
   if(kind==='all'){
     // 항목마다 자기 자신의 day/hour/routeKey로 1개 시트 — 날짜가 섞여 있어도 각자 등록 당시 동선대로 뽑힌다.
     const defs=entries.map(e=>({...buildGrandOverviewSheetDef(e.patients,`${e.dateKey}(${e.rm})`),day:e.day,hour:e.hour,routeKey:e.routeKey}));
@@ -1277,6 +1295,11 @@ async function grandArchiveExport(ids,kind,btn){
     const keyLabel={ot:'작업치료사',swallow:'연하치료사',cog:'인지치료사'}[key]||key;
     let groups=grandGroupByTherapist(key,pooled);
     if(groups.has('(미배정)')) groups.delete('(미배정)');
+    // 위 "치료사별·팀별 분류"에서 1/2/3팀 등 특정 팀만 켜뒀다면 그 팀 소속 치료사만 남긴다(전부 꺼져있으면 전체).
+    if(grandSelectedTeams.size){
+      const allowed=new Set([...grandSelectedTeams].flatMap(t=>[...(grandTeamRoster.get(t)||[])]));
+      for(const name of [...groups.keys()]) if(!allowed.has(name)) groups.delete(name);
+    }
     if(!groups.size){ flash('대상 없음'); return; }
     const defs=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko')).map(([name,pts])=>({name,title:`${name} · ${keyLabel}`,patients:pts}));
     const overviewPatients=[...new Set([...groups.values()].flat())];
@@ -1314,6 +1337,15 @@ function grandArchiveWireBatchBar(){
   bind('grandArchiveBatchAllBtn','all');
   bind('grandArchiveBatchTeamBtn','team');
   bind('grandArchiveBatchLangBtn','lang');
+  const delBtn=document.getElementById('grandArchiveBatchDelBtn');
+  if(delBtn) delBtn.addEventListener('click',async()=>{
+    if(!grandArchiveSelected.size){ setStatus('목록에서 먼저 항목을 체크해 주세요.'); return; }
+    const ids=[...grandArchiveSelected];
+    for(const id of ids) await grandArchiveApi().delete(id);
+    grandArchiveSelected.clear();
+    setStatus(`${ids.length}건 삭제 완료.`);
+    renderGrandArchiveList();
+  });
 }
 function grandTherapistMapAdd(map,name,therapist){
   const key=grandResolvePatientKey?grandResolvePatientKey(name):normalizeGrandOtPatientKey(name);

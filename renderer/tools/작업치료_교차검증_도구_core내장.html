@@ -1311,6 +1311,7 @@ async function pickAndLoadFromFolder(reuseHandle){
   }
   statusEl.innerHTML = `📁 <b>${esc(dirHandle.name)}</b> 폴더 · ${loadedLabels.length}개 불러옴`
     + (missing.length ? `<br>⚠️ 폴더에서 못 찾음: ${missing.map(esc).join(', ')} — 목록에서 직접 올려주세요.` : '');
+  return missing.length;
 }
 document.getElementById('btnPickFolder').addEventListener('click', async ()=>{
   const saved = await idbGet(FOLDER_KEY).catch(()=>null);
@@ -1320,7 +1321,15 @@ document.getElementById('btnPickFolder').addEventListener('click', async ()=>{
   const statusEl=document.getElementById('folderStatus');
   try{
     const saved=await idbGet(FOLDER_KEY);
-    if(saved) statusEl.innerHTML = `📁 이전에 선택한 폴더: <b>${esc(saved.name)}</b> — "폴더에서 불러오기"를 누르면 다시 사용합니다.`;
+    if(!saved) return;
+    statusEl.innerHTML = `📁 이전에 선택한 폴더: <b>${esc(saved.name)}</b> — "폴더에서 불러오기"를 누르면 다시 사용합니다.`;
+    // 폴더 접근 권한이 재시작 후에도 이미 허용된 상태면(브라우저가 기억해둔 경우) 앱을 열자마자
+    // 조용히 다시 스캔해서 6개 파일이 다 채워지면 자동으로 검증까지 실행한다. 아직 허용 안 됐으면
+    // (권한 재확인엔 사용자 제스처가 필요해서) 그냥 위 안내문만 두고 "폴더에서 불러오기" 수동 클릭을 기다린다.
+    const perm=await saved.queryPermission({mode:'read'}).catch(()=>'denied');
+    if(perm!=='granted') return;
+    const missingCount=await pickAndLoadFromFolder(saved);
+    if(missingCount===0) handleRun();
   }catch(e){ /* IndexedDB를 못 쓰는 환경이면 조용히 무시 */ }
 })();
 
