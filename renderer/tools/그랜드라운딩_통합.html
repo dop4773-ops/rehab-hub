@@ -19,6 +19,15 @@ button{cursor:pointer}
 .header .sub{margin:4px 0 0;font-size:12px;color:var(--muted);max-width:720px}
 .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .hbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:#33445c;padding:8px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:default;white-space:nowrap}
+.hbtn-help{cursor:pointer}.hbtn-help:hover{background:#f6f9fd}
+dialog#grandHelpDialog{width:min(760px,92vw);max-height:82vh;border:1px solid #dbe4ee;border-radius:14px;padding:0;box-shadow:0 12px 40px rgba(20,40,70,.18)}
+dialog#grandHelpDialog::backdrop{background:rgba(15,25,45,.45)}
+.grand-help-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e6edf5;background:linear-gradient(180deg,#fbfdff,#f7faff);position:sticky;top:0}
+.grand-help-head strong{font-size:14px;color:#17345f}
+.grand-help-body{padding:16px 18px 22px;overflow:auto;max-height:calc(82vh - 54px)}
+.grand-help-body section{margin-bottom:20px}
+.grand-help-body h4{margin:0 0 8px;font-size:12.5px;color:#294766}
+.grand-help-body p{margin:0 0 10px;color:#4a5b72;font-size:11.5px;line-height:1.65}
 main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 10px rgba(20,40,70,.04);margin-bottom:14px;overflow:hidden}
 .panel-head{padding:15px 18px;border-bottom:1px solid #e7edf5;display:flex;align-items:center;justify-content:space-between;gap:12px}.panel-head h2{font-size:15px;margin:0}.panel-body{padding:17px 18px}
@@ -192,8 +201,42 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
   </div>
   <div class="header-actions">
     <span class="hbtn">그랜드 라운딩 전용판 · RM 회진 v3.2.30 기반</span>
+    <button id="grandHelpBtn" class="hbtn hbtn-help" type="button">❓ 도움말 · 상세 규칙</button>
   </div>
 </div>
+<dialog id="grandHelpDialog">
+  <div class="grand-help-head">
+    <strong>그랜드 라운딩 상세 규칙 · 도움말</strong>
+    <button id="grandHelpCloseBtn" class="btn small" type="button">닫기</button>
+  </div>
+  <div class="grand-help-body">
+    <section>
+      <h4>회차·동선 기준</h4>
+      <p><b>대회진용 기준:</b> 환자 행의 1순위는 <b>실제 회차 동선</b>입니다. 1회차는 <b>10F → 9병동 → 8병동</b>, 2회차는 <b>10F → 7병동 → 5병동 → 3F</b>를 절대 순서로 사용합니다. 회진 시작 시점의 첫 치료타임을 기준으로 10F 치료환자를 먼저 배치하고, 치료가 없는 환자는 병실로 배치한 뒤 각 병동과 3F 순서로 정렬합니다. 작업치료현황을 업로드하면 상단 시간표의 ST/SM 등은 작업치료사, R은 연하치료사로 분리하고, 하단 10F CCRT 및 3F BETTER·COMCOG 배정은 인지치료사로 선택 요일에 맞춰 매칭합니다. 10F·3F 물리치료시간표를 추가 업로드하면 물리치료사도 함께 표시합니다. OT 인수인계서를 업로드하면 선택한 주치의와 환자명을 기준으로 환자의 모든 치료행을 모아 치료종류·치료사별 Goal·그랜드라운딩을 같은 행끼리 한 쌍으로 표시합니다. 그 옆의 회진 발표 요약은 모든 Goal·그랜드라운딩에서 가장 중요한 목표 1~2개와 핵심 치료방향 1~2개만 추려 정리하고, 꼭 보고할 특이사항이 있을 때만 한 문장을 추가해 짧은 1~2문장으로 자동 정리하며 직접 수정할 수 있습니다. 현재 환자에 없는 인수인계 대상(퇴원 가능)과 인수인계 미작성 환자도 미리 알려줍니다. 작업·연하 치료사는 평일시간표(원본) 상단 메인표에서 읽고, 인지치료사는 하단 10F CCRT 및 3F BETTER·COMCOG(3F 인지치료 배정) 구역만 선택 요일 기준으로 읽습니다. ERDT·퇴원예정자·환자특이사항 구역은 치료사 매칭에 사용하지 않습니다. 업로드된 실의 치료사 열만 자동으로 생성됩니다. 10F는 실제 도면 기준으로 A/B/D 구역 → 전동자전거·기립대·워커메이트 → 전기 → 트레드밀 → C구역 → T 작업치료 테이블 → 연하/언어/인지/도수실 순, 3F는 가구역 → 나구역 → 전기 → T 작업치료 테이블 → 트레드밀/기구치료실 → 통증/도수/ADL → 연하/인지/언어/임상심리실 순으로 정렬합니다. 회진 시간대에 치료가 없으면 <b>병실 / 병실번호</b>로 표시하고, 오른쪽 환자 시간표는 08:30부터 하루 전체 스케줄을 유지합니다. Excel 출력은 오전(08:30~11:25)·오후(13:00~16:30)·전체(08:30~16:30)를 선택할 수 있으며, 전체는 재활치료부에서 오전·오후 모든 치료시간을 한 번에 출력합니다. <b>RM별 환자표 1개 시트</b>로 출력하고, 마지막에 <b>치료실 도면 공통 시트 1개</b>를 추가합니다. <b>A4 세로 1페이지</b>에 맞춥니다.</p>
+      <p><b>실제 운영 회차를 그대로 적용합니다.</b> <b>1회차</b>는 8·9병동 담당 환자를 대상으로 <b>10F 재활치료실 → 9병동 → 8병동</b> 순서로 이동합니다. <b>2회차</b>는 5·7병동 담당 환자를 대상으로 <b>10F 재활치료실 → 7병동 → 5병동 → 3F 재활치료실</b> 순서로 이동하며 702~705호 환자도 포함합니다. 09시 회진이면 <b>09:05 시점에 10F에서 치료 중인 환자를 먼저</b> 배치하고, 해당 시점에 치료가 없는 환자는 병실로 배치한 뒤 병동과 3F 순서로 이어집니다. 화면에서는 하루 전체 시간표를 유지하고, Excel은 오전·오후·전체 중 선택한 시간대를 출력하며, 전체를 선택하면 08:30~16:30의 모든 치료시간을 한 번에 출력합니다. <b>병동 필터</b>를 선택하면 해당 병동 환자만 동일한 회진 동선 기준으로 화면과 Excel에 반영됩니다.</p>
+    </section>
+    <section>
+      <h4>치료실 도면 · 동선(루트) 참고</h4>
+      <p>보내주신 실제 도면을 기준으로 <b>출입구에서 가까운 순서</b>대로 10층·3층 치료위치 우선순위를 세분화했습니다. <b>T-번호는 작업치료 테이블</b>로 인식하며, 그랜드 라운딩 Excel에는 마지막에 <b>치료실 도면</b> 시트를 1개 추가해 두 사진을 함께 넣습니다.</p>
+      <div class="grand-map-grid">
+        <figure class="grand-map-card">
+          <figcaption>10층 치료실 도면<small>A·B·D 구역 → 전동자전거/기립대/워커메이트 → 전기치료 → 트레드밀 → C구역 → T 작업치료 테이블 → 연하/언어/인지/도수실</small></figcaption>
+          <img id="grandMap10Img" alt="10층 치료실 도면">
+          <div class="grand-map-note">출입구 기준 가까운 군집부터 정렬합니다. A/B/D, C 구역은 번호 순으로, T는 <b>10층 작업치료 테이블</b>로 분리해 반영합니다.</div>
+        </figure>
+        <figure class="grand-map-card">
+          <figcaption>3층 치료실 도면<small>가구역 → 나구역 → 전기치료 → T 작업치료 테이블 → 트레드밀/기구치료실 → 통증/도수/ADL → 연하/인지/언어/임상심리실</small></figcaption>
+          <img id="grandMap3Img" alt="3층 치료실 도면">
+          <div class="grand-map-note">3층의 <b>T-번호</b> 역시 작업치료 테이블입니다. 2회차에서 3층이 포함될 때 도면 기준 가까운 순서로 이어집니다.</div>
+        </figure>
+      </div>
+    </section>
+    <section>
+      <h4>Excel 출력 세부 규칙</h4>
+      <p>※ 동일 환자가 원본의 A/X/AU 등 여러 카드에 남아 있으면 등록번호+이름 기준으로 묶고 <b>작성일이 가장 최근인 카드</b>를 사용합니다. Excel 상단은 <b>오전 치료시간 / 점심시간 / 오후 치료시간</b>으로 구획하고, 환자 기본정보 헤더도 항목별 색으로 구분합니다. 치료시간은 <b>치료명(치료층), 치료구역</b> 형식이며 치료 종류별 배경색을 유지합니다. 전체 병동 출력은 10F↔3F 전환 지점을 굵은 테두리로 구분하고, 특정 병동 출력은 호실순으로만 정렬하며 굵은 구분선을 넣지 않습니다. A4 세로 1페이지에 맞춥니다. <b>Excel 추출은 화면의 환자 구분·병동·치료 층·검색 필터를 그대로 반영합니다.</b> 회진 시작 시각의 첫 치료타임(예: 09시=09:05)을 회진 위치 판단에 사용하고, 10F 치료환자 → 병동 환자 → 3F 치료환자 순으로 정렬합니다. 08:30은 전체 환자 시간표의 이전 타임으로 계속 표시합니다. 점심시간은 시간 헤더에만 표시합니다.</p>
+    </section>
+  </div>
+</dialog>
 <main>
   <section class="panel">
     <div class="panel-head"><h2><span class="step">1</span>환자전체시간표 업로드</h2><button id="resetBtn" class="btn small" type="button">초기화</button></div>
@@ -238,10 +281,6 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
       <h2><span class="step">3</span>그랜드 라운딩 확인 및 Excel 추출</h2>
     </div>
     <div id="grandRoundView" class="grand-shell">
-      <div class="grand-subtabs" role="tablist" aria-label="그랜드 라운딩 부서 구분">
-        <button id="grandRehabSubTab" class="grand-subtab active" type="button" role="tab" aria-selected="true">재활치료부</button>
-        <button id="grandClinicalSubTab" class="grand-subtab" type="button" role="tab" aria-selected="false">진료부/병동</button>
-      </div>
       <div class="grand-controls">
         <div class="grand-controls-priority">
           <div class="field"><label>① 회차 / 대상 병동</label><select id="grandRouteSelect">
@@ -254,7 +293,6 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
           </select></div>
           <div class="field"><label>③ 대회진 RM</label><select id="grandRmSelect"><option value="ALL">전체 RM</option></select></div>
           <div class="field"><label>④ 병동</label><select id="grandWardSelect"><option value="ALL">회차 전체 병동</option></select></div>
-          <div class="field"><label>⑤ 언어치료</label><button id="grandLangOnlyToggle" class="btn" type="button">언어치료 대상만 보기</button> <button id="grandLangOnlyExportBtn" class="btn primary" type="button" style="display:none">언어치료만 Excel</button></div>
           <div class="field"><label>회진일</label><input id="grandDateInput" type="date"></div>
           <div class="field"><label>회진 요일</label><select id="grandDaySelect"></select></div>
           <div class="field grand-print-period"><label>Excel 출력 시간대</label><select id="grandPrintPeriodSelect">
@@ -263,12 +301,8 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
             <option value="all" id="grandPrintAllOption">전체 · 08:30~16:30</option>
           </select></div>
           <div class="export-group">
-            <button id="grandExportSelectedBtn" class="btn green" type="button">현재 RM 대회진표 Excel · 1시트</button>
-            <button id="grandExportAllBtn" class="btn primary" type="button">전체 RM · RM별 시트</button>
-          </div>
-          <div class="field grand-archive-register">
-            <label>📚 그랜드라운딩 보관</label>
-            <button id="grandArchiveSaveBtn" class="btn primary" type="button">위 조건으로 등록하기</button>
+            <button id="grandExportSelectedBtn" class="btn primary" type="button">출력하기</button>
+            <button id="grandArchiveSaveBtn" class="btn" type="button">📚 보관함에 등록</button>
             <span id="grandArchiveSaveStatus" class="status"></span>
           </div>
         </div>
@@ -304,8 +338,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
             </select>
             <span id="grandTeamChips"></span>
             <label class="check"><input id="grandLangColCheck" type="checkbox"> 언어치료 대상 열 표시</label>
-            <button id="grandClassifyExportBtn" class="btn primary" type="button">분류 Excel · 치료사별 시트</button>
-            <span id="grandClassifyStatus" class="status">작업치료현황을 업로드하면 치료사별로 나눠 Excel을 만들 수 있습니다. "팀" 시트가 있으면 위에서 팀을 선택해 그 팀만 뽑을 수 있습니다.</span>
+            <span id="grandClassifyStatus" class="status">여기서 고른 치료사·팀 기준은 아래 그랜드라운딩 보관함의 "팀별 추출"에 그대로 쓰입니다.</span>
           </div>
           <details class="grand-archive">
             <summary>
@@ -328,10 +361,6 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
             </div>
           </details>
         </div>
-        <div id="grandClinicalTools" class="grand-dept-tools grand-clinical-tools" hidden>
-          <b>진료부/병동용 보기</b>는 치료사 매칭 열을 숨기고, 회차 동선·환자 위치·시간표·Goal·인수인계 그랜드라운딩·회진 발표 요약 중심으로 표시하고 출력합니다. 재활치료부 탭에서 업로드한 인수인계 내용은 그대로 반영됩니다. <b>Excel은 선택 RM의 환자를 1개 시트로 출력</b>하며, 진료부/병동은 <b>A4 세로 1장</b>에 맞추며, `전체` 시간대 출력은 재활치료부에서만 사용합니다. 특정 병동 선택 시 오전 출력의 11:25 오른쪽(오후는 마지막 시간 오른쪽)에 <b>특이사항</b> 빈칸이 추가됩니다.
-        </div>
-        <div class="grand-all-note" style="margin-top:10px"><b>실제 운영 회차를 그대로 적용합니다.</b> <b>1회차</b>는 8·9병동 담당 환자를 대상으로 <b>10F 재활치료실 → 9병동 → 8병동</b> 순서로 이동합니다. <b>2회차</b>는 5·7병동 담당 환자를 대상으로 <b>10F 재활치료실 → 7병동 → 5병동 → 3F 재활치료실</b> 순서로 이동하며 702~705호 환자도 포함합니다. 09시 회진이면 <b>09:05 시점에 10F에서 치료 중인 환자를 먼저</b> 배치하고, 해당 시점에 치료가 없는 환자는 병실로 배치한 뒤 병동과 3F 순서로 이어집니다. 화면에서는 하루 전체 시간표를 유지하고, Excel은 오전·오후·전체 중 선택한 시간대를 출력하며, 재활치료부에서 전체를 선택하면 08:30~16:30의 모든 치료시간을 한 번에 출력합니다. <b>병동 필터</b>를 선택하면 해당 병동 환자만 동일한 회진 동선 기준으로 화면과 Excel에 반영됩니다.</div>
       </div>
       <details class="grand-hero">
         <summary class="grand-hero-top">
@@ -344,34 +373,12 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
         </summary>
         <div class="grand-route-overview" id="grandRouteOverview"></div>
       </details>
-      <details class="grand-map-panel">
-        <summary class="grand-map-head">
-          <span class="ga-chev">▸</span>
-          <strong>치료실 도면 · 그랜드 라운딩 동선(루트) 참고</strong>
-          <span>보내주신 실제 도면을 기준으로 <b>출입구에서 가까운 순서</b>대로 10층·3층 치료위치 우선순위를 세분화했습니다. <b>T-번호는 작업치료 테이블</b>로 인식하며, 그랜드 라운딩 Excel에는 마지막에 <b>치료실 도면</b> 시트를 1개 추가해 두 사진을 함께 넣습니다.</span>
-        </summary>
-        <div class="grand-map-grid">
-          <figure class="grand-map-card">
-            <figcaption>10층 치료실 도면<small>A·B·D 구역 → 전동자전거/기립대/워커메이트 → 전기치료 → 트레드밀 → C구역 → T 작업치료 테이블 → 연하/언어/인지/도수실</small></figcaption>
-            <img id="grandMap10Img" alt="10층 치료실 도면">
-            <div class="grand-map-note">출입구 기준 가까운 군집부터 정렬합니다. A/B/D, C 구역은 번호 순으로, T는 <b>10층 작업치료 테이블</b>로 분리해 반영합니다.</div>
-          </figure>
-          <figure class="grand-map-card">
-            <figcaption>3층 치료실 도면<small>가구역 → 나구역 → 전기치료 → T 작업치료 테이블 → 트레드밀/기구치료실 → 통증/도수/ADL → 연하/인지/언어/임상심리실</small></figcaption>
-            <img id="grandMap3Img" alt="3층 치료실 도면">
-            <div class="grand-map-note">3층의 <b>T-번호</b> 역시 작업치료 테이블입니다. 2회차에서 3층이 포함될 때 도면 기준 가까운 순서로 이어집니다.</div>
-          </figure>
-        </div>
-      </details>
-      <div class="grand-tip"><b>대회진용 기준:</b> 환자 행의 1순위는 <b>실제 회차 동선</b>입니다. 1회차는 <b>10F → 9병동 → 8병동</b>, 2회차는 <b>10F → 7병동 → 5병동 → 3F</b>를 절대 순서로 사용합니다. 회진 시작 시점의 첫 치료타임을 기준으로 10F 치료환자를 먼저 배치하고, 치료가 없는 환자는 병실로 배치한 뒤 각 병동과 3F 순서로 정렬합니다. 작업치료현황을 업로드하면 상단 시간표의 ST/SM 등은 작업치료사, R은 연하치료사로 분리하고, 하단 10F CCRT 및 3F BETTER·COMCOG 배정은 인지치료사로 선택 요일에 맞춰 매칭합니다. 10F·3F 물리치료시간표를 추가 업로드하면 물리치료사도 함께 표시합니다. OT 인수인계서를 업로드하면 선택한 주치의와 환자명을 기준으로 환자의 모든 치료행을 모아 치료종류·치료사별 Goal·그랜드라운딩을 같은 행끼리 한 쌍으로 표시합니다. 그 옆의 회진 발표 요약은 모든 Goal·그랜드라운딩에서 가장 중요한 목표 1~2개와 핵심 치료방향 1~2개만 추려 정리하고, 꼭 보고할 특이사항이 있을 때만 한 문장을 추가해 짧은 1~2문장으로 자동 정리하며 직접 수정할 수 있습니다. 현재 환자에 없는 인수인계 대상(퇴원 가능)과 인수인계 미작성 환자도 미리 알려줍니다. 작업·연하 치료사는 평일시간표(원본) 상단 메인표에서 읽고, 인지치료사는 하단 10F CCRT 및 3F BETTER·COMCOG(3F 인지치료 배정) 구역만 선택 요일 기준으로 읽습니다. ERDT·퇴원예정자·환자특이사항 구역은 치료사 매칭에 사용하지 않습니다. 업로드된 실의 치료사 열만 자동으로 생성됩니다. 10F는 실제 도면 기준으로 A/B/D 구역 → 전동자전거·기립대·워커메이트 → 전기 → 트레드밀 → C구역 → T 작업치료 테이블 → 연하/언어/인지/도수실 순, 3F는 가구역 → 나구역 → 전기 → T 작업치료 테이블 → 트레드밀/기구치료실 → 통증/도수/ADL → 연하/인지/언어/임상심리실 순으로 정렬합니다. 회진 시간대에 치료가 없으면 <b>병실 / 병실번호</b>로 표시하고, 오른쪽 환자 시간표는 08:30부터 하루 전체 스케줄을 유지합니다. Excel 출력은 오전(08:30~11:25)·오후(13:00~16:30)·전체(08:30~16:30)를 선택할 수 있으며, 전체는 재활치료부에서 오전·오후 모든 치료시간을 한 번에 출력합니다. <b>재활치료부와 진료부/병동 모두 RM별 환자표 1개 시트</b>로 출력하고, 마지막에 <b>치료실 도면 공통 시트 1개</b>를 추가합니다. <b>재활치료부와 진료부/병동 모두 A4 세로 1페이지</b>에 맞춥니다. 진료부/병동에서 특정 병동을 선택하면 시간표 오른쪽에 병동 수기용 <b>특이사항</b> 열을 추가합니다.</div>
-      <details class="grand-preview-collapse" open>
+      <details class="grand-preview-collapse">
         <summary><span class="ga-chev">▸</span> 결과 미리보기 (환자별 회진 시간표)</summary>
         <div class="grand-board" id="grandTableWrap"><div class="empty-state"><strong>시간표를 업로드하면 대회진 전용 동선 화면이 표시됩니다.</strong></div></div>
       </details>
     </div>
   </section>
-
-  <div class="footer-note">※ 동일 환자가 원본의 A/X/AU 등 여러 카드에 남아 있으면 등록번호+이름 기준으로 묶고 <b>작성일이 가장 최근인 카드</b>를 사용합니다. Excel 상단은 <b>오전 치료시간 / 점심시간 / 오후 치료시간</b>으로 구획하고, 환자 기본정보 헤더도 항목별 색으로 구분합니다. 치료시간은 <b>치료명(치료층), 치료구역</b> 형식이며 치료 종류별 배경색을 유지합니다. RM 회진표의 전체 병동 출력은 10F↔3F 전환 지점을 굵은 테두리로 구분하고, 특정 병동 출력은 호실순으로만 정렬하며 굵은 구분선을 넣지 않습니다. A4 세로 1페이지에 맞춥니다. <b>Excel 추출은 화면의 환자 구분·병동·치료 층·검색 필터를 그대로 반영합니다.</b> 그랜드 라운딩은 실제 회차별 대상 병동을 적용합니다. <b>1회차: 8·9병동 / 10F → 9병동 → 8병동</b>, <b>2회차: 5·7병동 / 10F → 7병동 → 5병동 → 3F</b> 순서를 최우선으로 고정합니다. 회진 시작 시각의 첫 치료타임(예: 09시=09:05)을 회진 위치 판단에 사용하고, 10F 치료환자 → 병동 환자 → 3F 치료환자 순으로 정렬합니다. 08:30은 전체 환자 시간표의 이전 타임으로 계속 표시합니다. 화면의 오른쪽 시간표는 08:30부터 전체 시간대를 표시하고, 재활치료부 Excel은 오전·오후·전체 중 선택한 시간대를 출력합니다. 점심시간은 시간 헤더에만 표시합니다.</div>
 </main>
 <script>
 'use strict';
@@ -468,7 +475,6 @@ const GRAND_3_T_ORDER = ['T-1','T-2','T-3','T-4','T-5','T-6','T-8','T-7','T-9','
 
 let grandOtBook=null, grandOtFileName='', grandOtSheetName='';
 let grandTeamRoster=new Map(), grandSelectedTeams=new Set(), grandLangColOn=false; // 팀별·언어치료 분류(2026-09-24 추가)
-let grandLanguageOnlyMode=false; // 언어치료 대상만 보기(화면+내보내기 완전 분리, 2026-09-24 추가)
 let grandOtTherapistMap=new Map();
 let grandSwallowTherapistMap=new Map();
 let grandCogTherapistMap=new Map();
@@ -480,7 +486,7 @@ let grandHandoverMap=new Map();
 // 지금까지 엑셀로 업로드하던 인수인계 파일은 이 시스템을 내보내기한 것과 열 이름이 정확히 같아, 그 내보내기·업로드 과정을 건너뛴다.
 const GRAND_HANDOVER_LIVE_URL='https://script.google.com/macros/s/AKfycbwXwWquKYEy5irNjdQjZLYUsBl94L5yJZ_aD-UZLCHDonJDZ-smmCnSghILn9c15AN0OQ/exec';
 let grandHandoverLiveOk=false;
-let grandDepartmentMode='rehab';
+const grandDepartmentMode='rehab'; // 진료부/병동 탭 제거(2026-09-26) — 항상 재활치료부만 사용
 const GRAND_PRINT_PERIODS={
   am:{label:'오전',range:'08:30~11:25',slots:['08:30','09:05','09:40','10:15','10:50','11:25']},
   pm:{label:'오후',range:'13:00~16:30',slots:['13:00','13:35','14:10','14:45','15:20','15:55','16:30']},
@@ -998,7 +1004,7 @@ function setFileCard(floor,file,count){ const el=document.getElementById(floor==
 async function handleFiles(fileList){
   const files=[...fileList].filter(f=>/\.(xlsx|xlsm)$/i.test(f.name)); if(!files.length){ setStatus('XLSX 또는 XLSM 파일을 선택해 주세요.','error'); return; }
   setStatus('시간표를 읽고 있습니다. 환자 카드와 시간대별 치료 위치를 분석하는 중입니다…');
-  document.getElementById('grandExportAllBtn').disabled=true; document.getElementById('grandExportSelectedBtn').disabled=true;
+  document.getElementById('grandExportSelectedBtn').disabled=true;
   try{
     const candidates={3:null,10:null}; const perFloorCards={3:[],10:[]}; const unknown=[];
     for(const file of files){ const book=await readWorkbookFile(file); const floor=detectFloor(book); if(!floor){unknown.push(file.name); continue;} candidates[floor]={file,book}; }
@@ -1024,7 +1030,7 @@ function updateAfterLoad(){
   const options='<option value="ALL">전체 RM</option>'+rms.map(r=>`<option value="${xmlEscape(r)}">${xmlEscape(r)} · ${rmCounts[r]}명</option>`).join('');
   document.getElementById('grandRmSelect').innerHTML=options; const grs=document.getElementById('grandRmSelect'); if(grs.value==='ALL' && rms.length) grs.value=rms[0];
   updateGrandWardOptions();
-  document.getElementById('grandExportAllBtn').disabled=false; document.getElementById('grandExportSelectedBtn').disabled=false; renderGrandTable();
+  document.getElementById('grandExportSelectedBtn').disabled=false; renderGrandTable();
   // 데스크톱 앱 홈 대시보드가 이 화면의 요약(환자 수)을 읽기 위한 훅. top-level let은 window에 안 붙어서
   // iframe.contentWindow로 직접 못 읽기 때문에 명시적으로 저장한다. 화면 자체 로직에는 영향 없음.
   window.__rmSummary = { patientCount: allPatients.length, floor10Count: allPatients.filter(p=>p.floor===10).length, floor3Count: allPatients.filter(p=>p.floor===3).length };
@@ -1106,50 +1112,8 @@ function renderGrandTeamChips(){
     const team=btn.dataset.team; grandSelectedTeams.has(team)?grandSelectedTeams.delete(team):grandSelectedTeams.add(team); renderGrandTeamChips();
   }));
 }
-// 선택 회차/RM/병동으로 이미 걸러진 환자를 치료사별로 나눠 시트 여러 개짜리 Excel을 만든다.
-// 팀을 하나 이상 선택했으면 그 팀 소속 치료사만(팀 로스터에 있는 이름만) 시트로 남긴다.
-function exportGrandByClassification(){
-  const statusEl=document.getElementById('grandClassifyStatus');
-  if(!allPatients.length){ if(statusEl) statusEl.textContent='먼저 시간표를 업로드해 주세요.'; return; }
-  if(!grandOtBook){ if(statusEl) statusEl.textContent='작업치료현황을 먼저 업로드해야 치료사를 알 수 있습니다.'; return; }
-  const key=document.getElementById('grandClassifyKeySelect')?.value||'ot';
-  const keyLabel={ot:'작업치료사',swallow:'연하치료사',cog:'인지치료사'}[key]||key;
-  syncGrandInputsFromDom();
-  const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1';
-  let groups=grandGroupByTherapist(key,grandFilteredPatients({ignoreRm:true,routeKey}));
-  if(groups.has('(미배정)')) groups.delete('(미배정)');
-  if(grandSelectedTeams.size){
-    const allowed=new Set(); for(const t of grandSelectedTeams) for(const n of grandTeamRoster.get(t)||[]) allowed.add(n);
-    groups=new Map([...groups].filter(([name])=>allowed.has(name)));
-  }
-  if(!groups.size){ if(statusEl) statusEl.textContent=`조건에 맞는 ${keyLabel} 배정 환자가 없어 Excel을 만들지 않았습니다.`; return; }
-  const defs=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko')).map(([name,patients])=>({name,title:`${name} · ${keyLabel}`,patients}));
-  const overviewPatients=[...new Set([...groups.values()].flat())];
-  const allDefs=[buildGrandOverviewSheetDef(overviewPatients),...defs];
-  const date=document.getElementById('grandDateInput').value||dateStamp(), period=grandPrintPeriodKey(), periodInfo=grandPrintPeriodInfo(period), dept=grandDepartmentLabel();
-  downloadBytes(buildGrandWorkbookXlsx(allDefs,day,hour,routeKey,period),`그랜드라운딩_${keyLabel}별_${grandRouteProfile(routeKey).roundLabel}_${date}_${periodInfo.label}.xlsx`);
-  if(statusEl) statusEl.textContent=`${keyLabel} 기준 ${defs.length}명 · 치료사별 시트로 Excel을 만들었습니다.${grandSelectedTeams.size?` (선택 팀: ${[...grandSelectedTeams].join(', ')})`:''}`;
-}
-// "언어치료 대상만 보기" — 팀·치료사별 분류와 완전히 별도로, 화면 전체를 언어치료 대상 환자로만 필터링한다.
-function toggleGrandLanguageOnly(){
-  grandLanguageOnlyMode=!grandLanguageOnlyMode;
-  const btn=document.getElementById('grandLangOnlyToggle'), exportBtn=document.getElementById('grandLangOnlyExportBtn');
-  if(btn){ btn.textContent=grandLanguageOnlyMode?'전체 보기로 돌아가기':'언어치료 대상만 보기'; btn.classList.toggle('primary',grandLanguageOnlyMode); }
-  if(exportBtn) exportBtn.style.display=grandLanguageOnlyMode?'':'none';
-  if(allPatients.length) renderGrandTable();
-}
-function exportGrandLanguageOnly(){
-  const statusEl=document.getElementById('grandClassifyStatus');
-  if(!allPatients.length){ if(statusEl) statusEl.textContent='먼저 시간표를 업로드해 주세요.'; return; }
-  syncGrandInputsFromDom();
-  const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1';
-  const patients=grandFilteredPatients({ignoreRm:true,routeKey}).filter(grandIsLanguagePatient);
-  if(!patients.length){ if(statusEl) statusEl.textContent='조건에 맞는 언어치료 대상 환자가 없어 Excel을 만들지 않았습니다.'; return; }
-  const defs=[{name:'언어치료',title:'언어치료 대상',patients}];
-  const date=document.getElementById('grandDateInput').value||dateStamp(), period=grandPrintPeriodKey(), periodInfo=grandPrintPeriodInfo(period);
-  downloadBytes(buildGrandWorkbookXlsx(defs,day,hour,routeKey,period),`그랜드라운딩_언어치료_${grandRouteProfile(routeKey).roundLabel}_${date}_${periodInfo.label}.xlsx`);
-  if(statusEl) statusEl.textContent=`언어치료 대상 ${patients.length}명 · Excel을 만들었습니다.`;
-}
+// 치료사별·팀별 분류(grandClassifyKeySelect/grandSelectedTeams)는 여기서 직접 Excel을 만들지 않고
+// 아래 그랜드라운딩 보관함의 "팀별 추출"이 그대로 읽어서 쓴다(중복 버튼 정리, 2026-09-26).
 // ===== 그랜드라운딩 보관함(위 ①~⑦ 조건으로 등록 → 목록에서 체크해 일괄 추출, 2026-09-26 재개편) =====
 // 이 화면은 sandbox iframe이라 window.rehab(IPC)에 직접 접근 못 한다 — 셸(shell.js)이 iframe 로드 직후
 // window.__schedulesApi에 브리지 함수를 심어준다. 그 전에는(또는 이 파일을 데스크톱 앱 밖에서 열면) null.
@@ -1943,26 +1907,13 @@ function grandDepartmentLabel(){ return grandDepartmentMode==='clinical'?'진료
 function grandPrintPeriodKey(){ const v=document.getElementById('grandPrintPeriodSelect')?.value||'am'; return v==='pm'||v==='all'?v:'am'; }
 function grandPrintPeriodInfo(period=grandPrintPeriodKey()){ return GRAND_PRINT_PERIODS[period]||GRAND_PRINT_PERIODS.am; }
 function grandPrintSlots(period=grandPrintPeriodKey()){ return grandPrintPeriodInfo(period).slots.slice(); }
+// RM을 선택했으면 그 RM 1시트, "전체 RM"이면 exportGrandSelected()가 자동으로 exportGrandAll()에 위임한다 —
+// 그래서 버튼도 하나만 두면 되고, 라벨만 지금 선택값에 맞춰 갱신한다(2026-09-26, 버튼 2개 통합).
 function updateGrandExportButtonLabels(){
-  const dept=grandDepartmentLabel(), info=grandPrintPeriodInfo(), clinical=grandDepartmentMode==='clinical';
-  const one=document.getElementById('grandExportSelectedBtn'), all=document.getElementById('grandExportAllBtn');
-  if(one) one.textContent=clinical?`현재 RM ${dept} Excel · ${info.label} · 환자표+도면`:`현재 RM ${dept} Excel · ${info.label} · 환자표+도면`;
-  if(all) all.textContent=clinical?`전체 RM ${dept} · ${info.label} · RM별 환자표+도면`:`전체 RM ${dept} · ${info.label} · RM별 환자표+도면`;
-}
-function setGrandDepartmentMode(mode){
-  grandDepartmentMode=mode==='clinical'?'clinical':'rehab';
-  const rehab=grandDepartmentMode==='rehab';
-  const allOpt=document.getElementById('grandPrintAllOption'), periodSel=document.getElementById('grandPrintPeriodSelect');
-  if(allOpt){ allOpt.hidden=!rehab; allOpt.disabled=!rehab; }
-  if(!rehab && periodSel?.value==='all') periodSel.value='am';
-  const rb=document.getElementById('grandRehabSubTab'), cb=document.getElementById('grandClinicalSubTab');
-  if(rb){rb.classList.toggle('active',rehab);rb.setAttribute('aria-selected',rehab?'true':'false');}
-  if(cb){cb.classList.toggle('active',!rehab);cb.setAttribute('aria-selected',!rehab?'true':'false');}
-  const rt=document.getElementById('grandRehabTools'), ct=document.getElementById('grandClinicalTools');
-  if(rt) rt.hidden=!rehab;
-  if(ct) ct.hidden=rehab;
-  updateGrandExportButtonLabels();
-  if(allPatients.length) renderGrandTable();
+  const info=grandPrintPeriodInfo(), one=document.getElementById('grandExportSelectedBtn');
+  if(!one) return;
+  const rm=document.getElementById('grandRmSelect')?.value||'ALL';
+  one.textContent=rm==='ALL'?`출력하기 · 전체 RM · ${info.label}`:`출력하기 · ${rm} · ${info.label}`;
 }
 
 const GRAND_ROUTE_PROFILES={
@@ -2114,7 +2065,6 @@ function grandFilteredPatients({ignoreRm=false,routeKey=null}={}){
   const state=grandFilterState(), rm=state.rm, ward=state.ward, profile=grandRouteProfile(routeKey||state.routeKey);
   return allPatients.filter(p=>{
     if(p.category==='외래') return false;
-    if(grandLanguageOnlyMode&&!grandIsLanguagePatient(p)) return false;
     if(!(ignoreRm||rm==='ALL'||p.rm===rm)) return false;
     const wf=roomFloor(p.room);
     if(!profile.targetWards.includes(wf)) return false;
@@ -2174,6 +2124,7 @@ function renderGrandTable(){
   const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1', data=grandGroupedRows(grandFilteredPatients(),day,hour,routeKey), rm=document.getElementById('grandRmSelect').value;
   const firstSlot=data.slots[0]||'-', activeStart=data.activeStart||'-', therapistCols=grandTherapistColumnDefs(), handoverCols=grandHandoverColumnDefs(), periodInfo=grandPrintPeriodInfo();
   updateGrandHandoverStatus();
+  updateGrandExportButtonLabels();
   const ward=grandSelectedWard();
   document.getElementById('grandSummary').textContent=`${document.getElementById('grandDateInput').value||''} ${day} · ${grandDepartmentLabel()} · ${data.profile.label} · ${hour}시 시작 · ${rm==='ALL'?'전체 RM':rm} · ${ward==='ALL'?'회차 전체 병동':ward+'병동'} · 대상 ${data.rows.length}명 · 동선 고정 / 구간 내 시간순 · 화면 전체 스케줄 ${firstSlot}부터 · Excel ${periodInfo.label} ${periodInfo.range}`;
   document.getElementById('grandKpis').innerHTML=`<div class="grand-kpi"><div class="k">부서 보기</div><div class="v">${grandDepartmentLabel()}</div></div><div class="grand-kpi"><div class="k">병동 필터</div><div class="v">${ward==='ALL'?'전체':ward+'병동'}</div></div><div class="grand-kpi"><div class="k">대상 환자</div><div class="v">${data.rows.length}명</div></div><div class="grand-kpi"><div class="k">Excel 출력</div><div class="v">${periodInfo.label}</div></div>`;
@@ -2472,7 +2423,7 @@ function exportGrandAll(){
 
 function downloadBytes(bytes,name){ const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000); }
 function dateStamp(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function resetApp(){ allPatients=[];rawCardCount=0;loadedFiles={3:null,10:null};grandLanguageOnlyMode=false;{const lb=document.getElementById('grandLangOnlyToggle'),le=document.getElementById('grandLangOnlyExportBtn');if(lb){lb.textContent='언어치료 대상만 보기';lb.classList.remove('primary');}if(le)le.style.display='none';}grandDepartmentMode='rehab';grandNotes.clear();grandOtBook=null;grandOtFileName='';grandOtSheetName='';grandOtTherapistMap=new Map();grandSwallowTherapistMap=new Map();grandCogTherapistMap=new Map();grandPtBooks={10:null,3:null};grandPtFileNames={10:'',3:''};grandPtSheetNames={10:'',3:''};grandPtTherapistMaps={10:new Map(),3:new Map()};grandHandoverBook=null;grandHandoverFileName='';grandHandoverSheetName='';grandHandoverMap=new Map();grandHandoverLiveOk=false;document.getElementById('fileInput').value='';const go=document.getElementById('grandOtFileInput');if(go)go.value='';const gh=document.getElementById('grandHandoverFileInput');if(gh)gh.value='';for(const id of ['grandPt10FileInput','grandPt3FileInput']){const x=document.getElementById(id);if(x)x.value='';}const gs=document.getElementById('grandOtStatus');if(gs){gs.className='status';gs.textContent='미업로드 · 작업치료현황의 평일시간표(원본)에서 작업(ST/SM 등)·연하(R)·인지(CCRT/BETTER/COMCOG) 치료사를 분리 매칭합니다.';}const hs=document.getElementById('grandHandoverStatus');if(hs){hs.className='grand-handover-status';hs.textContent='불러오는 중 · OT인수인계서(통합)에서 실시간으로 Goal / 그랜드라운딩을 가져옵니다.';}fetchGrandHandoverLive();const hb=document.getElementById('grandHandoverMatchSummary');if(hb)hb.style.display='none';const p10=document.getElementById('grandPt10Status');if(p10){p10.className='status';p10.textContent='10F 미업로드';}const p3=document.getElementById('grandPt3Status');if(p3){p3.className='status';p3.textContent='3F 미업로드';}const gp=document.getElementById('grandPrintPeriodSelect');if(gp)gp.value='am';const gws=document.getElementById('grandWardSelect');if(gws){gws.innerHTML='<option value="ALL">회차 전체 병동</option>';gws.value='ALL';}setGrandDepartmentMode('rehab');setFileCard(3,null);setFileCard(10,null);clearStatus();document.getElementById('statsPanel').style.display='none';document.getElementById('resultPanel').style.display='none'; }
+function resetApp(){ allPatients=[];rawCardCount=0;loadedFiles={3:null,10:null};grandNotes.clear();grandOtBook=null;grandOtFileName='';grandOtSheetName='';grandOtTherapistMap=new Map();grandSwallowTherapistMap=new Map();grandCogTherapistMap=new Map();grandPtBooks={10:null,3:null};grandPtFileNames={10:'',3:''};grandPtSheetNames={10:'',3:''};grandPtTherapistMaps={10:new Map(),3:new Map()};grandHandoverBook=null;grandHandoverFileName='';grandHandoverSheetName='';grandHandoverMap=new Map();grandHandoverLiveOk=false;document.getElementById('fileInput').value='';const go=document.getElementById('grandOtFileInput');if(go)go.value='';const gh=document.getElementById('grandHandoverFileInput');if(gh)gh.value='';for(const id of ['grandPt10FileInput','grandPt3FileInput']){const x=document.getElementById(id);if(x)x.value='';}const gs=document.getElementById('grandOtStatus');if(gs){gs.className='status';gs.textContent='미업로드 · 작업치료현황의 평일시간표(원본)에서 작업(ST/SM 등)·연하(R)·인지(CCRT/BETTER/COMCOG) 치료사를 분리 매칭합니다.';}const hs=document.getElementById('grandHandoverStatus');if(hs){hs.className='grand-handover-status';hs.textContent='불러오는 중 · OT인수인계서(통합)에서 실시간으로 Goal / 그랜드라운딩을 가져옵니다.';}fetchGrandHandoverLive();const hb=document.getElementById('grandHandoverMatchSummary');if(hb)hb.style.display='none';const p10=document.getElementById('grandPt10Status');if(p10){p10.className='status';p10.textContent='10F 미업로드';}const p3=document.getElementById('grandPt3Status');if(p3){p3.className='status';p3.textContent='3F 미업로드';}const gp=document.getElementById('grandPrintPeriodSelect');if(gp)gp.value='am';const gws=document.getElementById('grandWardSelect');if(gws){gws.innerHTML='<option value="ALL">회차 전체 병동</option>';gws.value='ALL';}updateGrandExportButtonLabels();setFileCard(3,null);setFileCard(10,null);clearStatus();document.getElementById('statsPanel').style.display='none';document.getElementById('resultPanel').style.display='none'; }
 function defaultGrandHour(){ return '09'; }
 const grandDaySel=document.getElementById('grandDaySelect');
 const dayOptions=DAY_ORDER.map(d=>`<option value="${d}">${d}</option>`).join(''); grandDaySel.innerHTML=dayOptions; grandDaySel.value=defaultDay();
@@ -2486,12 +2437,9 @@ document.getElementById('grandHandoverRefreshBtn').addEventListener('click',fetc
 fetchGrandHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
 const grandPt10Input=document.getElementById('grandPt10FileInput'); grandPt10Input.addEventListener('change',e=>handleGrandPtFile(e.target.files?.[0],10));
 const grandPt3Input=document.getElementById('grandPt3FileInput'); grandPt3Input.addEventListener('change',e=>handleGrandPtFile(e.target.files?.[0],3));
-document.getElementById('grandClassifyExportBtn').addEventListener('click',exportGrandByClassification);
 document.getElementById('grandLangColCheck').addEventListener('change',e=>{ grandLangColOn=e.target.checked; renderGrandTable(); });
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')}); dz.addEventListener('dragleave',()=>dz.classList.remove('drag')); dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');handleFiles(e.dataTransfer.files)});
 document.getElementById('grandRouteSelect').addEventListener('change',()=>{updateGrandWardOptions();renderGrandTable();}); ['grandTimeInput','grandRmSelect','grandWardSelect'].forEach(id=>document.getElementById(id).addEventListener('change',renderGrandTable)); document.getElementById('grandDaySelect').addEventListener('change',async()=>{if(grandOtBook) await rebuildGrandOtTherapistMap();renderGrandTable();}); document.getElementById('grandPrintPeriodSelect').addEventListener('change',()=>{updateGrandExportButtonLabels();renderGrandTable();});
-document.getElementById('grandLangOnlyToggle').addEventListener('click',toggleGrandLanguageOnly);
-document.getElementById('grandLangOnlyExportBtn').addEventListener('click',exportGrandLanguageOnly);
 document.getElementById('grandArchiveSaveBtn').addEventListener('click',grandArchiveSave);
 grandArchiveWireBatchBar();
 grandDateInput.addEventListener('change',async()=>{ const d=grandDateToDay(grandDateInput.value); if(d) grandDaySel.value=d; if(grandOtBook) await rebuildGrandOtTherapistMap(); if(grandPtBooks[10]||grandPtBooks[3]) await rebuildGrandPtTherapistMap(); renderGrandTable(); });
@@ -2500,8 +2448,10 @@ document.getElementById('grandTableWrap').addEventListener('input',e=>{
   if(e.target.classList.contains('grand-brief-text')) setGrandBriefByKey(decodeURIComponent(e.target.dataset.vkey||''),e.target.value);
 });
 document.getElementById('grandTableWrap').addEventListener('change',e=>{ if(e.target.classList.contains('grand-check')){ const k=decodeURIComponent(e.target.dataset.vkey||''); grandCheckStore[k]=!!e.target.checked; saveGrandStore(GRAND_CHECK_STORE,grandCheckStore); } });
-document.getElementById('grandRehabSubTab').addEventListener('click',()=>setGrandDepartmentMode('rehab')); document.getElementById('grandClinicalSubTab').addEventListener('click',()=>setGrandDepartmentMode('clinical')); 
-document.getElementById('resetBtn').addEventListener('click',resetApp); document.getElementById('grandExportAllBtn').addEventListener('click',exportGrandAll); document.getElementById('grandExportSelectedBtn').addEventListener('click',exportGrandSelected);
+document.getElementById('resetBtn').addEventListener('click',resetApp); document.getElementById('grandExportSelectedBtn').addEventListener('click',exportGrandSelected);
+document.getElementById('grandHelpBtn').addEventListener('click',()=>document.getElementById('grandHelpDialog').showModal());
+document.getElementById('grandHelpCloseBtn').addEventListener('click',()=>document.getElementById('grandHelpDialog').close());
+document.getElementById('grandHelpDialog').addEventListener('click',(e)=>{ if(e.target.id==='grandHelpDialog') e.target.close(); });
 </script>
 </body>
 </html>
