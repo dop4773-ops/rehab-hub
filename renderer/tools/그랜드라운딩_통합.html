@@ -96,21 +96,24 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-archive>summary .ga-title{font-size:11px;font-weight:900;color:#294766}
 .grand-archive>summary .ga-count-chip{background:#e7effa;color:var(--navy);font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px}
 .grand-archive-body{margin-top:10px}
-.ga-register{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#f8fbff;border:1px solid #dbe5f0;border-radius:9px;padding:9px 11px;margin-bottom:8px}
-.ga-register .field{font-size:10px;color:#7a8798;font-weight:700}
-.ga-register .field b{display:block;font-size:12px;color:#294766;font-weight:900;margin-top:2px}
-.ga-register .field.auto b::after{content:" (자동)";font-size:9px;font-weight:600;color:#9fb0c3}
-.ga-register input[type=date]{border:1px solid #cbd6e4;border-radius:7px;padding:5px 7px;font-size:11px}
+.grand-archive-register{background:#eef6ff;border-color:#bcd6f5}
+.ga-batchbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#f8fbff;border:1px solid #dbe5f0;border-radius:9px;padding:8px 11px;margin-bottom:8px;font-size:11px}
+.ga-selectall{display:flex;align-items:center;gap:5px;font-weight:800;color:#294766;cursor:pointer}
+.ga-batchbar-actions{display:flex;gap:6px;margin-left:auto}
+.ga-batchbar-actions .btn{padding:5px 11px;font-size:11px}
 .ga-list{display:flex;flex-direction:column;gap:6px}
+.ga-row .rowcheck{flex:none;margin-right:2px}
+.ga-status{display:flex;flex-direction:column;gap:1px;width:150px;flex:none}
+.ga-status .ga-status-detail{font-size:9.5px;color:#8b98a8;font-weight:600}
 .ga-row{border:1px solid #e6ecf3;border-radius:9px;background:#fff;overflow:hidden}
 .ga-row .rowhead{display:flex;align-items:center;gap:12px;padding:8px 10px;font-size:11.5px;cursor:pointer}
 .ga-row .col-date{font-weight:800;color:var(--navy);width:78px;flex:none}
 .ga-row .col-rm{width:58px;flex:none;color:#33445c;font-weight:700}
 .ga-row .col-ward{flex:1;color:#50627b;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ga-row .col-count{width:42px;flex:none;color:var(--muted);text-align:right}
-.ga-badge{display:inline-flex;align-items:center;justify-content:center;width:74px;flex:none;padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:800}
+.ga-badge{display:inline-flex;align-items:center;justify-content:center;width:fit-content;min-width:60px;flex:none;padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:800}
 .ga-badge.red{background:#fbe9ec;color:var(--red)}
 .ga-badge.amber{background:#fdf2df;color:var(--amber)}
+.ga-badge.green{background:#e8f5ee;color:var(--green)}
 .ga-badge.gray{background:#eef1f5;color:#8b98a8}
 .ga-row .actions{display:flex;gap:5px;flex:none}
 .ga-row .actions .btn{padding:4px 9px;font-size:10.5px}
@@ -250,6 +253,11 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
             <button id="grandExportSelectedBtn" class="btn green" type="button">현재 RM 대회진표 Excel · 1시트</button>
             <button id="grandExportAllBtn" class="btn primary" type="button">전체 RM · RM별 시트</button>
           </div>
+          <div class="field grand-archive-register">
+            <label>📚 그랜드라운딩 보관</label>
+            <button id="grandArchiveSaveBtn" class="btn primary" type="button">위 조건으로 등록하기</button>
+            <span id="grandArchiveSaveStatus" class="status"></span>
+          </div>
         </div>
         <div id="grandRehabTools" class="grand-dept-tools">
           <div class="grand-ot-upload">
@@ -293,13 +301,15 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
               <span id="grandArchiveCountChip" class="ga-count-chip">0건 보관됨</span>
             </summary>
             <div class="grand-archive-body">
-              <div class="ga-register">
-                <span class="field">등록할 날짜<br><input id="grandArchiveDateInput" type="date"></span>
-                <span class="field">대회진 RM<b id="grandArchiveRmPreview">-</b></span>
-                <span class="field auto">해당 병동<b id="grandArchiveWardPreview">-</b></span>
-                <span class="field auto">대상 환자<b id="grandArchiveCountPreview">-</b></span>
-                <button id="grandArchiveSaveBtn" class="btn primary" type="button">이 시간표 등록</button>
-                <span id="grandArchiveSaveStatus" class="status"></span>
+              <div class="ga-batchbar">
+                <label class="ga-selectall"><input id="grandArchiveSelectAll" type="checkbox"> 전체선택</label>
+                <span id="grandArchiveSelectedCount" class="muted">선택 0건</span>
+                <span class="ga-batchbar-actions">
+                  <button id="grandArchiveBatchAllBtn" class="btn primary" type="button">전체 추출</button>
+                  <button id="grandArchiveBatchTeamBtn" class="btn" type="button">팀별 추출</button>
+                  <button id="grandArchiveBatchLangBtn" class="btn" type="button">언어별 추출</button>
+                </span>
+                <span id="grandArchiveBatchStatus" class="status"></span>
               </div>
               <div id="grandArchiveList" class="ga-list"></div>
             </div>
@@ -1122,16 +1132,24 @@ function exportGrandLanguageOnly(){
   downloadBytes(buildGrandWorkbookXlsx(defs,day,hour,routeKey,period),`그랜드라운딩_언어치료_${grandRouteProfile(routeKey).roundLabel}_${date}_${periodInfo.label}.xlsx`);
   if(statusEl) statusEl.textContent=`언어치료 대상 ${patients.length}명 · Excel을 만들었습니다.`;
 }
-// ===== 그랜드라운딩 보관함(날짜+RM 단위로 등록, 목록에서 행별로 바로 Excel 추출, 2026-09-26 개편) =====
+// ===== 그랜드라운딩 보관함(위 ①~⑦ 조건으로 등록 → 목록에서 체크해 일괄 추출, 2026-09-26 재개편) =====
 // 이 화면은 sandbox iframe이라 window.rehab(IPC)에 직접 접근 못 한다 — 셸(shell.js)이 iframe 로드 직후
 // window.__schedulesApi에 브리지 함수를 심어준다. 그 전에는(또는 이 파일을 데스크톱 앱 밖에서 열면) null.
 // RM을 고르면 "이름"이 아니라 그 RM 소속 환자 전원이 대상이 되고(grandFilteredPatients와 동일한 개념),
-// 그 환자들이 실제로 있는 병동이 곧 그 RM의 병동이다 — 그래서 등록 시 병동을 사람이 따로 고르지 않고
-// 선택된 RM 환자들의 실제 병실 층(roomFloor)에서 자동으로 계산해 보여준다.
+// 그 환자들이 실제로 있는 병동이 곧 그 RM의 병동이다 — 등록은 위 ①~⑦ 조건(회차·시각·RM·병동·회진일·
+// 요일·출력 시간대)을 그대로 스냅샷으로 저장하고, "병동" 표시값만 실제 병실 층에서 자동 계산한다.
 function grandArchiveApi(){ return window.__schedulesApi||null; }
+const grandArchiveSelected=new Set();
 function grandArchiveScopedPatients(rm){
-  const rmKey=normalizeGrandRm(rm);
-  return allPatients.filter(p=>p.category!=='외래'&&(rm==='ALL'||normalizeGrandRm(p.rm)===rmKey));
+  const rmKey=normalizeGrandRm(rm), ward=grandSelectedWard(), routeKey=document.getElementById('grandRouteSelect')?.value||'round1', profile=grandRouteProfile(routeKey);
+  return allPatients.filter(p=>{
+    if(p.category==='외래') return false;
+    if(!(rm==='ALL'||normalizeGrandRm(p.rm)===rmKey)) return false;
+    const wf=roomFloor(p.room);
+    if(!profile.targetWards.includes(wf)) return false;
+    if(ward!=='ALL'&&wf!==Number(ward)) return false;
+    return true;
+  });
 }
 function grandArchiveWardLabel(patients){
   const wards=[...new Set(patients.map(p=>roomFloor(p.room)).filter(Boolean))].sort((a,b)=>a-b);
@@ -1155,13 +1173,25 @@ function grandArchiveComputeIssues(scoped,rm){
   }
   return {unmatched:unmatchedList,notWritten:[...notWrittenList,...partialList]};
 }
-function grandArchiveBadgeHtml(cls,label,items){
-  return items.length?`<span class="ga-badge ${cls}">${xmlEscape(label)} ${items.length}</span>`:`<span class="ga-badge gray">${xmlEscape(label)} 없음</span>`;
+// 행마다 미반영/미작성을 각각 표시하지 않고, 둘 중 더 심각한 쪽 하나만 상태로 보여준다(미반영 > 미작성 > 정상).
+function grandArchiveStatusHtml(issues){
+  if(issues.unmatched.length) return `<span class="ga-badge red">🔴 미반영</span><span class="ga-status-detail">확인필요 ${issues.unmatched.length}건</span>`;
+  if(issues.notWritten.length){
+    const goal=issues.notWritten.filter(x=>x.missing==='전체'||x.missing.includes('Goal')).length;
+    const round=issues.notWritten.filter(x=>x.missing==='전체'||x.missing.includes('그랜드라운딩')).length;
+    return `<span class="ga-badge amber">🟡 미작성</span><span class="ga-status-detail">목표 ${goal}건, 그랜드라운딩 ${round}건</span>`;
+  }
+  return `<span class="ga-badge green">🟢 정상</span><span class="ga-status-detail">&nbsp;</span>`;
 }
 function grandArchiveGroupHtml(cls,title,items,pillCls,pillText){
   if(!items.length) return `<div class="grp ${cls}"><div class="ttl">${xmlEscape(title)}</div><div class="ga-empty">없음</div></div>`;
   const rows=items.map(x=>`<div class="ga-prow"><span class="pname">${xmlEscape(x.name)}</span><span class="ptherapist">담당: ${xmlEscape(x.therapist||'-')}</span><span class="ga-pill ${pillCls}">${xmlEscape(x.missing?`${x.missing} 미작성`:pillText)}</span></div>`).join('');
   return `<div class="grp ${cls}"><div class="ttl">${xmlEscape(title)} · ${items.length}명</div><div class="ga-plist">${rows}</div></div>`;
+}
+function updateGrandArchiveSelectionUi(){
+  const cnt=document.getElementById('grandArchiveSelectedCount'); if(cnt) cnt.textContent=`선택 ${grandArchiveSelected.size}건`;
+  const all=document.getElementById('grandArchiveSelectAll');
+  if(all){ const total=document.querySelectorAll('#grandArchiveList .ga-row').length; all.checked=total>0&&grandArchiveSelected.size===total; }
 }
 async function renderGrandArchiveList(){
   const box=document.getElementById('grandArchiveList'), chip=document.getElementById('grandArchiveCountChip');
@@ -1170,17 +1200,18 @@ async function renderGrandArchiveList(){
   if(!api){ box.innerHTML='<span class="muted">이 화면은 데스크톱 앱 안에서만 보관함을 쓸 수 있습니다.</span>'; return; }
   const list=await api.list();
   if(chip) chip.textContent=`${list.length}건 보관됨`;
-  if(!list.length){ box.innerHTML='<span class="muted">아직 등록한 그랜드라운딩이 없습니다.</span>'; return; }
+  const validIds=new Set(list.map(x=>x.id));
+  for(const id of [...grandArchiveSelected]) if(!validIds.has(id)) grandArchiveSelected.delete(id);
+  if(!list.length){ box.innerHTML='<span class="muted">아직 등록한 그랜드라운딩이 없습니다.</span>'; updateGrandArchiveSelectionUi(); return; }
   box.innerHTML=list.map(x=>{
     const issues=x.issues||{unmatched:[],notWritten:[]};
     return `<div class="ga-row" data-archive-id="${xmlEscape(x.id)}">
       <div class="rowhead">
+        <input class="rowcheck" type="checkbox" ${grandArchiveSelected.has(x.id)?'checked':''}>
         <span class="col-date">${xmlEscape(x.dateKey)}</span>
         <span class="col-rm">${xmlEscape(x.rm)}</span>
-        <span class="col-ward">${xmlEscape(x.ward)}</span>
-        <span class="col-count">${x.count}명</span>
-        ${grandArchiveBadgeHtml('red','미반영',issues.unmatched)}
-        ${grandArchiveBadgeHtml('amber','미작성',issues.notWritten)}
+        <span class="col-ward">${xmlEscape(x.ward)} · ${x.count}명</span>
+        <span class="ga-status">${grandArchiveStatusHtml(issues)}</span>
         <span class="actions">
           <button class="btn tiny" type="button" data-archive-export="all">전체</button>
           <button class="btn tiny" type="button" data-archive-export="team">팀별</button>
@@ -1197,41 +1228,38 @@ async function renderGrandArchiveList(){
     </div>`;
   }).join('');
   box.querySelectorAll('.ga-row').forEach(row=>{
-    const id=row.dataset.archiveId, detail=row.querySelector('.ga-row-detail');
+    const id=row.dataset.archiveId, detail=row.querySelector('.ga-row-detail'), check=row.querySelector('.rowcheck');
     row.querySelector('.rowhead').addEventListener('click',(ev)=>{
-      if(ev.target.closest('button')) return;
+      if(ev.target.closest('button')||ev.target===check) return;
       detail.style.display=detail.style.display==='none'?'':'none';
+    });
+    check.addEventListener('click',(ev)=>{
+      ev.stopPropagation();
+      if(check.checked) grandArchiveSelected.add(id); else grandArchiveSelected.delete(id);
+      updateGrandArchiveSelectionUi();
     });
     row.querySelector('[data-archive-del]').addEventListener('click',async(ev)=>{
       ev.stopPropagation();
       await grandArchiveApi().delete(id);
+      grandArchiveSelected.delete(id);
       renderGrandArchiveList();
     });
     row.querySelectorAll('[data-archive-export]').forEach(btn=>btn.addEventListener('click',(ev)=>{
       ev.stopPropagation();
-      grandArchiveExportEntry(id,btn.dataset.archiveExport,btn);
+      grandArchiveExport([id],btn.dataset.archiveExport,btn);
     }));
   });
+  updateGrandArchiveSelectionUi();
 }
 window.__onSchedulesApiReady=renderGrandArchiveList; // 셸이 브리지를 심어준 직후 목록을 채워달라는 훅
-function updateGrandArchivePreview(){
-  const rmEl=document.getElementById('grandArchiveRmPreview'), wardEl=document.getElementById('grandArchiveWardPreview'), cntEl=document.getElementById('grandArchiveCountPreview');
-  if(!rmEl) return; // 보관함 UI가 없는 화면(진료부/병동 탭 등)에서는 조용히 무시
-  const rm=document.getElementById('grandRmSelect')?.value||'ALL';
-  rmEl.textContent=rm==='ALL'?'전체 RM':rm;
-  if(!allPatients.length){ wardEl.textContent='-'; cntEl.textContent='-'; return; }
-  const scoped=grandArchiveScopedPatients(rm);
-  wardEl.textContent=grandArchiveWardLabel(scoped);
-  cntEl.textContent=`${scoped.length}명`;
-}
 async function grandArchiveSave(){
   const status=document.getElementById('grandArchiveSaveStatus'), api=grandArchiveApi();
   if(!api){ if(status) status.textContent='데스크톱 앱 안에서만 사용할 수 있습니다.'; return; }
   if(!allPatients.length){ if(status) status.textContent='먼저 시간표를 업로드해 주세요.'; return; }
-  const dateKey=document.getElementById('grandArchiveDateInput').value;
-  if(!dateKey){ if(status) status.textContent='등록할 날짜를 선택해 주세요.'; return; }
+  const dateKey=document.getElementById('grandDateInput').value;
+  if(!dateKey){ if(status) status.textContent='⑤ 회진일을 선택한 뒤 등록해 주세요.'; return; }
   const rm=document.getElementById('grandRmSelect')?.value||'ALL';
-  if(rm==='ALL'){ if(status) status.textContent='위 ③ 대회진 RM에서 RM을 하나 선택한 뒤 등록해 주세요.'; return; }
+  if(rm==='ALL'){ if(status) status.textContent='③ 대회진 RM을 하나 선택한 뒤 등록해 주세요.'; return; }
   const scoped=grandArchiveScopedPatients(rm);
   if(!scoped.length){ if(status) status.textContent=`${rm} 조건에 맞는 환자가 없어 등록하지 않았습니다.`; return; }
   const ward=grandArchiveWardLabel(scoped);
@@ -1243,32 +1271,67 @@ async function grandArchiveSave(){
     renderGrandArchiveList();
   }catch(err){ if(status) status.textContent=`등록 실패: ${err.message}`; }
 }
-// 목록 행의 [전체]/[팀별]/[언어] 버튼 — 지금 화면의 실시간 추출과 같은 함수(buildGrandWorkbookXlsx 등)를
-// 그대로 재사용하되, 회차·요일·시각은 그 항목을 등록할 당시 값을 그대로 써서 등록 시점과 같은 동선으로 뽑는다.
-async function grandArchiveExportEntry(id,kind,btn){
-  const api=grandArchiveApi(); if(!api) return;
+// [전체]/[팀별]/[언어] — 행의 작은 버튼(id 1개)과 위 일괄 추출 바(체크된 id 여러 개)가 이 함수 하나를 같이 쓴다.
+// 회차·요일·시각은 각 항목을 등록할 당시 값을 그대로 써서(entry.day/hour/routeKey) 등록 시점과 같은 동선으로 뽑는다.
+async function grandArchiveExport(ids,kind,btn){
+  const api=grandArchiveApi(); if(!api||!ids.length) return;
   const oldText=btn?btn.textContent:'';
   const flash=(msg)=>{ if(!btn) return; btn.textContent=msg; setTimeout(()=>{btn.textContent=oldText;},1800); };
-  const [entry]=await api.load([id]);
-  if(!entry){ flash('불러오기 실패'); return; }
-  const patients=entry.patients||[], day=entry.day||'월요일', hour=entry.hour||'09', routeKey=entry.routeKey||'round1', period=grandPrintPeriodKey();
+  const entries=await api.load(ids);
+  if(!entries.length){ flash('불러오기 실패'); return; }
+  const period=grandPrintPeriodKey(), label=entries.length>1?`${entries.length}건`:`${entries[0].rm}_${entries[0].dateKey}`;
   if(kind==='all'){
-    downloadBytes(buildGrandWorkbookXlsx([buildGrandOverviewSheetDef(patients)],day,hour,routeKey,period),`그랜드라운딩_${entry.rm}_${entry.dateKey}_전체.xlsx`);
+    // 항목마다 자기 자신의 day/hour/routeKey로 1개 시트 — 날짜가 섞여 있어도 각자 등록 당시 동선대로 뽑힌다.
+    const defs=entries.map(e=>({...buildGrandOverviewSheetDef(e.patients,`${e.dateKey}(${e.rm})`),day:e.day,hour:e.hour,routeKey:e.routeKey}));
+    downloadBytes(buildGrandWorkbookXlsx(defs,entries[0].day,entries[0].hour,entries[0].routeKey,period),`그랜드라운딩_전체_${label}.xlsx`);
   }else if(kind==='team'){
     if(!grandOtBook){ flash('치료사현황 필요'); return; }
+    // 팀별 묶기는 날짜를 넘나들어 합치는 작업이라, 같은 환자가 여러 날짜에 있으면 최신 날짜 것을 채택한다
+    // (grandIdentityKey는 등록번호 우선이라 병실이 바뀌어도 같은 환자로 인식됨 — 이전 "기간 불러오기"와 동일한 방식).
+    const byKey=new Map();
+    for(const e of entries) for(const p of e.patients){ const k=grandIdentityKey(p), prev=byKey.get(k); if(!prev||e.dateKey>prev.dateKey) byKey.set(k,{dateKey:e.dateKey,patient:p}); }
+    const pooled=[...byKey.values()].map(x=>x.patient);
     const key=document.getElementById('grandClassifyKeySelect')?.value||'ot';
     const keyLabel={ot:'작업치료사',swallow:'연하치료사',cog:'인지치료사'}[key]||key;
-    let groups=grandGroupByTherapist(key,patients);
+    let groups=grandGroupByTherapist(key,pooled);
     if(groups.has('(미배정)')) groups.delete('(미배정)');
     if(!groups.size){ flash('대상 없음'); return; }
     const defs=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko')).map(([name,pts])=>({name,title:`${name} · ${keyLabel}`,patients:pts}));
     const overviewPatients=[...new Set([...groups.values()].flat())];
-    downloadBytes(buildGrandWorkbookXlsx([buildGrandOverviewSheetDef(overviewPatients),...defs],day,hour,routeKey,period),`그랜드라운딩_${entry.rm}_${entry.dateKey}_${keyLabel}별.xlsx`);
+    const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1';
+    downloadBytes(buildGrandWorkbookXlsx([buildGrandOverviewSheetDef(overviewPatients),...defs],day,hour,routeKey,period),`그랜드라운딩_팀별_${keyLabel}_${label}.xlsx`);
   }else if(kind==='lang'){
-    const langPatients=patients.filter(grandIsLanguagePatient);
-    if(!langPatients.length){ flash('대상 없음'); return; }
-    downloadBytes(buildGrandWorkbookXlsx([{name:'언어치료',title:'언어치료 대상',patients:langPatients}],day,hour,routeKey,period),`그랜드라운딩_${entry.rm}_${entry.dateKey}_언어치료.xlsx`);
+    // 언어치료 명단은 시간표·인수인계 내용 없이 병실/환자명/주치료실/동선/층만 간단히 나열한다(레거시 언어치료명단 형식과 동일).
+    // 항목마다 시트 하나씩 — 여러 건을 체크해도 시트만 늘어날 뿐 서로 합쳐지지 않는다.
+    const langEntries=entries.map(e=>({...e,patients:e.patients.filter(grandIsLanguagePatient)})).filter(e=>e.patients.length);
+    if(!langEntries.length){ flash('대상 없음'); return; }
+    downloadBytes(buildGrandLanguageListWorkbookXlsx(langEntries),`그랜드라운딩_언어치료_${label}.xlsx`);
   }
+}
+function grandArchiveWireBatchBar(){
+  const selAll=document.getElementById('grandArchiveSelectAll');
+  if(selAll) selAll.addEventListener('change',()=>{
+    document.querySelectorAll('#grandArchiveList .ga-row').forEach(row=>{
+      const id=row.dataset.archiveId, cb=row.querySelector('.rowcheck');
+      if(selAll.checked) grandArchiveSelected.add(id); else grandArchiveSelected.delete(id);
+      if(cb) cb.checked=selAll.checked;
+    });
+    updateGrandArchiveSelectionUi();
+  });
+  const status=document.getElementById('grandArchiveBatchStatus');
+  const setStatus=(msg)=>{ if(status) status.textContent=msg; };
+  const bind=(id,kind)=>{
+    const btn=document.getElementById(id); if(!btn) return;
+    btn.addEventListener('click',async()=>{
+      if(!grandArchiveSelected.size){ setStatus('목록에서 먼저 항목을 체크해 주세요.'); return; }
+      setStatus('추출 중…');
+      await grandArchiveExport([...grandArchiveSelected],kind,btn);
+      setStatus(`${grandArchiveSelected.size}건 추출 완료.`);
+    });
+  };
+  bind('grandArchiveBatchAllBtn','all');
+  bind('grandArchiveBatchTeamBtn','team');
+  bind('grandArchiveBatchLangBtn','lang');
 }
 function grandTherapistMapAdd(map,name,therapist){
   const key=grandResolvePatientKey?grandResolvePatientKey(name):normalizeGrandOtPatientKey(name);
@@ -2093,7 +2156,6 @@ function renderGrandTable(){
   const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1', data=grandGroupedRows(grandFilteredPatients(),day,hour,routeKey), rm=document.getElementById('grandRmSelect').value;
   const firstSlot=data.slots[0]||'-', activeStart=data.activeStart||'-', therapistCols=grandTherapistColumnDefs(), handoverCols=grandHandoverColumnDefs(), periodInfo=grandPrintPeriodInfo();
   updateGrandHandoverStatus();
-  updateGrandArchivePreview();
   const ward=grandSelectedWard();
   document.getElementById('grandSummary').textContent=`${document.getElementById('grandDateInput').value||''} ${day} · ${grandDepartmentLabel()} · ${data.profile.label} · ${hour}시 시작 · ${rm==='ALL'?'전체 RM':rm} · ${ward==='ALL'?'회차 전체 병동':ward+'병동'} · 대상 ${data.rows.length}명 · 동선 고정 / 구간 내 시간순 · 화면 전체 스케줄 ${firstSlot}부터 · Excel ${periodInfo.label} ${periodInfo.range}`;
   document.getElementById('grandKpis').innerHTML=`<div class="grand-kpi"><div class="k">부서 보기</div><div class="v">${grandDepartmentLabel()}</div></div><div class="grand-kpi"><div class="k">병동 필터</div><div class="v">${ward==='ALL'?'전체':ward+'병동'}</div></div><div class="grand-kpi"><div class="k">대상 환자</div><div class="v">${data.rows.length}명</div></div><div class="grand-kpi"><div class="k">Excel 출력</div><div class="v">${periodInfo.label}</div></div>`;
@@ -2138,7 +2200,8 @@ const XLSX_STYLE={
   title:1,
   groupBasic:2,groupAM:3,groupLunch:4,groupPM:5,
   hKind:6,hRoom:7,hPatient:8,hReg:9,hSex:10,hRM:11,hPrimary:12,hAM:13,hLunch:14,hPM:15,
-  body:16,bodyPatient:17,lunch:18,exercise:19,ot:20,swallow:21,cog:22,electric:23,device:24,pain:25,speech:26,manual:27,other:28
+  body:16,bodyPatient:17,lunch:18,exercise:19,ot:20,swallow:21,cog:22,electric:23,device:24,pain:25,speech:26,manual:27,other:28,
+  langHeader:73
 };
 const XLSX_BREAK_OFFSET=13;
 const XLSX_LOCATION_RIGHT_OFFSET=26;
@@ -2186,7 +2249,8 @@ function stylesXml(){
     fill('FFE4F4FA'), // 24 speech
     fill('FFE1F3F0'), // 25 manual
     fill('FFFBE9F0'), // 26 other
-    fill('FFE3E6EA')  // 27 lunch body
+    fill('FFE3E6EA'), // 27 lunch body
+    fill('FFEFF3F9')  // 28 언어치료 명단 헤더(연회색)
   ];
   const borderNone='<border><left/><right/><top/><bottom/><diagonal/></border>';
   const borderThin='<border><left style="thin"><color rgb="FFD8E0EA"/></left><right style="thin"><color rgb="FFD8E0EA"/></right><top style="thin"><color rgb="FFD8E0EA"/></top><bottom style="thin"><color rgb="FFD8E0EA"/></bottom><diagonal/></border>';
@@ -2215,7 +2279,8 @@ function stylesXml(){
   // 회진 발표 요약 본문: 11pt, 왼쪽/상단 정렬.
   cellXfs+=xfLeft(5,0,1);
   cellXfs+=xfLeft(5,0,2);
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="6"><font><sz val="7"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><b/><sz val="13"/><color rgb="FFFFFFFF"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><b/><sz val="7"/><color rgb="FFFFFFFF"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><b/><sz val="9"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><sz val="9"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><sz val="11"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font></fonts><fills count="${fills.length}">${fills.join('')}</fills><borders count="5">${borderNone}${borderThin}${borderFloor}${borderRightMedium}${borderFloorRightMedium}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="73">${cellXfs}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  cellXfs+=xf(3,28,1); // 73: 언어치료 명단 헤더(굵게+연회색+테두리+가운데)
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="6"><font><sz val="7"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><b/><sz val="13"/><color rgb="FFFFFFFF"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><b/><sz val="7"/><color rgb="FFFFFFFF"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><b/><sz val="9"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><sz val="9"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font><font><sz val="11"/><name val="맑은 고딕"/><family val="2"/><charset val="129"/></font></fonts><fills count="${fills.length}">${fills.join('')}</fills><borders count="5">${borderNone}${borderThin}${borderFloor}${borderRightMedium}${borderFloorRightMedium}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="74">${cellXfs}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
 }
 function themeXml(){ return `<?xml version="1.0" encoding="utf-8"?><a:theme name="ChatGPT" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:themeElements><a:clrScheme name="ChatGPT"><a:dk1><a:sysClr val="windowText" lastClr="000000" /></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF" /></a:lt1><a:dk2><a:srgbClr val="0E2841" /></a:dk2><a:lt2><a:srgbClr val="E8E8E8" /></a:lt2><a:accent1><a:srgbClr val="156082" /></a:accent1><a:accent2><a:srgbClr val="E97132" /></a:accent2><a:accent3><a:srgbClr val="196B24" /></a:accent3><a:accent4><a:srgbClr val="0F9ED5" /></a:accent4><a:accent5><a:srgbClr val="A02B93" /></a:accent5><a:accent6><a:srgbClr val="4EA72E" /></a:accent6><a:hlink><a:srgbClr val="467886" /></a:hlink><a:folHlink><a:srgbClr val="96607D" /></a:folHlink></a:clrScheme><a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri Light" /><a:ea typeface="Calibri Light" /><a:cs typeface="Calibri Light" /></a:majorFont><a:minorFont><a:latin typeface="Calibri" /><a:ea typeface="Calibri" /><a:cs typeface="Calibri" /></a:minorFont></a:fontScheme><a:fmtScheme name="ChatGPT"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:gradFill><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="67000" /><a:lumMod val="110000" /><a:satMod val="105000" /></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:tint val="73000" /><a:lumMod val="105000" /><a:satMod val="103000" /></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="81000" /><a:lumMod val="105000" /><a:satMod val="109000" /></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0" /></a:gradFill><a:gradFill><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="94000" /><a:lumMod val="102000" /><a:satMod val="103000" /></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:shade val="100000" /><a:lumMod val="100000" /><a:satMod val="110000" /></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="78000" /><a:lumMod val="99000" /><a:satMod val="120000" /></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0" /></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:prstDash val="solid" /></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:prstDash val="solid" /></a:ln><a:ln w="25400"><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:prstDash val="solid" /></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst /></a:effectStyle><a:effectStyle><a:effectLst /></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="57150" dist="19050" dir="5400000"><a:srgbClr val="000000"><a:alpha val="63000" /></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:solidFill><a:schemeClr val="phClr"><a:tint val="95000" /><a:satMod val="170000" /></a:schemeClr></a:solidFill><a:gradFill><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="93000" /><a:shade val="98000" /><a:lumMod val="102000" /><a:satMod val="150000" /></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:tint val="98000" /><a:shade val="90000" /><a:lumMod val="103000" /><a:satMod val="130000" /></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="63000" /><a:satMod val="120000" /></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0" /></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>`; }
 function sanitizeSheetName(name,used){ let s=String(name).replace(/[\\\/?*\[\]:]/g,' ').trim().slice(0,31)||'Sheet'; let base=s,n=2; while(used.has(s)){ const suffix=` (${n++})`; s=base.slice(0,31-suffix.length)+suffix; } used.add(s); return s; }
@@ -2289,7 +2354,9 @@ function grandSplitPatientsForSheets(patients,day,hour,routeKey,maxParts=3){
 function grandExpandSheetDefsForPrint(sheetDefs,day,hour,routeKey){
   // 재활치료부/진료부·병동 모두 RM 하나를 3개 시트로 분할하지 않는다.
   // 각 RM은 항상 1개 시트로 유지하고, 시트 내부 정렬은 기존 그랜드 라운딩 동선을 그대로 사용한다.
-  return sheetDefs.map(d=>({...d,patients:grandGroupedRows(d.patients,day,hour,routeKey).rows.map(x=>x.p)}));
+  // sheetDef가 자신만의 day/hour/routeKey를 갖고 있으면(보관함의 서로 다른 날짜를 한 파일로 묶어 추출할 때)
+  // 그 값을 우선 쓰고, 없으면 호출자가 넘긴 공통 값으로 대체한다.
+  return sheetDefs.map(d=>({...d,patients:grandGroupedRows(d.patients,d.day||day,d.hour||hour,d.routeKey||routeKey).rows.map(x=>x.p)}));
 }
 function base64ToU8(b64){ const bin=atob(b64), out=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; }
 function grandMapSheetXml(){
@@ -2318,12 +2385,12 @@ function buildGrandWorkbookXlsx(sheetDefs,day,hour,routeKey,period=grandPrintPer
   files.push({name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>${sheetOverrides}</Types>`});
   files.push({name:'_rels/.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`});
   const endCol=numToCol(grandExcelHeaders(hour,period).length);
-  const printNames=defs.map((d,i)=>{ const endRow=grandSheetPlan(d.patients,day,hour,routeKey).lastRow, sn=d.sheetName.replace(/'/g,"''"); return `<definedName name="_xlnm.Print_Area" localSheetId="${i}">'${xmlEscape(sn)}'!$A$1:$${endCol}$${endRow}</definedName>`; }).join('');
+  const printNames=defs.map((d,i)=>{ const endRow=grandSheetPlan(d.patients,d.day||day,d.hour||hour,d.routeKey||routeKey).lastRow, sn=d.sheetName.replace(/'/g,"''"); return `<definedName name="_xlnm.Print_Area" localSheetId="${i}">'${xmlEscape(sn)}'!$A$1:$${endCol}$${endRow}</definedName>`; }).join('');
   files.push({name:'xl/workbook.xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${allSheets.map((d,i)=>`<sheet name="${xmlEscape(d.sheetName)}" sheetId="${i+1}" r:id="rId${i+3}"/>`).join('')}</sheets><definedNames>${printNames}</definedNames></workbook>`});
   files.push({name:'xl/_rels/workbook.xml.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>${allSheets.map((d,i)=>`<Relationship Id="rId${i+3}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}</Relationships>`});
   files.push({name:'xl/styles.xml',data:stylesXml()});
   files.push({name:'xl/theme/theme1.xml',data:themeXml()});
-  defs.forEach((d,i)=>files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:buildGrandSheetXml(d.title||d.name,d.patients,day,hour,routeKey,period)}));
+  defs.forEach((d,i)=>files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:buildGrandSheetXml(d.title||d.name,d.patients,d.day||day,d.hour||hour,d.routeKey||routeKey,period)}));
   const mapIndex=allSheets.length;
   files.push({name:`xl/worksheets/sheet${mapIndex}.xml`,data:grandMapSheetXml()});
   files.push({name:`xl/worksheets/_rels/sheet${mapIndex}.xml.rels`,data:grandMapSheetRelsXml()});
@@ -2335,6 +2402,44 @@ function buildGrandWorkbookXlsx(sheetDefs,day,hour,routeKey,period=grandPrintPer
 }
 // 내보내기 맨 앞에 항상 붙는 "전체" 시트 — 치료사별/RM별로 나누기 전, 그 범위의 전체 환자를 한 시트로 모은다.
 function buildGrandOverviewSheetDef(patients,label='전체'){ return {name:label,title:label,patients}; }
+
+// ===== 언어치료 대상 명단(보관함 전용 — 시간표 그리드·인수인계 내용 없이 간단한 명단 표만) =====
+// 병실/환자명/주 치료실/동선/층은 이미 화면·다른 Excel에서 쓰는 값(p.room/p.name/p.primary, 걷는 순서 anchor)을
+// 그대로 재사용하고, "치료목표/치료내용"·"특이사항"은 손으로 채워 넣도록 빈 칸으로 둔다(레거시 언어치료명단
+// 도구와 동일한 형식). 날짜(entry)마다 별도 시트 하나씩 — 여러 건을 한 번에 추출하면 시트가 여러 개 생긴다.
+function buildGrandLanguageListSheetXml(entry){
+  const {dateKey,rm,ward,day,hour,routeKey,patients}=entry;
+  const headers=['병실','환자명','주 치료실','동선','층','치료목표/치료내용','특이사항'];
+  const widths=[8,10,14,20,8,32,22];
+  const lastCol=numToCol(headers.length);
+  const cols=`<cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>`;
+  const rows=grandGroupedRows(patients,day,hour,routeKey).rows;
+  let data=`<row r="1" ht="20">`;
+  for(let i=0;i<headers.length;i++) data+=xlsxCell(`${numToCol(i+1)}1`,i===0?`${rm} · ${dateKey} · 언어치료 대상자 명단`:'',XLSX_STYLE.title);
+  data+=`</row><row r="2" ht="18">`;
+  for(let i=0;i<headers.length;i++) data+=xlsxCell(`${numToCol(i+1)}2`,i===0?`${day} · ${ward} · 총 ${patients.length}명`:'',0);
+  data+=`</row><row r="3">${headers.map((h,i)=>xlsxCell(`${numToCol(i+1)}3`,h,XLSX_STYLE.langHeader)).join('')}</row>`;
+  rows.forEach((row,idx)=>{
+    const r=idx+4, p=row.p, a=row.anchor;
+    const vals=[p.room,p.name,p.primary,`${a.route.floorLabel} ${a.route.label}`,p.floor?`${p.floor}F`:'','',''];
+    data+=`<row r="${r}">${vals.map((v,i)=>xlsxCell(`${numToCol(i+1)}${r}`,v,XLSX_STYLE.body)).join('')}</row>`;
+  });
+  const lastRow=Math.max(3,3+rows.length), merges=[`A1:${lastCol}1`,`A2:${lastCol}2`];
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:${lastCol}${lastRow}"/><sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData><mergeCells count="${merges.length}">${merges.map(x=>`<mergeCell ref="${x}"/>`).join('')}</mergeCells><printOptions horizontalCentered="1"/><pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0.1" footer="0.1"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+}
+function buildGrandLanguageListWorkbookXlsx(entries){
+  const used=new Set(), defs=entries.map(e=>({...e,sheetName:sanitizeSheetName(`${e.dateKey}(${e.rm})`,used)}));
+  const files=[];
+  const sheetOverrides=defs.map((d,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('');
+  files.push({name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>${sheetOverrides}</Types>`});
+  files.push({name:'_rels/.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`});
+  files.push({name:'xl/workbook.xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${defs.map((d,i)=>`<sheet name="${xmlEscape(d.sheetName)}" sheetId="${i+1}" r:id="rId${i+3}"/>`).join('')}</sheets></workbook>`});
+  files.push({name:'xl/_rels/workbook.xml.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>${defs.map((d,i)=>`<Relationship Id="rId${i+3}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}</Relationships>`});
+  files.push({name:'xl/styles.xml',data:stylesXml()});
+  files.push({name:'xl/theme/theme1.xml',data:themeXml()});
+  defs.forEach((d,i)=>files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:buildGrandLanguageListSheetXml(d)}));
+  return makeZip(files);
+}
 function exportGrandSelected(){
   if(!allPatients.length) return; syncGrandInputsFromDom(); const day=document.getElementById('grandDaySelect').value,hour=document.getElementById('grandTimeInput').value||'09',routeKey=document.getElementById('grandRouteSelect').value||'round1',rm=document.getElementById('grandRmSelect').value,date=document.getElementById('grandDateInput').value||dateStamp(),period=grandPrintPeriodKey(),periodInfo=grandPrintPeriodInfo(period),dept=grandDepartmentLabel(),ward=grandSelectedWard(),wardLabel=ward==='ALL'?'회차전체':`${ward}병동`;
   if(rm==='ALL'){ exportGrandAll(); return; } const list=grandFilteredPatients({routeKey}); if(!list.length){ setStatus('선택한 RM·병동 조건에 맞는 입원 환자가 없어 Excel을 만들지 않았습니다.','warn'); return; }
@@ -2349,7 +2454,7 @@ function exportGrandAll(){
 
 function downloadBytes(bytes,name){ const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000); }
 function dateStamp(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function resetApp(){ allPatients=[];rawCardCount=0;loadedFiles={3:null,10:null};grandLanguageOnlyMode=false;{const lb=document.getElementById('grandLangOnlyToggle'),le=document.getElementById('grandLangOnlyExportBtn');if(lb){lb.textContent='언어치료 대상만 보기';lb.classList.remove('primary');}if(le)le.style.display='none';}grandDepartmentMode='rehab';grandNotes.clear();grandOtBook=null;grandOtFileName='';grandOtSheetName='';grandOtTherapistMap=new Map();grandSwallowTherapistMap=new Map();grandCogTherapistMap=new Map();grandPtBooks={10:null,3:null};grandPtFileNames={10:'',3:''};grandPtSheetNames={10:'',3:''};grandPtTherapistMaps={10:new Map(),3:new Map()};grandHandoverBook=null;grandHandoverFileName='';grandHandoverSheetName='';grandHandoverMap=new Map();grandHandoverLiveOk=false;document.getElementById('fileInput').value='';const go=document.getElementById('grandOtFileInput');if(go)go.value='';const gh=document.getElementById('grandHandoverFileInput');if(gh)gh.value='';for(const id of ['grandPt10FileInput','grandPt3FileInput']){const x=document.getElementById(id);if(x)x.value='';}const gs=document.getElementById('grandOtStatus');if(gs){gs.className='status';gs.textContent='미업로드 · 작업치료현황의 평일시간표(원본)에서 작업(ST/SM 등)·연하(R)·인지(CCRT/BETTER/COMCOG) 치료사를 분리 매칭합니다.';}const hs=document.getElementById('grandHandoverStatus');if(hs){hs.className='grand-handover-status';hs.textContent='불러오는 중 · OT인수인계서(통합)에서 실시간으로 Goal / 그랜드라운딩을 가져옵니다.';}fetchGrandHandoverLive();const hb=document.getElementById('grandHandoverMatchSummary');if(hb)hb.style.display='none';const p10=document.getElementById('grandPt10Status');if(p10){p10.className='status';p10.textContent='10F 미업로드';}const p3=document.getElementById('grandPt3Status');if(p3){p3.className='status';p3.textContent='3F 미업로드';}const gp=document.getElementById('grandPrintPeriodSelect');if(gp)gp.value='am';const gws=document.getElementById('grandWardSelect');if(gws){gws.innerHTML='<option value="ALL">회차 전체 병동</option>';gws.value='ALL';}setGrandDepartmentMode('rehab');setFileCard(3,null);setFileCard(10,null);clearStatus();document.getElementById('statsPanel').style.display='none';document.getElementById('resultPanel').style.display='none';updateGrandArchivePreview(); }
+function resetApp(){ allPatients=[];rawCardCount=0;loadedFiles={3:null,10:null};grandLanguageOnlyMode=false;{const lb=document.getElementById('grandLangOnlyToggle'),le=document.getElementById('grandLangOnlyExportBtn');if(lb){lb.textContent='언어치료 대상만 보기';lb.classList.remove('primary');}if(le)le.style.display='none';}grandDepartmentMode='rehab';grandNotes.clear();grandOtBook=null;grandOtFileName='';grandOtSheetName='';grandOtTherapistMap=new Map();grandSwallowTherapistMap=new Map();grandCogTherapistMap=new Map();grandPtBooks={10:null,3:null};grandPtFileNames={10:'',3:''};grandPtSheetNames={10:'',3:''};grandPtTherapistMaps={10:new Map(),3:new Map()};grandHandoverBook=null;grandHandoverFileName='';grandHandoverSheetName='';grandHandoverMap=new Map();grandHandoverLiveOk=false;document.getElementById('fileInput').value='';const go=document.getElementById('grandOtFileInput');if(go)go.value='';const gh=document.getElementById('grandHandoverFileInput');if(gh)gh.value='';for(const id of ['grandPt10FileInput','grandPt3FileInput']){const x=document.getElementById(id);if(x)x.value='';}const gs=document.getElementById('grandOtStatus');if(gs){gs.className='status';gs.textContent='미업로드 · 작업치료현황의 평일시간표(원본)에서 작업(ST/SM 등)·연하(R)·인지(CCRT/BETTER/COMCOG) 치료사를 분리 매칭합니다.';}const hs=document.getElementById('grandHandoverStatus');if(hs){hs.className='grand-handover-status';hs.textContent='불러오는 중 · OT인수인계서(통합)에서 실시간으로 Goal / 그랜드라운딩을 가져옵니다.';}fetchGrandHandoverLive();const hb=document.getElementById('grandHandoverMatchSummary');if(hb)hb.style.display='none';const p10=document.getElementById('grandPt10Status');if(p10){p10.className='status';p10.textContent='10F 미업로드';}const p3=document.getElementById('grandPt3Status');if(p3){p3.className='status';p3.textContent='3F 미업로드';}const gp=document.getElementById('grandPrintPeriodSelect');if(gp)gp.value='am';const gws=document.getElementById('grandWardSelect');if(gws){gws.innerHTML='<option value="ALL">회차 전체 병동</option>';gws.value='ALL';}setGrandDepartmentMode('rehab');setFileCard(3,null);setFileCard(10,null);clearStatus();document.getElementById('statsPanel').style.display='none';document.getElementById('resultPanel').style.display='none'; }
 function defaultGrandHour(){ return '09'; }
 const grandDaySel=document.getElementById('grandDaySelect');
 const dayOptions=DAY_ORDER.map(d=>`<option value="${d}">${d}</option>`).join(''); grandDaySel.innerHTML=dayOptions; grandDaySel.value=defaultDay();
@@ -2369,8 +2474,8 @@ dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')})
 document.getElementById('grandRouteSelect').addEventListener('change',()=>{updateGrandWardOptions();renderGrandTable();}); ['grandTimeInput','grandRmSelect','grandWardSelect'].forEach(id=>document.getElementById(id).addEventListener('change',renderGrandTable)); document.getElementById('grandDaySelect').addEventListener('change',async()=>{if(grandOtBook) await rebuildGrandOtTherapistMap();renderGrandTable();}); document.getElementById('grandPrintPeriodSelect').addEventListener('change',()=>{updateGrandExportButtonLabels();renderGrandTable();});
 document.getElementById('grandLangOnlyToggle').addEventListener('click',toggleGrandLanguageOnly);
 document.getElementById('grandLangOnlyExportBtn').addEventListener('click',exportGrandLanguageOnly);
-document.getElementById('grandArchiveDateInput').value=dateStamp();
 document.getElementById('grandArchiveSaveBtn').addEventListener('click',grandArchiveSave);
+grandArchiveWireBatchBar();
 grandDateInput.addEventListener('change',async()=>{ const d=grandDateToDay(grandDateInput.value); if(d) grandDaySel.value=d; if(grandOtBook) await rebuildGrandOtTherapistMap(); if(grandPtBooks[10]||grandPtBooks[3]) await rebuildGrandPtTherapistMap(); renderGrandTable(); });
 document.getElementById('grandTableWrap').addEventListener('input',e=>{
   if(e.target.classList.contains('grand-report')) setGrandNoteByKey(decodeURIComponent(e.target.dataset.vkey||''),e.target.value);
