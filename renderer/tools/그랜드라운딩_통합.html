@@ -45,11 +45,19 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-shell{background:#f7f9fc;border-top:1px solid #e5ebf3}
 .grand-controls{padding:14px 18px;background:#fff;border-bottom:1px solid #e5ebf3}
 .grand-hero{padding:16px 18px 12px;background:linear-gradient(180deg,#f7fbff,#fff);border-bottom:1px solid #e6edf5}
-.grand-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.grand-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;cursor:pointer;list-style:none}
+.grand-hero-top::-webkit-details-marker{display:none}
+.grand-hero-top .ga-chev{display:inline-block;transition:transform .15s;color:var(--muted,#68758a);font-size:11px;margin-top:4px}
+.grand-hero[open] .grand-hero-top .ga-chev{transform:rotate(90deg)}
 .grand-title-box h3{margin:0 0 5px;font-size:17px;color:#17345f}.grand-title-box p{margin:0;color:#68758a;font-size:11px;line-height:1.55}
 .grand-kpis{display:flex;gap:7px;flex-wrap:wrap}.grand-kpi{min-width:92px;padding:8px 10px;border:1px solid #dbe5f0;border-radius:10px;background:#fff}.grand-kpi .k{font-size:9px;color:#7a8798;font-weight:800}.grand-kpi .v{font-size:15px;font-weight:900;color:#17345f;margin-top:2px}
 .grand-route-overview{display:flex;align-items:center;gap:5px;overflow:auto;padding:12px 0 2px;scrollbar-width:thin}.grand-route-node{flex:0 0 auto;border:1px solid #d7e2ee;border-radius:10px;background:#fff;padding:7px 9px;min-width:88px;text-align:center}.grand-route-node .n{font-size:9px;color:#738197}.grand-route-node .l{font-size:10px;font-weight:800;color:#2b3d56;margin-top:2px}.grand-route-node .c{font-size:11px;font-weight:900;color:#17345f;margin-top:3px}.grand-route-node.active{border-color:#8fb3db;box-shadow:0 0 0 2px #e7f1fb inset}.grand-route-divider{flex:0 0 auto;color:#9ba8b8;font-weight:900}
 .grand-board{padding:16px 18px 22px;display:flex;flex-direction:column;gap:12px}
+.grand-preview-collapse{border-top:1px solid #e6edf5}
+.grand-preview-collapse>summary{list-style:none;cursor:pointer;padding:12px 18px;font-size:13px;font-weight:800;color:#17345f;background:linear-gradient(180deg,#fbfdff,#f7faff)}
+.grand-preview-collapse>summary::-webkit-details-marker{display:none}
+.grand-preview-collapse>summary .ga-chev{display:inline-block;transition:transform .15s;color:var(--muted,#68758a);font-size:11px;margin-right:4px}
+.grand-preview-collapse[open]>summary .ga-chev{transform:rotate(90deg)}
 .route-section{border:1px solid #dbe4ee;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(35,58,88,.035)}
 .route-section.empty{opacity:.7}.route-section-head{display:grid;grid-template-columns:48px 90px minmax(160px,1fr) auto;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #e6edf4}.route-section-head.f10{background:#edf5ff}.route-section-head.ward{background:#f6f5ef}.route-section-head.f3{background:#eef8f1}.route-section-head.other{background:#f7f2f7}.route-section-head.fallback{background:#fff4e8}.route-section.fallback{border-color:#e6c69e}.route-fallback-note{color:#98601b;font-weight:800;font-size:9px}
 .route-step-no{width:32px;height:32px;border-radius:9px;background:#17345f;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:900}.route-floor{font-weight:900;color:#43546b;font-size:11px}.route-name{font-size:13px;font-weight:900;color:#1f3048}.route-count{font-size:10px;font-weight:800;color:#53647a;background:#fff;border:1px solid #d7e0ea;border-radius:999px;padding:5px 8px}
@@ -157,12 +165,17 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-subtabs{display:flex;gap:8px;align-items:center;padding:11px 18px;background:#eef3f9;border-bottom:1px solid #dce5ef}.grand-subtab{border:1px solid #bdcada;background:#fff;color:#40526a;border-radius:9px;padding:8px 15px;font-size:11px;font-weight:900}.grand-subtab:hover{background:#f8fbff}.grand-subtab.active{background:#17345f;border-color:#17345f;color:#fff;box-shadow:0 2px 7px rgba(23,52,95,.16)}.grand-dept-tools[hidden]{display:none!important}.grand-clinical-tools{margin-top:10px;padding:10px 12px;border:1px solid #dce4ed;border-radius:9px;background:#fbfcfe;color:#50637a;font-size:10px;line-height:1.55}.grand-clinical-tools b{color:#27435f}.grand-print-period select{min-width:190px!important;font-weight:900;color:#17345f;border-width:2px!important}
 @media(max-width:1180px){.grand-board{overflow:auto}.grand-matrix{min-width:1800px}}
 @page{size:A4 portrait;margin:8mm}
-@media print{.header,.panel:not(#resultPanel),#normalRoundView,.mode-tabs,.grand-subtabs,.grand-controls,.grand-hero .grand-route-overview,.footer-note{display:none!important}body{background:#fff}.panel{border:0;box-shadow:none}.grand-board{padding:0}.grand-matrix-wrap{max-height:none;overflow:visible;border:0}.grand-matrix{font-size:7px;min-width:0}.grand-matrix th{position:static}.grand-report,.grand-therapist-text{border-color:#bfc8d2;resize:none}}
+@media print{.header,.panel:not(#resultPanel),#normalRoundView,.mode-tabs,.grand-subtabs,.grand-controls,.grand-hero .grand-route-overview,.footer-note{display:none!important}body{background:#fff}.panel{border:0;box-shadow:none}.grand-board{padding:0}.grand-matrix-wrap{max-height:none;overflow:visible;border:0}.grand-matrix{font-size:7px;min-width:0}.grand-matrix th{position:static}.grand-report,.grand-therapist-text{border-color:#bfc8d2;resize:none}
+/* 접어둔 상태로 인쇄해도 치료실 도면·결과 미리보기는 항상 펼쳐서 인쇄한다(접힘은 화면 공간 절약용일 뿐). */
+.grand-map-panel,.grand-preview-collapse{display:block!important}.grand-map-panel>*,.grand-preview-collapse>*{display:block!important}.grand-map-panel summary,.grand-preview-collapse summary{display:none!important}}
 
 
 .grand-map-panel{margin:0 18px 12px;border:1px solid #dbe4ee;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 2px 12px rgba(35,58,88,.04)}
-.grand-map-head{padding:12px 14px;border-bottom:1px solid #e7edf4;background:linear-gradient(180deg,#fbfdff,#f7faff)}
-.grand-map-head strong{display:block;font-size:13px;color:#17345f;margin-bottom:4px}.grand-map-head span{font-size:10px;color:#64748b;line-height:1.55}
+.grand-map-head{padding:12px 14px;border-bottom:1px solid #e7edf4;background:linear-gradient(180deg,#fbfdff,#f7faff);cursor:pointer;list-style:none}
+.grand-map-head::-webkit-details-marker{display:none}
+.grand-map-head .ga-chev{display:inline-block;transition:transform .15s;color:var(--muted);font-size:11px;margin-right:6px}
+.grand-map-panel[open] .grand-map-head .ga-chev{transform:rotate(90deg)}
+.grand-map-head strong{display:inline;font-size:13px;color:#17345f;margin-bottom:4px}.grand-map-head span{display:block;margin-top:4px;font-size:10px;color:#64748b;line-height:1.55}
 .grand-map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:14px}
 .grand-map-card{margin:0;border:1px solid #e5ebf2;border-radius:12px;background:#fbfdff;overflow:hidden}.grand-map-card figcaption{padding:10px 12px;border-bottom:1px solid #e8edf3;background:#fff;font-size:11px;font-weight:800;color:#27415f}.grand-map-card figcaption small{display:block;font-size:9px;color:#708094;font-weight:600;margin-top:3px}.grand-map-card img{display:block;width:100%;height:auto;background:#f3f6f9}.grand-map-note{padding:10px 12px;font-size:10px;color:#64748b;line-height:1.55;border-top:1px solid #e8edf3;background:#fff}
 </style>
@@ -320,21 +333,23 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
         </div>
         <div class="grand-all-note" style="margin-top:10px"><b>실제 운영 회차를 그대로 적용합니다.</b> <b>1회차</b>는 8·9병동 담당 환자를 대상으로 <b>10F 재활치료실 → 9병동 → 8병동</b> 순서로 이동합니다. <b>2회차</b>는 5·7병동 담당 환자를 대상으로 <b>10F 재활치료실 → 7병동 → 5병동 → 3F 재활치료실</b> 순서로 이동하며 702~705호 환자도 포함합니다. 09시 회진이면 <b>09:05 시점에 10F에서 치료 중인 환자를 먼저</b> 배치하고, 해당 시점에 치료가 없는 환자는 병실로 배치한 뒤 병동과 3F 순서로 이어집니다. 화면에서는 하루 전체 시간표를 유지하고, Excel은 오전·오후·전체 중 선택한 시간대를 출력하며, 재활치료부에서 전체를 선택하면 08:30~16:30의 모든 치료시간을 한 번에 출력합니다. <b>병동 필터</b>를 선택하면 해당 병동 환자만 동일한 회진 동선 기준으로 화면과 Excel에 반영됩니다.</div>
       </div>
-      <div class="grand-hero">
-        <div class="grand-hero-top">
+      <details class="grand-hero">
+        <summary class="grand-hero-top">
+          <span class="ga-chev">▸</span>
           <div class="grand-title-box">
             <h3>Grand Rounding Route</h3>
             <p id="grandSummary">시간표를 업로드하면 1회차/2회차 실제 동선에 맞춰 대상 환자를 자동 배치하고, 각 구간 안에서 회진 시간대 순으로 정렬합니다.</p>
           </div>
           <div class="grand-kpis" id="grandKpis"></div>
-        </div>
+        </summary>
         <div class="grand-route-overview" id="grandRouteOverview"></div>
-      </div>
-      <div class="grand-map-panel">
-        <div class="grand-map-head">
-          <strong>치료실 도면 · 그랜드 라운딩 동선 참고</strong>
+      </details>
+      <details class="grand-map-panel">
+        <summary class="grand-map-head">
+          <span class="ga-chev">▸</span>
+          <strong>치료실 도면 · 그랜드 라운딩 동선(루트) 참고</strong>
           <span>보내주신 실제 도면을 기준으로 <b>출입구에서 가까운 순서</b>대로 10층·3층 치료위치 우선순위를 세분화했습니다. <b>T-번호는 작업치료 테이블</b>로 인식하며, 그랜드 라운딩 Excel에는 마지막에 <b>치료실 도면</b> 시트를 1개 추가해 두 사진을 함께 넣습니다.</span>
-        </div>
+        </summary>
         <div class="grand-map-grid">
           <figure class="grand-map-card">
             <figcaption>10층 치료실 도면<small>A·B·D 구역 → 전동자전거/기립대/워커메이트 → 전기치료 → 트레드밀 → C구역 → T 작업치료 테이블 → 연하/언어/인지/도수실</small></figcaption>
@@ -347,9 +362,12 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
             <div class="grand-map-note">3층의 <b>T-번호</b> 역시 작업치료 테이블입니다. 2회차에서 3층이 포함될 때 도면 기준 가까운 순서로 이어집니다.</div>
           </figure>
         </div>
-      </div>
+      </details>
       <div class="grand-tip"><b>대회진용 기준:</b> 환자 행의 1순위는 <b>실제 회차 동선</b>입니다. 1회차는 <b>10F → 9병동 → 8병동</b>, 2회차는 <b>10F → 7병동 → 5병동 → 3F</b>를 절대 순서로 사용합니다. 회진 시작 시점의 첫 치료타임을 기준으로 10F 치료환자를 먼저 배치하고, 치료가 없는 환자는 병실로 배치한 뒤 각 병동과 3F 순서로 정렬합니다. 작업치료현황을 업로드하면 상단 시간표의 ST/SM 등은 작업치료사, R은 연하치료사로 분리하고, 하단 10F CCRT 및 3F BETTER·COMCOG 배정은 인지치료사로 선택 요일에 맞춰 매칭합니다. 10F·3F 물리치료시간표를 추가 업로드하면 물리치료사도 함께 표시합니다. OT 인수인계서를 업로드하면 선택한 주치의와 환자명을 기준으로 환자의 모든 치료행을 모아 치료종류·치료사별 Goal·그랜드라운딩을 같은 행끼리 한 쌍으로 표시합니다. 그 옆의 회진 발표 요약은 모든 Goal·그랜드라운딩에서 가장 중요한 목표 1~2개와 핵심 치료방향 1~2개만 추려 정리하고, 꼭 보고할 특이사항이 있을 때만 한 문장을 추가해 짧은 1~2문장으로 자동 정리하며 직접 수정할 수 있습니다. 현재 환자에 없는 인수인계 대상(퇴원 가능)과 인수인계 미작성 환자도 미리 알려줍니다. 작업·연하 치료사는 평일시간표(원본) 상단 메인표에서 읽고, 인지치료사는 하단 10F CCRT 및 3F BETTER·COMCOG(3F 인지치료 배정) 구역만 선택 요일 기준으로 읽습니다. ERDT·퇴원예정자·환자특이사항 구역은 치료사 매칭에 사용하지 않습니다. 업로드된 실의 치료사 열만 자동으로 생성됩니다. 10F는 실제 도면 기준으로 A/B/D 구역 → 전동자전거·기립대·워커메이트 → 전기 → 트레드밀 → C구역 → T 작업치료 테이블 → 연하/언어/인지/도수실 순, 3F는 가구역 → 나구역 → 전기 → T 작업치료 테이블 → 트레드밀/기구치료실 → 통증/도수/ADL → 연하/인지/언어/임상심리실 순으로 정렬합니다. 회진 시간대에 치료가 없으면 <b>병실 / 병실번호</b>로 표시하고, 오른쪽 환자 시간표는 08:30부터 하루 전체 스케줄을 유지합니다. Excel 출력은 오전(08:30~11:25)·오후(13:00~16:30)·전체(08:30~16:30)를 선택할 수 있으며, 전체는 재활치료부에서 오전·오후 모든 치료시간을 한 번에 출력합니다. <b>재활치료부와 진료부/병동 모두 RM별 환자표 1개 시트</b>로 출력하고, 마지막에 <b>치료실 도면 공통 시트 1개</b>를 추가합니다. <b>재활치료부와 진료부/병동 모두 A4 세로 1페이지</b>에 맞춥니다. 진료부/병동에서 특정 병동을 선택하면 시간표 오른쪽에 병동 수기용 <b>특이사항</b> 열을 추가합니다.</div>
-      <div class="grand-board" id="grandTableWrap"><div class="empty-state"><strong>시간표를 업로드하면 대회진 전용 동선 화면이 표시됩니다.</strong></div></div>
+      <details class="grand-preview-collapse" open>
+        <summary><span class="ga-chev">▸</span> 결과 미리보기 (환자별 회진 시간표)</summary>
+        <div class="grand-board" id="grandTableWrap"><div class="empty-state"><strong>시간표를 업로드하면 대회진 전용 동선 화면이 표시됩니다.</strong></div></div>
+      </details>
     </div>
   </section>
 
