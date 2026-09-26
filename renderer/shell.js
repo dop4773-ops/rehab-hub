@@ -59,6 +59,9 @@ const TOOLS = {
       { role: 'handover', selector: 'input[data-key="handoverBook"]' },
     ],
     readSummary: (w) => w.__crossSummary ? { count: w.__crossSummary.issueCount, label: '검증 결과', ...w.__crossSummary } : null,
+    // 이 필수 역할이 폴더 스캔으로 전부 채워지면(=화면을 열지 않아도) 자동으로 전체 교차검증을 한 번 실행한다.
+    requiredRoles: ['status', 'card10', 'card3', 'mat10', 'table10', 'mt3'],
+    autoRunFn: (w) => { if (typeof w.handleRun === 'function') w.handleRun(); },
     statBoxesElId: 'crossStatBoxes',
     statBoxes: (s) => [
       { cls: 'green', num: s ? `${s.checkedTotal - s.problemTotal}건` : '-', lbl: '정상' },
@@ -120,7 +123,22 @@ async function autoFillTool(toolKey) {
     for (const r of roles) { const f = await getFileForRole(r); if (f) files.push(f); }
     if (files.length && fillInput(doc, t.selector, files)) filled++;
   }
+  maybeAutoRun(toolKey, iframe);
   return filled;
+}
+
+// 필수 파일이 폴더 스캔으로 전부 인식됐을 때만, 화면을 열어보지 않아도 그 도구의 실행 함수를 한 번
+// 자동으로 불러준다(사람이 누르는 실행 버튼은 그대로 남아있고, 이건 그 버튼과 같은 함수를 대신 호출할 뿐).
+// 스캔 1번당 도구별로 최대 1번만 — runScan()이 새로 스캔을 돌 때마다 다시 기회를 준다.
+const autoRanThisScan = new Set();
+function maybeAutoRun(toolKey, iframe) {
+  const t = TOOLS[toolKey];
+  if (!t.requiredRoles || !t.autoRunFn || autoRanThisScan.has(toolKey)) return;
+  const matched = (lastScan && lastScan.matched) || {};
+  if (!t.requiredRoles.every(r => matched[r])) return;
+  autoRanThisScan.add(toolKey);
+  try { t.autoRunFn(iframe.contentWindow); logActivity(t.label, '필수 파일 인식 완료 · 자동 실행'); }
+  catch (e) { /* 도구 화면이 아직 준비 전이면 조용히 넘어간다 */ }
 }
 
 async function autoFillAllLoadedTools() {
@@ -189,6 +207,7 @@ async function runScan(statusEl) {
   try {
     lastScan = await window.rehab.folders.scanAll();
     fileCache.clear();
+    autoRanThisScan.clear(); // 새로 스캔할 때마다 자동 실행 기회를 다시 준다(파일이 바뀌었을 수 있으니)
     const foundCount = Object.keys(lastScan.matched).length;
     if (statusEl) {
       statusEl.textContent = lastScan.folders.length
@@ -405,5 +424,8 @@ document.getElementById('updaterInstallBtn').addEventListener('click', () => win
   fileRoles = await window.rehab.folders.fileRoles();
   document.getElementById('updaterVersion').textContent = await window.rehab.updater.getVersion();
   renderHome();
+  // 교차검증 화면을 아직 한 번도 안 열었어도, 화면 밖에서 미리 로드해둬야 "자동 불러오기"가
+  // 그 도구까지 채워줄 수 있다(loadedTools에 들어있는 도구만 autoFillAllLoadedTools 대상이 됨).
+  ensureToolLoaded('cross');
   runScan(null); // 시작할 때 한 번 자동으로 불러오기 시도(등록된 폴더가 없으면 조용히 넘어감)
 })();

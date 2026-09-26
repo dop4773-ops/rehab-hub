@@ -1317,19 +1317,16 @@ document.getElementById('btnPickFolder').addEventListener('click', async ()=>{
   const saved = await idbGet(FOLDER_KEY).catch(()=>null);
   await pickAndLoadFromFolder(saved||null);
 });
+// 브라우저의 폴더 접근 권한(showDirectoryPicker)은 앱을 완전히 껐다 켜면 초기화되어, 여기서 "권한이
+// 남아있으면 자동 실행"을 시도해도 실제로는 거의 항상 재확인이 필요해 의미가 없었다(2026-09-26 제거).
+// "앱을 실행하면 자동으로" 채워지고 실행되는 건 이제 shell.js의 폴더 자동 연결(설정에서 등록한 폴더를
+// Electron 네이티브 API로 스캔 — 권한 만료가 없음)이 담당한다. 여기 "폴더에서 불러오기" 버튼은
+// 그 등록된 폴더 말고 다른 폴더를 그때그때 한 번 불러오고 싶을 때 쓰는 수동 기능으로 남겨둔다.
 (async function initFolderStatus(){
   const statusEl=document.getElementById('folderStatus');
   try{
     const saved=await idbGet(FOLDER_KEY);
-    if(!saved) return;
-    statusEl.innerHTML = `📁 이전에 선택한 폴더: <b>${esc(saved.name)}</b> — "폴더에서 불러오기"를 누르면 다시 사용합니다.`;
-    // 폴더 접근 권한이 재시작 후에도 이미 허용된 상태면(브라우저가 기억해둔 경우) 앱을 열자마자
-    // 조용히 다시 스캔해서 6개 파일이 다 채워지면 자동으로 검증까지 실행한다. 아직 허용 안 됐으면
-    // (권한 재확인엔 사용자 제스처가 필요해서) 그냥 위 안내문만 두고 "폴더에서 불러오기" 수동 클릭을 기다린다.
-    const perm=await saved.queryPermission({mode:'read'}).catch(()=>'denied');
-    if(perm!=='granted') return;
-    const missingCount=await pickAndLoadFromFolder(saved);
-    if(missingCount===0) handleRun();
+    if(saved) statusEl.innerHTML = `📁 이전에 선택한 폴더: <b>${esc(saved.name)}</b> — "폴더에서 불러오기"를 누르면 다시 사용합니다.`;
   }catch(e){ /* IndexedDB를 못 쓰는 환경이면 조용히 무시 */ }
 })();
 
