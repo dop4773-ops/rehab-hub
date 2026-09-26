@@ -38,7 +38,11 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .file-status{display:grid;grid-template-columns:1fr 1fr;gap:10px}.file-card{border:1px solid var(--line);border-radius:12px;padding:13px;background:#fbfcfe;min-height:76px}.file-card.loaded{border-color:#a9d5c0;background:#f7fcf9}.file-card .floor{font-weight:800;color:var(--navy);margin-bottom:5px}.file-card .fname{font-size:11px;color:var(--muted);word-break:break-all}.file-card .ok{font-size:11px;color:var(--green);margin-top:6px}.privacy{margin-top:10px;background:#f1f6fc;border-radius:10px;padding:10px 12px;color:#50627b;font-size:11px;line-height:1.55}
 .status-line{margin-top:12px;padding:10px 12px;border-radius:10px;background:#f7f9fc;color:#4c5b70;font-size:12px;display:none}.status-line.show{display:block}.status-line.error{background:#fff2f3;color:#9c2837}.status-line.warn{background:#fff8e8;color:#805400}.status-line.success{background:#effaf4;color:#236a4b}
 .stats{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px}.stat{padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fbfcfe}.stat .label{font-size:11px;color:var(--muted)}.stat .value{font-size:20px;font-weight:800;margin-top:5px;color:var(--navy)}
-.toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:end}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:10px;color:var(--muted);font-weight:700}.field select,.field input[type=text]{height:36px;border:1px solid #cdd8e5;border-radius:8px;background:#fff;padding:0 10px;min-width:135px;color:#1d2b40}.field.search input{min-width:210px}.check{height:36px;display:flex;align-items:center;gap:7px;border:1px solid #d7e0eb;border-radius:8px;padding:0 10px;background:#fafcff;color:#43546d;font-size:12px}.export-group{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}.current-slot{font-size:11px;color:#51637b;background:#eef4fb;border-radius:999px;padding:6px 10px;white-space:nowrap}
+.toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:end}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:10px;color:var(--muted);font-weight:700}.field select,.field input[type=text]{height:36px;border:1px solid #cdd8e5;border-radius:8px;background:#fff;padding:0 10px;min-width:135px;color:#1d2b40}.field.search input{min-width:210px}.check{height:36px;display:flex;align-items:center;gap:7px;border:1px solid #d7e0eb;border-radius:8px;padding:0 10px;background:#fafcff;color:#43546d;font-size:12px}.export-group{margin-left:auto;display:flex;gap:8px;align-items:center}.export-group .btn{flex:none}
+#grandArchiveSaveStatus{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+.grand-team-menu{position:fixed;z-index:9999;background:#fff;border:1px solid #cbd6e4;border-radius:9px;box-shadow:0 6px 18px rgba(20,30,50,.16);padding:4px;display:flex;flex-direction:column;min-width:150px}
+.grand-team-menu button{border:none;background:none;text-align:left;padding:7px 10px;border-radius:6px;font-size:12px;color:#1d2b40;cursor:pointer}
+.grand-team-menu button:hover{background:#eef4fb}.current-slot{font-size:11px;color:#51637b;background:#eef4fb;border-radius:999px;padding:6px 10px;white-space:nowrap}
 .summary-note{font-size:11px;color:var(--muted);padding:0 18px 12px}
 .table-wrap{overflow:auto;max-height:66vh;border-top:1px solid #edf1f6;position:relative}.round-table{border-collapse:separate;border-spacing:0;min-width:2450px;width:100%;font-size:11px}.round-table th,.round-table td{border-right:1px solid #e2e8f0;border-bottom:1px solid #e6ebf2;padding:6px 7px;vertical-align:middle}.round-table th{position:sticky;z-index:7;color:#fff;font-weight:800;text-align:center}.round-table thead tr.group-row th{top:0;height:28px;font-size:11px;border-bottom:2px solid rgba(255,255,255,.55)}.round-table thead tr.detail-row th{top:29px;height:42px}.round-table th.group-basic{background:#315f72}.round-table th.group-am{background:#244e84}.round-table th.group-lunch{background:#5d6877}.round-table th.group-pm{background:#3b5f93}.round-table th.h-kind{background:#496a8b}.round-table th.h-room{background:#3f7788}.round-table th.h-patient{background:#2d6485}.round-table th.h-reg{background:#596ca0}.round-table th.h-sex{background:#6b5f93}.round-table th.h-rm{background:#745878}.round-table th.h-primary{background:#467564}.round-table th.h-date{background:#6b7582}.round-table th.h-am{background:#2b568b}.round-table th.h-pm{background:#416aa0}.round-table td{background:#fff;text-align:center;height:48px}.round-table tbody tr:hover td{background:#f8fbff}.round-table td.patient{text-align:center;font-weight:800;font-size:12px}.round-table td.schedule{white-space:normal;line-height:1.35;min-width:130px;font-size:10px;text-align:center;vertical-align:middle}.round-table td.empty{color:#b5bfcc}.round-table .sticky-a{position:sticky;left:0;z-index:4;min-width:92px;max-width:92px}.round-table .sticky-b{position:sticky;left:92px;z-index:4;min-width:72px;max-width:72px}.round-table .sticky-c{position:sticky;left:164px;z-index:4;min-width:105px;max-width:105px;box-shadow:3px 0 7px rgba(25,43,68,.05)}.round-table th.sticky-a,.round-table th.sticky-b,.round-table th.sticky-c{z-index:9}.round-table tbody tr:hover .sticky-a,.round-table tbody tr:hover .sticky-b,.round-table tbody tr:hover .sticky-c{background:#f8fbff}
 .kind-in{color:#294f82;font-weight:700}.kind-out{color:#895b13;font-weight:700}.tx-exercise{background:#e7f4ea!important}.tx-ot{background:#e6f0ff!important}.tx-swallow{background:#fff0df!important}.tx-cog{background:#eee8ff!important}.tx-electric{background:#fff4c7!important}.tx-device{background:#eef0f3!important}.tx-pain{background:#fde8df!important}.tx-speech{background:#e4f4fa!important}.tx-manual{background:#e1f3f0!important}.tx-other{background:#fbe9f0!important}.round-table tbody tr.floor-break td{border-top:3px solid #111827!important}.lunch-col{background:#e6e9ed!important;color:#596675!important;font-weight:800;min-width:76px!important;max-width:76px!important}.round-table th.lunch-col{background:#5d6877!important}.current-col{box-shadow:inset 3px 0 0 #ef8f2f,inset -3px 0 0 #ef8f2f}.round-table th.current-col{background:#b96113!important}.round-table td.current-col.empty{background:#fff8ef!important}
@@ -301,9 +305,9 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
             <option value="all" id="grandPrintAllOption">전체 · 08:30~16:30</option>
           </select></div>
           <div class="export-group">
-            <button id="grandExportSelectedBtn" class="btn primary" type="button">출력하기</button>
-            <button id="grandArchiveSaveBtn" class="btn" type="button">📚 보관함에 등록</button>
             <span id="grandArchiveSaveStatus" class="status"></span>
+            <button id="grandArchiveSaveBtn" class="btn" type="button">📚 보관함에 등록</button>
+            <button id="grandExportSelectedBtn" class="btn primary" type="button">출력하기</button>
           </div>
         </div>
         <div id="grandRehabTools" class="grand-dept-tools">
@@ -336,9 +340,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
               <option value="swallow">연하치료사 기준</option>
               <option value="cog">인지치료사 기준</option>
             </select>
-            <span id="grandTeamChips"></span>
-            <label class="check"><input id="grandLangColCheck" type="checkbox"> 언어치료 대상 열 표시</label>
-            <span id="grandClassifyStatus" class="status">여기서 고른 치료사·팀 기준은 아래 그랜드라운딩 보관함의 "팀별 추출"에 그대로 쓰입니다.</span>
+            <span id="grandClassifyStatus" class="status">위 기준은 아래 그랜드라운딩 보관함의 "팀별 추출"에 그대로 쓰이고, 특정 팀만 뽑고 싶으면 "팀별 추출"을 누르면 뜨는 팀 목록에서 고르면 됩니다.</span>
           </div>
           <details class="grand-archive" open>
             <summary>
@@ -475,7 +477,7 @@ const GRAND_10_T_ORDER = ['T-10','T-8','T-6','T-4','T-18','T-11','T-9','T-20','T
 const GRAND_3_T_ORDER = ['T-1','T-2','T-3','T-4','T-5','T-6','T-8','T-7','T-9','T-10','T-11','T-12','T-13','T-14','T-15'];
 
 let grandOtBook=null, grandOtFileName='', grandOtSheetName='';
-let grandTeamRoster=new Map(), grandSelectedTeams=new Set(), grandLangColOn=false; // 팀별·언어치료 분류(2026-09-24 추가)
+let grandTeamRoster=new Map(); // 팀별 분류(2026-09-24 추가) — 어떤 팀만 뽑을지는 "팀별 추출" 버튼을 누르면 뜨는 팝업에서 그때그때 고른다(2026-09-28)
 let grandOtTherapistMap=new Map();
 let grandSwallowTherapistMap=new Map();
 let grandCogTherapistMap=new Map();
@@ -1071,7 +1073,7 @@ function grandOtBaseSheet(book){
 // 작업치료현황.xlsx "팀" 시트: A열="N팀", B열부터 팀원 이름이 이어짐(직책 구분 없이 전부 팀원으로 취급).
 function grandTeamSheet(book){ if(!book||!book.sheets?.length) return null; return book.sheets.find(s=>normalizeText(s.name)==='팀')||null; }
 async function rebuildGrandTeamRoster(){
-  grandTeamRoster=new Map(); grandSelectedTeams=new Set();
+  grandTeamRoster=new Map();
   const sheet=grandTeamSheet(grandOtBook); if(!sheet) return;
   const cells=await getSheetCells(grandOtBook,sheet.name); if(!cells) return;
   let maxRow=0; for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc&&rc.row>maxRow) maxRow=rc.row; }
@@ -1102,18 +1104,22 @@ function grandPatientLanguageDays(p){
   return days;
 }
 function grandIsLanguagePatient(p){ return grandPatientLanguageDays(p).length>0; }
-function renderGrandTeamChips(){
-  const box=document.getElementById('grandTeamChips'); if(!box) return;
-  if(!grandTeamRoster.size){ box.innerHTML=''; return; }
-  box.innerHTML=[...grandTeamRoster.keys()].map(team=>{
-    const on=grandSelectedTeams.has(team);
-    return `<button type="button" class="btn" data-team="${xmlEscape(team)}" style="padding:5px 10px;margin:0 4px 4px 0;font-weight:${on?700:400};background:${on?'#e6f0ff':'#fff'};border-color:${on?'#5b8def':'#cbd6e4'}">${xmlEscape(team)} <small>(${grandTeamRoster.get(team).size}명)</small></button>`;
-  }).join('');
-  box.querySelectorAll('button[data-team]').forEach(btn=>btn.addEventListener('click',()=>{
-    const team=btn.dataset.team; grandSelectedTeams.has(team)?grandSelectedTeams.delete(team):grandSelectedTeams.add(team); renderGrandTeamChips();
-  }));
+// "팀별 추출" 버튼을 누르면 그 버튼 아래에 1/2/3팀 목록이 말풍선처럼 뜨고, 고른 팀만 추출한다(전체 옵션도 포함).
+function grandShowTeamMenu(anchorBtn,onPick){
+  document.querySelectorAll('.grand-team-menu').forEach(m=>m.remove());
+  const items=[{key:'',label:'전체'},...[...grandTeamRoster.keys()].map(t=>({key:t,label:`${t} (${grandTeamRoster.get(t).size}명)`}))];
+  const menu=document.createElement('div');
+  menu.className='grand-team-menu';
+  const rect=anchorBtn.getBoundingClientRect();
+  menu.style.top=`${rect.bottom+4}px`; menu.style.left=`${rect.left}px`;
+  menu.innerHTML=items.map(it=>`<button type="button" data-team="${xmlEscape(it.key)}">${xmlEscape(it.label)}</button>`).join('');
+  document.body.appendChild(menu);
+  const cleanup=()=>{ menu.remove(); document.removeEventListener('mousedown',onOutside,true); };
+  const onOutside=(ev)=>{ if(!menu.contains(ev.target)) cleanup(); };
+  setTimeout(()=>document.addEventListener('mousedown',onOutside,true),0);
+  menu.addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return; cleanup(); onPick(b.dataset.team||null); });
 }
-// 치료사별·팀별 분류(grandClassifyKeySelect/grandSelectedTeams)는 여기서 직접 Excel을 만들지 않고
+// 치료사별·팀별 분류(grandClassifyKeySelect)는 여기서 직접 Excel을 만들지 않고
 // 아래 그랜드라운딩 보관함의 "팀별 추출"이 그대로 읽어서 쓴다(중복 버튼 정리, 2026-09-26).
 // ===== 그랜드라운딩 보관함(위 ①~⑦ 조건으로 등록 → 목록에서 체크해 일괄 추출, 2026-09-26 재개편) =====
 // 이 화면은 sandbox iframe이라 window.rehab(IPC)에 직접 접근 못 한다 — 셸(shell.js)이 iframe 로드 직후
@@ -1239,7 +1245,13 @@ async function renderGrandArchiveList(){
     });
     row.querySelectorAll('[data-archive-export]').forEach(btn=>btn.addEventListener('click',(ev)=>{
       ev.stopPropagation();
-      grandArchiveExport([id],btn.dataset.archiveExport,btn);
+      const kind=btn.dataset.archiveExport;
+      if(kind==='team'){
+        if(!grandOtBook){ const old=btn.textContent; btn.textContent='치료사현황 필요'; setTimeout(()=>{btn.textContent=old;},1800); return; }
+        grandShowTeamMenu(btn,team=>grandArchiveExport([id],'team',btn,team));
+        return;
+      }
+      grandArchiveExport([id],kind,btn);
     }));
   });
   updateGrandArchiveSelectionUi();
@@ -1273,7 +1285,7 @@ function grandArchiveExportLabel(entries){
   const range=dates[0]===dates[dates.length-1]?dates[0]:`${dates[0]}~${dates[dates.length-1]}`;
   return `${range}(${entries.length}건)`;
 }
-async function grandArchiveExport(ids,kind,btn){
+async function grandArchiveExport(ids,kind,btn,team){
   const api=grandArchiveApi(); if(!api||!ids.length) return;
   const oldText=btn?btn.textContent:'';
   const flash=(msg)=>{ if(!btn) return; btn.textContent=msg; setTimeout(()=>{btn.textContent=oldText;},1800); };
@@ -1295,16 +1307,17 @@ async function grandArchiveExport(ids,kind,btn){
     const keyLabel={ot:'작업치료사',swallow:'연하치료사',cog:'인지치료사'}[key]||key;
     let groups=grandGroupByTherapist(key,pooled);
     if(groups.has('(미배정)')) groups.delete('(미배정)');
-    // 위 "치료사별·팀별 분류"에서 1/2/3팀 등 특정 팀만 켜뒀다면 그 팀 소속 치료사만 남긴다(전부 꺼져있으면 전체).
-    if(grandSelectedTeams.size){
-      const allowed=new Set([...grandSelectedTeams].flatMap(t=>[...(grandTeamRoster.get(t)||[])]));
+    // "팀별 추출" 버튼을 누르면 뜨는 팝업에서 특정 팀을 골랐으면 그 팀 소속 치료사만 남긴다(전체를 고르면 team이 없음).
+    if(team){
+      const allowed=grandTeamRoster.get(team)||new Set();
       for(const name of [...groups.keys()]) if(!allowed.has(name)) groups.delete(name);
     }
     if(!groups.size){ flash('대상 없음'); return; }
     const defs=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko')).map(([name,pts])=>({name,title:`${name} · ${keyLabel}`,patients:pts}));
     const overviewPatients=[...new Set([...groups.values()].flat())];
     const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1';
-    downloadBytes(buildGrandWorkbookXlsx([buildGrandOverviewSheetDef(overviewPatients),...defs],day,hour,routeKey,period),`그랜드라운딩_팀별_${keyLabel}_${label}.xlsx`);
+    const teamSuffix=team?`_${team}`:'';
+    downloadBytes(buildGrandWorkbookXlsx([buildGrandOverviewSheetDef(overviewPatients),...defs],day,hour,routeKey,period),`그랜드라운딩_팀별_${keyLabel}${teamSuffix}_${label}.xlsx`);
   }else if(kind==='lang'){
     // 언어치료 명단은 시간표·인수인계 내용 없이 병실/환자명/주치료실/동선/층만 간단히 나열한다(레거시 언어치료명단 형식과 동일).
     // 항목마다 시트 하나씩 — 여러 건을 체크해도 시트만 늘어날 뿐 서로 합쳐지지 않는다.
@@ -1327,11 +1340,19 @@ function grandArchiveWireBatchBar(){
   const setStatus=(msg)=>{ if(status) status.textContent=msg; };
   const bind=(id,kind)=>{
     const btn=document.getElementById(id); if(!btn) return;
-    btn.addEventListener('click',async()=>{
-      if(!grandArchiveSelected.size){ setStatus('목록에서 먼저 항목을 체크해 주세요.'); return; }
+    const run=async(team)=>{
       setStatus('추출 중…');
-      await grandArchiveExport([...grandArchiveSelected],kind,btn);
+      await grandArchiveExport([...grandArchiveSelected],kind,btn,team);
       setStatus(`${grandArchiveSelected.size}건 추출 완료.`);
+    };
+    btn.addEventListener('click',()=>{
+      if(!grandArchiveSelected.size){ setStatus('목록에서 먼저 항목을 체크해 주세요.'); return; }
+      if(kind==='team'){
+        if(!grandOtBook){ setStatus('치료사현황을 먼저 업로드해 주세요.'); return; }
+        grandShowTeamMenu(btn,run);
+        return;
+      }
+      run();
     });
   };
   bind('grandArchiveBatchAllBtn','all');
@@ -1466,11 +1487,11 @@ async function handleGrandOtFile(file){
   try{
     grandOtBook=await readWorkbookFile(file); grandOtFileName=file.name;
     await rebuildGrandOtTherapistMap();
-    await rebuildGrandTeamRoster(); renderGrandTeamChips();
+    await rebuildGrandTeamRoster();
     if(allPatients.length) renderGrandTable();
   }catch(err){
     console.error(err);
-    grandOtBook=null; grandOtTherapistMap=new Map(); grandSwallowTherapistMap=new Map(); grandCogTherapistMap=new Map(); grandTeamRoster=new Map(); grandSelectedTeams=new Set(); renderGrandTeamChips();
+    grandOtBook=null; grandOtTherapistMap=new Map(); grandSwallowTherapistMap=new Map(); grandCogTherapistMap=new Map(); grandTeamRoster=new Map();
     if(s){s.className='status warn';s.textContent=`작업치료현황 분석 실패: ${err.message}`;}
   }
 }
@@ -1606,14 +1627,12 @@ function grandTherapistColumnDefs(){
     cols.push({key:'cog',label:'인지치료사',cellClass:'cog-therapist-cell'});
   }
   if(grandPtBooks[10]||grandPtBooks[3]) cols.push({key:'pt',label:'물리치료사',cellClass:'pt-therapist-cell'});
-  if(grandLangColOn) cols.push({key:'lang',label:'언어치료',cellClass:'lang-cell'});
   return cols;
 }
 function grandTherapistColumnText(p,key){
   if(key==='ot') return grandOtTherapistText(p);
   if(key==='swallow') return grandSwallowTherapistText(p);
   if(key==='cog') return grandCogTherapistText(p);
-  if(key==='lang') return grandIsLanguagePatient(p)?'언어':'';
   if(key==='pt') return grandPtTherapistText(p);
   return '';
 }
@@ -2469,7 +2488,6 @@ document.getElementById('grandHandoverRefreshBtn').addEventListener('click',fetc
 fetchGrandHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
 const grandPt10Input=document.getElementById('grandPt10FileInput'); grandPt10Input.addEventListener('change',e=>handleGrandPtFile(e.target.files?.[0],10));
 const grandPt3Input=document.getElementById('grandPt3FileInput'); grandPt3Input.addEventListener('change',e=>handleGrandPtFile(e.target.files?.[0],3));
-document.getElementById('grandLangColCheck').addEventListener('change',e=>{ grandLangColOn=e.target.checked; renderGrandTable(); });
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')}); dz.addEventListener('dragleave',()=>dz.classList.remove('drag')); dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');handleFiles(e.dataTransfer.files)});
 document.getElementById('grandRouteSelect').addEventListener('change',()=>{updateGrandWardOptions();renderGrandTable();}); ['grandTimeInput','grandRmSelect','grandWardSelect'].forEach(id=>document.getElementById(id).addEventListener('change',renderGrandTable)); document.getElementById('grandDaySelect').addEventListener('change',async()=>{if(grandOtBook) await rebuildGrandOtTherapistMap();renderGrandTable();}); document.getElementById('grandPrintPeriodSelect').addEventListener('change',()=>{updateGrandExportButtonLabels();renderGrandTable();});
 document.getElementById('grandArchiveSaveBtn').addEventListener('click',grandArchiveSave);
