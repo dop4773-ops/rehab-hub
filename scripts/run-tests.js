@@ -10,7 +10,7 @@ const testFiles = fs.readdirSync(mainDir).filter(f => f.startsWith('test_') && f
 // better-sqlite3는 electron-rebuild로 Electron의 ABI에 맞춰 빌드되어 있어 plain node로는 못 돌린다
 // (NODE_MODULE_VERSION 불일치) — 그 모듈을 쓰는 테스트만 ELECTRON_RUN_AS_NODE로 Electron의 Node
 // 런타임을 빌려서 실행한다.
-const NEEDS_ELECTRON_RUNTIME = ['test_itdaInboxWriter.js'];
+const NEEDS_ELECTRON_RUNTIME = ['test_itdaInboxWriter.js', 'test_itdaEvents.js'];
 const electronBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
 
 let failed = 0;

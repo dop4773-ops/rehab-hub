@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 const { pushInboxItemToDb } = require('./itdaInboxWriter');
+const { readGrandEvents } = require('./itdaEvents');
 
 // 두 앱 다 Electron의 표준 userData 경로 관습을 쓴다 — package.json의 "name"이 폴더명이 되므로
 // (itda는 "itda"), 이 앱의 userData 경로에서 한 칸 위로 올라가 "itda" 폴더를 찾으면 된다.
@@ -22,4 +23,10 @@ function pushInboxItem(content) {
   return pushInboxItemToDb(itdaDbPath(), content);
 }
 
-module.exports = { itdaDbPath, itdaInstalled, pushInboxItem };
+// 잇다 일정 중 "그랜드라운딩" 카테고리(오늘 포함, 이후만) — 읽기 전용
+function grandEvents() {
+  const d = new Date(), today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return readGrandEvents(itdaDbPath(), today);
+}
+
+module.exports = { itdaDbPath, itdaInstalled, pushInboxItem, grandEvents };

@@ -304,6 +304,7 @@ function ensureToolLoaded(key) {
     loadedTools.add(key);
     iframe.addEventListener('load', async () => {
       iframe.contentWindow.__schedulesApi = SCHEDULES_BRIDGE;
+      iframe.contentWindow.__itdaApi = { grandEvents: () => window.rehab.itda.grandEvents() }; // 그랜드라운딩 일정 불러오기(읽기 전용)
       // 도구 쪽에서 "브리지가 막 연결됐다"는 걸 알아야 하는 화면(그랜드라운딩의 일정 보관함 목록 등)을 위한
       // 선택적 훅 — 함수를 정의해둔 도구만 반응하고, 없으면 그냥 넘어간다.
       iframe.contentWindow.__onSchedulesApiReady?.();

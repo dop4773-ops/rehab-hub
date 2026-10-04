@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('rehab', {
   },
   itda: {
     installed: () => ipcRenderer.invoke('itda:installed'),
+    grandEvents: () => ipcRenderer.invoke('itda:grandEvents'),
     pushInboxItem: (content) => ipcRenderer.invoke('itda:pushInboxItem', content),
   },
   updater: {

@@ -192,6 +192,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-map-head strong{display:inline;font-size:13px;color:#17345f;margin-bottom:4px}.grand-map-head span{display:block;margin-top:4px;font-size:10px;color:#64748b;line-height:1.55}
 .grand-map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:14px}
 .grand-map-card{margin:0;border:1px solid #e5ebf2;border-radius:12px;background:#fbfdff;overflow:hidden}.grand-map-card figcaption{padding:10px 12px;border-bottom:1px solid #e8edf3;background:#fff;font-size:11px;font-weight:800;color:#27415f}.grand-map-card figcaption small{display:block;font-size:9px;color:#708094;font-weight:600;margin-top:3px}.grand-map-card img{display:block;width:100%;height:auto;background:#f3f6f9}.grand-map-note{padding:10px 12px;font-size:10px;color:#64748b;line-height:1.55;border-top:1px solid #e8edf3;background:#fff}
+.grand-itda{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.grand-itda-msg{font-size:11px;color:#66758a}.grand-itda-msg.warn{color:#b3541e;font-weight:700}.grand-itda-list{display:flex;flex-wrap:wrap;gap:6px;width:100%}.grand-itda-chip{border:1px solid #cfdcec;background:#fff;color:#2a3d57;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}.grand-itda-chip:hover{background:#f1f6fd}.grand-itda-chip.on{background:#17345f;border-color:#17345f;color:#fff}.grand-itda-chip small{font-weight:500;opacity:.75;margin-left:4px}
 </style>
 <style>
 /* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
@@ -287,6 +288,11 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
     </div>
     <div id="grandRoundView" class="grand-shell">
       <div class="grand-controls">
+        <div class="grand-itda">
+          <button id="grandItdaBtn" class="btn" type="button">📅 잇다 일정 불러오기</button>
+          <span class="grand-itda-msg" id="grandItdaMsg">잇다의 "그랜드라운딩" 일정(오늘 이후)을 불러와 눌러서 회차·RM·요일을 한 번에 맞춥니다. 시각은 09시로 맞춰져요.</span>
+          <div class="grand-itda-list" id="grandItdaList"></div>
+        </div>
         <div class="grand-controls-priority">
           <div class="field"><label>① 회차 / 대상 병동</label><select id="grandRouteSelect">
             <option value="round1">1회차 · 8·9병동</option>
@@ -949,7 +955,7 @@ function updateAfterLoad(){
   document.getElementById('stPatients').textContent=allPatients.length; document.getElementById('stCards').textContent=rawCardCount; document.getElementById('st3').textContent=allPatients.filter(p=>p.floor===3).length; document.getElementById('st10').textContent=allPatients.filter(p=>p.floor===10).length; document.getElementById('stRm').textContent=rms.filter(x=>x!=='미지정').length;
   document.getElementById('rmMini').innerHTML=rms.map(r=>`<span>${xmlEscape(r)} ${rmCounts[r]}명</span>`).join('');
   const options='<option value="ALL">전체 RM</option>'+rms.map(r=>`<option value="${xmlEscape(r)}">${xmlEscape(r)} · ${rmCounts[r]}명</option>`).join('');
-  document.getElementById('grandRmSelect').innerHTML=options; const grs=document.getElementById('grandRmSelect'); if(grs.value==='ALL' && rms.length) grs.value=rms[0];
+  document.getElementById('grandRmSelect').innerHTML=options; const grs=document.getElementById('grandRmSelect'); if(grs.value==='ALL' && rms.length) grs.value=rms[0]; if(grandItdaPendingRm && rms.includes(grandItdaPendingRm)){ grs.value=grandItdaPendingRm; grandItdaPendingRm=null; const m=document.getElementById('grandItdaMsg'); if(m) m.className='grand-itda-msg'; }
   updateGrandWardOptions();
   document.getElementById('grandExportSelectedBtn').disabled=false; renderGrandTable();
   // 데스크톱 앱 홈 대시보드가 이 화면의 요약(환자 수)을 읽기 위한 훅. top-level let은 window에 안 붙어서
@@ -2505,6 +2511,32 @@ const grandPt10Input=document.getElementById('grandPt10FileInput'); grandPt10Inp
 const grandPt3Input=document.getElementById('grandPt3FileInput'); grandPt3Input.addEventListener('change',e=>handleGrandPtFile(e.target.files?.[0],3));
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')}); dz.addEventListener('dragleave',()=>dz.classList.remove('drag')); dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');handleFiles(e.dataTransfer.files)});
 document.getElementById('grandRouteSelect').addEventListener('change',()=>{updateGrandWardOptions();renderGrandTable();}); ['grandTimeInput','grandRmSelect','grandWardSelect'].forEach(id=>document.getElementById(id).addEventListener('change',renderGrandTable)); document.getElementById('grandDaySelect').addEventListener('change',async()=>{if(grandOtBook) await rebuildGrandOtTherapistMap();renderGrandTable();}); document.getElementById('grandPrintPeriodSelect').addEventListener('change',()=>{updateGrandExportButtonLabels();renderGrandTable();});
+// ── 잇다 "그랜드라운딩" 일정 불러오기(읽기 전용). 칩을 누르면 회차·회진일(요일)·시각(09시)·RM을 한 번에 맞춘다 ──
+let grandItdaPendingRm=null;
+function grandItdaApply(ev,chip){
+  const $=id=>document.getElementById(id), fire=el=>el.dispatchEvent(new Event('change'));
+  if(ev.route){ $('grandRouteSelect').value=ev.route; fire($('grandRouteSelect')); }
+  $('grandWardSelect').value='ALL'; fire($('grandWardSelect'));
+  $('grandDateInput').value=ev.date; fire($('grandDateInput'));
+  $('grandTimeInput').value='09'; fire($('grandTimeInput'));
+  const msg=$('grandItdaMsg'); msg.className='grand-itda-msg'; grandItdaPendingRm=null; let text=`${ev.date} · ${ev.rm||'RM 미인식'}${ev.wards?` · ${ev.wards.replace(',','·')}병동`:''} · 09시로 맞췄어요.`;
+  if(ev.rm){ const sel=$('grandRmSelect'); if([...sel.options].some(o=>o.value===ev.rm)){ sel.value=ev.rm; fire(sel); } else { grandItdaPendingRm=ev.rm; msg.className='grand-itda-msg warn'; text+=` ${ev.rm}은(는) 지금 불러온 시간표에 없어요 — 시간표를 올리면 자동으로 선택돼요.`; } }
+  else { msg.className='grand-itda-msg warn'; text+=` 제목에서 RM을 읽지 못했어요(${ev.title}) — RM은 직접 골라 주세요.`; }
+  msg.textContent=text; document.querySelectorAll('#grandItdaList .grand-itda-chip').forEach(c=>c.classList.toggle('on',c===chip));
+}
+async function grandItdaLoad(){
+  const msg=document.getElementById('grandItdaMsg'), list=document.getElementById('grandItdaList'), api=window.__itdaApi;
+  msg.className='grand-itda-msg'; list.innerHTML='';
+  if(!api){ msg.className='grand-itda-msg warn'; msg.textContent='데스크톱 앱 안에서만 잇다 일정을 불러올 수 있어요.'; return; }
+  msg.textContent='잇다에서 불러오는 중…';
+  let r; try{ r=await api.grandEvents(); }catch(e){ r={ok:false,message:e.message}; }
+  if(!r.ok){ msg.className='grand-itda-msg warn'; msg.textContent=r.message||'불러오지 못했어요.'; return; }
+  if(!r.events.length){ msg.textContent='오늘 이후의 "그랜드라운딩" 일정이 없어요.'; return; }
+  msg.textContent=`오늘 이후 그랜드라운딩 일정 ${r.events.length}건 — 눌러서 적용하세요.`;
+  list.innerHTML=r.events.map((e,i)=>{ const wd=new Date(e.date+'T00:00:00').toLocaleDateString('ko-KR',{weekday:'short'}); return `<button type="button" class="grand-itda-chip" data-i="${i}">${xmlEscape(e.date.slice(5).replace('-','/'))}(${wd}) ${xmlEscape(e.rm||e.title)}${e.wards?`<small>${xmlEscape(e.wards.replace(',','·'))}병동 · 09시</small>`:'<small>09시</small>'}</button>`; }).join('');
+  list.onclick=ev=>{ const b=ev.target.closest('.grand-itda-chip'); if(b) grandItdaApply(r.events[+b.dataset.i],b); };
+}
+document.getElementById('grandItdaBtn').addEventListener('click',grandItdaLoad);
 document.getElementById('grandArchiveSaveBtn').addEventListener('click',grandArchiveSave);
 grandArchiveWireBatchBar();
 grandDateInput.addEventListener('change',async()=>{ const d=grandDateToDay(grandDateInput.value); if(d) grandDaySel.value=d; if(grandOtBook) await rebuildGrandOtTherapistMap(); if(grandPtBooks[10]||grandPtBooks[3]) await rebuildGrandPtTherapistMap(); renderGrandTable(); });
