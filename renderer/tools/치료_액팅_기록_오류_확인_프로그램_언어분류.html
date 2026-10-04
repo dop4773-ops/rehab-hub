@@ -419,9 +419,10 @@
             <div class="upload-box" id="msDropZone" role="button" tabindex="0" aria-label="시간표 엑셀 업로드" style="min-height:110px;">
               <div class="upload-ico">🗓️</div>
               <strong id="msUploadTitle">작업치료실 시간표 엑셀을 끌어다 놓거나 클릭</strong>
-              <span>예: 작업치료실_시간표.xlsx (날짜별 시트로 구성)</span>
+              <span>평일: 작업치료실 시간표.xlsx · 토요일/공휴일: 작업치료실 토요일&amp;공휴일 시간표.xlsx (둘 다 올리면 날짜에 맞는 시트를 자동 선택)</span>
             </div>
-            <input id="msFileInput" type="file" accept=".xlsx,.xls" />
+            <input id="msFileInput" type="file" accept=".xlsx,.xls" multiple />
+            <input id="msSatFileInput" type="file" accept=".xlsx,.xls" />
             <div>
               <div class="field" style="margin-top:0;">
                 <label for="msSheetPicker">대조할 날짜(시트)</label>
@@ -538,6 +539,10 @@
         <button type="button" class="order-scope-tab active" data-kakao-scope="OT">OT 버전</button>
         <button type="button" class="order-scope-tab" data-kakao-scope="PT">PT 버전</button>
         <button type="button" class="order-scope-tab" data-kakao-scope="ST">언어/심리 버전</button>
+      </div>
+      <div id="kakaoVersionTabs" class="ms-group-tabs" style="padding:8px 20px 0;">
+        <button type="button" class="order-scope-tab active" data-kakao-version="1">버전1(상세: 이름 치료종류 시간)</button>
+        <button type="button" class="order-scope-tab" data-kakao-version="2">버전2(간단: 치료사T-환자명)</button>
       </div>
       <textarea id="kakaoText" readonly style="flex:1;min-height:360px;margin:12px 20px 16px;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:13px;line-height:1.6;font-family:inherit;resize:vertical;"></textarea>
       <div style="padding:0 20px 18px;display:flex;gap:8px;justify-content:flex-end;">
@@ -1678,9 +1683,12 @@ ${text}`,
 
   // ==================== 미액팅 오더 확인 (병합 기능) ====================
   const WEEKDAY_CHARS = ['일','월','화','수','목','금','토'];
-  const msState = { schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[] };
+  const msState = { schedFiles:{}, schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[] };
 
   function msNormText(v){ if(v==null) return ''; return String(v).replace(/\u3000/g,' ').replace(/\r\n?/g,'\n').trim(); }
+  const MS_MINI_TITLE_RE = /^(ERDT|CCRT|BETTER|COMCOG)$/i;
+  // 치료사 표기 뒤에 붙는 조(A/B)나 "OT" 표시를 뗀 이름("김기범OT"→"김기범", "이승규B"→"이승규")
+  function msBaseTherapistName(n){ return String(n||'').replace(/OT$/,'').replace(/[A-Z]$/,''); }
   function msTimeToMinutes(text){
     const m = String(text||'').match(/(\d{1,2}):(\d{2})/);
     if(!m) return null;
@@ -1763,9 +1771,24 @@ ${text}`,
     }
     if(mainHeaderRow<0) return { entries:[], warnings:['메인 표 헤더("치료시간")를 찾지 못했습니다.'], sheetDate, weekdayChar, grid:null };
 
-    const therapistRow = mainHeaderRow+1;
+    // 평일 시간표는 "치료시간" 줄 아래(팀 구분 줄 다음)에 치료사 이름이 있고, 토요일/공휴일 시간표는
+    // "치료시간" 줄에 치료사 이름이 바로 붙어 있습니다(그 다음 줄이 바로 첫 시간대).
+    const sameRowHeader = !!(rows[mainHeaderRow+1] && /^\d{1,2}[:.]\d{2}/.test(msNormText(rows[mainHeaderRow+1][0])));
+    const therapistRow = sameRowHeader ? mainHeaderRow : mainHeaderRow+1;
+    // ERDT 같은 미니표 제목 행 = 첫 칸이 ERDT/CCRT/BETTER/COMCOG 이고 바로 아래 줄 같은 칸이 "치료시간"인 곳.
+    // (평일은 빈타임 행 아래에 있고, 토요일/공휴일은 아래쪽 또는 메인 표 오른쪽 옆에 있습니다.)
+    const miniTitles = [];
+    for(let r0=0;r0<rows.length-1;r0++){
+      const row0 = rows[r0]; if(!row0) continue;
+      for(let c0=0;c0<row0.length;c0++){
+        if(MS_MINI_TITLE_RE.test(msNormText(row0[c0])) && msNormText(rows[r0+1] ? rows[r0+1][c0] : '')==='치료시간') miniTitles.push({ row:r0, col:c0, title:msNormText(row0[c0]) });
+      }
+    }
+    // 메인 표 오른쪽 옆에 붙은 미니표(제목이 메인 표 머리글 바로 윗줄)는 치료사 칸에서 제외합니다.
+    const sideMiniCols = miniTitles.filter(t => t.row+1===therapistRow && t.col>0).map(t=>t.col);
+    const therapistColLimit = sideMiniCols.length ? Math.min(...sideMiniCols) : maxCol;
     const therapistCols = [];
-    for(let c=1;c<maxCol;c++){
+    for(let c=1;c<therapistColLimit;c++){
       const t = rows[therapistRow] ? msNormText(rows[therapistRow][c]) : '';
       if(t!=='') therapistCols.push({ col:c, name:t });
     }
@@ -1777,22 +1800,40 @@ ${text}`,
       const s = msNormText(val);
       if(!s) return null;
       if(/^(10F|3F)\)?\s*(ERDT|CCRT|COMCOG|BETTER)/i.test(s)) return { skip:true };
+      if(/^(10층|3층)\s*(ERDT|CCRT|COMCOG|BETTER)/i.test(s)) return { skip:true }; // 토요일/공휴일 시간표의 "10층 ERDT" 표기
+      if(MS_MINI_TITLE_RE.test(s)) return { skip:true }; // "ERDT"/"CCRT"만 단독으로 적힌 칸은 환자가 아니라 해당 치료실 표시
       if(/^육아휴직/.test(s)) return { skip:true };
       if(/퇴원|입원/.test(s) || /^\d+호/.test(s)) return { skip:true }; // 입퇴원 안내 등 관리용 메모 칸은 오더가 아님
+      if(/^외래$/.test(s)) return { skip:true }; // "외래"만 단독으로 있는 칸은 환자명이 아닌 잔여 표시
       let lines = s.split('\n').map(x=>x.trim()).filter(Boolean);
       if(lines.length===0) return null;
       // "신환\n진현원TEST"처럼 첫 줄이 환자명이 아니라 "신환" 같은 안내 표시인 경우, 다음 줄을 이름 줄로 사용
       if(lines[0]==='신환' && lines.length>1) lines = lines.slice(1);
+      // "3F\n홍길동CC"처럼 첫 줄이 병동(3F/10F) 표시이고 환자는 다음 줄인 경우도 같은 방식으로 병동 줄만 뺍니다.
+      if(/^(3F|10F|3층|10층)$/i.test(lines[0]) && lines.length>1) lines = lines.slice(1);
+      // "외래평가\n김용섭님"처럼 첫 줄이 환자명이 아니라 "외래평가"라는 유형 표시이고
+      // 둘째 줄에 "님" 존칭과 함께 실제 환자명이 오는 경우: 평가로 바로 분류합니다.
+      if(lines[0]==='외래평가' && lines.length>1){
+        const name = lines[1].replace(/님\s*$/, '').replace(/\s+/g,'');
+        if(name && !/^\d+$/.test(name)) return { name, type:'평가', raw:s };
+        return { skip:true };
+      }
       let line1 = lines[0];
       // "신환김기범TEST"처럼 "신환"이 줄바꿈 없이 이름 바로 앞에 붙어 있는 경우도 제거(신환자라는 뜻일 뿐 이름이 아님)
       if(line1.startsWith('신환') && line1.length>2) line1 = line1.slice(2).trim();
-      const m = line1.match(/^(.*?)\s*(TEST|SM|SB|ST|CT|CM|CB|R|E)$/i);
+      const m = line1.match(/^(.*?)\s*(TEST|CCRT|CC|SM|SB|ST|CT|CM|CB|R|E)$/i);
       let name, suffix;
       if(m && m[1].trim()!==''){ name=m[1].trim(); suffix=m[2].toUpperCase(); }
       else { name=line1; suffix=null; }
+      // "이정임 S\nT-7"처럼 이름 뒤에 공백+단독 S가 붙는 것도 작업특수 접미사입니다.
+      // (동명이인 구분용 알파벳은 공백 없이 이름에 바로 붙으므로, 오인하지 않도록 공백이 있을 때만 인식합니다.)
+      if(!suffix){
+        const mS = line1.match(/^(.*?)\s+S$/);
+        if(mS && mS[1].trim()!=='') { name = mS[1].trim(); suffix = 'S'; }
+      }
       // "김준곤A \nSM A-10"처럼 접미사가 이름 줄이 아니라 위치 줄 맨 앞에 붙는 경우도 인식
       if(!suffix && lines.length>1){
-        const m2 = lines[1].match(/^(TEST|SM|SB|ST|CT|CM|CB|R|E)\b/i);
+        const m2 = lines[1].match(/^(TEST|CCRT|CC|SM|SB|ST|CT|CM|CB|R|E)\b/i);
         if(m2) suffix = m2[1].toUpperCase();
       }
       name = name.replace(/\s+/g,'');
@@ -1804,23 +1845,27 @@ ${text}`,
         if(wdMatch && !wdMatch[1].includes(weekdayChar)) return { skip:true };
       }
       if(suffix==='E'){
-        if(ERDT_E_THERAPISTS.includes(therapistName)){
+        if(ERDT_E_THERAPISTS.includes(msBaseTherapistName(therapistName))){
           return { name, type:'연하전기', raw:s };
         }
         unexpectedE.push({ name, therapist:therapistName, raw:s });
         return { skip:true };
       }
       // 접미사 없이 위치코드만 있는 칸(MSK 환자 포함)과 ST/SM/SB는 작업특수, CT/CM/CB는 드물게 나오는 복잡작업치료입니다.
-      const type = suffix==='R' ? '연하치료' : suffix==='TEST' ? '평가' : (suffix==='CT'||suffix==='CM'||suffix==='CB') ? '복잡' : '작업특수';
+      // 전산화인지(CC/CCRT) 칸에 둘째 줄이 TEST이면 그 회차는 평가입니다("홍길동 CC\nTEST").
+      const ccTest = (suffix==='CC'||suffix==='CCRT') && lines.length>1 && /^TEST\b/i.test(lines[1]);
+      const type = ccTest ? '평가' : (suffix==='CC'||suffix==='CCRT') ? '전산화인지' : suffix==='R' ? '연하치료' : suffix==='TEST' ? '평가' : (suffix==='CT'||suffix==='CM'||suffix==='CB') ? '복잡' : '작업특수';
       return { name, type, raw:s };
     }
 
     const timeRows = [];
-    let r = mainHeaderRow+2;
+    let r = therapistRow+1;
     let mainEnd = rows.length;
+    let hasEmptySlotRow = false; // 평일 형식: "빈타임" 행 아래에 미니표 제목 행이 옴
     for(; r<rows.length; r++){
       const c0 = msNormText(rows[r] ? rows[r][0] : null);
-      if(c0==='빈타임'){ mainEnd = r; break; }
+      if(c0==='빈타임'){ mainEnd = r; hasEmptySlotRow = true; break; }
+      if(MS_MINI_TITLE_RE.test(c0)){ mainEnd = r-1; break; } // 빈타임 행이 없는 시트: 아래쪽 미니표가 시작되면 메인 표 끝
       if(c0==='점심시간'){ timeRows.push({ row:r, label:c0, lunch:true }); continue; }
       if(/^\d{1,2}[:.]\d{2}/.test(c0)){
         timeRows.push({ row:r, label:c0, lunch:false });
@@ -1849,17 +1894,25 @@ ${text}`,
       warnings.push(`이승규/김봉선/김기범/성지현 외 치료사 칸에서 단독 "E" 표시가 ${unexpectedE.length}건 발견되어 집계에서 제외했습니다 (${sample}${unexpectedE.length>6?' 등':''}).`);
     }
 
-    const titleRow = mainEnd+1;
-    const headerRow2 = mainEnd+2;
-    const dataStart = mainEnd+3;
-    if(!rows[titleRow]) return { entries: msDedupeEntries(entries), warnings, sheetDate, weekdayChar, grid };
-
-    const sections = [];
-    for(let c=0;c<maxCol;c++){
-      const t = msNormText(rows[titleRow][c]);
-      if(t) sections.push({ startCol:c, title:t });
+    // 미니표 구역: 각 구역이 자기 머리글 줄(headerRow)과 데이터 시작 줄(dataStart)을 가집니다.
+    let sections = [];
+    if(hasEmptySlotRow){
+      // 평일 형식: 빈타임 행 바로 아래가 제목 줄(ERDT/CCRT…), 그 아래가 머리글, 그 아래부터 데이터
+      const titleRow = mainEnd+1;
+      if(!rows[titleRow]) return { entries: msDedupeEntries(entries), warnings, sheetDate, weekdayChar, grid };
+      for(let c=0;c<maxCol;c++){
+        const t = msNormText(rows[titleRow][c]);
+        if(t) sections.push({ startCol:c, title:t, headerRow:mainEnd+2, dataStart:mainEnd+3 });
+      }
+      sections.forEach((sec,i)=>{ sec.endCol = (i+1<sections.length) ? sections[i+1].startCol-1 : maxCol-1; });
+    } else {
+      // 토요일/공휴일 형식: 위에서 찾은 미니표 제목 위치를 그대로 씁니다(아래쪽이든 메인 표 오른쪽 옆이든 동일).
+      sections = miniTitles.map(t => ({ startCol:t.col, title:t.title, headerRow:t.row+1, dataStart:t.row+2 }));
+      sections.forEach(sec=>{
+        const next = sections.filter(o => o!==sec && o.headerRow===sec.headerRow && o.startCol>sec.startCol).map(o=>o.startCol);
+        sec.endCol = next.length ? Math.min(...next)-1 : maxCol-1;
+      });
     }
-    sections.forEach((sec,i)=>{ sec.endCol = (i+1<sections.length) ? sections[i+1].startCol-1 : maxCol-1; });
 
     const lastDataRow = rows.length-1;
 
@@ -1874,6 +1927,7 @@ ${text}`,
     }
 
     sections.forEach(sec=>{
+      const headerRow2 = sec.headerRow, dataStart = sec.dataStart;
       let therapistCol = null;
       for(let c=sec.startCol;c<=sec.endCol;c++){
         if(msNormText(rows[headerRow2] ? rows[headerRow2][c] : '')==='치료사'){ therapistCol=c; break; }
@@ -1884,8 +1938,8 @@ ${text}`,
           if(/^S\d$/i.test(msNormText(rows[headerRow2] ? rows[headerRow2][c] : ''))) slotCols.push(c);
         }
         for(let r2=dataStart; r2<=lastDataRow; r2++){
-          const therapist = therapistCol!=null ? msNormText(rows[r2] ? rows[r2][therapistCol] : '') : '';
           slotCols.forEach(c=>{
+            const therapist = msNormText(rows[r2] ? rows[r2][therapistColFor(headerRow2, sec, c, therapistCol)] : '');
             const s = msNormText(rows[r2] ? rows[r2][c] : '');
             if(!s) return;
             const lines = s.split('\n').map(x=>x.trim()).filter(Boolean);
@@ -1913,16 +1967,25 @@ ${text}`,
       }
     });
 
+    // 미니표 슬롯 칸(S1…S8)이 속한 "치료사" 칸: ERDT 표는 S1~S4와 S5~S8이 각각 자기 "치료사" 칸을 가지므로
+    // 그 칸에서 왼쪽으로 가장 가까운 "치료사" 머리글을 씁니다(없으면 구역의 첫 "치료사" 칸).
+    function therapistColFor(headerRow2, sec, slotCol, firstTherapistCol){
+      for(let c=slotCol;c>=sec.startCol;c--){
+        if(msNormText(rows[headerRow2] ? rows[headerRow2][c] : '')==='치료사') return c;
+      }
+      return firstTherapistCol;
+    }
+
     // 미니표(ERDT/CCRT/BETTER/COMCOG) 오더가 "같은 치료사·같은 시간"에 메인 표에서는
     // 전혀 다른 환자를 치료 중인 것으로 나오면, 그 치료사가 실제로는 그 시간에 미니표 환자를
     // 볼 수 없었다는 뜻이므로 "시간 충돌"로 표시하고 미액팅 집계에서 제외합니다.
     const mainGridOccupancy = {};
     entries.forEach(e=>{
-      if(e.source==='메인표' && e.therapist && e.timeSlot) mainGridOccupancy[`${e.therapist}|${e.timeSlot}`] = e.name;
+      if(e.source==='메인표' && e.therapist && e.timeSlot) mainGridOccupancy[`${msBaseTherapistName(e.therapist)}|${e.timeSlot}`] = e.name;
     });
     entries.forEach(e=>{
       if(e.source==='메인표') return;
-      const occupant = mainGridOccupancy[`${e.therapist}|${e.timeSlot}`];
+      const occupant = mainGridOccupancy[`${msBaseTherapistName(e.therapist)}|${e.timeSlot}`];
       if(occupant && occupant !== e.name) e.conflict = { withName: occupant };
     });
 
@@ -1972,9 +2035,12 @@ ${text}`,
         let wb = null, firstErr = null;
         try{ wb = XLSX.read(e.target.result, {type:'array', cellDates:false}); }
         catch(err){ firstErr = err; }
-        if(!wb || msWorkbookLooksEmpty(wb)){
-          const fixed = await msSanitizeAndReread(e.target.result);
-          if(fixed && !msWorkbookLooksEmpty(fixed)) wb = fixed;
+        // <hs:...> 서식 태그로 인한 손상은 "시트가 통째로 빈다"뿐 아니라, 시트 개수는 멀쩡한데
+        // 특정 셀(예: D/C 명단)만 조용히 비거나 틀어지는 경우도 있어, 매번 정제 버전도 함께 만들어보고
+        // (실제로 손상이 없으면 정제 결과는 null이라 비용이 거의 없습니다) 더 온전한 쪽을 씁니다.
+        const fixed = await msSanitizeAndReread(e.target.result);
+        if(fixed && !msWorkbookLooksEmpty(fixed)){
+          if(!wb || msWorkbookLooksEmpty(wb) || fixed.SheetNames.length >= wb.SheetNames.length) wb = fixed;
         }
         if(wb && !msWorkbookLooksEmpty(wb)) resolve(wb);
         else reject(firstErr || new Error('빈 워크북'));
@@ -1987,10 +2053,15 @@ ${text}`,
   function msAutoSelectSheet(targetDateStr){
     if(!msState.schedWB || !targetDateStr) return;
     const [,tm,td] = targetDateStr.split('-').map(Number);
-    for(const name of msState.schedWB.SheetNames){
-      const m = name.match(/(\d{1,2})월\s*(\d{1,2})일/);
-      if(m && +m[1]===tm && +m[2]===td){ $('msSheetPicker').value = name; break; }
-    }
+    // 평일 시트 이름은 "10월2일(금)", 토요일/공휴일 시트 이름은 "10.03(1팀)" 형식입니다.
+    const byName = msState.schedWB.SheetNames.filter(name=>{
+      const m = name.match(/(\d{1,2})월\s*(\d{1,2})일/) || name.match(/^(\d{1,2})\.(\d{1,2})(?!\d)/);
+      return m && +m[1]===tm && +m[2]===td;
+    });
+    // 해가 다른 같은 월/일 시트가 섞여 있을 수 있어, 시트 맨 위 칸(A1)의 날짜까지 맞는 시트를 먼저 고릅니다.
+    const exact = byName.find(n => { const c = msState.schedWB.Sheets[n] && msState.schedWB.Sheets[n]['A1']; return c && msYmd(msExcelSerialToDate(c.v)) === targetDateStr; });
+    const pick = exact || byName[0];
+    if(pick) $('msSheetPicker').value = pick;
   }
 
   function msPrimaryDate(){
@@ -2015,16 +2086,23 @@ ${text}`,
   ['dragenter','dragover'].forEach(ev => $('msDropZone').addEventListener(ev, e => { e.preventDefault(); $('msDropZone').classList.add('drag'); }));
   ['dragleave'].forEach(ev => $('msDropZone').addEventListener(ev, e => { e.preventDefault(); $('msDropZone').classList.remove('drag'); }));
   $('msDropZone').addEventListener('drop', e => { e.preventDefault(); $('msDropZone').classList.remove('drag'); msHandleDroppedItems(e.dataTransfer, files => { if(files[0]) msHandleFile(files[0]); }); });
-  $('msFileInput').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if(f) msHandleFile(f); });
+  $('msFileInput').addEventListener('change', e => { Array.from(e.target.files || []).forEach(msHandleFile); });
+  $('msSatFileInput').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if(f) msHandleFile(f); });
 
+  // 평일 시간표와 토요일/공휴일 시간표를 따로 읽어 두고, 시트 목록은 둘을 합쳐서 보여줍니다.
+  function msRebuildSchedWB(){
+    const parts = ['weekday','sat'].map(k => msState.schedFiles[k]).filter(Boolean);
+    msState.schedWB = { SheetNames: [].concat(...parts.map(p => p.wb.SheetNames)), Sheets: Object.assign({}, ...parts.map(p => p.wb.Sheets)) };
+    $('msUploadTitle').textContent = parts.map(p => p.name).join(' + ');
+    $('msSheetPicker').innerHTML = parts.map(p => `<optgroup label="${msEscapeAttr(p.name)}">${p.wb.SheetNames.map(n => `<option value="${msEscapeAttr(n)}">${escapeHtml(n)}</option>`).join('')}</optgroup>`).join('');
+  }
   async function msHandleFile(file){
     $('msFatal').style.display = 'none';
     try{
-      msState.schedWB = await msReadWorkbook(file);
+      const wb = await msReadWorkbook(file);
+      msState.schedFiles[/토요일|공휴일/.test(file.name.normalize('NFC')) ? 'sat' : 'weekday'] = { name:file.name, wb }; // macOS는 한글 파일명이 분해형(NFD)이라 정규화 후 판단
+      msRebuildSchedWB();
       msState.userPickedSheet = false;
-      $('msUploadTitle').textContent = file.name;
-      const picker = $('msSheetPicker');
-      picker.innerHTML = msState.schedWB.SheetNames.map(n => `<option value="${msEscapeAttr(n)}">${escapeHtml(n)}</option>`).join('');
       msAutoSelectSheet(msPrimaryDate());
       msUpdateRunBtn();
     } catch(err){
@@ -2317,7 +2395,7 @@ ${text}`,
     if(sched.sheetDate && targetDate){
       const sdStr = msYmd(sched.sheetDate);
       if(sdStr !== targetDate){
-        warnArea.innerHTML += `<div class="fatal" style="display:block;">⚠ 선택한 시간표 시트의 날짜(${escapeHtml(sdStr||'인식불가')})와 액팅 파일의 주된 날짜(${escapeHtml(targetDate)})가 다릅니다. 날짜를 다시 확인해 주세요.</div>`;
+        warnArea.innerHTML += `<div class="fatal" style="display:block;">⚠ 선택한 시간표 시트의 날짜(${escapeHtml(sdStr||'인식불가')})와 액팅 파일의 주된 날짜(${escapeHtml(targetDate)})가 다릅니다. 날짜를 다시 확인해 주세요.${msState.schedFiles.sat ? '' : ' (토요일·공휴일이면 "작업치료실 토요일&공휴일 시간표" 파일도 함께 올려 주세요.)'}</div>`;
       }
     }
     if(sched.warnings.length){
@@ -2916,11 +2994,14 @@ ${text}`,
     const now = new Date();
     return `${now.getMonth()+1}/${now.getDate()}`;
   }
-  function kakaoIssueLines(list){
+  function kakaoIssueLines(list, simple){
     if(!list.length) return '(해당 없음)';
+    if(simple){
+      return list.map(x => `${x.therapist || '담당자 미상'}T-${x.patientName || '환자명 미상'}`).join('\n');
+    }
     return list.map(x => `${x.therapist || '담당자 미상'}-${x.patientName || '환자명 미상'} ${msSimplifyOrderName(x.orderName)}(${x.time || '시간 미상'})`).join('\n');
   }
-  function buildKakaoText(scope){
+  function buildKakaoText(scope, simple){
     const dateLabel = kakaoDateLabel();
     const issues = (state.issues || []).filter(x => x.orderGroup === scope);
     const timeIssues = issues.filter(x=>x.type==='시간 오류');
@@ -2931,17 +3012,18 @@ ${text}`,
       dateLabel,
       `<액팅오류 - ${scope === 'ST' ? '언어/심리' : scope}>`,
       '*치료시간 수정',
-      kakaoIssueLines(timeIssues),
+      kakaoIssueLines(timeIssues, simple),
       '',
       '',
       '*특이사항 없음/수정',
-      kakaoIssueLines(noteIssues),
+      kakaoIssueLines(noteIssues, simple),
       '',
       '',
       '*치료내용 없음',
-      kakaoIssueLines(contentMissing)
+      kakaoIssueLines(contentMissing, simple)
     ];
 
+    // 미액팅오류는 두 버전 모두 항상 포함하고, 줄 형식만 버전에 따라 다르게 씁니다.
     if(scope==='OT'){
       let missingBlock = '(해당 없음)';
       if(msState.sched && msState.slotFlagMap){
@@ -2952,7 +3034,7 @@ ${text}`,
         if(missingEntries.length){
           missingBlock = missingEntries
             .sort((a,b)=> (a.therapist||'').localeCompare(b.therapist||'','ko'))
-            .map(e => `${e.therapist || '담당자 미상'}-${e.name} ${e.type}(${e.timeSlot || ''})`)
+            .map(e => simple ? `${e.therapist || '담당자 미상'}T-${e.name}` : `${e.therapist || '담당자 미상'}-${e.name} ${e.type}(${e.timeSlot || ''})`)
             .join('\n');
         }
       }
@@ -2970,15 +3052,20 @@ ${text}`,
     return lines.join('\n');
   }
   let kakaoScope = 'OT';
+  let kakaoVersion = 1; // 1 = 상세(환자명 치료종류 시간, 기본값), 2 = 간단(치료사T-환자명)
   function kakaoRefresh(){
     document.querySelectorAll('#kakaoScopeTabs [data-kakao-scope]').forEach(b=>{
       b.classList.toggle('active', b.getAttribute('data-kakao-scope')===kakaoScope);
     });
-    $('kakaoText').value = buildKakaoText(kakaoScope);
+    document.querySelectorAll('#kakaoVersionTabs [data-kakao-version]').forEach(b=>{
+      b.classList.toggle('active', +b.getAttribute('data-kakao-version')===kakaoVersion);
+    });
+    $('kakaoText').value = buildKakaoText(kakaoScope, kakaoVersion===2);
     $('kakaoCopyStatus').textContent = '';
   }
   $('kakaoBtn').addEventListener('click', ()=>{
     kakaoScope = 'OT';
+    kakaoVersion = 1;
     kakaoRefresh();
     $('kakaoModal').style.display = 'flex';
   });
@@ -2986,6 +3073,12 @@ ${text}`,
     const btn = e.target.closest('[data-kakao-scope]');
     if(!btn) return;
     kakaoScope = btn.getAttribute('data-kakao-scope');
+    kakaoRefresh();
+  });
+  $('kakaoVersionTabs').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-kakao-version]');
+    if(!btn) return;
+    kakaoVersion = +btn.getAttribute('data-kakao-version');
     kakaoRefresh();
   });
   $('kakaoCloseBtn').addEventListener('click', ()=>{ $('kakaoModal').style.display = 'none'; });

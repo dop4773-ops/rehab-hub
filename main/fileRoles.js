@@ -18,6 +18,7 @@ const FILE_ROLES = [
   { key: 'acting', label: '치료 액팅 기록', required: false },
   { key: 'status', label: '작업치료현황', required: true },
   { key: 'dailySchedule', label: '작업치료실 시간표(평일)', required: false },
+  { key: 'satSchedule', label: '작업치료실 시간표(토요일·공휴일)', required: false },
   { key: 'pta', label: 'PTA 재원현황', required: false },
 ];
 
@@ -26,8 +27,8 @@ function guessFileRole(name) {
   const is3 = /(?:^|[^0-9])3\s*(?:F|층)(?![0-9])/i.test(n);
   const is10 = /(?:^|[^0-9])10\s*(?:F|층)(?![0-9])/i.test(n);
   // 토요일/공휴일 시간표 파일("...액팅검사용" 포함)은 아래 "액팅" 규칙에 걸려 액팅 기록으로 오인되던 문제 —
-  // 이 파일들은 어느 화면의 업로드 칸에도 해당하지 않으므로 먼저 걸러서 미인식으로 둔다.
-  if (/토요일|공휴일/.test(n) && /시간표/.test(n)) return null;
+  // 먼저 판단해서 치료기록 QA의 토요일·공휴일 시간표 칸(satSchedule)으로 보낸다.
+  if (/토요일|공휴일/.test(n) && /시간표/.test(n)) return 'satSchedule';
   if (/전체시간표/.test(n)) return is3 && !is10 ? 'card3' : 'card10';
   if (/물리치료.*시간표|PT\s*시간표/i.test(n)) return (is3 && !is10) ? 'pt3' : 'pt10';
   if (/매트/.test(n) && /테이블/.test(n)) return 'mt3';

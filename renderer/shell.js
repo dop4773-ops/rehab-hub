@@ -34,6 +34,7 @@ const TOOLS = {
     targets: [
       { role: 'acting', selector: '#fileInput' },
       { role: 'dailySchedule', selector: '#msFileInput' }, // 작업치료실 시간표(평일) — 화면에서 다시 올리지 않게 연결
+      { role: 'satSchedule', selector: '#msSatFileInput' }, // 토요일·공휴일 시간표 — 같은 날짜 시트 자동 선택
       { role: 'dailyStats', selector: '#dcFileInput' },    // 1·2·3팀 이번 달 일일통계(여러 파일)
     ],
     readSummary: (w) => w.__actingSummary ? { count: w.__actingSummary.errorCount, label: '오류', ...w.__actingSummary } : null,

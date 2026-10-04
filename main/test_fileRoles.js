@@ -31,8 +31,8 @@ console.log('OK 충돌 우선순위 정상');
 // 2026-10 개선: 재원현황 오인, 토요일 시간표 오인, 시간표 역할 가로채기
 assert.strictEqual(guessFileRole('재원현황.xlsx'), 'pta', '재원현황이 작업치료현황(status)으로 오인되면 안 됨');
 assert.strictEqual(guessFileRole('작업치료현황.xlsx'), 'status', '작업치료현황은 그대로');
-assert.strictEqual(guessFileRole('작업치료실 토요일&공휴일 시간표 액팅검사용.xlsx'), null, '토요일 시간표가 액팅 기록으로 오인되면 안 됨');
-assert.strictEqual(guessFileRole('작업치료실 토요일&공휴일 시간표.xlsx'), null, '토요일 시간표는 평일 시간표 역할을 가로채면 안 됨');
+assert.strictEqual(guessFileRole('작업치료실 토요일&공휴일 시간표 액팅검사용.xlsx'), 'satSchedule', '토요일 시간표가 액팅 기록으로 오인되면 안 됨');
+assert.strictEqual(guessFileRole('작업치료실 토요일&공휴일 시간표.xlsx'), 'satSchedule', '토요일 시간표는 평일 시간표 역할을 가로채면 안 됨');
 assert.strictEqual(guessFileRole('통합치료시간표(원본).xlsx'), null, '작업치료실 시간표가 아닌 시간표 파일이 dailySchedule을 가로채면 안 됨');
 assert.strictEqual(guessFileRole('작업치료실 시간표.xlsx'), 'dailySchedule');
 console.log('OK 재원현황·토요일 시간표·시간표 역할 한정');
