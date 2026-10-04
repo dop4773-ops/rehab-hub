@@ -677,10 +677,11 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 <script src="../core/parsers_pta.js"></script>
 <script src="../core/parsers_handover.js"></script>
 <script src="../core/parsers_grids.js"></script>
+<script src="../core/fixrefs.js"></script>
 <script src="../core/fixplan.js"></script>
 <script src="../core/issuehistory.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, pruneAck, keyIssues, ISSUE_HISTORY_CATS } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, pruneAck, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
@@ -807,10 +808,10 @@ async function parsePatientCards(book, floor){
               if(hasTreatment('swallow',days[day])) rdtWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
             }
             if(hasLocCol && satVal) satEntries.push({time, treatment:satVal});
-            if(loc) entries.push({time, loc, days});
+            if(loc) entries.push({time, loc, days, row:row.row, locRef:numToCol(blk.col+2)+row.row});
           }
         }
-        results.push({name, room, reg, floor, doctor, therapists, entries, langCount, langOccurrences, satEntries, erdtWeekdayEntries, cogWeekdayEntries, sotWeekdayEntries, rdtWeekdayEntries, isOutpatient});
+        results.push({name, room, reg, floor, doctor, sheet:sh.name, headRow:start, headCol:blk.col, therapists, entries, langCount, langOccurrences, satEntries, erdtWeekdayEntries, cogWeekdayEntries, sotWeekdayEntries, rdtWeekdayEntries, isOutpatient});
       }
     }
   }
@@ -1194,7 +1195,7 @@ async function runAllVerifications(){
   setStep('stepCount','now');
   previewDischarged=new Set();
   if(state.statusBook){
-    status=await parseStatusSheet(state.statusBook);
+    status=await parseStatusSheet(state.statusBook); window.__statusSheetName=status.sheetName;
     sched=await buildScheduleData(state.statusBook);
     actual=buildActualCounts(sched);
     previewWeekdayErdt={erdt: sched.erdt, ccrt: sched.ccrt};
@@ -1791,6 +1792,8 @@ async function runAllVerifications(){
   }
   setStep('stepTher','done');
 
+  // 수정 지시서가 "어느 칸인지"까지 알려주도록 불일치마다 칸 주소를 찾아 붙인다(읽기만 함, 검증 결과에는 영향 없음)
+  try{ attachRefs(allIssues, {status, sched, findCard, gridEntries:(fl)=>[...((previewStore[fl]&&previewStore[fl].mat)||[]), ...((previewStore[fl]&&previewStore[fl].table)||[])]}); }catch(e){ console.error(e); }
   issues=allIssues;
   // 데스크톱 앱 홈 대시보드가 이 화면의 요약(검증 불일치 건수)을 읽기 위한 훅. top-level let은 window에
   // 안 붙어서 iframe.contentWindow로 직접 못 읽기 때문에 명시적으로 저장한다. 화면 자체 로직에는 영향 없음.
@@ -3420,7 +3423,7 @@ function renderFixPlan(){
     html+=list.map(x=>{ const k=fixKey(x), d=fixState.done.has(k); return `<div class="fix-item ${d?'done':''}">
       <input type="checkbox" data-k="${esc(k)}" ${d?'checked':''} title="완료 표시">
       <div style="flex:1"><div class="who">${x.floor?x.floor+'F ':''}${esc(x.room?x.room+'호 ':'')}${esc(x.patient)}<span class="tag">${esc(x.kind)}</span>${x.who?`<span class="ppl">담당 ${esc(x.who)}</span>`:''}</div>
-      <div class="fa">${esc(x.action)}</div><div class="fw">${esc(x.where)}${x.basis?' · 근거: '+esc(x.basis):''}</div></div></div>`; }).join('');
+      <div class="fa">${esc(x.action)}</div><div class="fw">${esc(x.where)}${x.basis?' · 근거: '+esc(x.basis):''}</div>${x.cellText?`<div class="fw" style="color:#2f6fce;font-weight:700">📍 ${esc(x.cellText)}</div>`:''}</div></div>`; }).join('');
   }
   body.innerHTML=html;
 }
@@ -3437,8 +3440,8 @@ document.getElementById('fixCopy').addEventListener('click',async()=>{
 });
 document.getElementById('fixCsv').addEventListener('click',()=>{
   const items=fixVisibleItems(); if(!items.length){ alert('저장할 항목이 없습니다.'); return; }
-  const rows=[['번호','수정할 파일','위치','층','병실','환자명','문제','수정 내용','근거','담당','완료']];
-  items.forEach(x=>rows.push([x.no,FIX_GROUPS[x.group].label,x.where,x.floor?x.floor+'F':'',x.room,x.patient,x.kind,x.action,x.basis,x.who,fixState.done.has(fixKey(x))?'완료':'']));
+  const rows=[['번호','수정할 파일','위치','칸 주소','층','병실','환자명','문제','수정 내용','근거','담당','완료']];
+  items.forEach(x=>rows.push([x.no,FIX_GROUPS[x.group].label,x.where,x.cellText||'',x.floor?x.floor+'F':'',x.room,x.patient,x.kind,x.action,x.basis,x.who,fixState.done.has(fixKey(x))?'완료':'']));
   const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download=`교차검증_수정지시서_${new Date().toISOString().slice(0,10)}.csv`; a.click();
 });
@@ -3446,7 +3449,7 @@ document.getElementById('fixPrint').addEventListener('click',()=>{
   const items=fixVisibleItems(); if(!items.length){ alert('인쇄할 항목이 없습니다.'); return; }
   let body='';
   for(const g of FIX_GROUP_ORDER){ const list=items.filter(x=>x.group===g); if(!list.length) continue;
-    body+=`<h3>${esc(FIX_GROUPS[g].label)} (${list.length}건)${fixFileNames(g)?' <small>'+esc(fixFileNames(g))+'</small>':''}</h3><table><thead><tr><th>□</th><th>#</th><th>층·병실</th><th>환자</th><th>수정 내용</th><th>위치</th><th>담당</th></tr></thead><tbody>${list.map(x=>`<tr><td>${fixState.done.has(fixKey(x))?'☑':'□'}</td><td>${x.no}</td><td>${x.floor?x.floor+'F ':''}${esc(x.room)}</td><td>${esc(x.patient)}</td><td>${esc(x.action)}</td><td>${esc(x.where)}</td><td>${esc(x.who)}</td></tr>`).join('')}</tbody></table>`; }
+    body+=`<h3>${esc(FIX_GROUPS[g].label)} (${list.length}건)${fixFileNames(g)?' <small>'+esc(fixFileNames(g))+'</small>':''}</h3><table><thead><tr><th>□</th><th>#</th><th>층·병실</th><th>환자</th><th>수정 내용</th><th>위치·칸</th><th>담당</th></tr></thead><tbody>${list.map(x=>`<tr><td>${fixState.done.has(fixKey(x))?'☑':'□'}</td><td>${x.no}</td><td>${x.floor?x.floor+'F ':''}${esc(x.room)}</td><td>${esc(x.patient)}</td><td>${esc(x.action)}</td><td>${esc(x.where)}${x.cellText?'<br><b>'+esc(x.cellText)+'</b>':''}</td><td>${esc(x.who)}</td></tr>`).join('')}</tbody></table>`; }
   document.getElementById('printReport').innerHTML=`<h1>교차검증 수정 지시서</h1><div class="meta">검증일: ${esc(currentDateLabel())} · 출력일시: ${new Date().toLocaleString('ko-KR')} · 원본 파일은 프로그램이 바꾸지 않았습니다. 안내를 보고 직접 고쳐 주세요.</div>${body}`;
   document.body.classList.add('printing'); window.print(); setTimeout(()=>document.body.classList.remove('printing'),300);
 });
@@ -3512,6 +3515,6 @@ document.getElementById('histModal').addEventListener('click',e=>{ if(e.target.i
 
 handoverLiveFetchPromise=fetchHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
 // 검증 스크립트(scripts/golden.js)가 화면 데이터를 읽는 통로(CSP가 eval을 막음). 읽기 전용.
-window.__testHooks={ issues:()=>issues, state:()=>state };
+window.__testHooks={ issues:()=>issues, state:()=>state, statusSheet:()=>(window.__statusSheetName||'') };
 </script>
 </body></html>

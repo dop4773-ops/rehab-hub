@@ -16,6 +16,10 @@ const GROUPS = {
   etc: { label: '기타 확인', sub: '' },
 };
 const GROUP_ORDER = ['status', 'card', 'grid', 'handover', 'etc'];
+// 칸 주소 문구("현황(회복기) J45 · 평일시간표(원본) C12") — 항목의 group 쪽을 앞에, 다른 파일은 파일 이름을 붙여서
+function cellTextFor(refs, group) {
+  return (refs || []).slice().sort((a, b) => (b.group === group) - (a.group === group)).map(r => `${r.group !== group && GROUPS[r.group] ? GROUPS[r.group].label + ' ' : ''}${r.sheet} ${r.cells.join(', ')}`).join(' · ');
+}
 const uniq = (a) => [...new Set(a.filter(Boolean))];
 const names = (s) => uniq(String(s || '').split(/[\/,·]/).map(x => x.trim()));
 const fieldKo = (f) => ({ SOT: '작업(SOT)', RDT: '연하(RDT)', ERDT: '연하전기(ERDT)', CCRT: '전산화인지(CCRT)', 언어: '언어' }[f] || f);
@@ -124,7 +128,7 @@ function itemsFor(i) {
 
 function buildFixItems(issues) {
   const items = [];
-  for (const i of issues || []) for (const it of itemsFor(i)) items.push(it);
+  for (const i of issues || []) for (const it of itemsFor(i)) { it.cellText = cellTextFor(i.refs, it.group); items.push(it); }
   const gi = (g) => GROUP_ORDER.indexOf(g);
   items.sort((a, b) => gi(a.group) - gi(b.group) || (a.floor || 99) - (b.floor || 99) || String(a.room).localeCompare(String(b.room), 'ko', { numeric: true }) || String(a.patient).localeCompare(String(b.patient), 'ko'));
   items.forEach((it, n) => { it.no = n + 1; });
@@ -137,7 +141,7 @@ function fixItemsToText(items, { title = '교차검증 수정 지시서', date =
   for (const g of GROUP_ORDER) {
     const list = items.filter(x => x.group === g); if (!list.length) continue;
     lines.push(`■ ${GROUPS[g].label} (${list.length}건)`);
-    for (const x of list) lines.push(`${x.no}. ${x.floor ? x.floor + 'F ' : ''}${x.room ? x.room + '호 ' : ''}${x.patient} — ${x.action}${x.who ? ` (담당: ${x.who})` : ''}`);
+    for (const x of list) lines.push(`${x.no}. ${x.floor ? x.floor + 'F ' : ''}${x.room ? x.room + '호 ' : ''}${x.patient} — ${x.action}${x.cellText ? ` [칸: ${x.cellText}]` : ''}${x.who ? ` (담당: ${x.who})` : ''}`);
     lines.push('');
   }
   return lines.join('\n').trim();

@@ -59,6 +59,42 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     // 교차검증
     await nav('cross'); await sleep(8000);
     await step('교차검증: 실행', async () => await ev(`(async()=>{ const w=${W('cross')}; await w.runAllVerifications(); return w.__testHooks.issues().length; })()`));
+    await step('교차검증: 칸 주소가 실제 원본 칸을 가리키는지(읽기만)', async () => {
+      // 화면에서는 "이슈별 칸 주소와 그 칸의 실제 값"만 모아 오고, 맞는지는 여기(Node)에서 판정한다
+      const items = await ev(`(async()=>{ const w=${W('cross')}, R=w.RehabCore, N=R.normalizeText, hk=w.__testHooks, st=hk.state();
+        const grid=[st.mat10Book,st.table10Book,st.mt3Book].filter(Boolean);
+        const read=async(book,sheet,ref)=>{ const c=book&&await R.getSheetCells(book,sheet); return c?N(c.get(ref)||''):null; };
+        const out=[]; for(const i of hk.issues()){ if(!i.refs) continue; const d=i.detail||{}; const it={kind:d.kind,patient:i.patient,floor:i.floor,d:{expected:d.expected,source:d.source,statusRoom:d.statusRoom,cardRoom:d.cardRoom,vals:d.vals,loc:d.loc,cardLoc:d.cardLoc,scheduleLoc:d.scheduleLoc,gridNames:d.gridNames},refs:[]};
+          for(const r of i.refs) for(const cell of r.cells){ let v=null; if(r.group==='status') v=await read(st.statusBook,r.sheet,cell); else if(r.group==='card') v=await read(i.floor===3?st.card3Book:st.card10Book,r.sheet,cell); else for(const b of grid){ v=await read(b,r.sheet,cell); if(v) break; } it.refs.push({group:r.group,sheet:r.sheet,cell,value:v,isStatusSheet:r.sheet===hk.statusSheet()}); }
+          out.push(it); } return {items:out,total:hk.issues().length}; })()`);
+      const nk = (v) => String(v == null ? '' : v).replace(/[\s·ㆍ\-\(\)\[\]{}.,\/\\]/g, '').toUpperCase(), first = (v) => nk(String(v).split('\n')[0]);
+      const dr = (v) => String(v == null ? '' : v).match(/\d{3,4}/)?.[0] || '', dc = (v) => { const m = /(\d+)/.exec(String(v)); return m ? 'RM' + m[1] : String(v).toUpperCase(); };
+      const fail = {}, bad = (k) => { fail[k] = (fail[k] || 0) + 1; }; let checked = 0;
+      for (const it of items.items) for (const r of it.refs) {
+        checked++; const v = r.value, nameOk = nk(v) === nk(it.patient) || first(v) === nk(it.patient);
+        if (v == null) { bad(it.kind + ':칸을 읽지 못함'); continue; }
+        if (r.group === 'status' && r.isStatusSheet) { // 현황판 칸
+          if (it.kind === 'count' && it.d.source !== 'outpatient' && parseInt(v, 10) !== it.d.expected) bad('count:현황 횟수 칸');
+          if (it.kind === 'room_mismatch' && dr(v) !== dr(it.d.statusRoom)) bad('room_mismatch:현황 병실 칸');
+          if (it.kind === 'room_rm') { const x = (it.d.vals || []).find(q => q.name === '현황판'); if (x && dc(v) !== x.value) bad('room_rm:현황 진료과 칸'); }
+          if (it.kind === 'discharge_stillactive' && v !== '퇴원') bad('discharge_stillactive:퇴원 칸');
+          if (it.kind === 'discharge_notmarked' && !/입원|외래/.test(v)) bad('discharge_notmarked:입원 칸');
+        } else if (r.group === 'status') { // 평일시간표 칸: 그 칸 첫 줄이 환자 이름으로 시작
+          if (!first(v).startsWith(nk(it.patient).replace(/[A-Z0-9]+$/, '').slice(0, 3))) bad(it.kind + ':시간표 칸 이름');
+        } else if (r.group === 'card') {
+          if (/^A\d+$/.test(r.cell)) { if (!nameOk) bad(it.kind + ':카드 이름 칸'); }
+          else if (it.kind === 'room_mismatch') { if (dr(v) !== dr(it.d.cardRoom)) bad('room_mismatch:카드 병실 칸'); }
+          else if (it.kind === 'room_rm') { const x = (it.d.vals || []).find(q => q.name === '전체시간표'); if (x && dc(v) !== x.value) bad('room_rm:카드 RM 칸'); }
+          else if (it.kind === 'mismatch') { if (!v) bad('mismatch:카드 치료위치 칸 비어 있음'); }
+          else if (it.kind === 'sched_mismatch') { if (!v) bad('sched_mismatch:카드 치료위치 칸 비어 있음'); }
+        } else if (r.group === 'grid') {
+          if (it.kind === 'missing' && nk(v) !== nk(it.patient)) bad('grid:missing 이름');
+          if (it.kind === 'mismatch' && !String(it.d.gridNames).split(',').map(nk).includes(nk(v))) bad('grid:mismatch 이름');
+        }
+      }
+      if (Object.keys(fail).length) throw new Error('칸 주소가 원본과 안 맞음: ' + JSON.stringify(fail));
+      return { 이슈: items.total, 칸주소_붙은_이슈: items.items.length, 확인한_칸: checked };
+    });
     await step('교차검증: handleRun(이력 포함)', async () => await ev(`(async()=>{ const w=${W('cross')}; await w.handleRun(); return w.document.getElementById('histBox').innerText.slice(0,60); })()`));
     await step('교차검증: 모든 이슈 상세 열기', async () => await ev(`(()=>{ const w=${W('cross')}; const bad=[]; for(const i of w.__testHooks.issues()){ try{ w.openDetail(i.id); const t=w.document.getElementById('detailPanel').innerText; if(t.length<20) bad.push(i.id+':빈상세'); if(/undefined|NaN|\\[object/.test(t)) bad.push(i.id+':'+(t.match(/.{0,20}(undefined|NaN|\\[object).{0,20}/)||[''])[0]); }catch(e){ bad.push(i.id+':'+e.message); } } return {bad:bad.slice(0,8),n:bad.length}; })()`));
     await step('교차검증: 모든 분류/세부 필터 순회', async () => await ev(`(async()=>{ const d=${W('cross')}.document; let c=0; for(const b of d.querySelectorAll('#catSeg button')){ b.click(); await new Promise(r=>setTimeout(r,50)); for(const seg of ['#fieldSeg','#locSourceSeg','#handoverSourceSeg','#roomSourceSeg','#changeSeg']){ for(const x of d.querySelectorAll(seg+' button')){ x.click(); c++; await new Promise(r=>setTimeout(r,30)); } } } for(const f of d.querySelectorAll('.floor-row2')){ f.click(); c++; } for(const v of d.querySelectorAll('#viewSeg button, #displayModeSeg button')){ v.click(); c++; await new Promise(r=>setTimeout(r,60)); } return c; })()`));

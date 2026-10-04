@@ -130,7 +130,7 @@ async function buildScheduleData(book){
   const boldRefs=await getSheetBoldRefs(book, sh.name);
   const occ=await parseMainTable(cells, boldRefs);
   const lower=await parseLowerAll(cells);
-  return {occ, erdt:lower.erdt, ccrt:lower.ccrt};
+  return {occ, erdt:lower.erdt, ccrt:lower.ccrt, sheet:sh.name};
 }
 function findScheduleSheet(book){
   return book.sheets.find(s=>normalizeText(s.name).replace(/\s+/g,'')==='평일시간표(원본)');

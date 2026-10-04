@@ -3,8 +3,8 @@
 'use strict';
 (function (root) {
 if (typeof require === 'function' && typeof module !== 'undefined') { require('./xlsx-reader.js'); require('./normalize.js'); require('./parsers_weekday.js'); }
-const { normalizeText, getCell, splitRef, getSheetCells, normLoc, timeStart } = root.RehabCore;
-async function parseLocationGrid(cells){
+const { normalizeText, getCell, splitRef, getSheetCells, normLoc, timeStart, numToCol } = root.RehabCore;
+async function parseLocationGrid(cells, sheet){
   const headerRows=[];
   for(const [ref,val] of cells.entries()){ if(normalizeText(val).replace(/\s+/g,'')==='치료시간'){ const rc=splitRef(ref); if(rc) headerRows.push(rc); } }
   const entries=[];
@@ -21,7 +21,7 @@ async function parseLocationGrid(cells){
         if(normalizeText(timeRaw)===''){ break; }
         const time=timeStart(timeRaw); if(!/^\d{1,2}:\d{2}$/.test(time)) continue;
         const name=normalizeText(getCell(cells,r,c)); if(!name) continue;
-        entries.push({time,loc,name});
+        entries.push({time,loc,name,ref:numToCol(c)+r,sheet:sheet||''});
       }
     }
   }
@@ -31,7 +31,7 @@ async function collectGridEntries(book, sheetName){
   if(!book) return [];
   const cells=await getSheetCells(book, sheetName || book.sheets[0].name);
   if(!cells) return [];
-  return parseLocationGrid(cells);
+  return parseLocationGrid(cells, sheetName || book.sheets[0].name);
 }
 
 const api = { parseLocationGrid, collectGridEntries };
