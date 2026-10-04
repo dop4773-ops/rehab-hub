@@ -70,6 +70,9 @@ body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont
 .file-card .st{font-size:10px;font-weight:800;white-space:nowrap}
 .file-card .st.ok{color:var(--green)}
 .file-card .st.miss{color:var(--muted)}
+.file-card .st.stale{color:var(--orange)}
+.file-card .st.busy{color:var(--blue)}
+.file-card .st.err{color:var(--red)}
 .file-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eef2f7;font-size:12px}
 .file-row:last-child{border-bottom:none}
 .file-row .name{flex:1}
@@ -131,7 +134,31 @@ body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont
 table.mini{width:100%;border-collapse:collapse;font-size:11px}
 table.mini th,table.mini td{text-align:left;padding:5px 6px;border-bottom:1px solid #eef2f7}
 .status-pill{font-size:10px;font-weight:800;color:var(--green)}
-.tool-frame{width:100%;height:calc(100vh - 92px);border:none;background:#fff}
+.tool-frame{width:100%;height:calc(100vh - 128px);border:none;background:#fff}
+
+/* ── 데이터 동기화 상태 ───────────────────────────────── */
+#topbar .pill.sync-pill{cursor:pointer}
+#topbar .pill.sync-pill.ok{background:rgba(26,127,75,.35)}
+#topbar .pill.sync-pill.stale{background:rgba(224,140,30,.55)}
+#topbar .pill.sync-pill.err{background:rgba(194,59,59,.6)}
+.tool-status{height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:12px;border-bottom:1px solid var(--border);background:#fff;color:var(--sub)}
+.tool-status.ok b{color:var(--green)} .tool-status.stale{background:#fff7e8} .tool-status.stale b{color:var(--orange)}
+.tool-status.err{background:#fdeeee} .tool-status.err b{color:var(--red)}
+.tool-status .btn{padding:3px 10px;font-size:11px}
+.sync-banner{margin:10px 0;padding:10px 12px;border-radius:9px;background:#fff7e8;border:1px solid #f0d9a8;font-size:12px;color:#6b4a10}
+.sync-banner .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:3px 0}
+.sync-banner .hint{color:#8a6a2a;margin-top:4px}
+table.data-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+table.data-table th,table.data-table td{text-align:left;padding:7px 8px;border-bottom:1px solid #eef2f7;vertical-align:top}
+table.data-table th{font-size:11px;color:var(--sub);background:#f6f9fd}
+table.data-table td.nowrap{white-space:nowrap}
+table.data-table .fname{word-break:break-all}
+table.data-table .st{font-weight:800;white-space:nowrap}
+table.data-table .st.ok{color:var(--green)} table.data-table .st.stale{color:var(--orange)} table.data-table .st.busy{color:var(--blue)}
+table.data-table .st.err{color:var(--red)} table.data-table .st.miss{color:var(--muted)}
+table.data-table .btn{padding:3px 9px;font-size:11px;margin-right:4px}
+.sync-modes{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:6px;font-size:13px}
+.sync-modes label{display:flex;align-items:center;gap:6px;cursor:pointer}
 .folder-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eef2f7;font-size:13px}
 .folder-row:last-child{border-bottom:none}
 .muted{color:var(--muted);font-size:12px}

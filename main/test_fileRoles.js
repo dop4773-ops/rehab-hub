@@ -3,7 +3,7 @@
 // 브라우저판과 똑같이 동작하는지 확인한다(회귀 방지 — 로직을 옮기며 실수로 바꾸지 않았는지).
 'use strict';
 const assert = require('assert');
-const { guessFileRole, FILE_ROLES } = require('./fileRoles');
+const { guessFileRole, FILE_ROLES, isCurrentMonthStats } = require('./fileRoles');
 
 const REAL = [
   ['10F 환자전체시간표(원본).xlsx', 'card10'], ['3F 환자전체시간표(원본).xlsx', 'card3'],
@@ -27,6 +27,25 @@ assert.strictEqual(guessFileRole('3F 매트,테이블현황.xlsx'), 'mt3');
 assert.strictEqual(guessFileRole('10F 환자전체시간표(원본).xlsx'), 'card10');
 assert.strictEqual(guessFileRole('아무거나.xlsx'), null);
 console.log('OK 충돌 우선순위 정상');
+
+// 2026-10 개선: 재원현황 오인, 토요일 시간표 오인, 시간표 역할 가로채기
+assert.strictEqual(guessFileRole('재원현황.xlsx'), 'pta', '재원현황이 작업치료현황(status)으로 오인되면 안 됨');
+assert.strictEqual(guessFileRole('작업치료현황.xlsx'), 'status', '작업치료현황은 그대로');
+assert.strictEqual(guessFileRole('작업치료실 토요일&공휴일 시간표 액팅검사용.xlsx'), null, '토요일 시간표가 액팅 기록으로 오인되면 안 됨');
+assert.strictEqual(guessFileRole('작업치료실 토요일&공휴일 시간표.xlsx'), null, '토요일 시간표는 평일 시간표 역할을 가로채면 안 됨');
+assert.strictEqual(guessFileRole('통합치료시간표(원본).xlsx'), null, '작업치료실 시간표가 아닌 시간표 파일이 dailySchedule을 가로채면 안 됨');
+assert.strictEqual(guessFileRole('작업치료실 시간표.xlsx'), 'dailySchedule');
+console.log('OK 재원현황·토요일 시간표·시간표 역할 한정');
+
+// 일일통계: 이번 달 것만 (1월이 11월에 걸리지 않게)
+const oct = new Date(2026, 9, 4), jan = new Date(2027, 0, 4);
+assert(isCurrentMonthStats('미래병원_1팀_10월_일일통계.xlsm', oct));
+assert(!isCurrentMonthStats('미래병원_1팀_9월_일일통계.xlsm', oct));
+assert(isCurrentMonthStats('미래병원_2팀_09월_일일통계.xlsm', new Date(2026, 8, 4)), '앞자리 0 허용');
+assert(!isCurrentMonthStats('미래병원_1팀_11월_일일통계.xlsm', jan), '1월이 11월 파일에 걸리면 안 됨');
+assert(isCurrentMonthStats('미래병원_1팀_1월_일일통계.xlsm', jan));
+assert(!isCurrentMonthStats('미래병원_1팀_10월_원본.xlsm', oct), '일일통계가 아닌 파일은 제외');
+console.log('OK 일일통계 이번 달 판정');
 
 assert.strictEqual(guessFileRole('3F환자전체시간표(원본).xlsm'), 'card3');
 assert.strictEqual(guessFileRole('10f 환자전체시간표(원본)'), 'card10');

@@ -16,6 +16,7 @@
     </div>
   </div>
   <div class="right">
+    <span class="pill sync-pill" id="syncPill" title="클릭: 업데이트가 필요하면 지금 업데이트, 아니면 데이터 준비 화면으로 이동">데이터 확인 중…</span>
     <span class="pill">📅 <span id="todayDate"></span></span>
     <span class="pill">👤 작업치료팀 <span class="chev">▾</span></span>
     <button class="icon-btn" id="topbarSettingsBtn" title="설정">⚙️</button>
@@ -156,19 +157,20 @@
     <section class="view" data-view="data">
       <div class="card">
         <h2>📦 데이터 준비</h2>
-        <p class="muted">등록된 폴더에서 자동으로 파일을 찾아 3개 화면(그랜드라운딩·치료기록 QA·교차검증)에 채워 넣습니다.</p>
-        <div id="dataFileList" class="file-grid"></div>
+        <p class="muted">등록된 폴더에서 파일을 찾아 3개 화면(그랜드라운딩·치료기록 QA·교차검증)에 채워 넣습니다. <b>파일 수정 시각</b>(디스크의 현재 상태)과 <b>프로그램 반영 시각</b>(프로그램이 마지막으로 읽은 시점)을 따로 보여주므로, 지금 화면의 검증이 어느 시점의 데이터 기준인지 확인할 수 있습니다.</p>
+        <div id="dataBanner"></div>
+        <div id="dataFileList"></div>
         <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn" data-goto="settings">폴더 관리 →</button>
-          <button class="btn primary" id="dataScanBtn">🔄 자동 불러오기</button>
+          <button class="btn" data-goto="settings">폴더·동기화 설정 →</button>
+          <button class="btn primary" id="dataScanBtn">🔄 지금 업데이트</button>
         </div>
         <div class="status-line" id="dataStatus"></div>
       </div>
     </section>
 
-    <section class="view" data-view="rm"><iframe class="tool-frame" data-tool="rm"></iframe></section>
-    <section class="view" data-view="acting"><iframe class="tool-frame" data-tool="acting"></iframe></section>
-    <section class="view" data-view="cross"><iframe class="tool-frame" data-tool="cross"></iframe></section>
+    <section class="view" data-view="rm"><div class="tool-status" data-tool-status="rm"></div><iframe class="tool-frame" data-tool="rm"></iframe></section>
+    <section class="view" data-view="acting"><div class="tool-status" data-tool-status="acting"></div><iframe class="tool-frame" data-tool="acting"></iframe></section>
+    <section class="view" data-view="cross"><div class="tool-status" data-tool-status="cross"></div><iframe class="tool-frame" data-tool="cross"></iframe></section>
 
     <section class="view" data-view="report">
       <div class="card">
@@ -220,6 +222,19 @@
       </div>
 
       <div class="card" style="margin-top:14px;">
+        <h2>🔄 데이터 자동 동기화</h2>
+        <p class="muted">파일이 바뀌었는지는 30초마다 가볍게(파일 목록·수정시각만) 확인해 "업데이트 필요"로 표시합니다. 아래는 그 변경을 <b>실제로 다시 읽어 반영</b>하는 시점입니다. 바뀐 파일만 다시 읽습니다.</p>
+        <div class="sync-modes" id="syncModes">
+          <label><input type="radio" name="syncMode" value="launch"> 앱 실행 시 (기본)</label>
+          <label><input type="radio" name="syncMode" value="5"> 5분마다</label>
+          <label><input type="radio" name="syncMode" value="10"> 10분마다</label>
+          <label><input type="radio" name="syncMode" value="30"> 30분마다</label>
+          <label><input type="radio" name="syncMode" value="60"> 1시간마다</label>
+          <label><input type="radio" name="syncMode" value="manual"> 수동 (직접 "지금 업데이트"를 누를 때만)</label>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
         <h2>⬆️ 업데이트</h2>
         <p class="muted">현재 버전: <span id="updaterVersion">-</span></p>
         <label style="margin-bottom:10px;display:flex;align-items:center;gap:7px;font-size:13px;color:#43546d">
@@ -237,6 +252,7 @@
   </main>
 </div>
 
+<script src="sync-core.js"></script>
 <script src="shell.js"></script>
 </body>
 </html>

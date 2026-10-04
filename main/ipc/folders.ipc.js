@@ -15,6 +15,11 @@ function registerFoldersIpc() {
   // 매칭된 파일의 실제 바이트를 필요할 때만 읽어 렌더러로 넘긴다(렌더러에는 경로만 있고 fs 접근 권한이 없음).
   ipcMain.handle('folders:readFile', (event, filePath) => store.readFileBuffer(filePath));
   ipcMain.handle('folders:openFolder', (event, dirPath) => store.openFolder(dirPath));
+  ipcMain.handle('folders:chooseFile', async (event, role) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return store.chooseManualFile(win, role);
+  });
+  ipcMain.handle('folders:clearManual', (event, role) => { store.clearManualFile(role); return true; });
 }
 
 module.exports = { registerFoldersIpc };

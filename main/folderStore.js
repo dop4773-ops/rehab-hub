@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { app, dialog, shell } = require('electron');
 const { FILE_ROLES, guessFileRole } = require('./fileRoles');
-const { scanFolders } = require('./scan');
+const { scanFolders, applyManualFiles } = require('./scan');
 
 function storePath() {
   return path.join(app.getPath('userData'), 'folders.json');
@@ -41,8 +41,41 @@ function removeFolder(id) {
   saveFolders(loadFolders().filter(f => f.id !== id));
 }
 
+// 폴더 설정과 별개로 "이 역할은 이 파일을 쓴다"고 직접 골라둔 파일(예: 매번 내려받아 넣는 PTA 재원현황).
+// 역할 하나당 파일 경로 배열을 저장하며, 스캔 결과에서 폴더 매칭보다 우선한다.
+function manualPath() { return path.join(app.getPath('userData'), 'manual-files.json'); }
+function loadManual() {
+  try { return JSON.parse(fs.readFileSync(manualPath(), 'utf8')); }
+  catch (e) { return {}; }
+}
+function saveManual(map) {
+  fs.mkdirSync(path.dirname(manualPath()), { recursive: true });
+  fs.writeFileSync(manualPath(), JSON.stringify(map, null, 2));
+}
+
+async function chooseManualFile(win, role) {
+  const def = FILE_ROLES.find(r => r.key === role);
+  if (!def) return null;
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    title: `${def.label} 파일 직접 선택`,
+    properties: def.multi ? ['openFile', 'multiSelections'] : ['openFile'],
+    filters: [{ name: 'Excel', extensions: ['xlsx', 'xlsm'] }],
+  });
+  if (canceled || !filePaths.length) return null;
+  const map = loadManual();
+  map[role] = filePaths;
+  saveManual(map);
+  return { role, paths: filePaths };
+}
+
+function clearManualFile(role) {
+  const map = loadManual();
+  delete map[role];
+  saveManual(map);
+}
+
 function scanAll() {
-  return scanFolders(loadFolders());
+  return applyManualFiles(scanFolders(loadFolders()), loadManual());
 }
 
 // Uint8Array로 반환한다 — Buffer는 IPC(구조화 복제)로 안전하게 전달된다는 보장이 없어서(TypedArray는 됨).
@@ -55,4 +88,4 @@ function openFolder(dirPath) {
   if (dirPath) shell.openPath(dirPath);
 }
 
-module.exports = { FILE_ROLES, guessFileRole, chooseFolder, listFolders, removeFolder, scanAll, readFileBuffer, openFolder };
+module.exports = { FILE_ROLES, guessFileRole, chooseFolder, listFolders, removeFolder, scanAll, readFileBuffer, openFolder, chooseManualFile, clearManualFile };

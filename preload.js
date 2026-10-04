@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('rehab', {
     fileRoles: () => ipcRenderer.invoke('folders:fileRoles'),
     readFile: (path) => ipcRenderer.invoke('folders:readFile', path),
     openFolder: (path) => ipcRenderer.invoke('folders:openFolder', path),
+    chooseFile: (role) => ipcRenderer.invoke('folders:chooseFile', role),
+    clearManual: (role) => ipcRenderer.invoke('folders:clearManual', role),
   },
   schedules: {
     save: (entry) => ipcRenderer.invoke('schedules:save', entry),
