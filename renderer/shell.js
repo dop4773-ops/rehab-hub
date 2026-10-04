@@ -324,6 +324,7 @@ function showView(key) {
   if (key === 'data') renderDataView();
   if (key === 'settings') renderSettingsView();
   if (key === 'report') renderReportView();
+  if (key === 'backup') refreshBackup();
 }
 
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => showView(n.dataset.nav)));
@@ -429,6 +430,7 @@ function renderHome() {
       `<div class="statbox ${b.cls}"><span class="num">${b.num}</span><span class="lbl">${b.lbl}</span></div>`).join('');
   }
   const alerts = ALERT_ORDER.map(key => TOOLS[key].alertRow(summaries[key])).filter(Boolean);
+  const bk = backupAlertRow(); if (bk) alerts.push(bk);
   document.getElementById('homeAlerts').innerHTML = alerts.join('') || '<div class="muted">화면을 열면 요약이 표시됩니다.</div>';
   wireItdaPushButtons();
 
@@ -567,6 +569,73 @@ for (const key of Object.keys(TOOLS)) {
   });
 }
 
+// ── 백업 상태(읽기 전용) ───────────────────────────────────
+// 백업은 PowerShell(OneDrive_Backup.ps1)이 하고, 여기서는 그 로그를 읽어 상태만 보여준다. 60초마다 가볍게 다시 읽는다.
+let backupStatus = null;
+const BK_LEVEL = { ok: 'green', warn: 'orange', err: 'red' };
+function backupAlertRow() {
+  const b = backupStatus; if (!b || b.level === 'off') return '';
+  return alertRow('백업 상태', b.level === 'unknown' ? '기록 없음' : b.level === 'ok' ? '정상' : '확인 필요', BK_LEVEL[b.level] || 'orange',
+    b.level === 'ok' ? null : `[백업] ${b.title}`);
+}
+const bkAgo = (ms, now) => { if (!ms) return '-'; const s = Math.max(0, Math.round((now - ms) / 1000)); return s < 90 ? `${s}초 전` : s < 5400 ? `${Math.round(s / 60)}분 전` : s < 172800 ? `${Math.round(s / 3600)}시간 전` : `${Math.round(s / 86400)}일 전`; };
+const bkTime = (ms) => { if (!ms) return '-'; const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+const bkEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const BK_TICK_LABEL = { done: '완료', interrupted: '중단', missed: '놓침', running: '진행 중', upcoming: '예정', off: '꺼져 있었음' };
+
+async function refreshBackup() {
+  try { backupStatus = await window.rehab.backup.status(); } catch (e) { backupStatus = { level: 'unknown', title: '백업 상태를 읽지 못했어요', detail: String((e && e.message) || e), logFound: false }; }
+  renderBackupView(); renderHome();
+}
+function renderBackupView() {
+  const el = document.getElementById('backupBody'); const b = backupStatus; if (!el || !b) return;
+  const now = b.now || Date.now();
+  const head = `<div class="card bk-banner ${b.level}"><div><div class="t">${bkEsc(b.title)}</div><div class="d">${bkEsc(b.detail)}</div></div>
+    <div class="acts"><button class="btn" id="bkReload">🔄 새로고침</button><button class="btn" data-bk-open="log">📄 로그 위치 열기</button>
+    <button class="btn" data-bk-open="schedule">📁 예약 백업 폴더</button><button class="btn" data-bk-open="realtime">📁 실시간 백업 폴더</button></div></div>`;
+  if (!b.logFound) { el.innerHTML = head + bkLogCard(b); wireBackupView(); return; }
+  const cfg = b.config || {}, ls = b.lastScheduled;
+  const facts = `<div class="bk-grid">
+    <div class="bk-fact"><div class="k">마지막 실시간 동기화</div><div class="v">${bkAgo(b.lastRealtimeEndMs, now)}</div><div class="s">${(b.lastRealtime || []).map(r => `${bkEsc(r.name)} ${r.ok ? '✓' : '✕ 코드 ' + r.code}`).join(' · ') || '-'}</div></div>
+    <div class="bk-fact"><div class="k">마지막 예약 백업(구글 드라이브)</div><div class="v">${ls ? bkTime(ls.startMs) : '-'}</div><div class="s">${ls ? (ls.state === 'done' ? '완료' : ls.state === 'running' ? '진행 중' : '<span style="color:var(--red)">끝까지 기록되지 않음(중단)</span>') : '기록 없음'}${b.lastDoneMs ? ` · 마지막 완료 ${bkTime(b.lastDoneMs)}` : ''}</div></div>
+    <div class="bk-fact"><div class="k">다음 예약 백업</div><div class="v">${bkTime(b.nextMs)}</div><div class="s">${b.running ? `${Math.max(0, Math.round((b.nextMs - now) / 60000))}분 뒤 · 프로그램이 켜져 있을 때만 실행` : '프로그램이 꺼져 있으면 실행되지 않아요'}</div></div>
+    <div class="bk-fact"><div class="k">프로그램 마지막 시작</div><div class="v">${bkTime(b.lastStartMs)}</div><div class="s">${b.running ? '가동 ' + bkAgo(b.lastStartMs, now).replace(' 전', '') : '현재 꺼짐'} · 기록상 시작 ${b.restartsTotal}회</div></div>
+    <div class="bk-fact" style="grid-column:1/-1"><div class="k">오늘 예약 백업 (${cfg.startHour}~${cfg.endHour}시 정각) — ${b.today.done}/${b.today.expected}회 완료</div>
+      <div class="bk-ticks">${b.today.ticks.filter(t => t.state !== 'off').map(t => `<span class="bk-tick ${t.state}">${t.hour}시 ${BK_TICK_LABEL[t.state]}</span>`).join('') || '<span class="muted">오늘은 아직 프로그램이 켜진 기록이 없어요</span>'}</div></div></div>`;
+  const dayRows = (b.days || []).map(d => d.active
+    ? `<tr><td>${d.day.slice(5)}</td><td>${bkTime(d.firstMs).slice(-5)} ~ ${bkTime(d.lastMs).slice(-5)}</td><td>${d.scheduledDone}회</td><td class="${d.interrupted ? 'bad' : 'dim'}">${d.interrupted || '-'}</td><td class="${d.problems ? 'bad' : 'dim'}">${d.problems || '-'}</td><td class="${d.restarts > 1 ? '' : 'dim'}">${d.restarts || '-'}</td></tr>`
+    : `<tr><td class="dim">${d.day.slice(5)}</td><td class="dim" colspan="5">기록 없음 (꺼져 있었음)</td></tr>`).join('');
+  const f = b.folders || {};
+  const sched = f.schedule ? (f.schedule.exists ? `날짜 폴더 ${f.schedule.count}개${f.schedule.count > (cfg.retentionDays || 7) ? ' <span style="color:var(--orange)">(보관 기간보다 많아요 — 다음 예약 백업 때 정리돼요)</span>' : ''} · 최근 ${f.schedule.dates.slice(-3).map(d => `${d.name.slice(5)}(${d.runs}회)`).join(', ') || '-'}` : '<span style="color:var(--orange)">이 PC에서 폴더를 열 수 없어요(G 드라이브 연결 확인)</span>') : '-';
+  const rt = f.realtime ? (f.realtime.exists ? `있음 · 마지막 변경 ${bkTime(f.realtime.mtimeMs)}` : '<span style="color:var(--orange)">이 PC에서 폴더를 찾을 수 없어요</span>') : '-';
+  const conf = `<div class="card" style="margin-top:14px"><h2>⚙️ 백업 설정 (스크립트 기준)</h2>${b.scriptFound ? '' : '<p class="muted">OneDrive_Backup.ps1 을 찾지 못해 기본 설정(08~17시, 7일 보관)으로 표시해요. 로그 판정은 그대로 정확해요.</p>'}
+    <table class="bk-table bk-kv"><tbody>
+    <tr><td>백업 대상</td><td>${(b.script && b.script.sources.length ? b.script.sources.map(s => `${bkEsc(s.name)} <code>${bkEsc(s.source)}</code>`).join('<br>') : '-')}</td></tr>
+    <tr><td>실시간 백업</td><td>${cfg.realtimeEverySec}초마다 · ${b.script && b.script.mirrorRealtime ? '미러(원본에서 지운 파일은 백업에서도 지워져요)' : '-'}<br><code>${bkEsc((b.script && b.script.realtimeRoot) || '-')}</code> — ${rt}</td></tr>
+    <tr><td>예약 백업</td><td>매일 ${cfg.startHour}~${cfg.endHour}시 정각 · 구글 드라이브에 날짜/시각 폴더로 누적(삭제 반영 안 함)<br><code>${bkEsc((b.script && b.script.scheduleRoot) || '-')}</code> — ${sched}</td></tr>
+    <tr><td>보관 기간</td><td>날짜 폴더 ${cfg.retentionDays}개(${cfg.retentionDays}일)까지 보관, 초과한 오래된 날짜부터 자동 삭제${b.lastDeleted ? `<br>마지막 자동 삭제: ${bkEsc(b.lastDeleted.name)} (${bkTime(b.lastDeleted.ms)} 기록)` : '<br>기록된 자동 삭제 없음'}</td></tr>
+    </tbody></table></div>`;
+  const hist = `<div class="card" style="margin-top:14px"><h2>📅 최근 7일</h2><table class="bk-table"><thead><tr><th>날짜</th><th>가동 시간</th><th>예약 완료</th><th>중단</th><th>오류</th><th>재시작</th></tr></thead><tbody>${dayRows}</tbody></table></div>`;
+  const probs = `<div class="card" style="margin-top:14px"><h2>⚠ 최근 문제 (7일)</h2>${(b.problems.length || b.interrupted.length) ? `<table class="bk-table"><tbody>${b.interrupted.map(r => `<tr><td>${bkTime(r.startMs)}</td><td class="bad">예약 백업(${bkEsc(r.key)})이 끝까지 기록되지 않았어요</td></tr>`).join('')}${b.problems.map(p => `<tr><td>${bkTime(p.ms)}</td><td class="bad">${bkEsc(p.msg)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">최근 7일 동안 문제 기록이 없어요.</p>'}</div>`;
+  el.innerHTML = head + facts + conf + hist + probs + bkLogCard(b);
+  wireBackupView();
+}
+function bkLogCard(b) {
+  return `<div class="card" style="margin-top:14px"><h2>📄 로그 위치</h2><table class="bk-table bk-kv"><tbody>
+    <tr><td>로그 파일</td><td><code>${bkEsc(b.logPath || '-')}</code>${b.logFound ? ` · ${(b.logSize / 1024).toFixed(0)}KB` : ''}</td></tr>
+    <tr><td>스크립트</td><td><code>${bkEsc(b.scriptPath || '-')}</code> ${b.scriptFound ? '' : '(없음)'}</td></tr></tbody></table>
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="bkResetLog">기본 위치로</button><button class="btn" id="bkChooseLog">로그 위치 바꾸기…</button></div>
+    <div class="status-line">백업 프로그램이 다른 PC에서 돌고 있다면 그 PC의 backup.log를 이 PC로 동기화한 경로를 골라 주세요. 이 화면은 로그를 읽기만 하고 백업을 시작·중지하지 않아요.</div></div>`;
+}
+function wireBackupView() {
+  const q = (id) => document.getElementById(id);
+  if (q('bkReload')) q('bkReload').onclick = refreshBackup;
+  document.querySelectorAll('[data-bk-open]').forEach(btn => btn.onclick = async () => { if (!(await window.rehab.backup.open(btn.dataset.bkOpen))) btn.textContent = '열 수 없어요'; });
+  if (q('bkChooseLog')) q('bkChooseLog').onclick = async () => { if (await window.rehab.backup.chooseLog()) refreshBackup(); };
+  if (q('bkResetLog')) q('bkResetLog').onclick = async () => { await window.rehab.backup.resetLog(); refreshBackup(); };
+}
+setInterval(() => refreshBackup(), 60 * 1000);
+
 async function renderSettingsView() {
   const folders = await window.rehab.folders.list();
   document.getElementById('folderList').innerHTML = folders.length
@@ -655,6 +724,7 @@ document.getElementById('updaterAutoToggle').addEventListener('change', async (e
   // 교차검증 화면을 아직 한 번도 안 열었어도, 화면 밖에서 미리 로드해둬야 "자동 불러오기"가
   // 그 도구까지 채워줄 수 있다(loadedTools에 들어있는 도구만 동기화 때 갱신 대상이 됨).
   ensureToolLoaded('cross');
+  refreshBackup();
   // 시작할 때 파일 상태를 확인하고, 수동 모드가 아니면 곧바로 반영한다(등록된 폴더가 없으면 조용히 넘어감).
   try { await refreshScan(); } catch (e) { /* 아래 syncNow가 같은 오류를 상태줄에 보여준다 */ }
   if (syncMode !== 'manual' || !lastScan) await syncNow({ skipScan: !!lastScan });

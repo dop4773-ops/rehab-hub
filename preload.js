@@ -21,6 +21,12 @@ contextBridge.exposeInMainWorld('rehab', {
     load: (ids) => ipcRenderer.invoke('schedules:load', ids),
     delete: (id) => ipcRenderer.invoke('schedules:delete', id),
   },
+  backup: {
+    status: () => ipcRenderer.invoke('backup:status'),
+    chooseLog: () => ipcRenderer.invoke('backup:chooseLog'),
+    resetLog: () => ipcRenderer.invoke('backup:resetLog'),
+    open: (kind) => ipcRenderer.invoke('backup:open', kind),
+  },
   itda: {
     installed: () => ipcRenderer.invoke('itda:installed'),
     pushInboxItem: (content) => ipcRenderer.invoke('itda:pushInboxItem', content),

@@ -183,3 +183,19 @@ table.data-table .btn{padding:3px 9px;font-size:11px;margin-right:4px}
 .report-links{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
 @media (max-width:900px){.report-links{grid-template-columns:1fr}}
 .report-links .card{text-align:center}
+
+/* 백업 상태 화면 */
+.bk-banner{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-left:6px solid var(--border)}
+.bk-banner.ok{border-left-color:var(--green);background:#f3fbf6}.bk-banner.warn{border-left-color:var(--orange);background:#fff9f0}
+.bk-banner.err{border-left-color:var(--red);background:#fff5f5}.bk-banner.off,.bk-banner.unknown{border-left-color:#9aa8bd;background:#f6f8fb}
+.bk-banner .t{font-size:16px;font-weight:800;color:var(--navy)}.bk-banner .d{font-size:12.5px;color:var(--sub);margin-top:3px}
+.bk-banner .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.bk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px}
+.bk-fact{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.bk-fact .k{font-size:11.5px;color:var(--sub);font-weight:700}.bk-fact .v{font-size:15px;font-weight:800;color:var(--navy);margin-top:3px}.bk-fact .s{font-size:11.5px;color:var(--sub);margin-top:2px}
+.bk-ticks{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.bk-tick{font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px;background:#eef2f7;color:#68758a}
+.bk-tick.done{background:#e6f5ec;color:var(--green)}.bk-tick.interrupted,.bk-tick.missed{background:#fbe7e7;color:var(--red)}.bk-tick.running{background:#e8f1fd;color:var(--blue)}
+.bk-table{width:100%;border-collapse:collapse;font-size:12.5px}.bk-table th,.bk-table td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}.bk-table th{color:var(--sub);font-size:11.5px}
+.bk-table .bad{color:var(--red);font-weight:700}.bk-table .dim{color:#9aa8bd}
+.bk-kv td:first-child{width:130px;color:var(--sub);font-weight:700;vertical-align:top;white-space:nowrap}.bk-kv code{font-size:11.5px;background:#f1f4f9;padding:1px 5px;border-radius:5px;word-break:break-all}
