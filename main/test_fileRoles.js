@@ -14,7 +14,7 @@ for (const [name, role] of REAL) assert.strictEqual(guessFileRole(name), role, n
 console.log('OK 실제 파일', REAL.length, '개 전부 올바른 역할로 인식');
 
 const GUESS = [
-  ['OT 인수인계.xlsx', 'handover'], ['그랜드라운딩_RM9_2026-09-08.xlsx', 'grandSource'],
+  ['OT 인수인계.xlsx', 'handover'], ['그랜드라운딩_RM9_2026-09-08.xlsx', null],
   ['일일통계.xlsx', 'dailyStats'], ['10F 물리치료시간표.xlsx', 'pt10'], ['3F 물리치료시간표.xlsx', 'pt3'],
   ['액팅오류.xlsx', 'acting'], ['담당자별 기록통계.xlsx', 'acting'],
 ];
@@ -52,7 +52,7 @@ assert.strictEqual(guessFileRole('10f 환자전체시간표(원본)'), 'card10')
 console.log('OK 대소문자·공백·확장자 변형에도 동작');
 
 const roleKeys = new Set(FILE_ROLES.map(r => r.key));
-for (const [, role] of [...REAL, ...GUESS]) assert(roleKeys.has(role), role + '가 FILE_ROLES에 없음');
+for (const [, role] of [...REAL, ...GUESS]) assert(role === null || roleKeys.has(role), role + '가 FILE_ROLES에 없음'); // null = 어느 화면도 입력으로 안 쓰는 파일(앱 내보내기 결과)
 assert(FILE_ROLES.every(r => typeof r.required === 'boolean'), '모든 역할에 required 플래그가 있어야 함');
 console.log('OK FILE_ROLES 목록/required 플래그 정상');
 

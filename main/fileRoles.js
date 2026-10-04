@@ -14,7 +14,6 @@ const FILE_ROLES = [
   { key: 'table10', label: '10F 테이블현황', required: true },
   { key: 'handover', label: 'OT 인수인계', required: false },
   { key: 'dailyStats', label: '일일통계(팀별·당월)', required: false, multi: true },
-  { key: 'grandSource', label: '그랜드라운딩 원본', required: false },
   { key: 'acting', label: '치료 액팅 기록', required: false },
   { key: 'status', label: '작업치료현황', required: true },
   { key: 'dailySchedule', label: '작업치료실 시간표(평일)', required: false },
@@ -38,7 +37,7 @@ function guessFileRole(name) {
   // "재원현황"은 아래 /현황/ 규칙(작업치료현황)에 걸려 오인되므로 그보다 먼저 판단한다.
   if (/재원\s*현황/.test(n)) return 'pta';
   if (/일일\s*통계/.test(n)) return 'dailyStats';
-  if (/그랜드라운딩/.test(n)) return 'grandSource';
+  if (/그랜드라운딩/.test(n)) return null; // 앱이 내보낸 결과 파일 — 어느 화면도 입력으로 쓰지 않는다(데이터 준비에 표시하지 않음)
   if (/액팅|기록통계/.test(n)) return 'acting';
   if (/현황/.test(n)) return 'status';
   // 치료기록 QA의 시간표 칸은 "작업치료실 시간표"(평일)만 받는다 — 통합치료시간표 등 "시간표"만 들어간 다른 파일이

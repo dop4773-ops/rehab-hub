@@ -1,6 +1,6 @@
 # Phase 2 설계안 — 공통 데이터 모델 / Core·Data 계층
 
-작성 2026-10-04 · 상태: **제안(코드 변경 없음)**. 2026-09-19 초안(`PHASE2_DATA_MODEL.md`)에 Phase 3~8에서 확인한 사실을 반영한 갱신본입니다.
+작성 2026-10-04 · 상태: **0–1단계 완료(2026-10-04)**, 2단계 이후는 제안. 0단계=`scripts/golden.js`(저장: `node scripts/golden.js save <이름>` / 비교: `compare <이름>`), 1단계=`renderer/core/xlsx-reader.js`·`normalize.js` + `main/test_core.js`. 1단계 전후 골든 비교: 그랜드라운딩 198명·언어 40명·교차검증 136건 전부 일치. 2026-09-19 초안(`PHASE2_DATA_MODEL.md`)에 Phase 3~8에서 확인한 사실을 반영한 갱신본입니다.
 
 ## 1. 왜 하는가 — 지금 상태 (실측)
 | 항목 | 현재 |

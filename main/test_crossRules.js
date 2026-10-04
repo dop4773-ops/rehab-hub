@@ -10,14 +10,11 @@ const html = fs.readFileSync(path.join(__dirname, '../renderer/tools/작업치�
 const grab = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i + a.length); assert(i >= 0 && j > i, `marker 없음: ${a}`); return html.slice(i, j); };
 // 가짜 워크북: book.sheets=[{name}], 셀은 {시트이름: {"A1": 값}} → getSheetCells가 Map으로 돌려준다
 let SHEETS = {};
-const ctx = { console, getSheetCells: async (book, name) => new Map(Object.entries(SHEETS[name] || {})) };
+// 공통 모듈(core)은 그대로 가져오고, 시트 읽기만 가짜로 바꾼다
+const ctx = { console, ...require('../renderer/core/xlsx-reader.js'), ...require('../renderer/core/normalize.js'), getSheetCells: async (book, name) => new Map(Object.entries(SHEETS[name] || {})) };
 vm.createContext(ctx);
 vm.runInContext([
-  grab('function colToNum', '\n') + '\n', grab('function numToCol', '\n') + '\n', grab('function splitRef', '\n') + '\n',
-  grab('function normalizeText', '\n') + '\n', grab('function getCell', '\n') + '\n', grab('function normKey', '\n') + '\n',
-  grab('function roomDigits', 'async function parseEvalMainOccurrences'),
   grab('async function parsePtaSheet', 'async function runAllVerifications'),
-  grab('function normDoctor', '\n}\n') + '\n}\n',
   grab('async function parseStatusSheet', 'function findScheduleSheet'),
   grab('function fileAgeLabel', 'function renderFreshness'),
   grab('function guessKeyFromFilename', '// 화면 어디에 파일을 끌어다'),

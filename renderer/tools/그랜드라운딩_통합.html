@@ -384,86 +384,11 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
     </div>
   </section>
 </main>
+<script src="../core/xlsx-reader.js"></script>
+<script src="../core/normalize.js"></script>
 <script>
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM } = RehabCore; // renderer/core 공통 모듈
 'use strict';
-/* ===== core/xlsx_core.js 내장 (수정하지 말고 core에서 고친 뒤 node core/build_embed.js 로 다시 만드세요) ===== */
-// xlsx_core.js — RM 회진 v3.2.30 / 작업치료 교차검증 도구의 공통 XLSX 읽기(read-only) 파서.
-// 두 도구의 코드를 그대로 합친 것(decodeXml=교차검증판(null 안전), ZipArchive=RM판). 로직 변경 없음.
-// 브라우저: <script src="core/xlsx_core.js"> 로 전역 함수 사용 / Node: require() (테스트용)
-const UTF8 = new TextDecoder('utf-8');
-function decodeXml(s){
-  s = s||'';
-  return s.replace(/&#(x?[0-9A-Fa-f]+);|&(?:lt|gt|amp|quot|apos);/g, m => {
-    if (m.startsWith('&#x')) return String.fromCodePoint(parseInt(m.slice(3,-1),16));
-    if (m.startsWith('&#')) return String.fromCodePoint(parseInt(m.slice(2,-1),10));
-    return {'&lt;':'<','&gt;':'>','&amp;':'&','&quot;':'"','&apos;':"'"}[m] || m;
-  });
-}
-function getAttr(attrs, name) {
-  const re = new RegExp('(?:^|\\s)'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'="([^"]*)"');
-  const m = attrs.match(re); return m ? decodeXml(m[1]) : '';
-}
-function colToNum(col) { let n=0; for(const ch of col) n=n*26+(ch.charCodeAt(0)-64); return n; }
-function numToCol(n) { let s=''; while(n){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26);} return s; }
-function splitRef(ref){ const m=/^([A-Z]+)(\d+)$/.exec(ref); return m?{col:colToNum(m[1]),row:+m[2]}:null; }
-class ZipArchive {
-  constructor(arrayBuffer){ this.u8=new Uint8Array(arrayBuffer); this.dv=new DataView(arrayBuffer); this.entries=new Map(); this._parse(); }
-  _u16(o){return this.dv.getUint16(o,true)} _u32(o){return this.dv.getUint32(o,true)}
-  _parse(){
-    let eocd=-1; const min=Math.max(0,this.u8.length-22-65535);
-    for(let i=this.u8.length-22;i>=min;i--){ if(this._u32(i)===0x06054b50){ eocd=i; break; } }
-    if(eocd<0) throw new Error('ZIP 끝정보를 찾지 못했습니다. 올바른 XLSX 파일인지 확인하세요.');
-    const total=this._u16(eocd+10), cdOffset=this._u32(eocd+16); let p=cdOffset;
-    for(let i=0;i<total;i++){
-      if(this._u32(p)!==0x02014b50) throw new Error('XLSX 압축 구조가 손상되었습니다.');
-      const flags=this._u16(p+8), method=this._u16(p+10), compSize=this._u32(p+20), uncompSize=this._u32(p+24);
-      const nameLen=this._u16(p+28), extraLen=this._u16(p+30), commentLen=this._u16(p+32), localOffset=this._u32(p+42);
-      const name=UTF8.decode(this.u8.slice(p+46,p+46+nameLen)); this.entries.set(name,{name,flags,method,compSize,uncompSize,localOffset});
-      p+=46+nameLen+extraLen+commentLen;
-    }
-  }
-  has(name){return this.entries.has(name)}
-  async bytes(name){
-    const e=this.entries.get(name); if(!e) throw new Error(`XLSX 내부 파일이 없습니다: ${name}`);
-    const p=e.localOffset; if(this._u32(p)!==0x04034b50) throw new Error('XLSX 로컬 압축 헤더가 손상되었습니다.');
-    const nameLen=this._u16(p+26), extraLen=this._u16(p+28), start=p+30+nameLen+extraLen; const data=this.u8.slice(start,start+e.compSize);
-    if(e.method===0) return data;
-    if(e.method===8){
-      if(typeof DecompressionStream==='undefined') throw new Error('현재 브라우저가 XLSX 압축 해제를 지원하지 않습니다. 최신 Edge 또는 Chrome을 사용해 주세요.');
-      const ds=new DecompressionStream('deflate-raw'); const ab=await new Response(new Blob([data]).stream().pipeThrough(ds)).arrayBuffer(); return new Uint8Array(ab);
-    }
-    throw new Error(`지원하지 않는 XLSX 압축 방식입니다 (${e.method}).`);
-  }
-  async text(name){ return UTF8.decode(await this.bytes(name)); }
-}
-function parseSharedStrings(xml){
-  const out=[]; const siRe=/<si\b[^>]*>([\s\S]*?)<\/si>/g; let m;
-  while((m=siRe.exec(xml))){ let s=''; const tRe=/<t\b[^>]*>([\s\S]*?)<\/t>/g; let tm; while((tm=tRe.exec(m[1]))) s+=decodeXml(tm[1]); out.push(s); }
-  return out;
-}
-function parseWorksheet(xml, shared){
-  const cells=new Map(); xml=xml.replace(/<c\b[^>]*\/>/g,''); const re=/<c\b([^>]*)>([\s\S]*?)<\/c>/g; let m;
-  while((m=re.exec(xml))){
-    const attrs=m[1], body=m[2], ref=getAttr(attrs,'r'); if(!ref) continue; const type=getAttr(attrs,'t'); let value='';
-    if(type==='inlineStr'){ const tr=/<t\b[^>]*>([\s\S]*?)<\/t>/g; let tm; while((tm=tr.exec(body))) value+=decodeXml(tm[1]); }
-    else { const vm=/<v\b[^>]*>([\s\S]*?)<\/v>/.exec(body); if(!vm) continue; const raw=decodeXml(vm[1]); if(type==='s'){ const idx=parseInt(raw,10); value=Number.isFinite(idx)?(shared[idx]??''):raw; } else if(type==='b') value=raw==='1'?'TRUE':'FALSE'; else value=raw; }
-    if(value!=='') cells.set(ref,value);
-  }
-  return cells;
-}
-function normalizePartTarget(t){ t=decodeXml(t||'').replace(/^\//,''); if(t.startsWith('xl/')) return t; return 'xl/'+t.replace(/^\.\//,''); }
-async function readWorkbookFile(file){
-  const arrayBuffer=await file.arrayBuffer(), zip=new ZipArchive(arrayBuffer); const wbXml=await zip.text('xl/workbook.xml'), relXml=await zip.text('xl/_rels/workbook.xml.rels');
-  const relMap=new Map(); const rr=/<Relationship\b([^>]*)\/?\s*>/g; let m;
-  while((m=rr.exec(relXml))){ const id=getAttr(m[1],'Id'), target=getAttr(m[1],'Target'); if(id&&target) relMap.set(id,normalizePartTarget(target)); }
-  const sheets=[]; const sr=/<sheet\b([^>]*)\/?\s*>/g;
-  while((m=sr.exec(wbXml))){ const name=getAttr(m[1],'name'), rid=getAttr(m[1],'r:id'); if(name&&rid&&relMap.has(rid)) sheets.push({name,path:relMap.get(rid)}); }
-  let shared=[]; if(zip.has('xl/sharedStrings.xml')) shared=parseSharedStrings(await zip.text('xl/sharedStrings.xml'));
-  return {fileName:file.name,zip,shared,sheets,sheetCache:new Map()};
-}
-async function getSheetCells(book,sheetName){ if(book.sheetCache.has(sheetName)) return book.sheetCache.get(sheetName); const sh=book.sheets.find(s=>s.name===sheetName); if(!sh) return null; const cells=parseWorksheet(await book.zip.text(sh.path),book.shared); book.sheetCache.set(sheetName,cells); return cells; }
-
-/* ===== core 내장 끝 ===== */
 const ENCODER = new TextEncoder();
 const TIME_ORDER = ['08:30','09:05','09:40','10:15','10:50','11:25','13:00','13:35','14:10','14:45','15:20','15:55','16:30'];
 const LUNCH_KEY = '__LUNCH__';
@@ -511,17 +436,14 @@ let grandBriefStore=loadGrandStore(GRAND_BRIEF_STORE);
 function xmlEscape(s='') {
   return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 }
-function normalizeText(v){ return (v==null?'':String(v)).replace(/\r/g,'').trim(); }
 function normalizeDayLabel(v){ const s=normalizeText(v).replace(/\s+/g,''); if(s==='토요일/공휴일'||s==='토요일공휴일') return '토요일/공휴일'; for(const d of DAY_ORDER.slice(0,5)) if(s===d) return d; return ''; }
 function normalizeRM(v){ const s=normalizeText(v).toUpperCase().replace(/\s+/g,''); const m=/^(?:RM)?(\d+)$/.exec(s); return m?`RM${parseInt(m[1],10)}`:(s?normalizeText(v):'미지정'); }
 function normalizePrimary(v,floor){ const s=normalizeText(v); if(/^3(?:\.0+)?$/.test(s)) return '3층 치료실'; if(/^10(?:\.0+)?$/.test(s)) return '10층 치료실'; return s || `${floor}층 치료실`; }
 function excelSerialToDate(v){ const n=Number(v); if(!Number.isFinite(n) || n<20000 || n>100000) return normalizeText(v); const ms=Date.UTC(1899,11,30)+Math.floor(n)*86400000; const d=new Date(ms); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`; }
-function excelTimeToHHMM(v){ const n=Number(v); if(!Number.isFinite(n)) return ''; let mins=Math.round((n-Math.floor(n))*1440); mins=((mins%1440)+1440)%1440; return `${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`; }
 function rmSort(a,b){ const na=parseInt(String(a).replace(/\D/g,''),10), nb=parseInt(String(b).replace(/\D/g,''),10); return (Number.isFinite(na)?na:999)-(Number.isFinite(nb)?nb:999)||String(a).localeCompare(String(b),'ko'); }
 function roomSortValue(room){ const n=parseInt(String(room).match(/\d+/)?.[0]||'',10); return Number.isFinite(n)?n:99999; }
 
 function detectFloor(book){ const names=book.sheets.map(s=>s.name); if(names.includes('7병동')) return 3; if(names.includes('매트위치')) return 10; if(/(?:^|[^0-9])3F|3층/i.test(book.fileName)) return 3; if(/10F|10층/i.test(book.fileName)) return 10; return 0; }
-function getCell(cells,row,col){ return cells.get(`${numToCol(col)}${row}`) ?? ''; }
 function isTreatmentText(text){ const s=normalizeText(text); if(!s||s.length>100) return false; if(/외래\s*치료\s*안내|결석\s*3회|지각\s*2회/.test(s)) return false; if(/^\d{2,4}[.\-/]\d{1,2}/.test(s) && /~/.test(s)) return false; return /(치료|기구|연하|인지|언어|심리|도수|운동|작업|전기|ADL|통증|CPM|로봇|워크|모닝|알봇)/i.test(s); }
 function treatmentCore(t){ const s=normalizeText(t); if(/연하/.test(s)) return 'swallow'; if(/인지/.test(s)) return 'cog'; if(/언어|심리/.test(s)) return 'speech'; if(/도수/.test(s)) return 'manual'; if(/작업/.test(s)) return 'ot'; if(/통증/.test(s)) return 'pain'; if(/운동/.test(s)) return 'exercise'; if(/전기/.test(s)) return 'electric'; if(/기구|CPM|워크|모닝|알봇|로봇/i.test(s)) return 'device'; return 'other'; }
 function inlineLocation(treatment){ const t=normalizeText(treatment); let m; if((m=/^(?:운동치료|작업치료)\(([^)]+)\)/.exec(t))) return m[1].trim(); if((m=/^기구\(([^)]+)\)(?:-([\w가-힣]+))?/.exec(t))) return m[2]?`${m[1]}-${m[2]}`:m[1]; return ''; }
