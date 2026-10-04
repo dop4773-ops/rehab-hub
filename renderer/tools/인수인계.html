@@ -1,0 +1,3005 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OT인수인계서(통합)</title>
+<!-- 앱 안에 들어 있는 라이브러리(인터넷 없이도 동작) -->
+<link rel="stylesheet" href="../vendor/fontawesome/css/all.min.css">
+<script src="../vendor/xlsx.full.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root{
+  --primary:#4f6ef7;
+  --primary-deep:#3b55d9;
+  --primary-light:#eef1fe;
+  --blue:#3b82f6; --blue-light:#eff6ff;
+  --green:#16a34a; --green-light:#f0fdf4;
+  --amber:#d97706; --amber-light:#fffbeb;
+  --purple:#9333ea; --purple-light:#faf5ff;
+  --warning:#ef4444; --warning-light:#fef2f2; --warning-dark:#b91c1c;
+  --neutral-900:#0f172a; --neutral-700:#334155; --neutral-600:#475569;
+  --neutral-400:#94a3b8; --neutral-300:#cbd5e1; --neutral-200:#e2e8f0;
+  --neutral-100:#f1f5f9; --neutral-50:#f8fafc;
+  --surface-1:#ffffff; --surface-2:#eef1f6;
+  --border-color:#e6e9f0;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 2px 8px rgba(15,23,42,.04);
+  --shadow-md:0 4px 12px rgba(15,23,42,.08),0 2px 4px rgba(15,23,42,.04);
+  --shadow-lg:0 12px 32px rgba(15,23,42,.16);
+  --radius:16px; --radius-sm:10px;
+  --print-scale:1;
+}
+
+body{
+  font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+  background:var(--surface-2); color:var(--neutral-900); line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:56px; /* 하단 플로팅 바 공간 확보 */
+}
+
+/* ===== 상단 헤더 ===== */
+.app-header{
+  background:linear-gradient(120deg,#3b55d9 0%,#4f6ef7 55%,#5b7bff 100%);
+  color:#fff; padding:.55rem 1.1rem;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
+}
+.app-header .title-wrap{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;}
+.app-header h1{
+  font-size:.92rem;font-weight:800;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:.45rem;
+}
+.app-header h1 i{
+  font-size:.78rem;background:rgba(255,255,255,.18);width:25px;height:25px;
+  border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+}
+.live-badge{
+  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);
+  font-size:.6rem;font-weight:700;padding:.16rem .5rem;border-radius:99px;
+  display:inline-flex;align-items:center;gap:.28rem;
+}
+.live-badge .dot{width:5px;height:5px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.3);}
+.updated-txt{font-size:.65rem;opacity:.85;}
+
+.header-actions{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;}
+.toggle-wrap{display:flex;align-items:center;gap:.35rem;font-size:.66rem;opacity:.9;font-weight:600;}
+.switch{position:relative;width:30px;height:17px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{
+  position:absolute;inset:0;background:rgba(255,255,255,.3);border-radius:99px;cursor:pointer;transition:.2s;
+}
+.switch .slider::before{
+  content:"";position:absolute;width:12px;height:12px;left:2.5px;top:2.5px;
+  background:#fff;border-radius:50%;transition:.2s;
+}
+.switch input:checked + .slider{background:#4ade80;}
+.switch input:checked + .slider::before{transform:translateX(13px);}
+#reloadBtn{
+  background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);color:#fff;
+  padding:.36rem .7rem;border-radius:7px;cursor:pointer;font-size:.66rem;font-weight:700;
+  display:flex;align-items:center;gap:.3rem;transition:background .15s ease;
+}
+#reloadBtn:hover{background:rgba(255,255,255,.28);}
+#reloadBtn i.spin{animation:spin .6s linear;}
+@keyframes spin{from{transform:rotate(0);}to{transform:rotate(360deg);}}
+
+/* ===== 통계 카드 ===== */
+.stats-row{
+  display:flex;gap:.55rem;padding:.55rem 1.1rem 0;flex-wrap:wrap;
+}
+.stat-card{
+  flex:1;min-width:140px;background:var(--surface-1);border:1px solid var(--border-color);
+  border-radius:11px;padding:.5rem .65rem;display:flex;align-items:center;gap:.5rem;
+  box-shadow:var(--shadow);
+}
+.stat-icon{
+  width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;color:#fff;flex-shrink:0;
+}
+.stat-icon.blue{background:linear-gradient(135deg,#60a5fa,#3b82f6);}
+.stat-icon.red{background:linear-gradient(135deg,#f87171,#ef4444);}
+.stat-icon.amber{background:linear-gradient(135deg,#fbbf24,#d97706);}
+.stat-icon.purple{background:linear-gradient(135deg,#a78bfa,#7c3aed);}
+.stat-text .stat-label{font-size:.6rem;color:var(--neutral-600);font-weight:700;}
+.stat-text .stat-num{font-size:1.05rem;font-weight:800;letter-spacing:-.02em;line-height:1.2;}
+.stat-text .stat-num span{font-size:.68rem;font-weight:600;color:var(--neutral-400);margin-left:.12rem;}
+.stat-text .stat-sub{font-size:.6rem;color:var(--neutral-400);}
+
+/* ===== 메인 레이아웃 ===== */
+.main-wrap{
+  display:flex;gap:.75rem;padding:.75rem 1.1rem 1rem;align-items:flex-start;
+}
+.sidebar{
+  width:270px;flex-shrink:0;background:var(--surface-1);border:1px solid var(--border-color);
+  border-radius:13px;padding:.75rem;box-shadow:var(--shadow);
+}
+.sidebar-btn-row{display:flex;gap:.4rem;margin-bottom:.6rem;}
+#newPatientBtn{
+  flex:1;background:var(--primary);color:#fff;border:none;padding:.55rem .7rem;
+  border-radius:var(--radius-sm);font-weight:700;font-size:.76rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:.4rem;
+  transition:background .15s ease;
+}
+#newPatientBtn:hover{background:var(--primary-deep);}
+#trashBtn{
+  display:none;width:38px;flex-shrink:0;background:var(--surface-1);color:var(--neutral-500);
+  border:1.5px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;
+  align-items:center;justify-content:center;font-size:.78rem;
+}
+#trashBtn:hover{background:var(--neutral-50);color:var(--warning);}
+body.admin-mode #trashBtn{display:flex;}
+#dischargeBtn{
+  display:none;width:100%;background:var(--surface-1);color:#0d9488;border:1.5px solid #99f6e4;
+  padding:.5rem .7rem;border-radius:var(--radius-sm);font-weight:700;font-size:.74rem;cursor:pointer;
+  align-items:center;justify-content:center;gap:.4rem;margin-bottom:.6rem;
+}
+#dischargeBtn:hover{background:#f0fdfa;}
+body.admin-mode #dischargeBtn{display:flex;}
+
+.search-box{position:relative;margin-bottom:.5rem;}
+.search-box input{
+  width:100%;padding:.5rem .65rem .5rem 1.9rem;border:1.5px solid var(--border-color);
+  border-radius:var(--radius-sm);font-size:.76rem;font-family:inherit;
+}
+.search-box i{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:var(--neutral-400);font-size:.72rem;}
+.search-box input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,110,247,.12);}
+
+.select-all-row{display:flex;align-items:stretch;gap:.4rem;margin-bottom:.5rem;}
+.select-all-wrap{
+  display:flex;align-items:center;gap:.45rem;font-size:.72rem;font-weight:700;
+  color:var(--neutral-700);background:var(--neutral-50);border:1px solid var(--border-color);
+  border-radius:8px;padding:.4rem .6rem;cursor:pointer;user-select:none;
+}
+.select-all-wrap input{width:14px;height:14px;cursor:pointer;flex-shrink:0;}
+
+#quickDeleteBtn{
+  display:none;align-items:center;gap:.35rem;background:var(--surface-1);color:var(--warning);
+  border:1.5px solid #fecaca;border-radius:8px;padding:.4rem .6rem;font-size:.72rem;font-weight:700;
+  cursor:pointer;box-shadow:none;flex-shrink:0;
+}
+#quickDeleteBtn:hover{background:var(--warning-light);}
+#quickDeleteBtn:disabled{opacity:.4;cursor:not-allowed;}
+#quickDeleteBtn:disabled:hover{background:var(--surface-1);}
+body.admin-mode #quickDeleteBtn{display:flex;}
+
+.chip-row{display:flex;gap:.32rem;flex-wrap:wrap;margin-bottom:.45rem;}
+.chip{
+  border:1.5px solid var(--border-color);background:var(--surface-1);color:var(--neutral-600);
+  font-size:.65rem;font-weight:700;padding:.24rem .55rem;border-radius:99px;cursor:pointer;
+  display:flex;align-items:center;gap:.25rem;transition:all .12s ease;user-select:none;
+}
+.chip:hover{border-color:var(--primary);color:var(--primary-deep);}
+.chip.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.chip.active.warn-chip{background:var(--warning);border-color:var(--warning);}
+
+.sort-select{
+  width:100%;padding:.4rem .6rem;border:1.5px solid var(--border-color);border-radius:var(--radius-sm);
+  font-size:.7rem;font-family:inherit;margin-bottom:.4rem;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right .55rem center;appearance:none;
+}
+.list-count{font-size:.65rem;color:var(--neutral-400);font-weight:700;margin-bottom:.3rem;padding:0 .1rem;}
+
+.patient-list{max-height:64vh;overflow-y:auto;display:flex;flex-direction:column;gap:.1rem;}
+.patient-list::-webkit-scrollbar{width:4px;}
+.patient-list::-webkit-scrollbar-thumb{background:var(--neutral-200);border-radius:6px;}
+
+.p-row{
+  display:flex;align-items:center;gap:.5rem;padding:.45rem .4rem;border-radius:8px;
+  cursor:pointer;border-left:3px solid transparent;transition:background .12s ease;
+}
+.p-row:hover{background:var(--neutral-50);}
+.p-row.active{background:var(--primary-light);border-left-color:var(--primary);}
+.p-row input[type=checkbox]{width:14px;height:14px;flex-shrink:0;cursor:pointer;}
+.p-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--neutral-300);}
+.p-dot.warn{background:var(--warning);}
+.p-dot.recent{background:var(--blue);}
+.p-row-body{flex:1;min-width:0;}
+.p-row-top{display:flex;align-items:center;gap:.35rem;}
+.p-name{font-size:.76rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.p-badge{font-size:.55rem;font-weight:800;padding:.06rem .35rem;border-radius:99px;flex-shrink:0;}
+.p-badge.warn{background:var(--warning-light);color:var(--warning-dark);}
+.p-badge.recent{background:var(--blue-light);color:#1d4ed8;}
+.p-badge.modified{background:#ede9fe;color:#6d28d9;}
+.p-badge.discharge-upcoming{background:var(--neutral-100);color:var(--neutral-600);}
+.p-badge.discharge-today{background:var(--warning);color:#fff;}
+.p-badge.discharge-overdue{background:#fef2f2;color:var(--warning-dark);border:1px solid #fecaca;}
+.p-row-sub{font-size:.63rem;color:var(--neutral-400);margin-top:.03rem;display:flex;gap:.35rem;white-space:nowrap;overflow:hidden;min-width:0;}
+.type-text{font-weight:800;}
+.type-text.type-SOT{color:#0d9488;}
+.type-text.type-RDT{color:#9333ea;}
+.type-text.type-ERDT{color:#2563eb;}
+.type-text.type-CCRT{color:#ca8a04;}
+.p-row-delete{
+  display:none;flex-shrink:0;width:22px;height:22px;border-radius:6px;border:none;
+  background:transparent;color:var(--neutral-300);align-items:center;justify-content:center;
+  font-size:.68rem;cursor:pointer;box-shadow:none;padding:0;
+}
+.p-row-delete:hover{background:var(--warning-light);color:var(--warning);}
+body.admin-mode .p-row-delete{display:flex;}
+.tray-delete-bulk{
+  display:none;background:var(--surface-1);color:var(--warning);border:1.5px solid #fecaca;
+  padding:.4rem .7rem;border-radius:8px;font-size:.68rem;font-weight:700;cursor:pointer;
+  align-items:center;gap:.35rem;white-space:nowrap;
+}
+.tray-delete-bulk:hover{background:var(--warning-light);}
+.tray-delete-bulk:disabled{color:var(--neutral-300);border-color:var(--neutral-200);cursor:not-allowed;}
+.tray-delete-bulk:disabled:hover{background:var(--surface-1);}
+body.admin-mode .tray-delete-bulk{display:flex;}
+
+/* ===== 상세 패널 ===== */
+.detail-panel{
+  flex:1;min-width:0;background:var(--surface-1);border:1px solid var(--border-color);
+  border-radius:13px;padding:.9rem 1.1rem;box-shadow:var(--shadow);min-height:60vh;
+}
+.detail-empty{
+  height:56vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:var(--neutral-400);gap:.5rem;
+}
+.detail-empty i{font-size:1.8rem;opacity:.4;}
+.detail-empty div{font-size:.8rem;}
+
+.detail-top{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;
+  padding-bottom:.7rem;border-bottom:1px solid var(--border-color);margin-bottom:.75rem;
+}
+.detail-top-left{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
+.detail-name{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;}
+.badge{font-size:.66rem;font-weight:800;padding:.2rem .55rem;border-radius:99px;}
+.badge.type{background:var(--primary-light);color:var(--primary-deep);}
+.badge.warn{background:var(--warning);color:#fff;display:inline-flex;align-items:center;gap:.25rem;}
+.badge.modified{background:#ede9fe;color:#6d28d9;display:inline-flex;align-items:center;gap:.25rem;}
+#editSelectedBtn{
+  background:var(--primary);color:#fff;border:none;padding:.5rem .95rem;border-radius:8px;
+  font-weight:700;font-size:.78rem;cursor:pointer;display:flex;align-items:center;gap:.35rem;
+  transition:background .15s ease;
+}
+#editSelectedBtn:hover{background:var(--primary-deep);}
+
+.detail-meta{display:flex;gap:1.1rem;flex-wrap:wrap;font-size:.8rem;color:var(--neutral-600);margin-bottom:.9rem;}
+.detail-meta b{color:var(--neutral-900);font-weight:700;}
+
+.info-grid{display:flex;flex-direction:column;gap:.6rem;margin-bottom:.55rem;}
+.info-box{
+  position:relative;border-radius:var(--radius-sm);padding:.75rem 2.6rem .75rem .9rem;
+  overflow:hidden;
+}
+.info-box.full{grid-column:1 / -1;}
+.info-box .box-label{
+  font-size:.72rem;font-weight:800;margin-bottom:.3rem;display:flex;align-items:center;gap:.35rem;
+}
+.info-box .box-body{font-size:.88rem;line-height:1.55;white-space:pre-wrap;word-break:keep-all;}
+.info-box .box-icon{
+  position:absolute;right:.65rem;top:50%;transform:translateY(-50%);font-size:1.7rem;opacity:.14;
+}
+.info-box.warn{background:var(--warning-light);border:1px solid #fecaca;}
+.info-box.warn .box-label{color:var(--warning-dark);}
+.info-box.warn .box-body{color:var(--warning-dark);font-weight:600;}
+.info-box.warn .box-icon{color:var(--warning);}
+.info-box.tx{background:var(--green-light);border:1px solid #bbf7d0;}
+.info-box.tx .box-label{color:#15803d;}
+.info-box.tx .box-body{color:#166534;}
+.info-box.tx .box-icon{color:var(--green);}
+.info-box.dx{background:var(--blue-light);border:1px solid #bfdbfe;}
+.info-box.dx .box-label{color:#1d4ed8;}
+.info-box.dx .box-body{color:#1e3a8a;}
+.info-box.dx .box-icon{color:var(--blue);}
+.info-box.cc{background:var(--amber-light);border:1px solid #fde68a;}
+.info-box.cc .box-label{color:#b45309;}
+.info-box.cc .box-body{color:#92400e;}
+.info-box.cc .box-icon{color:var(--amber);}
+.info-box.muted{background:var(--neutral-50);border:1px dashed var(--neutral-200);padding:.6rem .7rem;}
+.info-box.muted .box-body{color:var(--neutral-400);font-style:italic;}
+.info-box.goal{background:var(--purple-light);border:1px solid #e9d5ff;}
+.info-box.goal .box-label{color:#7e22ce;}
+.info-box.goal .box-body{color:#6b21a8;}
+.info-box.goal .box-icon{color:var(--purple);}
+.info-box.grand{background:var(--neutral-100);border:1px solid var(--neutral-200);}
+.info-box.grand .box-label{color:var(--neutral-700);}
+.info-box.grand .box-body{color:var(--neutral-700);}
+.info-box.grand .box-icon{color:var(--neutral-400);}
+
+/* ===== 하단 플로팅 바 (중앙 밀집형) ===== */
+.tray-bar{
+  position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+  background:var(--surface-1);border:1px solid var(--border-color);border-radius:14px;
+  box-shadow:var(--shadow-lg);
+  padding:.5rem .6rem .5rem .9rem;display:flex;align-items:center;
+  gap:.55rem;flex-wrap:nowrap;z-index:500;max-width:94vw;
+}
+.tray-left{display:flex;align-items:center;gap:.55rem;flex-wrap:nowrap;}
+.tray-count-btn{
+  background:none;border:none;font-size:.76rem;font-weight:700;color:var(--neutral-900);
+  cursor:pointer;display:flex;align-items:center;gap:.32rem;box-shadow:none;padding:.2rem;white-space:nowrap;
+}
+.tray-count-btn b{color:var(--primary-deep);}
+.tray-count-btn i{color:var(--neutral-400);font-size:.62rem;transition:transform .15s ease;}
+.tray-count-btn.open i{transform:rotate(180deg);}
+.tray-hint{display:none;}
+.tray-divider{width:1px;height:20px;background:var(--border-color);flex-shrink:0;}
+.tray-clear{
+  background:var(--surface-1);border:1.5px solid var(--border-color);color:var(--neutral-700);
+  padding:.4rem .65rem;border-radius:8px;font-size:.68rem;font-weight:700;cursor:pointer;box-shadow:none;white-space:nowrap;
+}
+.tray-clear:hover{background:var(--neutral-50);}
+.tray-print{
+  background:var(--primary);color:#fff;border:none;padding:.5rem .95rem;border-radius:8px;
+  font-weight:800;font-size:.74rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;
+  box-shadow:0 3px 10px rgba(79,110,247,.3);white-space:nowrap;
+}
+.tray-print:hover{background:var(--primary-deep);}
+.tray-print:disabled{background:var(--neutral-300);box-shadow:none;cursor:not-allowed;}
+
+.tray-drawer{
+  position:fixed;bottom:64px;left:50%;transform:translateX(-50%);width:460px;max-width:94vw;
+  background:var(--surface-1);border:1px solid var(--border-color);border-radius:16px;
+  box-shadow:var(--shadow-lg);padding:1rem 1.1rem 1.1rem;max-height:min(560px,72vh);z-index:499;
+  display:none;flex-direction:column;
+}
+.tray-drawer.open{display:flex;}
+.tray-drawer-empty{padding:1rem .6rem;text-align:center;color:var(--neutral-400);font-size:.8rem;}
+.tray-drawer-header{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;
+  padding-bottom:.8rem;margin-bottom:.7rem;border-bottom:1px solid var(--border-color);flex-shrink:0;
+}
+.tray-drawer-title{font-size:.9rem;font-weight:800;color:var(--neutral-900);}
+.tray-drawer-title b{color:var(--primary-deep);}
+.tray-drawer-sub{font-size:.72rem;color:var(--neutral-500);margin-top:.2rem;}
+.tray-drawer-header-actions{display:flex;gap:.4rem;flex-shrink:0;}
+.tray-drawer-action-btn{
+  background:var(--surface-1);border:1.5px solid var(--border-color);color:var(--neutral-700);
+  padding:.35rem .6rem;border-radius:8px;font-size:.68rem;font-weight:700;cursor:pointer;
+  box-shadow:none;display:flex;align-items:center;gap:.3rem;white-space:nowrap;
+}
+.tray-drawer-action-btn:hover{background:var(--neutral-50);}
+.tray-drawer-action-btn:disabled{opacity:.4;cursor:not-allowed;}
+.tray-drawer-action-btn:disabled:hover{background:var(--surface-1);}
+.tray-sort-list{
+  display:flex;flex-direction:column;gap:.45rem;overflow-y:auto;flex:1;min-height:0;padding-right:.15rem;
+}
+.tray-sort-item{
+  display:flex;align-items:center;gap:.6rem;background:var(--neutral-50);
+  border:1.5px solid transparent;border-radius:10px;padding:.65rem .7rem;
+  font-size:.82rem;font-weight:600;cursor:grab;user-select:none;flex-shrink:0;
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
+}
+.tray-sort-item:hover{background:var(--primary-light);}
+.tray-sort-item:active{cursor:grabbing;}
+.tray-sort-item.dragging{
+  opacity:.4;background:var(--neutral-50);border-color:var(--border-color);border-style:dashed;cursor:grabbing;
+}
+.tray-sort-num{
+  width:24px;height:24px;flex-shrink:0;border-radius:7px;background:var(--primary-light);
+  color:var(--primary-deep);font-size:.74rem;font-weight:800;display:flex;align-items:center;justify-content:center;
+}
+.tray-sort-grip{flex-shrink:0;color:var(--neutral-300);font-size:.75rem;}
+.tray-sort-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tray-sort-sub{color:#999;font-weight:500;}
+.tray-sort-menu-btn{
+  width:24px;height:24px;border-radius:7px;border:none;background:transparent;
+  color:var(--neutral-400);font-size:.75rem;flex-shrink:0;box-shadow:none;padding:0;
+}
+.tray-sort-menu-btn:hover{background:var(--neutral-200);color:var(--neutral-700);}
+.tray-drop-indicator{
+  height:5px;flex-shrink:0;margin:-.2rem 0;border-radius:4px;
+  background:var(--primary);box-shadow:0 0 0 3px var(--primary-light);
+}
+.tray-drawer-hint{
+  font-size:.7rem;color:var(--neutral-400);margin-top:.7rem;padding-top:.6rem;
+  border-top:1px solid var(--border-color);display:flex;align-items:center;gap:.35rem;flex-shrink:0;line-height:1.5;
+}
+
+/* ===== 우클릭 빠른 이동 메뉴 ===== */
+.tray-context-menu{
+  position:fixed;z-index:1200;background:var(--surface-1);border:1px solid var(--border-color);
+  border-radius:12px;box-shadow:var(--shadow-lg);padding:.4rem;min-width:190px;
+  display:none;flex-direction:column;gap:.05rem;
+}
+.tray-context-menu.open{display:flex;}
+.tray-context-menu button{
+  display:flex;align-items:center;gap:.55rem;background:none;border:none;box-shadow:none;
+  padding:.55rem .7rem;border-radius:8px;font-size:.78rem;font-weight:600;color:var(--neutral-700);
+  text-align:left;width:100%;cursor:pointer;
+}
+.tray-context-menu button i{width:14px;text-align:center;color:var(--neutral-400);}
+.tray-context-menu button:hover{background:var(--primary-light);color:var(--primary-deep);}
+.tray-context-menu button:hover i{color:var(--primary-deep);}
+.tray-context-menu button:disabled{opacity:.35;cursor:not-allowed;background:none !important;color:var(--neutral-700) !important;}
+.tray-context-menu button:disabled i{color:var(--neutral-400) !important;}
+.tray-context-menu button.danger:hover{background:var(--warning-light);color:var(--warning);}
+.tray-context-menu button.danger:hover i{color:var(--warning);}
+.tray-context-menu-divider{height:1px;background:var(--border-color);margin:.3rem .2rem;}
+
+/* ===== 수정 모달 ===== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1000;
+  display:flex;align-items:center;justify-content:center;padding:1.5rem;
+  visibility:hidden;opacity:0;pointer-events:none;transition:opacity .18s ease, visibility .18s ease;
+}
+.modal-overlay.open{visibility:visible;opacity:1;pointer-events:auto;}
+.modal-box{
+  background:var(--surface-1);border-radius:18px;padding:1.75rem;max-width:560px;width:100%;
+  max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);
+  transform:scale(.96) translateY(6px);opacity:0;transition:transform .18s ease, opacity .18s ease;
+}
+.modal-overlay.open .modal-box{transform:scale(1) translateY(0);opacity:1;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.3rem;padding-bottom:.9rem;border-bottom:1px solid var(--border-color);}
+.modal-head h2{font-size:1.02rem;font-weight:700;display:flex;align-items:center;gap:.5rem;}
+.modal-head h2 i{color:var(--primary);font-size:.9rem;}
+.modal-close{width:32px;height:32px;padding:0;background:var(--neutral-100);border:none;border-radius:9px;color:var(--neutral-600);font-size:.85rem;box-shadow:none;cursor:pointer;}
+.modal-close:hover{color:var(--warning);background:var(--warning-light);}
+.form-group{margin-bottom:.95rem;}
+.form-group label{display:block;font-weight:650;margin-bottom:.35rem;color:var(--neutral-700);font-size:.82rem;}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;padding:.62rem .8rem;border:1.5px solid var(--border-color);border-radius:var(--radius-sm);
+  font-family:inherit;font-size:.86rem;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+  outline:none;border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(79,110,247,.12);
+}
+.form-group textarea{resize:vertical;min-height:70px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;}
+.form-actions{display:flex;gap:.65rem;margin-top:1.1rem;}
+.form-actions button{
+  flex:1;padding:.65rem 1.1rem;background:var(--primary);color:#fff;border:none;
+  border-radius:var(--radius-sm);font-weight:700;font-size:.85rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:.4rem;
+}
+.form-actions button:hover{background:var(--primary-deep);}
+.form-actions button.danger{background:var(--surface-1);color:var(--warning);border:1.5px solid #fecaca;}
+.form-actions button.danger:hover{background:var(--warning-light);}
+.warn-toggle{display:flex;align-items:center;gap:.5rem;background:var(--neutral-50);border:1.5px solid var(--border-color);border-radius:var(--radius-sm);padding:.6rem .8rem;margin-bottom:.5rem;}
+
+.trash-item{
+  display:flex;align-items:center;gap:.6rem;
+  background:var(--neutral-50);border:1px solid var(--border-color);border-radius:9px;
+  padding:.55rem .75rem;font-size:.78rem;
+}
+.trash-item input[type=checkbox]{width:15px;height:15px;flex-shrink:0;cursor:pointer;}
+.trash-item .trash-info{flex:1;min-width:0;}
+.trash-item .trash-name{font-weight:700;color:var(--neutral-900);}
+.trash-item .trash-meta{font-size:.68rem;color:var(--neutral-400);margin-top:.1rem;}
+.trash-item .restore-btn{
+  background:var(--primary-light);color:var(--primary-deep);border:none;padding:.4rem .65rem;
+  border-radius:7px;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;
+}
+.trash-item .restore-btn:hover{background:#e2e7fb;}
+.trash-empty-msg{text-align:center;color:var(--neutral-400);font-size:.8rem;padding:1.5rem 0;}
+#trashBulkRestoreBtn:disabled{background:var(--neutral-300);box-shadow:none;cursor:not-allowed;}
+
+/* ===== 퇴원 관리 모달 ===== */
+.dc-top-action{margin-bottom:.9rem;}
+.dc-top-action #dcProcessBtn{
+  width:100%;background:var(--warning);box-shadow:0 3px 10px rgba(217,119,6,.25);
+  padding:.65rem;font-size:.85rem;font-weight:800;
+}
+.dc-top-action #dcProcessBtn:disabled{background:var(--neutral-300);box-shadow:none;cursor:not-allowed;}
+.dc-section-title{font-size:.76rem;font-weight:800;color:var(--neutral-700);margin:.9rem 0 .4rem;display:flex;align-items:center;gap:.4rem;}
+.dc-section-title i{color:var(--neutral-400);font-size:.7rem;}
+.dc-patient-row{
+  display:flex;align-items:center;gap:.55rem;background:var(--neutral-50);border:1px solid var(--border-color);
+  border-radius:8px;padding:.5rem .65rem;font-size:.78rem;margin-bottom:.35rem;
+}
+.dc-patient-row input[type=checkbox]{width:15px;height:15px;flex-shrink:0;cursor:pointer;}
+.dc-patient-row .dc-name{font-weight:700;flex:1;min-width:0;}
+.dc-patient-row .dc-meta{font-size:.68rem;color:var(--neutral-400);}
+.dc-empty{text-align:center;color:var(--neutral-400);font-size:.78rem;padding:1rem 0;}
+.dc-textarea{
+  width:100%;min-height:120px;border:1.5px solid var(--border-color);border-radius:var(--radius-sm);
+  padding:.6rem .75rem;font-family:inherit;font-size:.78rem;resize:vertical;
+}
+.dc-hint{font-size:.68rem;color:var(--neutral-400);margin-top:.3rem;line-height:1.5;}
+.dc-match-summary{display:flex;gap:.5rem;margin:.7rem 0;flex-wrap:wrap;}
+.dc-match-pill{flex:1;min-width:90px;text-align:center;border-radius:9px;padding:.5rem;font-size:.7rem;font-weight:700;}
+.dc-match-pill .num{font-size:1.05rem;font-weight:800;display:block;}
+.dc-match-pill.ok{background:var(--green-light);color:#166534;}
+.dc-match-pill.dup{background:var(--amber-light);color:#92400e;}
+.dc-match-pill.miss{background:var(--neutral-100);color:var(--neutral-600);}
+.dc-dup-block{background:var(--amber-light);border:1px solid #fde68a;border-radius:8px;padding:.55rem .7rem;margin-bottom:.4rem;}
+.dc-dup-block .dc-dup-name{font-weight:800;color:#92400e;font-size:.76rem;margin-bottom:.35rem;}
+.dc-dup-option{display:flex;align-items:center;gap:.4rem;font-size:.72rem;padding:.25rem 0;cursor:pointer;}
+.dc-miss-block{background:var(--neutral-50);border:1px dashed var(--neutral-300);border-radius:8px;padding:.5rem .7rem;font-size:.76rem;color:var(--neutral-500);margin-bottom:.3rem;}
+.dc-confirm-box{background:var(--warning-light);border:1px solid #fecaca;border-radius:10px;padding:.9rem;margin-top:.8rem;}
+.dc-confirm-box .dc-confirm-title{font-weight:800;color:var(--warning-dark);font-size:.84rem;margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem;}
+
+.history-wrap{margin-top:.7rem;border-top:1px dashed var(--neutral-200);padding-top:.7rem;}
+.history-toggle{
+  width:100%;background:var(--neutral-50);border:1px solid var(--border-color);color:var(--neutral-600);
+  padding:.5rem .7rem;border-radius:8px;font-size:.74rem;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:.4rem;box-shadow:none;
+}
+.history-toggle:hover{background:var(--neutral-100);}
+.history-toggle .toggle-arrow{margin-left:auto;transition:transform .15s ease;font-size:.65rem;}
+.history-toggle.open .toggle-arrow{transform:rotate(180deg);}
+.history-body{display:none;flex-direction:column;gap:.5rem;margin-top:.5rem;}
+.history-body.open{display:flex;}
+.history-entry{
+  background:var(--neutral-50);border:1px solid var(--border-color);border-radius:9px;
+  padding:.6rem .75rem;font-size:.76rem;
+}
+.history-entry-time{font-size:.68rem;font-weight:700;color:var(--neutral-400);margin-bottom:.4rem;}
+.history-entry-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;gap:.5rem;}
+.history-entry-top .history-entry-time{margin-bottom:0;flex:1;}
+.history-entry-select{display:none;align-items:center;flex-shrink:0;}
+body.admin-mode .history-entry-select{display:flex;}
+.history-del-btn{
+  display:none;width:20px;height:20px;border-radius:6px;border:none;background:transparent;
+  color:var(--neutral-300);align-items:center;justify-content:center;font-size:.62rem;
+  cursor:pointer;box-shadow:none;padding:0;flex-shrink:0;
+}
+.history-del-btn:hover{background:var(--warning-light);color:var(--warning);}
+body.admin-mode .history-del-btn{display:flex;}
+.history-bulk-bar{
+  display:none;align-items:center;justify-content:space-between;gap:.6rem;
+  padding:.5rem .65rem;margin-bottom:.5rem;background:var(--neutral-50);
+  border:1px solid var(--border-color);border-radius:8px;font-size:.72rem;
+}
+body.admin-mode .history-bulk-bar{display:flex;}
+.history-select-all{display:flex;align-items:center;gap:.35rem;font-weight:700;color:var(--neutral-600);cursor:pointer;}
+.history-bulk-delete-btn{
+  display:flex;align-items:center;gap:.35rem;background:var(--warning);color:#fff;
+  border:none;border-radius:7px;padding:.4rem .65rem;font-size:.72rem;font-weight:700;box-shadow:none;cursor:pointer;
+}
+.history-bulk-delete-btn:hover{background:var(--warning-dark);}
+.history-bulk-delete-btn:disabled{opacity:.4;cursor:not-allowed;}
+.history-entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:.25rem .6rem;margin-bottom:.35rem;}
+.history-entry-field{margin-bottom:.25rem;line-height:1.45;word-break:keep-all;}
+.hl{font-size:.65rem;font-weight:700;color:var(--neutral-400);margin-right:.35rem;}
+.diff-hl{
+  background:linear-gradient(to bottom, transparent 58%, #fde047 58%, #fde047 92%, transparent 92%);
+  font-weight:800;color:var(--neutral-900);border-radius:2px;padding:0 .1rem;
+}
+.history-entry-changed-badge{
+  font-size:.6rem;font-weight:800;color:#854d0e;background:#fef9c3;border:1px solid #fde047;
+  border-radius:99px;padding:.08rem .5rem;margin-left:.4rem;
+}
+.warn-toggle input{width:auto;}
+.warn-toggle label{margin:0;font-size:.82rem;font-weight:650;color:var(--neutral-700);cursor:pointer;}
+
+.toast{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  background:var(--neutral-900);color:#fff;padding:.7rem 1.2rem;border-radius:10px;font-size:.85rem;
+  box-shadow:var(--shadow-lg);z-index:2000;opacity:0;transition:opacity .2s ease, transform .2s ease;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+.print-area{display:none;}
+
+@media (max-width:1000px){
+  .main-wrap{flex-direction:column;}
+  .sidebar{width:100%;}
+}
+
+/* 카드 스타일은 인쇄 시에만 쓰이지만, 실제 장수를 정확히 계산하려면 화면에서도
+   (안 보이게) 측정할 수 있어야 해서 @media print 밖에 둡니다. 화면에 실제로
+   드러나는 곳은 인쇄 영역(.print-area, 평소 숨김)과 측정용 probe뿐입니다. */
+.print-doc-title{font-size:16px;font-weight:800;text-align:center;margin-bottom:2px;color:var(--primary-deep);}
+.print-doc-sub{text-align:center;font-size:10px;color:#777;margin-bottom:10px;}
+.print-card{
+  border:1px solid var(--neutral-200);border-left:3.5px solid var(--primary);
+  border-radius:6px;
+  padding:calc(7px * var(--print-scale)) calc(11px * var(--print-scale)) calc(8px * var(--print-scale));
+  margin-bottom:calc(7px * var(--print-scale));page-break-inside:avoid;
+}
+.print-card.flagged{border-left-color:var(--warning);background:#fffafa;}
+.print-top{
+  display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;
+  border-bottom:0.75px solid var(--neutral-200);
+  padding-bottom:calc(4px * var(--print-scale));margin-bottom:calc(4px * var(--print-scale));gap:6px;
+}
+.print-top .pname{font-size:calc(13.5px * var(--print-scale));font-weight:800;color:var(--neutral-900);}
+.print-top .pmeta{font-size:calc(9.5px * var(--print-scale));color:#777;white-space:nowrap;}
+.print-badge{display:inline-block;font-size:calc(8.5px * var(--print-scale));font-weight:800;color:#fff;background:var(--primary);border-radius:99px;padding:1px 7px;margin-left:5px;line-height:1.5;}
+.print-badge.warn{background:var(--warning);}
+.print-field{font-size:calc(11px * var(--print-scale));margin-bottom:calc(2.5px * var(--print-scale));line-height:1.5;color:#333;}
+.print-field b{color:var(--primary-deep);margin-right:4px;}
+.print-tx{
+  background:var(--green-light);border-radius:4px;
+  padding:calc(4px * var(--print-scale)) calc(7px * var(--print-scale));font-size:calc(11px * var(--print-scale));
+  line-height:1.5;white-space:pre-wrap;margin-bottom:calc(4px * var(--print-scale));
+}
+.print-tx b{color:#166534;margin-right:4px;}
+.print-note{
+  background:var(--warning-light);border-left:2.5px solid var(--warning);border-radius:4px;
+  padding:calc(4px * var(--print-scale)) calc(7px * var(--print-scale));font-size:calc(11px * var(--print-scale));font-weight:700;color:var(--warning-dark);white-space:pre-wrap;line-height:1.5;
+}
+#printMeasureProbe{position:fixed;left:-9999px;top:0;visibility:hidden;overflow:hidden;}
+
+@media print{
+  @page{ size:A4 portrait; margin:8mm 12mm 12mm 12mm; }
+  .app-header,.stats-row,.sidebar,.detail-panel,.tray-bar,.tray-drawer,.modal-overlay{display:none !important;}
+  body{background:#fff;padding:0;margin:0;}
+  .print-area{display:block !important;}
+  /* 미리보기에서 계산한 페이지 경계를 실제 인쇄에도 그대로 강제 적용 */
+  .print-card.print-page-break{break-before:page;page-break-before:always;}
+}
+
+/* ===== 인쇄 설정: 출력 분량 프리셋 버튼 ===== */
+.print-page-presets{display:flex;gap:.4rem;margin-bottom:.5rem;}
+.print-preset-btn{
+  flex:1;padding:.5rem 0;border:1.5px solid var(--border-color);border-radius:8px;
+  background:var(--surface-1);color:var(--neutral-700);font-size:.78rem;font-weight:700;
+  box-shadow:none;cursor:pointer;
+}
+.print-preset-btn:hover{background:var(--neutral-50);}
+.print-preset-btn.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary-deep);}
+.print-page-custom{display:flex;align-items:center;gap:.4rem;}
+.print-page-custom input{flex:0 0 70px;}
+.print-page-custom-label{font-size:.72rem;color:var(--neutral-400);white-space:nowrap;}
+
+/* ===== 인쇄 미리보기: 페이지별 인원수 · 이름 목록 ===== */
+.print-preview-page{flex-shrink:0;text-align:center;}
+.print-preview-meta{font-size:.64rem;color:var(--neutral-600);font-weight:700;margin-top:.3rem;}
+.print-preview-names{
+  font-size:.6rem;color:var(--neutral-400);margin-top:.15rem;line-height:1.4;
+  max-height:72px;overflow-y:auto;text-align:left;padding:0 .1rem;
+}
+.print-preview-names .print-preview-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="title-wrap">
+    <h1><i class="fas fa-hospital" title="built by kbkim"></i> OT인수인계서(통합)</h1>
+    <span class="live-badge" onclick="handleAdminToggleClick()" style="cursor:default;"><span class="dot"></span>실시간</span>
+    <span class="updated-txt" id="lastUpdated">불러오는 중...</span>
+  </div>
+  <div class="header-actions">
+    <div class="toggle-wrap">
+      <span>자동 새로고침</span>
+      <label class="switch">
+        <input type="checkbox" id="autoRefreshToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <button id="reloadBtn" onclick="loadData(true)"><i class="fas fa-rotate"></i> 지금 새로고침</button>
+    <span style="font-size:.55rem;opacity:.4;color:#fff;letter-spacing:.02em;">by kbkim</span>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+    <div class="stat-text">
+      <div class="stat-label">전체 환자</div>
+      <div class="stat-num" id="statTotal">-</div>
+      <div class="stat-sub">전체 인원</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="fas fa-triangle-exclamation"></i></div>
+    <div class="stat-text">
+      <div class="stat-label">주의 환자</div>
+      <div class="stat-num" id="statWarn">-</div>
+      <div class="stat-sub">확인 필요</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber"><i class="fas fa-calendar-week"></i></div>
+    <div class="stat-text">
+      <div class="stat-label">신규 환자</div>
+      <div class="stat-num" id="statRecent">-</div>
+      <div class="stat-sub">최근 7일 이내 작성</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="fas fa-pen-to-square"></i></div>
+    <div class="stat-text">
+      <div class="stat-label">최근 수정</div>
+      <div class="stat-num" id="statModified">-</div>
+      <div class="stat-sub">최근 7일 이내 수정</div>
+    </div>
+  </div>
+</div>
+
+<div class="main-wrap">
+  <div class="sidebar">
+    <div class="sidebar-btn-row">
+      <button id="newPatientBtn" onclick="openCreateModal()"><i class="fas fa-plus"></i> 새 환자 추가</button>
+      <button id="trashBtn" onclick="openTrashModal()"><i class="fas fa-trash-can"></i></button>
+    </div>
+    <button id="dischargeBtn" onclick="openDischargeModal()"><i class="fas fa-hospital"></i> 퇴원 관리</button>
+
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input type="text" id="searchName" placeholder="환자명, 치료사, 주치의 검색 (F2)">
+    </div>
+
+    <div class="select-all-row">
+      <label class="select-all-wrap" style="flex:1;margin-bottom:0;">
+        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAllFiltered(this)">
+        <span id="selectAllLabel">검색결과 전체선택</span>
+      </label>
+      <button id="quickDeleteBtn" onclick="bulkDeleteSelected()" disabled title="선택 삭제"><i class="fas fa-trash"></i> <span id="quickDeleteCount">0</span></button>
+    </div>
+
+    <div class="chip-row" id="warnChipRow">
+      <div class="chip active" data-warn="all" onclick="setWarnFilter('all', this)">전체</div>
+      <div class="chip" data-warn="warn" onclick="setWarnFilter('warn', this)">주의</div>
+      <div class="chip" data-warn="modified" onclick="setWarnFilter('modified', this)">수정</div>
+    </div>
+
+    <div class="chip-row" id="typeChipRow">
+      <div class="chip active" data-type="all" onclick="setTypeFilter('all', this)">전체</div>
+      <div class="chip" data-type="SOT" onclick="setTypeFilter('SOT', this)">SOT</div>
+      <div class="chip" data-type="RDT" onclick="setTypeFilter('RDT', this)">RDT</div>
+      <div class="chip" data-type="ERDT" onclick="setTypeFilter('ERDT', this)">ERDT</div>
+      <div class="chip" data-type="CCRT" onclick="setTypeFilter('CCRT', this)">CCRT</div>
+    </div>
+
+    <select class="sort-select" id="sortOrder">
+      <option value="recent">정렬: 최신 작성순</option>
+      <option value="name">정렬: 이름 (가나다)</option>
+      <option value="therapist">정렬: 치료사순</option>
+    </select>
+
+    <div class="list-count" id="resultCount"></div>
+    <div class="patient-list" id="patientList"></div>
+  </div>
+
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-empty">
+      <i class="fas fa-hand-pointer"></i>
+      <div>왼쪽 목록에서 환자를 선택하면<br>상세 인수인계 내용이 표시됩니다</div>
+    </div>
+  </div>
+</div>
+
+<!-- 하단 출력 선택 바 -->
+<div class="tray-drawer" id="trayDrawer"></div>
+<div class="tray-bar">
+  <button class="tray-count-btn" id="trayCountBtn" onclick="toggleTrayDrawer()">
+    선택된 환자 <b id="trayCount">0</b>명 <i class="fas fa-chevron-up"></i>
+  </button>
+  <span class="tray-divider"></span>
+  <button class="tray-clear" onclick="clearTray()">선택 해제</button>
+  <button class="tray-delete-bulk" id="trayDeleteBtn" onclick="bulkDeleteSelected()"><i class="fas fa-trash"></i> 선택 삭제</button>
+  <button class="tray-print" id="trayExcelBtn" onclick="exportSelectedToExcel()" disabled style="background:#16a34a;box-shadow:0 3px 10px rgba(22,163,74,.3);"><i class="fas fa-file-excel"></i> 엑셀 추출</button>
+  <button class="tray-print" id="trayPrintBtn" onclick="openPrintSettingsModal()" disabled><i class="fas fa-print"></i> 인쇄</button>
+</div>
+
+
+<div id="printArea" class="print-area">
+  <div class="print-doc-title">OT인수인계 - 환자 기록</div>
+  <div class="print-doc-sub" id="printDate"></div>
+  <div id="printCards"></div>
+</div>
+
+<div id="printMeasureProbe" aria-hidden="true"></div>
+
+<!-- 인쇄 설정 모달 -->
+<div id="printSettingsModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:800px;width:800px;height:600px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div class="modal-head" style="flex-shrink:0;">
+      <h2><i class="fas fa-print"></i> 인쇄 설정</h2>
+      <button class="modal-close" onclick="closePrintSettingsModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div style="display:flex;gap:1.4rem;align-items:stretch;flex:1;min-height:0;">
+      <div style="flex:0 0 230px;min-width:200px;">
+        <div style="font-size:.82rem;color:var(--neutral-600);margin-bottom:.9rem;line-height:1.6;">
+          선택된 <b id="printSettingsCount">0</b>명을 몇 장의 A4용지에 출력할지 정하면, 글자 크기와 여백이 자동으로 조절됩니다.
+        </div>
+        <div class="form-group">
+          <label>출력 분량</label>
+          <div class="print-page-presets">
+            <button type="button" class="print-preset-btn" data-pages="1" onclick="setPrintTargetPages(1)">1장</button>
+            <button type="button" class="print-preset-btn" data-pages="2" onclick="setPrintTargetPages(2)">2장</button>
+            <button type="button" class="print-preset-btn" data-pages="3" onclick="setPrintTargetPages(3)">3장</button>
+          </div>
+          <div class="print-page-custom">
+            <input type="number" id="printTargetPages" min="1" step="1" oninput="handlePrintTargetInput()">
+            <span class="print-page-custom-label">장 (직접 입력)</span>
+          </div>
+        </div>
+        <div id="printScalePreview" style="font-size:.76rem;color:var(--neutral-500);margin:.4rem 0 .5rem;line-height:1.5;"></div>
+        <div class="form-actions">
+          <button onclick="resetPrintScale()" style="background:var(--surface-1);color:var(--neutral-700);border:1.5px solid var(--border-color);">기본값으로</button>
+          <button onclick="confirmPrintWithSettings()"><i class="fas fa-print"></i> 인쇄</button>
+        </div>
+      </div>
+      <div id="printPreviewWrap" style="flex:1;min-width:260px;display:flex;flex-direction:column;min-height:0;">
+        <div style="font-size:.7rem;font-weight:700;color:var(--neutral-400);margin-bottom:.5rem;flex-shrink:0;">미리보기</div>
+        <div id="printPreviewPages" style="flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:.7rem;overflow-y:auto;padding-right:.2rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 선택 환자 순서 - 우클릭 빠른 이동 메뉴 -->
+<div id="trayContextMenu" class="tray-context-menu">
+  <button data-action="top" onclick="trayQuickMove('top')"><i class="fas fa-angles-up"></i> 맨 위로 이동</button>
+  <button data-action="up" onclick="trayQuickMove('up')"><i class="fas fa-arrow-up"></i> 위로 이동</button>
+  <button data-action="down" onclick="trayQuickMove('down')"><i class="fas fa-arrow-down"></i> 아래로 이동</button>
+  <button data-action="bottom" onclick="trayQuickMove('bottom')"><i class="fas fa-angles-down"></i> 맨 아래로 이동</button>
+  <div class="tray-context-menu-divider"></div>
+  <button onclick="openTrayGotoModal()"><i class="fas fa-hashtag"></i> 특정 위치로 이동...</button>
+  <div class="tray-context-menu-divider"></div>
+  <button class="danger" onclick="trayRemoveFromContext()"><i class="fas fa-xmark"></i> 선택에서 제거</button>
+</div>
+
+<!-- 특정 위치로 이동 모달 -->
+<div id="trayGotoModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-head">
+      <h2><i class="fas fa-hashtag"></i> 특정 위치로 이동</h2>
+      <button class="modal-close" onclick="closeTrayGotoModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div style="font-size:.82rem;color:var(--neutral-600);margin-bottom:1rem;" id="trayGotoCurrentInfo"></div>
+    <div class="form-group">
+      <label>이동할 위치</label>
+      <input type="number" id="trayGotoInput" min="1" step="1" onkeydown="if(event.key==='Enter'){confirmTrayGoto();}">
+    </div>
+    <div style="font-size:.72rem;color:var(--neutral-400);margin:-.55rem 0 1rem;" id="trayGotoHint"></div>
+    <div class="form-actions">
+      <button onclick="closeTrayGotoModal()" style="background:var(--surface-1);color:var(--neutral-700);border:1.5px solid var(--border-color);">취소</button>
+      <button onclick="confirmTrayGoto()"><i class="fas fa-arrow-right"></i> 이동</button>
+    </div>
+  </div>
+</div>
+
+<!-- 수정 모달 -->
+<div id="editModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2><i class="fas fa-pen"></i> <span id="modalTitleText">인수인계 기록 수정</span></h2>
+      <button class="modal-close" onclick="closeEditModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <input type="hidden" id="editId">
+    <div class="form-group">
+      <label>환자 성함 <span style="color:var(--warning);">*</span></label>
+      <input type="text" id="editName" placeholder="예: 홍길동">
+    </div>
+    <div class="two-col">
+      <div class="form-group">
+        <label>치료사 <span style="color:var(--warning);">*</span></label>
+        <input type="text" id="editTherapist" placeholder="예: 김기범">
+      </div>
+      <div class="form-group">
+        <label>주치의</label>
+        <input type="text" id="editDoctor" placeholder="예: RM6">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>치료 종류</label>
+      <select id="editType">
+        <option value="SOT">SOT</option>
+        <option value="RDT">RDT</option>
+        <option value="ERDT">ERDT</option>
+        <option value="CCRT">CCRT</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ONSET</label>
+      <input type="date" id="editOnset">
+    </div>
+    <div class="form-group">
+      <label>진단명 (Dx)</label>
+      <input type="text" id="editDx" placeholder="예: 뇌경색 Rt. hemiparesis">
+    </div>
+    <div class="form-group">
+      <label>주요 증상 (C.C)</label>
+      <textarea id="editCc"></textarea>
+    </div>
+    <div class="form-group">
+      <label>치료내용 (Tx)</label>
+      <textarea id="editTx" style="min-height:90px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label><i class="fas fa-bullseye" style="color:var(--purple);margin-right:.4rem;"></i>Goal</label>
+      <textarea id="editGoal"></textarea>
+    </div>
+    <div class="form-group">
+      <label><i class="fas fa-triangle-exclamation" style="color:var(--warning);margin-right:.4rem;"></i>주의사항 및 특이사항</label>
+      <textarea id="editNote"></textarea>
+    </div>
+    <div class="warn-toggle">
+      <input type="checkbox" id="editWarnFlag" style="width:18px;height:18px;">
+      <label for="editWarnFlag">이 환자는 "주의" 표시가 필요합니다</label>
+    </div>
+    <div class="form-group">
+      <label><i class="fas fa-people-group" style="color:var(--neutral-600);margin-right:.4rem;"></i>그랜드라운딩</label>
+      <textarea id="editGrandRound"></textarea>
+    </div>
+    <div class="form-actions">
+      <button id="modalDeleteBtn" class="danger" style="display:none;" onclick="deleteFromModal()"><i class="fas fa-trash"></i> 삭제</button>
+      <button id="saveEditBtn" onclick="saveEdit()"><i class="fas fa-floppy-disk"></i> 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 휴지통 모달 -->
+<div id="trashModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2><i class="fas fa-trash-can"></i> 휴지통</h2>
+      <button class="modal-close" onclick="closeTrashModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+
+    <div class="search-box" style="margin-bottom:.6rem;">
+      <i class="fas fa-search"></i>
+      <input type="text" id="trashSearch" placeholder="환자명, 치료사, 주치의 검색" oninput="renderTrashModal()">
+    </div>
+
+    <label class="select-all-wrap" style="display:flex;margin-bottom:.6rem;">
+      <input type="checkbox" id="trashSelectAll" onchange="toggleTrashSelectAll(this)">
+      <span id="trashSelectAllLabel">검색결과 전체선택</span>
+    </label>
+
+    <div id="trashList" style="display:flex;flex-direction:column;gap:.5rem;max-height:42vh;overflow-y:auto;margin-bottom:1rem;"></div>
+
+    <div class="form-actions">
+      <button class="danger" onclick="emptyTrashConfirm()"><i class="fas fa-fire"></i> 휴지통 비우기</button>
+      <button id="trashBulkEmptyBtn" class="danger" onclick="bulkEmptySelected()" disabled><i class="fas fa-trash"></i> 선택 비우기</button>
+      <button id="trashBulkRestoreBtn" onclick="bulkRestoreSelected()" disabled><i class="fas fa-rotate-left"></i> 선택 복구</button>
+    </div>
+  </div>
+</div>
+
+<!-- 퇴원 관리 모달 -->
+<div id="dischargeModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:600px;">
+    <div class="modal-head">
+      <h2><i class="fas fa-hospital"></i> 퇴원 관리</h2>
+      <button class="modal-close" onclick="closeDischargeModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+
+    <div class="dc-top-action">
+      <button id="dcProcessBtn" onclick="confirmDischargeProcess(currentDcSelectionUids())" disabled>
+        <i class="fas fa-right-from-bracket"></i> 선택 환자 퇴원 처리 (<span id="dcSelCount">0</span>)
+      </button>
+    </div>
+
+    <label style="display:block;font-weight:650;margin-bottom:.35rem;color:var(--neutral-700);font-size:.82rem;">퇴원환자 명단 붙여넣기</label>
+    <textarea class="dc-textarea" id="dcPasteArea" placeholder="예)&#10;김철수&#10;이영희&#10;박민수"></textarea>
+    <div class="dc-hint">Excel에서 환자명 목록을 복사해서 붙여넣으세요. 한 줄에 한 명씩이면 됩니다. 헤더 행이 있어도 자동으로 인식합니다.</div>
+    <div class="form-actions">
+      <button onclick="analyzeDischargeList()"><i class="fas fa-magnifying-glass"></i> 명단 대조</button>
+    </div>
+    <div id="dcMatchResult"></div>
+  </div>
+</div>
+
+<!-- 퇴원 처리 최종 확인 모달 -->
+<div id="dischargeConfirmModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-head">
+      <h2><i class="fas fa-triangle-exclamation" style="color:var(--warning);"></i> 퇴원 처리 확인</h2>
+      <button class="modal-close" onclick="closeDischargeConfirmModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div id="dcConfirmBody" style="font-size:.85rem;line-height:1.7;"></div>
+    <div class="form-actions">
+      <button onclick="closeDischargeConfirmModal()" style="background:var(--surface-1);color:var(--neutral-700);border:1.5px solid var(--border-color);">취소</button>
+      <button id="dcConfirmFinalBtn" onclick="runDischargeProcess()" style="background:var(--warning);"><i class="fas fa-right-from-bracket"></i> 퇴원 처리</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ▼▼▼ Apps Script 배포 후 나오는 웹 앱 URL로 교체하세요 ▼▼▼
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwXwWquKYEy5irNjdQjZLYUsBl94L5yJZ_aD-UZLCHDonJDZ-smmCnSghILn9c15AN0OQ/exec';
+// ▲▲▲ ▲▲▲
+
+let allRecords = [];
+let adminMode = localStorage.getItem('satHandoverAdminMode') === '1';
+document.body.classList.toggle('admin-mode', adminMode);
+let adminClickCount = 0;
+let adminClickTimer = null;
+
+function getAdminCode() {
+  return localStorage.getItem('satHandoverAdminCode') || '';
+}
+
+function handleAdminToggleClick() {
+  adminClickCount += 1;
+  clearTimeout(adminClickTimer);
+  adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 1200);
+  if (adminClickCount >= 5) {
+    adminClickCount = 0;
+    adminMode = !adminMode;
+    localStorage.setItem('satHandoverAdminMode', adminMode ? '1' : '0');
+    document.body.classList.toggle('admin-mode', adminMode);
+    showToast(adminMode ? '관리자 모드 ON (삭제/퇴원관리 버튼이 보입니다)' : '관리자 모드 OFF');
+  }
+}
+
+/* ---------- 삭제 (관리자 모드 전용, 서버에서도 이메일 재검증) ---------- */
+let isDeleting = false;
+
+async function deleteRecords(ids) {
+  if (!ids || ids.length === 0) return;
+  if (isDeleting) return; // 중복 클릭 방지
+  isDeleting = true;
+
+  // 낙관적 업데이트: 서버 응답을 기다리지 않고 화면에서 바로 제거 (체감 속도 개선)
+  ids.forEach(id => {
+    delete recordsById[id];
+    selected.delete(id);
+  });
+  // 삭제된 환자는 순서 변경 기록에서도 함께 제거한다.
+  // (전체 초기화 기준값에서 제외, 실행 취소 히스토리는 더 이상 유효하지 않으므로 초기화)
+  trayBaseOrder = trayBaseOrder.filter(id => !ids.includes(id));
+  trayUndoStack = [];
+  allRecords = allRecords.filter(r => !ids.includes(r.id));
+  if (ids.includes(currentDetailId)) currentDetailId = null;
+  renderList();
+  renderDetail();
+  renderTray();
+  updateStats();
+  showToast(ids.length > 1 ? `${ids.length}명이 휴지통으로 이동되었습니다.` : '휴지통으로 이동되었습니다.');
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'delete', uids: ids })
+    });
+    let result = {};
+    try { result = await res.json(); } catch (e) {}
+    if (result && result.success === false) {
+      showToast('삭제에 실패했습니다' + (result.error ? ': ' + result.error : '') + ' 목록을 다시 불러옵니다.');
+      loadData(false); // 실패 시 실제 서버 상태로 복원
+      return;
+    }
+    loadData(false); // 성공 시에도 조용히 백그라운드 동기화 (휴지통 목록 등 최신화)
+  } catch (err) {
+    console.error(err);
+    showToast('삭제 중 오류가 발생했습니다. 목록을 다시 불러옵니다.');
+    loadData(false);
+  } finally {
+    isDeleting = false;
+  }
+}
+
+function rowQuickDelete(e, id, name) {
+  e.stopPropagation();
+  if (!confirm(`"${name}" 님의 기록을 휴지통으로 이동하시겠습니까?\n휴지통에서 복구하거나 완전히 삭제할 수 있습니다.`)) return;
+  deleteRecords([id]);
+}
+
+function bulkDeleteSelected() {
+  const ids = Array.from(selected.keys());
+  if (ids.length === 0) { showToast('선택된 환자가 없습니다.'); return; }
+  if (!confirm(`선택한 ${ids.length}명의 기록을 휴지통으로 이동하시겠습니까?\n휴지통에서 복구하거나 완전히 삭제할 수 있습니다.`)) return;
+  deleteRecords(ids);
+}
+
+/* ---------- 휴지통 ---------- */
+let trashModalOpen = false;
+let trashSelected = new Set();
+
+function openTrashModal() {
+  trashModalOpen = true;
+  trashSelected.clear();
+  document.getElementById('trashSearch').value = '';
+  renderTrashModal();
+  document.getElementById('trashModal').classList.add('open');
+}
+function closeTrashModal() {
+  trashModalOpen = false;
+  document.getElementById('trashModal').classList.remove('open');
+}
+document.getElementById('trashModal').addEventListener('click', function (e) { if (e.target === this) closeTrashModal(); });
+
+function renderTrashModalIfOpen() {
+  if (trashModalOpen) renderTrashModal();
+}
+
+function getFilteredTrash() {
+  const q = (document.getElementById('trashSearch').value || '').trim().toLowerCase();
+  if (!q) return trashItems;
+  return trashItems.filter(t =>
+    t.name.toLowerCase().includes(q) || (t.therapist || '').toLowerCase().includes(q) || (t.doctor || '').toLowerCase().includes(q)
+  );
+}
+
+function renderTrashModal() {
+  const el = document.getElementById('trashList');
+  const filtered = getFilteredTrash();
+
+  // 검색으로 사라진 항목의 선택은 자동 해제 (혼란 방지)
+  const filteredUids = new Set(filtered.map(t => t.uid));
+  Array.from(trashSelected).forEach(uid => { if (!filteredUids.has(uid)) trashSelected.delete(uid); });
+
+  document.getElementById('trashBulkRestoreBtn').disabled = trashSelected.size === 0;
+  document.getElementById('trashBulkEmptyBtn').disabled = trashSelected.size === 0;
+  syncTrashSelectAllCheckbox(filtered);
+
+  if (trashItems.length === 0) {
+    el.innerHTML = '<div class="trash-empty-msg">휴지통이 비어있습니다.</div>';
+    return;
+  }
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="trash-empty-msg">검색 결과가 없습니다.</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(t => `
+    <div class="trash-item">
+      <input type="checkbox" ${trashSelected.has(t.uid) ? 'checked' : ''} onchange="toggleTrashSelect('${t.uid}', this.checked)">
+      <div class="trash-info">
+        <div class="trash-name">${escapeHtml(t.name)} <span style="color:#999;font-weight:500;">· ${escapeHtml(t.therapist)}${t.doctor ? ' · 주치의 ' + escapeHtml(t.doctor) : ''}</span></div>
+        <div class="trash-meta">삭제일 ${fmtDate(t.deletedAt)}</div>
+      </div>
+      <button class="restore-btn" onclick="restoreTrashItem('${t.uid}')"><i class="fas fa-rotate-left"></i> 복구</button>
+    </div>
+  `).join('');
+}
+
+function toggleTrashSelect(uid, checked) {
+  if (checked) trashSelected.add(uid); else trashSelected.delete(uid);
+  renderTrashModal();
+}
+
+function toggleTrashSelectAll(checkbox) {
+  const filtered = getFilteredTrash();
+  if (checkbox.checked) {
+    filtered.forEach(t => trashSelected.add(t.uid));
+  } else {
+    filtered.forEach(t => trashSelected.delete(t.uid));
+  }
+  renderTrashModal();
+}
+
+function syncTrashSelectAllCheckbox(filtered) {
+  const cb = document.getElementById('trashSelectAll');
+  const label = document.getElementById('trashSelectAllLabel');
+  if (!cb) return;
+  if (filtered.length === 0) {
+    cb.checked = false; cb.indeterminate = false;
+    label.textContent = '검색결과 전체선택';
+    return;
+  }
+  const selCount = filtered.filter(t => trashSelected.has(t.uid)).length;
+  if (selCount === 0) {
+    cb.checked = false; cb.indeterminate = false;
+    label.textContent = '검색결과 전체선택';
+  } else if (selCount === filtered.length) {
+    cb.checked = true; cb.indeterminate = false;
+    label.textContent = '전체선택 해제';
+  } else {
+    cb.checked = false; cb.indeterminate = true;
+    label.textContent = `${selCount}/${filtered.length}건 선택됨`;
+  }
+}
+
+let isRestoring = false;
+async function restoreUids(uids) {
+  if (!uids || uids.length === 0) return;
+  if (isRestoring) return;
+  isRestoring = true;
+
+  // 낙관적 업데이트: 휴지통 목록에서 바로 제거
+  const backup = trashItems;
+  trashItems = trashItems.filter(t => !uids.includes(t.uid));
+  uids.forEach(uid => trashSelected.delete(uid));
+  renderTrashModalIfOpen();
+  showToast(uids.length > 1 ? `${uids.length}건이 복구되었습니다.` : '복구되었습니다.');
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'restore', uids: uids })
+    });
+    let result = {};
+    try { result = await res.json(); } catch (e) {}
+    if (result && result.success === false) {
+      showToast('복구에 실패했습니다. 목록을 다시 불러옵니다.');
+      trashItems = backup;
+      loadData(false);
+      return;
+    }
+    loadData(false); // 복구된 환자를 메인 목록에 반영
+  } catch (err) {
+    console.error(err);
+    showToast('복구 중 오류가 발생했습니다. 목록을 다시 불러옵니다.');
+    trashItems = backup;
+    loadData(false);
+  } finally {
+    isRestoring = false;
+  }
+}
+
+function restoreTrashItem(uid) {
+  restoreUids([uid]);
+}
+
+function bulkRestoreSelected() {
+  const uids = Array.from(trashSelected);
+  if (uids.length === 0) { showToast('선택된 항목이 없습니다.'); return; }
+  restoreUids(uids);
+}
+
+let isEmptyingTrash = false;
+async function emptyTrashConfirm() {
+  if (trashItems.length === 0) { showToast('휴지통이 비어있습니다.'); return; }
+  if (isEmptyingTrash) return;
+  if (!confirm(`휴지통의 ${trashItems.length}건을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+  isEmptyingTrash = true;
+
+  // 낙관적 업데이트: 즉시 비운 것처럼 표시
+  const backup = trashItems;
+  trashItems = [];
+  trashSelected.clear();
+  renderTrashModalIfOpen();
+  showToast('휴지통을 비웠습니다.');
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'emptyTrash' })
+    });
+    let result = {};
+    try { result = await res.json(); } catch (e) {}
+    if (result && result.success === false) {
+      showToast('휴지통 비우기에 실패했습니다. 목록을 다시 불러옵니다.');
+      trashItems = backup;
+      loadData(false);
+      return;
+    }
+    loadData(false); // 조용히 백그라운드 동기화
+  } catch (err) {
+    console.error(err);
+    showToast('휴지통 비우기 중 오류가 발생했습니다. 목록을 다시 불러옵니다.');
+    trashItems = backup;
+    loadData(false);
+  } finally {
+    isEmptyingTrash = false;
+  }
+}
+
+function bulkEmptySelected() {
+  const uids = Array.from(trashSelected);
+  if (uids.length === 0) { showToast('선택된 항목이 없습니다.'); return; }
+  emptySelectedTrash(uids);
+}
+
+let isEmptyingSelected = false;
+// 휴지통 비우기(전체)와 달리, 체크박스로 고른 항목만 영구 삭제한다.
+// 서버 emptyTrash 액션에 uids를 같이 보내면 그 항목들만 지우고,
+// (기존 "휴지통 비우기" 호출처럼) uids 없이 보내면 예전처럼 전체를 비운다.
+async function emptySelectedTrash(uids) {
+  if (isEmptyingSelected) return;
+  if (!confirm(`선택한 ${uids.length}건을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+  isEmptyingSelected = true;
+
+  // 낙관적 업데이트: 선택한 항목만 목록에서 바로 제거
+  const backup = trashItems;
+  trashItems = trashItems.filter(t => !uids.includes(t.uid));
+  uids.forEach(uid => trashSelected.delete(uid));
+  renderTrashModalIfOpen();
+  showToast(`${uids.length}건을 완전히 삭제했습니다.`);
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'emptyTrash', uids: uids })
+    });
+    let result = {};
+    try { result = await res.json(); } catch (e) {}
+    if (result && result.success === false) {
+      showToast('삭제에 실패했습니다. 목록을 다시 불러옵니다.');
+      trashItems = backup;
+      loadData(false);
+      return;
+    }
+    loadData(false); // 조용히 백그라운드 동기화
+  } catch (err) {
+    console.error(err);
+    showToast('삭제 중 오류가 발생했습니다. 목록을 다시 불러옵니다.');
+    trashItems = backup;
+    loadData(false);
+  } finally {
+    isEmptyingSelected = false;
+  }
+}
+/* ---------- 퇴원 관리 (이름만 대조 → 확인 → 처리, 날짜 스케줄링 없음) ---------- */
+let dcMatchGroups = [];   // [{name, candidates:[record, ...]}] - 매칭된 이름(기록 1건 이상)
+let dcMatchMiss = [];     // [{name}] - 현재 목록에서 찾을 수 없는 이름
+let dcChecked = new Set(); // 체크된 uid 목록 (기본값: 매칭된 모든 기록 전체 체크)
+let dcPendingUids = [];
+
+function openDischargeModal() {
+  dcMatchGroups = [];
+  dcMatchMiss = [];
+  dcChecked = new Set();
+  document.getElementById('dcPasteArea').value = '';
+  document.getElementById('dcMatchResult').innerHTML = '';
+  refreshDcProcessButtonState();
+  document.getElementById('dischargeModal').classList.add('open');
+  document.getElementById('dcPasteArea').focus();
+}
+function closeDischargeModal() {
+  document.getElementById('dischargeModal').classList.remove('open');
+}
+document.getElementById('dischargeModal').addEventListener('click', function (e) { if (e.target === this) closeDischargeModal(); });
+
+function parseDischargeNames(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  // 탭/콤마로 다른 열이 같이 붙어와도 첫 칸만 이름으로 사용
+  let names = lines.map(l => (l.includes('\t') ? l.split('\t')[0] : l.split(',')[0]).trim()).filter(Boolean);
+  // 첫 줄이 "환자명"/"이름"/"성함" 같은 헤더로 보이면 제외
+  if (names.length > 0 && /^(환자명|이름|성함|환자|name)$/i.test(names[0].replace(/\s/g, ''))) {
+    names.shift();
+  }
+  const seen = new Set();
+  return names.filter(n => { if (seen.has(n)) return false; seen.add(n); return true; });
+}
+
+function analyzeDischargeList() {
+  const names = parseDischargeNames(document.getElementById('dcPasteArea').value);
+  if (names.length === 0) {
+    document.getElementById('dcMatchResult').innerHTML = '<div class="dc-empty">인식된 환자명이 없습니다. 한 줄에 한 명씩 붙여넣어주세요.</div>';
+    dcMatchGroups = [];
+    dcMatchMiss = [];
+    dcChecked = new Set();
+    refreshDcProcessButtonState();
+    return;
+  }
+
+  dcMatchGroups = [];
+  dcMatchMiss = [];
+  dcChecked = new Set();
+
+  names.forEach(name => {
+    const candidates = allRecords.filter(r => r.name.trim() === name.trim());
+    if (candidates.length === 0) {
+      dcMatchMiss.push({ name });
+    } else {
+      dcMatchGroups.push({ name, candidates });
+      candidates.forEach(c => dcChecked.add(c.id)); // 기본적으로 전부 체크 (인수인계 기록이 여러 건이어도 전체 선택)
+    }
+  });
+
+  renderDcMatchResult();
+}
+
+function toggleDcCheck(uid, checked) {
+  if (checked) dcChecked.add(uid); else dcChecked.delete(uid);
+  refreshDcProcessButtonState();
+}
+function currentDcSelectionUids() {
+  return Array.from(dcChecked);
+}
+function refreshDcProcessButtonState() {
+  const btn = document.getElementById('dcProcessBtn');
+  if (!btn) return;
+  const count = currentDcSelectionUids().length;
+  btn.disabled = count === 0;
+  document.getElementById('dcSelCount').textContent = count;
+}
+
+function renderDcMatchResult() {
+  const el = document.getElementById('dcMatchResult');
+  const totalRecords = dcMatchGroups.reduce((sum, g) => sum + g.candidates.length, 0);
+
+  if (dcMatchGroups.length === 0 && dcMatchMiss.length === 0) {
+    el.innerHTML = '<div class="dc-empty">대조 결과가 없습니다.</div>';
+    refreshDcProcessButtonState();
+    return;
+  }
+
+  let html = `
+    <div class="dc-match-summary">
+      <div class="dc-match-pill ok"><span class="num">${dcMatchGroups.length}</span>환자 매칭</div>
+      <div class="dc-match-pill dup"><span class="num">${totalRecords}</span>인수인계 기록</div>
+      <div class="dc-match-pill miss"><span class="num">${dcMatchMiss.length}</span>목록에 없음</div>
+    </div>`;
+
+  if (dcMatchGroups.length > 0) {
+    html += `<div class="dc-section-title"><i class="fas fa-check"></i> 처리 대상 (${dcMatchGroups.length}명 · 기록 ${totalRecords}건)</div>`;
+    html += `<div class="dc-hint" style="margin:-.2rem 0 .6rem;">한 환자에게 인수인계 기록이 여러 건 있으면 기본적으로 전부 체크됩니다. 제외할 기록만 체크 해제하세요.</div>`;
+    html += dcMatchGroups.map(g => {
+      if (g.candidates.length === 1) {
+        const c = g.candidates[0];
+        return `
+          <div class="dc-patient-row">
+            <input type="checkbox" ${dcChecked.has(c.id) ? 'checked' : ''} onchange="toggleDcCheck('${c.id}', this.checked)">
+            <span class="dc-name">${escapeHtml(g.name)}</span>
+            <span class="dc-meta">${escapeHtml(c.therapist || '-')}</span>
+          </div>`;
+      }
+      return `
+        <div class="dc-dup-block">
+          <div class="dc-dup-name">${escapeHtml(g.name)} <span style="font-weight:500;color:#a16207;">· 인수인계 기록 ${g.candidates.length}건</span></div>
+          ${g.candidates.map(c => `
+            <label class="dc-dup-option">
+              <input type="checkbox" ${dcChecked.has(c.id) ? 'checked' : ''} onchange="toggleDcCheck('${c.id}', this.checked)">
+              ${escapeHtml(c.therapist || '-')}${c.doctor ? ' · 주치의 ' + escapeHtml(c.doctor) : ''} · ${fmtDateOnly(c.timestamp)}
+            </label>`).join('')}
+        </div>`;
+    }).join('');
+  }
+
+  if (dcMatchMiss.length > 0) {
+    html += `<div class="dc-section-title"><i class="fas fa-question"></i> 현재 환자 목록에서 찾을 수 없음 (${dcMatchMiss.length}명)</div>`;
+    html += dcMatchMiss.map(m => `<div class="dc-miss-block">${escapeHtml(m.name)}</div>`).join('');
+  }
+
+  el.innerHTML = html;
+  refreshDcProcessButtonState();
+}
+
+/* ---------- 퇴원 처리(실제 삭제) - 최종 확인 후 실행 ---------- */
+function confirmDischargeProcess(uids) {
+  if (!uids || uids.length === 0) { showToast('선택된 환자가 없습니다.'); return; }
+  dcPendingUids = uids.slice();
+  const names = uids.map(id => (recordsById[id] || {}).name).filter(Boolean);
+  const uniqueNameCount = new Set(names).size;
+  document.getElementById('dcConfirmBody').innerHTML = `
+    다음 <b>${uniqueNameCount}명</b>의 인수인계 기록 <b>${uids.length}건</b>을 퇴원 처리합니다.<br><br>
+    ${names.slice(0, 8).map(n => escapeHtml(n)).join(', ')}${names.length > 8 ? ` 외 ${names.length - 8}건` : ''}<br><br>
+    퇴원 처리된 기록은 현재 목록에서 제거되고 <b>휴지통</b>으로 이동됩니다.<br>
+    필요하면 휴지통에서 복구할 수 있습니다.
+  `;
+  document.getElementById('dischargeConfirmModal').classList.add('open');
+}
+function closeDischargeConfirmModal() {
+  document.getElementById('dischargeConfirmModal').classList.remove('open');
+}
+document.getElementById('dischargeConfirmModal').addEventListener('click', function (e) { if (e.target === this) closeDischargeConfirmModal(); });
+
+// 퇴원 처리는 삭제보다 영향도가 크므로, 관리자 모드와 별개로 이 시점에만 관리자
+// 코드를 물어봅니다. 한 번 입력하면 이 컴퓨터에 저장되어 다음부터는 다시 묻지 않습니다.
+function askText(msg) { // Electron에는 window.prompt가 없어 같은 역할의 입력창을 직접 띄운다
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99999;display:flex;align-items:center;justify-content:center';
+    ov.innerHTML = '<div style="background:#fff;border-radius:14px;padding:20px 22px;width:min(380px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.25)"><div style="font-size:14px;font-weight:700;margin-bottom:12px"></div><input type="password" autocomplete="off" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button type="button" data-x="0" style="padding:8px 14px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;cursor:pointer">취소</button><button type="button" data-x="1" style="padding:8px 14px;border:none;background:#2563eb;color:#fff;border-radius:8px;cursor:pointer;font-weight:700">확인</button></div></div>';
+    ov.firstChild.firstChild.textContent = msg;
+    const inp = ov.querySelector('input');
+    const done = v => { ov.remove(); resolve(v); };
+    ov.addEventListener('click', e => { const x = e.target.dataset && e.target.dataset.x; if (x === '1') done(inp.value); else if (x === '0' || e.target === ov) done(null); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') done(inp.value); else if (e.key === 'Escape') done(null); });
+    document.body.appendChild(ov); inp.focus();
+  });
+}
+async function ensureAdminCode() {
+  let code = getAdminCode();
+  if (code) return code;
+  const input = await askText('퇴원 처리를 위한 관리자 코드를 입력해주세요.');
+  if (input === null) return null; // 취소
+  code = input.trim();
+  localStorage.setItem('satHandoverAdminCode', code);
+  return code;
+}
+
+let isDischarging = false;
+async function runDischargeProcess() {
+  if (isDischarging) return;
+  const uids = dcPendingUids;
+  if (!uids || uids.length === 0) return;
+
+  const code = await ensureAdminCode();
+  if (code === null) return; // 취소 - 확인창은 그대로 둠
+
+  isDischarging = true;
+  closeDischargeConfirmModal();
+  closeDischargeModal();
+
+  // 낙관적 업데이트: 서버 응답을 기다리지 않고 목록에서 바로 제거 (체감 속도 개선)
+  const backupRecords = allRecords;
+  allRecords = allRecords.filter(r => !uids.includes(r.id));
+  uids.forEach(id => { delete recordsById[id]; selected.delete(id); });
+  if (uids.includes(currentDetailId)) currentDetailId = null;
+  renderList();
+  renderDetail();
+  renderTray();
+  updateStats();
+  showToast(`${uids.length}건을 퇴원 처리하고 있습니다...`);
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'dischargeProcess', uids: uids, adminCode: code })
+    });
+    let result = {};
+    try { result = await res.json(); } catch (e) {}
+    if (result && result.success === false) {
+      if ((result.error || '').includes('관리자 코드')) {
+        localStorage.removeItem('satHandoverAdminCode'); // 틀린 코드는 저장해두지 않고 다음에 다시 물어봄
+      }
+      showToast('퇴원 처리에 실패했습니다' + (result.error ? ': ' + result.error : '') + ' 목록을 다시 불러옵니다.');
+      allRecords = backupRecords; // 실패 시 복원
+      loadData(false);
+      isDischarging = false;
+      return;
+    }
+    showToast(`${result.discharged || uids.length}건이 퇴원 처리되었습니다.`);
+    dcPendingUids = [];
+    await loadData(false);
+  } catch (err) {
+    console.error(err);
+    showToast('퇴원 처리 중 오류가 발생했습니다. 목록을 다시 불러옵니다.');
+    allRecords = backupRecords;
+    loadData(false);
+  } finally {
+    isDischarging = false;
+  }
+}
+
+let recordsById = {};
+let selected = new Map();
+let currentDetailId = null;
+let firstLoad = true;
+let modalOpen = false;
+let openHistoryId = null;      // 현재 "이전 기록"이 펼쳐져 있는 환자 id (자동새로고침 등으로 패널이 다시 그려져도 유지)
+let historyLoadingIds = new Set(); // 중복 fetch 방지
+let selectedHistoryRows = new Set(); // 관리자 모드에서 선택 삭제할 이전 기록 행 번호(historyRow)
+let warnFilter = 'all';
+let typeFilter = 'all';
+let trayDrawerOpen = false;
+let autoRefreshTimer = null;
+const AUTO_REFRESH_MS = 60 * 1000;
+
+const CACHE_KEY = 'satHandoverCache_v2';
+let trashItems = [];
+
+function loadFromCache() {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return false;
+    const parsed = JSON.parse(cached);
+    if (!parsed || !Array.isArray(parsed.records) || parsed.records.length === 0) return false;
+    allRecords = parsed.records;
+    trashItems = Array.isArray(parsed.trash) ? parsed.trash : [];
+    recordsById = {};
+    allRecords.forEach(r => recordsById[r.id] = r);
+    renderList();
+    renderDetail();
+    renderTray();
+    updateStats();
+    document.getElementById('lastUpdated').textContent = '저장된 데이터 표시 중 · 최신 데이터 불러오는 중...';
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function saveToCache() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ records: allRecords, trash: trashItems, ts: Date.now() }));
+    // 그랜드라운딩·교차검증이 읽는 공용 캐시도 같이 갱신(앱 안에서 고친 내용이 다른 화면에 바로 반영됨)
+    localStorage.setItem('rehab_handover_cache_v1', JSON.stringify({ records: allRecords, fetchedAt: Date.now() }));
+  } catch (err) {
+    // 저장 공간이 없거나 접근 불가한 경우 조용히 무시 (캐시는 선택 기능일 뿐)
+  }
+}
+
+let isLoadingData = false;
+
+async function loadData(manual) {
+  if (GAS_URL.includes('여기에_배포된_웹앱_URL_붙여넣기')) {
+    document.getElementById('patientList').innerHTML = '<div style="padding:2rem 0;text-align:center;color:var(--warning);font-size:.85rem;">GAS_URL이 아직 설정되지 않았습니다.<br>Apps Script 배포 URL을 코드 상단 GAS_URL에 붙여넣어주세요.</div>';
+    return;
+  }
+  if (isLoadingData) return; // 이미 불러오는 중이면 중복 요청 방지 (자동+수동 새로고침 겹침 등)
+  isLoadingData = true;
+
+  if (firstLoad && allRecords.length === 0) {
+    document.getElementById('patientList').innerHTML = '<div style="padding:2rem 0;text-align:center;color:var(--neutral-400);font-size:.85rem;">불러오는 중...</div>';
+  }
+  if (modalOpen) { isLoadingData = false; return; }
+
+  if (manual) {
+    const icon = document.querySelector('#reloadBtn i');
+    icon.classList.add('spin');
+    setTimeout(() => icon.classList.remove('spin'), 650);
+  }
+
+  try {
+    const res = await fetch(GAS_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    allRecords = Array.isArray(data.records) ? data.records : (Array.isArray(data) ? data : []);
+    trashItems = Array.isArray(data.trash) ? data.trash : [];
+
+    const prevRecordsById = recordsById; // 재구성 전에 보관 - "이전 기록" 캐시를 이어받기 위함
+    recordsById = {};
+    allRecords.forEach(r => {
+      recordsById[r.id] = r;
+      const prev = prevRecordsById[r.id];
+      // 수정 건수(historyCount)가 그대로라면 새로 추가된 이전 기록이 없다는 뜻이므로,
+      // 이미 불러온 이전 기록을 그대로 이어서 쓴다 -> 60초 자동 새로고침마다 매번 재요청하지 않고
+      // 다시 열었을 때 즉시(0초) 표시된다.
+      if (prev && prev.history && prev.historyCount === r.historyCount) r.history = prev.history;
+    });
+    refreshSelectedRefs();
+
+    renderList();
+    renderDetail();
+    renderTray();
+    updateStats();
+    updateLastUpdatedLabel();
+    renderTrashModalIfOpen();
+    saveToCache();
+  } catch (err) {
+    if (allRecords.length === 0) {
+      document.getElementById('patientList').innerHTML = '<div style="padding:2rem 0;text-align:center;color:var(--warning);font-size:.85rem;">데이터를 불러오지 못했습니다.<br>GAS_URL 설정 또는 네트워크 연결을 확인해주세요.</div>';
+    }
+    console.error(err);
+    isLoadingData = false;
+    return;
+  }
+  isLoadingData = false;
+  if (firstLoad) {
+    firstLoad = false;
+    startAutoRefresh();
+  }
+}
+
+function startAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    if (document.getElementById('autoRefreshToggle').checked) loadData(false);
+  }, AUTO_REFRESH_MS);
+}
+
+document.getElementById('autoRefreshToggle').addEventListener('change', function () {
+  showToast(this.checked ? '자동 새로고침이 켜졌습니다.' : '자동 새로고침이 꺼졌습니다.');
+});
+
+function refreshSelectedRefs() {
+  const updated = new Map();
+  selected.forEach((_, id) => { if (recordsById[id]) updated.set(id, recordsById[id]); });
+  selected = updated;
+}
+
+function updateLastUpdatedLabel() {
+  document.getElementById('lastUpdated').textContent = '마지막 업데이트 방금 전';
+  let secondsAgo = 0;
+  clearInterval(window.__updTimer);
+  window.__updTimer = setInterval(() => {
+    secondsAgo += 1;
+    const label = secondsAgo < 60 ? `${secondsAgo}초 전` : `${Math.floor(secondsAgo/60)}분 전`;
+    document.getElementById('lastUpdated').textContent = `마지막 업데이트: ${label}`;
+  }, 1000);
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = allRecords.length;
+  document.getElementById('statWarn').textContent = allRecords.filter(r => r.warning).length;
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  document.getElementById('statRecent').textContent = allRecords.filter(r => r.timestamp && new Date(r.timestamp).getTime() >= weekAgo).length;
+  document.getElementById('statModified').textContent = allRecords.filter(r => r.modified && new Date(r.modified).getTime() >= weekAgo).length;
+}
+
+function isModifiedRecent(iso) {
+  if (!iso) return false;
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return new Date(iso).getTime() >= weekAgo;
+}
+
+function isRecent(iso) {
+  if (!iso) return false;
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return new Date(iso).getTime() >= weekAgo;
+}
+
+function setWarnFilter(val, el) {
+  warnFilter = val;
+  document.querySelectorAll('#warnChipRow .chip').forEach(c => c.classList.remove('active', 'warn-chip'));
+  el.classList.add('active');
+  if (val === 'warn') el.classList.add('warn-chip');
+  renderList();
+}
+function setTypeFilter(val, el) {
+  typeFilter = val;
+  document.querySelectorAll('#typeChipRow .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function getFiltered() {
+  const q = document.getElementById('searchName').value.trim().toLowerCase();
+  const sortOrder = document.getElementById('sortOrder').value;
+
+  let list = allRecords.filter(r => {
+    if (q && !r.name.toLowerCase().includes(q) && !r.therapist.toLowerCase().includes(q) && !(r.doctor || '').toLowerCase().includes(q)) return false;
+    if (warnFilter === 'warn' && !r.warning) return false;
+    if (warnFilter === 'modified' && !isModifiedRecent(r.modified)) return false;
+    if (typeFilter !== 'all' && r.type !== typeFilter) return false;
+    return true;
+  });
+
+  if (sortOrder === 'name') {
+    list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  } else if (sortOrder === 'therapist') {
+    list = list.slice().sort((a, b) => (a.therapist||'').localeCompare(b.therapist||'', 'ko') || a.name.localeCompare(b.name, 'ko'));
+  }
+  return list;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (isNaN(d)) return '-';
+  return (d.getMonth()+1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function fmtDateOnly(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (isNaN(d)) return '-';
+  return d.getFullYear() + '.' + (d.getMonth()+1) + '.' + d.getDate();
+}
+function toDateInputValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function renderList() {
+  const list = getFiltered();
+  document.getElementById('resultCount').textContent = `${list.length}명`;
+  const el = document.getElementById('patientList');
+
+  if (list.length === 0) {
+    el.innerHTML = '<div style="padding:2rem 0;text-align:center;color:var(--neutral-400);font-size:.85rem;">검색 결과가 없습니다</div>';
+    syncSelectAllCheckbox();
+    return;
+  }
+
+  el.innerHTML = list.map(r => {
+    const flagged = !!r.warning;
+    const recent = isRecent(r.timestamp);
+    const modified = isModifiedRecent(r.modified);
+    const dotClass = flagged ? 'warn' : (recent ? 'recent' : '');
+    const active = r.id === currentDetailId ? 'active' : '';
+    const checked = selected.has(r.id) ? 'checked' : '';
+    return `
+      <div class="p-row ${active}" onclick="selectDetail('${r.id}')">
+        <input type="checkbox" ${checked} onclick="event.stopPropagation()" onchange="toggleSelect('${r.id}', this.checked)">
+        <span class="p-dot ${dotClass}"></span>
+        <div class="p-row-body">
+          <div class="p-row-top">
+            <span class="p-name">${escapeHtml(r.name)}</span>
+            ${flagged ? '<span class="p-badge warn">주의</span>' : (recent ? '<span class="p-badge recent">최근</span>' : '')}
+            ${modified ? '<span class="p-badge modified">수정됨</span>' : ''}
+          </div>
+          <div class="p-row-sub"><span class="type-text type-${escapeHtml(r.type||'')}">${escapeHtml(r.type||'-')}</span><span>${escapeHtml(r.therapist||'-')}</span>${r.doctor ? `<span>주치의 ${escapeHtml(r.doctor)}</span>` : ''}<span>${fmtDateOnly(r.timestamp)}</span></div>
+        </div>
+        <button class="p-row-delete" onclick="rowQuickDelete(event, '${r.id}', '${escapeHtml(r.name).replace(/'/g, "\\'")}')" title="삭제"><i class="fas fa-trash"></i></button>
+      </div>
+    `;
+  }).join('');
+
+  syncSelectAllCheckbox();
+}
+
+function toggleSelectAllFiltered(checkbox) {
+  const filtered = getFiltered();
+  if (checkbox.checked) {
+    filtered.forEach(r => selected.set(r.id, r));
+  } else {
+    filtered.forEach(r => selected.delete(r.id));
+  }
+  renderList();
+  renderTray();
+}
+
+function syncSelectAllCheckbox() {
+  const cb = document.getElementById('selectAllCheckbox');
+  const label = document.getElementById('selectAllLabel');
+  if (!cb) return;
+  const filtered = getFiltered();
+
+  if (filtered.length === 0) {
+    cb.checked = false;
+    cb.indeterminate = false;
+    label.textContent = '검색결과 전체선택';
+    return;
+  }
+
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+  if (selectedCount === 0) {
+    cb.checked = false;
+    cb.indeterminate = false;
+    label.textContent = '검색결과 전체선택';
+  } else if (selectedCount === filtered.length) {
+    cb.checked = true;
+    cb.indeterminate = false;
+    label.textContent = '전체선택 해제';
+  } else {
+    cb.checked = false;
+    cb.indeterminate = true;
+    label.textContent = `${selectedCount}/${filtered.length}명 선택됨`;
+  }
+}
+
+function selectDetail(id) {
+  currentDetailId = id;
+  renderList();
+  renderDetail();
+}
+
+function renderDetail() {
+  const panel = document.getElementById('detailPanel');
+  const r = recordsById[currentDetailId];
+
+  if (!r) {
+    panel.innerHTML = `
+      <div class="detail-empty">
+        <i class="fas fa-hand-pointer"></i>
+        <div>왼쪽 목록에서 환자를 선택하면<br>상세 인수인계 내용이 표시됩니다</div>
+      </div>`;
+    return;
+  }
+
+  const flagged = !!r.warning;
+  const modified = isModifiedRecent(r.modified);
+  panel.innerHTML = `
+    <div class="detail-top">
+      <div class="detail-top-left">
+        ${flagged ? '<span class="badge warn"><i class="fas fa-triangle-exclamation"></i> 주의</span>' : ''}
+        <span class="detail-name">${escapeHtml(r.name)}</span>
+        <span class="badge type">${escapeHtml(r.type||'-')}</span>
+        ${modified ? '<span class="badge modified"><i class="fas fa-pen"></i> 수정됨</span>' : ''}
+      </div>
+      <button id="editSelectedBtn" onclick="openEditModal('${r.id}')"><i class="fas fa-pen"></i> 수정</button>
+    </div>
+    <div class="detail-meta">
+      <span>담당치료사 <b>${escapeHtml(r.therapist||'-')}</b></span>
+      ${r.doctor ? `<span>주치의 <b>${escapeHtml(r.doctor)}</b></span>` : ''}
+      <span>ONSET <b>${fmtDateOnly(r.onset)}</b></span>
+      <span>작성일 <b>${fmtDate(r.timestamp)}</b></span>
+      ${r.modified ? `<span>최종수정 <b>${fmtDate(r.modified)}</b></span>` : ''}
+    </div>
+
+    <div class="info-grid">
+      ${r.note ? `
+      <div class="info-box warn full">
+        <div class="box-label"><i class="fas fa-triangle-exclamation"></i> 주의사항</div>
+        <div class="box-body">${escapeHtml(r.note)}</div>
+        <i class="fas fa-shield-halved box-icon"></i>
+      </div>` : `
+      <div class="info-box muted full">
+        <div class="box-body">등록된 주의사항이 없습니다.</div>
+      </div>`}
+
+      <div class="info-box dx full">
+        <div class="box-label"><i class="fas fa-notes-medical"></i> 진단명 (Dx)</div>
+        <div class="box-body">${escapeHtml(r.dx || '-')}</div>
+        <i class="fas fa-brain box-icon"></i>
+      </div>
+
+      <div class="info-box cc full">
+        <div class="box-label"><i class="fas fa-stethoscope"></i> 주요 증상 (C.C)</div>
+        <div class="box-body">${escapeHtml(r.cc || '-')}</div>
+        <i class="fas fa-comment-medical box-icon"></i>
+      </div>
+
+      <div class="info-box tx full">
+        <div class="box-label"><i class="fas fa-hand-holding-medical"></i> 치료내용 (Tx)</div>
+        <div class="box-body">${escapeHtml(r.tx || '-')}</div>
+        <i class="fas fa-calendar-check box-icon"></i>
+      </div>
+
+      <div class="info-box goal full">
+        <div class="box-label"><i class="fas fa-bullseye"></i> Goal</div>
+        <div class="box-body">${escapeHtml(r.goal || '-')}</div>
+        <i class="fas fa-flag-checkered box-icon"></i>
+      </div>
+
+      <div class="info-box grand full">
+        <div class="box-label"><i class="fas fa-people-group"></i> 그랜드라운딩</div>
+        <div class="box-body">${escapeHtml(r.grandRound || '-')}</div>
+        <i class="fas fa-user-doctor box-icon"></i>
+      </div>
+    </div>
+
+    ${(r.historyCount && r.historyCount > 0) ? `
+    <div class="history-wrap">
+      <button class="history-toggle" onmouseenter="prefetchHistory('${r.id}')" onclick="toggleHistory(this, '${r.id}')">
+        <i class="fas fa-clock-rotate-left"></i> 이전 기록 보기 (${r.historyCount}건)
+        <i class="fas fa-chevron-down toggle-arrow"></i>
+      </button>
+      <div class="history-body" id="historyBody-${r.id}"></div>
+    </div>` : ''}
+  `;
+
+  // 자동 새로고침 등으로 패널이 다시 그려져도, 원래 펼쳐져 있던 "이전 기록"은 접히지 않고
+  // 그대로 열린 상태를 유지한다 (이미 불러온 내용은 즉시 표시, 안 불러왔다면 이어서 불러옴).
+  if (r.historyCount && r.historyCount > 0 && openHistoryId === r.id) {
+    const btn = panel.querySelector('.history-toggle');
+    const body = document.getElementById(`historyBody-${r.id}`);
+    if (btn) btn.classList.add('open');
+    if (body) body.classList.add('open');
+    ensureHistoryLoaded(r.id);
+  }
+}
+
+// 이전 기록(h)의 각 필드가, 그 다음(더 최신) 상태(after)와 비교해서 바뀌었는지 확인
+function historyDiffFlags(h, after) {
+  const norm = v => (v === null || v === undefined ? '' : v).toString().trim();
+  const normOnset = v => norm(v) ? fmtDateOnly(v) : '';
+  return {
+    therapist: norm(h.therapist) !== norm(after.therapist),
+    doctor: norm(h.doctor) !== norm(after.doctor),
+    type: norm(h.type) !== norm(after.type),
+    onset: normOnset(h.onset) !== normOnset(after.onset),
+    warning: !!h.warning !== !!after.warning,
+    dx: norm(h.dx) !== norm(after.dx),
+    cc: norm(h.cc) !== norm(after.cc),
+    tx: norm(h.tx) !== norm(after.tx),
+    goal: norm(h.goal) !== norm(after.goal),
+    note: norm(h.note) !== norm(after.note),
+    grandRound: norm(h.grandRound) !== norm(after.grandRound)
+  };
+}
+
+// 값이 바뀐 필드는 형광펜(diff-hl)으로 감싸서 표시
+function hlSpan(text, changed) {
+  const safe = escapeHtml(text || '-');
+  return changed ? `<span class="diff-hl">${safe}</span>` : safe;
+}
+
+function renderHistoryEntries(id, list) {
+  const el = document.getElementById(`historyBody-${id}`);
+  if (!el) return;
+  if (!list || list.length === 0) {
+    el.innerHTML = '<div class="trash-empty-msg">이전 기록이 없습니다.</div>';
+    return;
+  }
+  const currentRec = recordsById[id] || {};
+  // list는 최신순(modifiedAt desc) 정렬되어 있음.
+  // list[0](가장 최근 수정 전 내용)은 "현재" 값과 비교, 그 외는 한 단계 더 최신인 list[i-1]과 비교.
+  const entriesHtml = list.map((h, idx) => {
+    const after = idx === 0 ? currentRec : list[idx - 1];
+    const diff = historyDiffFlags(h, after);
+    const anyChanged = Object.values(diff).some(Boolean);
+    const checked = selectedHistoryRows.has(h.historyRow) ? 'checked' : '';
+    return `
+    <div class="history-entry">
+      <div class="history-entry-top">
+        <label class="history-entry-select" title="선택">
+          <input type="checkbox" ${checked} onchange="toggleHistorySelect(${h.historyRow}, this.checked, '${id}')">
+        </label>
+        <span class="history-entry-time">${fmtDate(h.modifiedAt)} 수정 전 내용${anyChanged ? '<span class="history-entry-changed-badge">변경됨</span>' : ''}</span>
+        <button class="history-del-btn" onclick="deleteHistoryEntry(${h.historyRow}, '${id}')" title="이 기록 영구 삭제"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="history-entry-grid">
+        <div><span class="hl">치료사</span>${hlSpan(h.therapist, diff.therapist)}</div>
+        <div><span class="hl">주치의</span>${hlSpan(h.doctor, diff.doctor)}</div>
+        <div><span class="hl">치료종류</span>${hlSpan(h.type, diff.type)}</div>
+        <div><span class="hl">ONSET</span>${hlSpan(fmtDateOnly(h.onset), diff.onset)}</div>
+        <div><span class="hl">주의</span>${hlSpan(h.warning ? '주의' : '-', diff.warning)}</div>
+      </div>
+      <div class="history-entry-field"><span class="hl">Dx</span>${hlSpan(h.dx, diff.dx)}</div>
+      <div class="history-entry-field"><span class="hl">C.C</span>${hlSpan(h.cc, diff.cc)}</div>
+      <div class="history-entry-field"><span class="hl">Tx</span>${hlSpan(h.tx, diff.tx)}</div>
+      <div class="history-entry-field"><span class="hl">Goal</span>${hlSpan(h.goal, diff.goal)}</div>
+      ${h.note ? `<div class="history-entry-field"><span class="hl">주의사항</span>${hlSpan(h.note, diff.note)}</div>` : ''}
+      ${h.grandRound ? `<div class="history-entry-field"><span class="hl">그랜드라운딩</span>${hlSpan(h.grandRound, diff.grandRound)}</div>` : ''}
+    </div>
+  `;
+  }).join('');
+
+  // 관리자 모드에서만 보이는 전체선택/선택삭제 바 (CSS에서 body.admin-mode일 때만 노출)
+  const bulkBarHtml = `
+    <div class="history-bulk-bar" id="historyBulkBar">
+      <label class="history-select-all">
+        <input type="checkbox" id="historySelectAllCb" onchange="toggleHistorySelectAll(this.checked, '${id}')"> 전체 선택
+      </label>
+      <button id="historyBulkDeleteBtn" class="history-bulk-delete-btn" onclick="bulkDeleteHistoryEntries('${id}')" disabled>
+        <i class="fas fa-trash"></i> 선택 삭제 (<span id="historyBulkCount">0</span>)
+      </button>
+    </div>
+  `;
+
+  el.innerHTML = bulkBarHtml + entriesHtml;
+  updateHistoryBulkBar(list);
+}
+
+// 개별 체크박스를 눌렀을 때 선택 상태만 갱신 (전체를 다시 그리지 않아 체크 반응이 즉각적)
+function toggleHistorySelect(historyRow, checked, id) {
+  if (checked) selectedHistoryRows.add(historyRow); else selectedHistoryRows.delete(historyRow);
+  updateHistoryBulkBar(recordsById[id] && recordsById[id].history);
+}
+
+// 전체 선택/해제는 목록을 다시 그려서 모든 체크박스 상태를 한 번에 맞춘다
+function toggleHistorySelectAll(checked, id) {
+  const rec = recordsById[id];
+  const list = (rec && rec.history) || [];
+  if (checked) list.forEach(h => selectedHistoryRows.add(h.historyRow));
+  else list.forEach(h => selectedHistoryRows.delete(h.historyRow));
+  renderHistoryEntries(id, list);
+}
+
+function updateHistoryBulkBar(list) {
+  const count = selectedHistoryRows.size;
+  const countEl = document.getElementById('historyBulkCount');
+  if (countEl) countEl.textContent = count;
+  const btn = document.getElementById('historyBulkDeleteBtn');
+  if (btn) btn.disabled = count === 0;
+  const allCb = document.getElementById('historySelectAllCb');
+  if (allCb && list) {
+    const total = list.length;
+    const selectedInList = list.filter(h => selectedHistoryRows.has(h.historyRow)).length;
+    allCb.checked = total > 0 && selectedInList === total;
+    allCb.indeterminate = selectedInList > 0 && selectedInList < total;
+  }
+}
+
+async function toggleHistory(btn, id) {
+  const opening = !btn.classList.contains('open');
+  btn.classList.toggle('open', opening);
+  const body = document.getElementById(`historyBody-${id}`);
+  if (!body) return;
+  body.classList.toggle('open', opening);
+  if (openHistoryId !== id) selectedHistoryRows.clear(); // 다른 환자의 이전 기록으로 전환하면 선택 초기화
+  openHistoryId = opening ? id : null;
+  if (!opening) { selectedHistoryRows.clear(); return; } // 접을 때도 선택 초기화, 다시 안 불러옴
+  ensureHistoryLoaded(id);
+}
+
+// 이전 기록을 불러와 렌더링한다. 이미 불러온 내용이 있으면 즉시 렌더링하고,
+// 이미 같은 id로 불러오는 중이면 중복 요청하지 않는다.
+// (자동 새로고침으로 상세 패널이 다시 그려져도 renderDetail()에서 이 함수를 다시 호출하므로,
+// 열려 있던 "이전 기록"이 로딩 중이었어도 자연스럽게 이어서 표시된다.)
+// 버튼에 마우스를 올리는 순간(클릭하기 전) 미리 백그라운드로 불러와 둔다.
+// 실제로 클릭했을 땐 이미 도착해 있는 경우가 많아 체감 대기시간이 거의 0에 가까워진다.
+// 이미 캐시돼 있거나 불러오는 중이면 아무것도 하지 않는다.
+function prefetchHistory(id) {
+  const rec = recordsById[id];
+  if (!rec || rec.history || historyLoadingIds.has(id)) return;
+  ensureHistoryLoaded(id);
+}
+
+async function ensureHistoryLoaded(id) {
+  const rec = recordsById[id];
+  if (!rec) return;
+
+  if (rec.history) {
+    renderHistoryEntries(id, rec.history);
+    return;
+  }
+
+  const body = document.getElementById(`historyBody-${id}`);
+  if (body) body.innerHTML = '<div class="trash-empty-msg">불러오는 중...</div>';
+
+  if (historyLoadingIds.has(id)) return; // 이미 불러오는 중
+  historyLoadingIds.add(id);
+
+  try {
+    const res = await fetch(`${GAS_URL}?historyKey=${encodeURIComponent(rec.timestamp)}`, { cache: 'no-store' });
+    const data = await res.json();
+    rec.history = Array.isArray(data.history) ? data.history : [];
+    // 응답이 오는 사이 다른 환자를 보고 있거나 접었다면, 지금 화면에 그리지 않는다
+    // (데이터 자체는 rec.history에 캐시되어 다음에 열 때 즉시 표시됨)
+    if (openHistoryId === id) renderHistoryEntries(id, rec.history);
+  } catch (err) {
+    console.error(err);
+    const b = document.getElementById(`historyBody-${id}`);
+    if (b && openHistoryId === id) b.innerHTML = '<div class="trash-empty-msg">불러오지 못했습니다.</div>';
+  } finally {
+    historyLoadingIds.delete(id);
+  }
+}
+
+async function deleteHistoryEntry(historyRow, id) {
+  if (!confirm('이 이전 기록을 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'deleteHistoryEntry', historyRow: historyRow })
+    });
+    let result = {};
+    try { result = await res.json(); } catch (e) {}
+    if (result && result.success === false) {
+      showToast('삭제에 실패했습니다.');
+      return;
+    }
+    showToast('이전 기록이 삭제되었습니다.');
+    selectedHistoryRows.delete(historyRow);
+    const rec = recordsById[id];
+    if (rec) rec.history = null; // 다시 열 때 새로 불러오게 초기화
+    setTimeout(() => loadData(false), 600);
+  } catch (err) {
+    console.error(err);
+    showToast('삭제 중 오류가 발생했습니다.');
+  }
+}
+
+// 관리자 모드에서 체크박스로 여러 건을 골라 한 번에 삭제한다.
+// 서버 API가 한 건씩 지우는 구조라(deleteHistoryEntry), 선택한 개수만큼 병렬로 요청을 보낸다.
+async function bulkDeleteHistoryEntries(id) {
+  const rows = Array.from(selectedHistoryRows);
+  if (rows.length === 0) return;
+  if (!confirm(`선택한 이전 기록 ${rows.length}건을 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+  const btn = document.getElementById('historyBulkDeleteBtn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const results = await Promise.all(rows.map(historyRow =>
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'deleteHistoryEntry', historyRow: historyRow })
+      }).then(res => res.json().catch(() => ({}))).catch(() => ({ success: false }))
+    ));
+    const failCount = results.filter(r => r && r.success === false).length;
+    if (failCount > 0) {
+      showToast(`${rows.length - failCount}건 삭제 완료, ${failCount}건은 실패했습니다.`);
+    } else {
+      showToast(`이전 기록 ${rows.length}건이 삭제되었습니다.`);
+    }
+    selectedHistoryRows.clear();
+    const rec = recordsById[id];
+    if (rec) rec.history = null; // 다시 열 때 새로 불러오게 초기화
+    setTimeout(() => loadData(false), 600);
+  } catch (err) {
+    console.error(err);
+    showToast('삭제 중 오류가 발생했습니다.');
+    if (btn) btn.disabled = false;
+  }
+}
+
+function toggleSelect(id, checked) {
+  const rec = recordsById[id];
+  if (!rec) return;
+  if (checked) {
+    selected.set(id, rec);
+    if (!trayBaseOrder.includes(id)) trayBaseOrder.push(id); // 최초 선택 순서 기록(전체 초기화용)
+  } else {
+    selected.delete(id);
+    trayBaseOrder = trayBaseOrder.filter(x => x !== id);
+  }
+  renderList();
+  renderTray();
+}
+
+function clearTray() {
+  selected.clear();
+  trayBaseOrder = [];
+  trayUndoStack = [];
+  renderList();
+  renderTray();
+  if (trayDrawerOpen) toggleTrayDrawer();
+}
+
+function removeFromTray(id) {
+  selected.delete(id);
+  trayBaseOrder = trayBaseOrder.filter(x => x !== id);
+  renderList();
+  renderTray();
+}
+
+function toggleTrayDrawer() {
+  trayDrawerOpen = !trayDrawerOpen;
+  document.getElementById('trayDrawer').classList.toggle('open', trayDrawerOpen);
+  document.getElementById('trayCountBtn').classList.toggle('open', trayDrawerOpen);
+}
+
+function renderTray() {
+  const count = selected.size;
+  document.getElementById('trayCount').textContent = count;
+  document.getElementById('trayPrintBtn').disabled = count === 0;
+  document.getElementById('trayExcelBtn').disabled = count === 0;
+  document.getElementById('trayDeleteBtn').disabled = count === 0;
+  document.getElementById('quickDeleteCount').textContent = count;
+  document.getElementById('quickDeleteBtn').disabled = count === 0;
+
+  const drawer = document.getElementById('trayDrawer');
+  if (count === 0) {
+    drawer.innerHTML = '<div class="tray-drawer-empty">선택된 환자가 없습니다.</div>';
+    return;
+  }
+  const entries = Array.from(selected.entries()); // [id, record], 선택(=인쇄/엑셀 출력) 순서 그대로
+  const canUndo = trayUndoStack.length > 0;
+  drawer.innerHTML = `
+    <div class="tray-drawer-header">
+      <div>
+        <div class="tray-drawer-title">선택된 환자 <b>${count}</b>명</div>
+        <div class="tray-drawer-sub">드래그하여 순서를 변경하세요.</div>
+      </div>
+      <div class="tray-drawer-header-actions">
+        <button class="tray-drawer-action-btn" onclick="undoTrayOrder()" ${canUndo ? '' : 'disabled'} title="실행 취소"><i class="fas fa-rotate-left"></i> 실행 취소</button>
+        <button class="tray-drawer-action-btn" onclick="resetTrayOrder()" title="전체 초기화"><i class="fas fa-arrows-rotate"></i> 전체 초기화</button>
+      </div>
+    </div>
+    <div class="tray-sort-list" id="traySortList">
+      ${entries.map(([id, r], idx) => `
+        <div class="tray-sort-item" draggable="true" data-id="${id}" oncontextmenu="openTrayContextMenu(event, '${id}')">
+          <span class="tray-sort-num">${idx + 1}</span>
+          <span class="tray-sort-grip"><i class="fas fa-grip-vertical"></i></span>
+          <span class="tray-sort-name">${escapeHtml(r.name)} <span class="tray-sort-sub">· ${escapeHtml(r.therapist)}</span></span>
+          <button class="tray-sort-menu-btn" onclick="event.stopPropagation(); openTrayContextMenu(event, '${id}')" title="더 보기"><i class="fas fa-ellipsis-vertical"></i></button>
+        </div>
+      `).join('')}
+    </div>
+    <div class="tray-drawer-hint"><i class="fas fa-circle-info"></i> 카드 전체를 드래그하여 원하는 위치로 이동하거나, 우클릭(또는 ⋮)으로 빠른 이동 메뉴를 열 수 있습니다.</div>
+  `;
+  bindTraySortDragEvents();
+}
+
+/* ---------- 선택 환자 순서 변경: 드래그앤드롭 ---------- */
+let trayDragSrcId = null;
+let trayBaseOrder = [];   // 최초 선택 순서 스냅샷(id 배열) - "전체 초기화"에 사용
+let trayUndoStack = [];   // 순서 변경 히스토리(id 배열들) - "실행 취소"에 사용
+
+// 드래그 핸들 없이 칸 어디를 눌러도 그대로 집어서 옮길 수 있도록 아이템 전체(.tray-sort-item)에
+// draggable을 걸고, 실제 이동 위치는 리스트에 삽입되는 파란 표시선(.tray-drop-indicator)으로 보여준다.
+function bindTraySortDragEvents() {
+  const list = document.getElementById('traySortList');
+  if (!list) return;
+  list.querySelectorAll('.tray-sort-item').forEach(item => {
+    item.addEventListener('dragstart', function (e) {
+      trayDragSrcId = this.dataset.id;
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', this.dataset.id); // Firefox 등에서 드래그가 동작하려면 필요
+    });
+    item.addEventListener('dragend', function () {
+      this.classList.remove('dragging');
+      removeTrayDropIndicator();
+      trayDragSrcId = null;
+    });
+  });
+  list.addEventListener('dragover', handleTraySortDragOver);
+  list.addEventListener('drop', handleTraySortDrop);
+}
+
+function handleTraySortDragOver(e) {
+  if (!trayDragSrcId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const list = document.getElementById('traySortList');
+  let indicator = document.getElementById('trayDropIndicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'trayDropIndicator';
+    indicator.className = 'tray-drop-indicator';
+    list.appendChild(indicator);
+  }
+  const items = Array.from(list.querySelectorAll('.tray-sort-item')).filter(el => el.dataset.id !== trayDragSrcId);
+  let target = null;
+  for (const item of items) {
+    const rect = item.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) { target = item; break; }
+  }
+  if (target) list.insertBefore(indicator, target); else list.appendChild(indicator);
+}
+
+function removeTrayDropIndicator() {
+  const indicator = document.getElementById('trayDropIndicator');
+  if (indicator) indicator.remove();
+}
+
+function handleTraySortDrop(e) {
+  e.preventDefault();
+  const list = document.getElementById('traySortList');
+  const indicator = document.getElementById('trayDropIndicator');
+  const srcId = trayDragSrcId;
+  trayDragSrcId = null;
+  if (!srcId || !indicator) { removeTrayDropIndicator(); return; }
+
+  // 표시선(indicator)이 놓인 자리를 기준으로 최종 순서를 계산: indicator 자리는 드래그한 카드로,
+  // 나머지는 화면(DOM)에 남아있는 순서 그대로 읽는다.
+  const newOrderIds = [];
+  Array.from(list.children).forEach(ch => {
+    if (ch.id === 'trayDropIndicator') { newOrderIds.push(srcId); return; }
+    if (ch.classList && ch.classList.contains('tray-sort-item') && ch.dataset.id !== srcId) {
+      newOrderIds.push(ch.dataset.id);
+    }
+  });
+  removeTrayDropIndicator();
+  if (newOrderIds.length !== selected.size) return; // 안전장치
+
+  const currentOrder = Array.from(selected.keys());
+  const unchanged = currentOrder.length === newOrderIds.length && currentOrder.every((id, i) => id === newOrderIds[i]);
+  if (unchanged) return;
+
+  pushTrayUndo();
+  applyTrayOrder(newOrderIds);
+}
+
+/* ---------- 선택 환자 순서 변경: 우클릭 빠른 이동 메뉴 ---------- */
+let trayContextTargetId = null;
+let trayGotoTargetId = null;
+
+function openTrayContextMenu(e, id) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!selected.has(id)) return;
+  trayContextTargetId = id;
+  const ids = Array.from(selected.keys());
+  const idx = ids.indexOf(id);
+  const menu = document.getElementById('trayContextMenu');
+  menu.querySelector('[data-action="top"]').disabled = idx <= 0;
+  menu.querySelector('[data-action="up"]').disabled = idx <= 0;
+  menu.querySelector('[data-action="down"]').disabled = idx >= ids.length - 1;
+  menu.querySelector('[data-action="bottom"]').disabled = idx >= ids.length - 1;
+  menu.classList.add('open');
+  positionTrayContextMenu(e.clientX, e.clientY);
+}
+
+function closeTrayContextMenu() {
+  document.getElementById('trayContextMenu').classList.remove('open');
+  trayContextTargetId = null;
+}
+
+function positionTrayContextMenu(x, y) {
+  const menu = document.getElementById('trayContextMenu');
+  const rect = menu.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = x, top = y;
+  if (left + rect.width > vw - 8) left = Math.max(8, vw - rect.width - 8);
+  if (top + rect.height > vh - 8) top = Math.max(8, vh - rect.height - 8);
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+}
+
+document.addEventListener('click', function (e) {
+  const menu = document.getElementById('trayContextMenu');
+  if (menu.classList.contains('open') && !menu.contains(e.target)) closeTrayContextMenu();
+});
+window.addEventListener('scroll', closeTrayContextMenu, true);
+window.addEventListener('resize', closeTrayContextMenu);
+
+function trayQuickMove(type) {
+  const id = trayContextTargetId;
+  closeTrayContextMenu();
+  if (!id || !selected.has(id)) return;
+  const ids = Array.from(selected.keys());
+  const idx = ids.indexOf(id);
+  let newIdx = idx;
+  if (type === 'top') newIdx = 0;
+  else if (type === 'up') newIdx = Math.max(0, idx - 1);
+  else if (type === 'down') newIdx = Math.min(ids.length - 1, idx + 1);
+  else if (type === 'bottom') newIdx = ids.length - 1;
+  if (newIdx === idx) return;
+  ids.splice(idx, 1);
+  ids.splice(newIdx, 0, id);
+  pushTrayUndo();
+  applyTrayOrder(ids);
+}
+
+function trayRemoveFromContext() {
+  const id = trayContextTargetId;
+  closeTrayContextMenu();
+  if (!id) return;
+  removeFromTray(id);
+}
+
+/* ---------- 선택 환자 순서 변경: 특정 위치로 이동 모달 ---------- */
+function openTrayGotoModal() {
+  const id = trayContextTargetId;
+  closeTrayContextMenu();
+  if (!id || !selected.has(id)) return;
+  trayGotoTargetId = id;
+  const ids = Array.from(selected.keys());
+  const idx = ids.indexOf(id);
+  const rec = selected.get(id);
+  document.getElementById('trayGotoCurrentInfo').textContent = `현재: ${idx + 1}번째 (${rec.name}${rec.therapist ? ' · ' + rec.therapist : ''})`;
+  const input = document.getElementById('trayGotoInput');
+  input.value = idx + 1;
+  input.min = 1;
+  input.max = ids.length;
+  document.getElementById('trayGotoHint').textContent = `예) 1~${ids.length} 사이의 숫자 입력`;
+  document.getElementById('trayGotoModal').classList.add('open');
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+function closeTrayGotoModal() {
+  document.getElementById('trayGotoModal').classList.remove('open');
+  trayGotoTargetId = null;
+}
+document.getElementById('trayGotoModal').addEventListener('click', function (e) { if (e.target === this) closeTrayGotoModal(); });
+
+function confirmTrayGoto() {
+  const id = trayGotoTargetId;
+  if (!id || !selected.has(id)) { closeTrayGotoModal(); return; }
+  const ids = Array.from(selected.keys());
+  const total = ids.length;
+  let target = parseInt(document.getElementById('trayGotoInput').value, 10);
+  if (!target || isNaN(target)) { showToast('올바른 순번을 입력해주세요.'); return; }
+  target = Math.min(total, Math.max(1, target));
+  const idx = ids.indexOf(id);
+  ids.splice(idx, 1);
+  ids.splice(target - 1, 0, id);
+  pushTrayUndo();
+  applyTrayOrder(ids);
+  closeTrayGotoModal();
+}
+
+/* ---------- 선택 환자 순서 변경: 실행 취소 / 전체 초기화 ---------- */
+function pushTrayUndo() {
+  trayUndoStack.push(Array.from(selected.keys()));
+  if (trayUndoStack.length > 20) trayUndoStack.shift();
+}
+
+function applyTrayOrder(newOrderIds) {
+  const rebuilt = new Map();
+  newOrderIds.forEach(id => { if (selected.has(id)) rebuilt.set(id, selected.get(id)); });
+  selected = rebuilt;
+  renderTray();
+}
+
+function undoTrayOrder() {
+  if (trayUndoStack.length === 0) return;
+  const prevOrder = trayUndoStack.pop();
+  applyTrayOrder(prevOrder);
+}
+
+function resetTrayOrder() {
+  if (selected.size === 0) return;
+  const baseline = trayBaseOrder.filter(id => selected.has(id));
+  const current = Array.from(selected.keys());
+  const unchanged = current.length === baseline.length && current.every((id, i) => id === baseline[i]);
+  if (unchanged) return;
+  pushTrayUndo();
+  applyTrayOrder(baseline);
+}
+
+/* ---------- 수정/신규 모달 ---------- */
+let isCreateMode = false;
+
+function openEditModal(id) {
+  const r = recordsById[id];
+  if (!r) return;
+  isCreateMode = false;
+  modalOpen = true;
+  document.getElementById('modalTitleText').textContent = '인수인계 기록 수정';
+  document.getElementById('editId').value = r.id;
+  document.getElementById('editName').value = r.name || '';
+  document.getElementById('editTherapist').value = r.therapist || '';
+  document.getElementById('editDoctor').value = r.doctor || '';
+  document.getElementById('editType').value = r.type || 'SOT';
+  document.getElementById('editOnset').value = toDateInputValue(r.onset);
+  document.getElementById('editDx').value = r.dx || '';
+  document.getElementById('editCc').value = r.cc || '';
+  document.getElementById('editTx').value = r.tx || '';
+  document.getElementById('editGoal').value = r.goal || '';
+  document.getElementById('editNote').value = r.note || '';
+  document.getElementById('editWarnFlag').checked = !!r.warning;
+  document.getElementById('editGrandRound').value = r.grandRound || '';
+  document.getElementById('modalDeleteBtn').style.display = adminMode ? 'flex' : 'none';
+  document.getElementById('editModal').classList.add('open');
+}
+
+function openCreateModal() {
+  isCreateMode = true;
+  modalOpen = true;
+  document.getElementById('modalTitleText').textContent = '새 환자 등록';
+  document.getElementById('editId').value = '';
+  document.getElementById('editName').value = '';
+  document.getElementById('editTherapist').value = '';
+  document.getElementById('editDoctor').value = '';
+  document.getElementById('editType').value = 'SOT';
+  document.getElementById('editOnset').value = '';
+  document.getElementById('editDx').value = '';
+  document.getElementById('editCc').value = '';
+  document.getElementById('editTx').value = '';
+  document.getElementById('editGoal').value = '';
+  document.getElementById('editNote').value = '';
+  document.getElementById('editWarnFlag').checked = false;
+  document.getElementById('editGrandRound').value = '';
+  document.getElementById('modalDeleteBtn').style.display = 'none';
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() {
+  modalOpen = false;
+  document.getElementById('editModal').classList.remove('open');
+}
+// 새 환자 추가/수정 모달은 작성 중 실수로 바깥을 눌러 날아가는 일이 없도록,
+// 바깥 클릭으로는 닫히지 않고 닫기 버튼 또는 ESC로만 닫힙니다.
+document.addEventListener('keydown', function (e) {
+  // 입력창/텍스트에어리어에 포커스가 있을 때 F2는 그대로 동작(검색창 포커스)하되,
+  // ESC는 브라우저 기본 동작과 겹치지 않도록 아래 각 case에서 개별 처리
+  if (e.key === 'F2') {
+    e.preventDefault();
+    const el = document.getElementById('searchName');
+    if (el) { el.focus(); el.select(); }
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (modalOpen) { closeEditModal(); return; } // 새 환자 추가/수정 모달이 열려있으면 그것만 닫음
+    if (document.getElementById('trayContextMenu').classList.contains('open')) { closeTrayContextMenu(); return; }
+    if (document.getElementById('trayGotoModal').classList.contains('open')) { closeTrayGotoModal(); return; }
+    if (document.getElementById('printSettingsModal').classList.contains('open')) { closePrintSettingsModal(); return; }
+    const anyOtherModalOpen = document.querySelector('.modal-overlay.open');
+    if (!anyOtherModalOpen && selected.size > 0) {
+      clearTray(); // 다른 모달이 없고 선택된 항목이 있으면 선택 해제
+    }
+  }
+});
+
+let isSaving = false;
+
+async function saveEdit() {
+  if (isSaving) return; // 저장 진행 중 중복 클릭 방지
+  const id = document.getElementById('editId').value;
+  const name = document.getElementById('editName').value.trim();
+  const therapist = document.getElementById('editTherapist').value.trim();
+  if (!name || !therapist) { showToast('환자 성함과 치료사는 필수입니다.'); return; }
+
+  const payload = {
+    action: isCreateMode ? 'create' : 'update', id: id, name: name, therapist: therapist,
+    doctor: document.getElementById('editDoctor').value.trim(),
+    type: document.getElementById('editType').value,
+    onset: document.getElementById('editOnset').value,
+    dx: document.getElementById('editDx').value.trim(),
+    cc: document.getElementById('editCc').value.trim(),
+    tx: document.getElementById('editTx').value.trim(),
+    goal: document.getElementById('editGoal').value.trim(),
+    note: document.getElementById('editNote').value.trim(),
+    warning: document.getElementById('editWarnFlag').checked ? '주의' : '',
+    grandRound: document.getElementById('editGrandRound').value.trim()
+  };
+
+  isSaving = true;
+  let tempId = null;
+
+  if (isCreateMode) {
+    // 낙관적 업데이트: 새 환자를 서버 응답을 기다리지 않고 즉시 목록에 표시
+    tempId = 'temp-' + Date.now();
+    const nowIso = new Date().toISOString();
+    const tempRec = {
+      id: tempId,
+      timestamp: nowIso,
+      warning: payload.warning,
+      doctor: payload.doctor,
+      name: payload.name,
+      therapist: payload.therapist,
+      type: payload.type,
+      onset: payload.onset ? new Date(payload.onset).toISOString() : '',
+      dx: payload.dx,
+      cc: payload.cc,
+      tx: payload.tx,
+      goal: payload.goal,
+      note: payload.note,
+      grandRound: payload.grandRound,
+      modified: '',
+      historyCount: 0
+    };
+    allRecords.unshift(tempRec);
+    recordsById[tempId] = tempRec;
+    currentDetailId = tempId;
+    renderList();
+    renderDetail();
+    updateStats();
+  } else {
+    // 낙관적 업데이트: 수정인 경우 서버 응답을 기다리지 않고 화면에 바로 반영
+    const rec = recordsById[id];
+    if (rec) {
+      rec.name = payload.name;
+      rec.therapist = payload.therapist;
+      rec.doctor = payload.doctor;
+      rec.type = payload.type;
+      rec.onset = payload.onset ? new Date(payload.onset).toISOString() : '';
+      rec.dx = payload.dx;
+      rec.cc = payload.cc;
+      rec.tx = payload.tx;
+      rec.goal = payload.goal;
+      rec.note = payload.note;
+      rec.warning = payload.warning;
+      rec.grandRound = payload.grandRound;
+      rec.modified = new Date().toISOString();
+      renderList();
+      renderDetail();
+      updateStats();
+    }
+  }
+
+  showToast(isCreateMode ? '새 환자가 등록되었습니다. 원본 시트에도 반영됩니다.' : '수정되었습니다. 원본 시트에도 반영됩니다.');
+  closeEditModal();
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    let result = {};
+    try { result = await res.json(); } catch (e) {}
+    if (result && result.success === false) {
+      showToast('저장에 실패했습니다: ' + (result.error || '알 수 없는 오류') + ' 목록을 다시 불러옵니다.');
+      loadData(false);
+      return;
+    }
+    loadData(false); // 조용히 백그라운드 동기화 (임시 항목은 서버의 실제 데이터로 자연스럽게 교체됨)
+  } catch (err) {
+    console.error(err);
+    showToast('저장 중 오류가 발생했습니다. 목록을 다시 불러옵니다.');
+    loadData(false);
+  } finally {
+    isSaving = false;
+  }
+}
+
+async function deleteFromModal() {
+  const id = document.getElementById('editId').value;
+  if (!id) return;
+  if (!confirm('이 인수인계 기록을 휴지통으로 이동하시겠습니까?\n휴지통에서 복구하거나 완전히 삭제할 수 있습니다.')) return;
+  await deleteRecords([id]);
+  closeEditModal();
+}
+
+/* ---------- 인쇄 (A4 장수에 맞춰 자동 비율 조절 - 실측+실제 페이지분할 기반) ---------- */
+const MM_TO_PX = 96 / 25.4;
+const A4_CONTENT_WIDTH_PX = (210 - 24) * MM_TO_PX;  // @page 좌우 여백 12mm씩 제외
+const A4_CONTENT_HEIGHT_PX = (297 - 8 - 12) * MM_TO_PX; // @page 상단 8mm + 하단 12mm 제외
+// 페이지 분할/배율 계산에는 실제 A4 높이보다 3% 적은 값을 "예산"으로 씁니다.
+// 계산 시점(화면)과 실제 인쇄 시점의 폰트 로딩 타이밍·프린터 여백 차이로 실측값이
+// 살짝 어긋날 수 있는데, 여유 없이 딱 맞춰 계산하면 이 작은 오차만으로도 카드 하나가
+// 다음 페이지로 넘어가 "1장으로 설정했는데 실제로는 2장"이 되는 문제가 생깁니다.
+const PRINT_SAFE_PAGE_HEIGHT_PX = A4_CONTENT_HEIGHT_PX * 0.97;
+const PRINT_THUMB_WIDTH = 150; // 미리보기 썸네일 폭(px)
+let printScale = 1;
+let printPageBreakIds = new Set(); // 미리보기에서 계산한 페이지 경계를 실제 인쇄에도 강제 적용하기 위한 id 집합
+
+// breakBeforeIds가 주어지면, 해당 id의 카드 앞에 강제 페이지 나눔(print-page-break) 클래스를 붙인다.
+// (미리보기/실측용으로 호출할 때는 undefined로 둬서 아무 영향 없음)
+function buildPrintCardHtmlArray(items, breakBeforeIds) {
+  return items.map(r => {
+    const flagged = !!r.warning;
+    const breakClass = (breakBeforeIds && breakBeforeIds.has(r.id)) ? ' print-page-break' : '';
+    return `
+      <div class="print-card ${flagged ? 'flagged' : ''}${breakClass}">
+        <div class="print-top">
+          <span class="pname">${escapeHtml(r.name)}
+            <span class="print-badge">${escapeHtml(r.type || '-')}</span>
+            ${flagged ? '<span class="print-badge warn">주의</span>' : ''}
+          </span>
+          <span class="pmeta">${escapeHtml(r.therapist)}${r.doctor ? ' · 주치의 ' + escapeHtml(r.doctor) : ''} · ONSET ${fmtDateOnly(r.onset)} · 작성 ${fmtDate(r.timestamp)}</span>
+        </div>
+        ${r.note ? `<div class="print-note">⚠ ${escapeHtml(r.note)}</div>` : ''}
+        <div class="print-field"><b>Dx</b>${escapeHtml(r.dx || '-')}</div>
+        <div class="print-field"><b>C.C</b>${escapeHtml(r.cc || '-')}</div>
+        <div class="print-tx"><b>Tx</b>${escapeHtml(r.tx || '-')}</div>
+        ${r.goal ? `<div class="print-field"><b>Goal</b>${escapeHtml(r.goal)}</div>` : ''}
+        ${r.grandRound ? `<div class="print-field"><b>그랜드라운딩</b>${escapeHtml(r.grandRound)}</div>` : ''}
+      </div>
+    `;
+  });
+}
+function buildPrintCards(items, breakBeforeIds) {
+  return buildPrintCardHtmlArray(items, breakBeforeIds).join('');
+}
+
+// 실제 인쇄 1페이지 맨 위에는 제목+날짜가 함께 출력되므로, 그만큼 카드가 들어갈
+// 공간이 줄어듭니다. 이 헤더 높이를 실측해서 1페이지에서만 미리 빼줍니다.
+function measurePrintHeaderHeight() {
+  const probe = document.getElementById('printMeasureProbe');
+  probe.style.width = A4_CONTENT_WIDTH_PX + 'px';
+  probe.style.removeProperty('--print-scale'); // 제목/날짜는 --print-scale의 영향을 받지 않음
+  probe.innerHTML = '<div class="print-doc-title">OT인수인계 - 환자 기록</div><div class="print-doc-sub">2026. 1. 1. 오전 12:00:00</div>';
+  const h = probe.scrollHeight;
+  probe.innerHTML = '';
+  return h;
+}
+
+// 카드 하나하나를 화면 밖(안 보이는 곳)에 A4 인쇄폭 그대로 렌더링해서 각각의 실제
+// 높이를 잽니다. 환자마다 치료내용/주의사항 길이가 달라 카드 높이가 다 다르므로,
+// 이렇게 개별 실측을 해야 어디서 페이지가 나뉠지 정확히 계산할 수 있습니다.
+function measureCardHeightsAtScale(cardHtmlArray, scale) {
+  const probe = document.getElementById('printMeasureProbe');
+  probe.style.width = A4_CONTENT_WIDTH_PX + 'px';
+  probe.style.setProperty('--print-scale', scale);
+  const heights = cardHtmlArray.map(html => {
+    probe.innerHTML = html;
+    return probe.scrollHeight;
+  });
+  probe.innerHTML = '';
+  return heights;
+}
+
+// 카드 하나는 절대 안 쪼개지도록(=page-break-inside:avoid와 같은 방식) 순서대로 페이지에
+// 채워 넣습니다. 반환값은 카드 배열의 "인덱스" 묶음이며(html이 아님), 1페이지는 제목/날짜가
+// 차지하는 만큼 공간이 더 적습니다(firstPageHeightPx).
+function paginateByHeight(heights, firstPageHeightPx, pageHeightPx) {
+  const pageGroups = [];
+  let current = [];
+  let currentHeight = 0;
+  let budget = firstPageHeightPx;
+  for (let i = 0; i < heights.length; i++) {
+    const h = heights[i];
+    if (current.length > 0 && currentHeight + h > budget) {
+      pageGroups.push(current);
+      current = [];
+      currentHeight = 0;
+      budget = pageHeightPx;
+    }
+    current.push(i);
+    currentHeight += h;
+  }
+  if (current.length > 0) pageGroups.push(current);
+  return pageGroups.length > 0 ? pageGroups : [[]];
+}
+
+function sumHeights(indices, heights) {
+  return indices.reduce((sum, i) => sum + heights[i], 0);
+}
+
+// 가독성을 최우선으로 유지합니다(=배율을 더 줄이지 않습니다). 그 대신, 페이지 간 인원수
+// 편차가 2명 이상으로 클 때만, 옆 페이지에 자리가 남는 경우에 한해 경계의 카드 한 장을
+// 넘겨서 인원수를 조금 더 고르게 만듭니다. 자리가 없으면(=글자를 더 줄여야만 옮겨지면)
+// 그대로 둡니다 — 가독성이 균등함보다 우선이기 때문입니다.
+function balancePagesForReadability(pageGroups, heights, firstPageHeightPx, pageHeightPx) {
+  if (pageGroups.length < 2) return pageGroups;
+  const budgetOf = (pageIdx) => (pageIdx === 0 ? firstPageHeightPx : pageHeightPx);
+  let changed = true;
+  let guard = 0;
+  while (changed && guard < 40) {
+    changed = false;
+    guard++;
+    for (let i = 0; i < pageGroups.length - 1; i++) {
+      const cur = pageGroups[i];
+      const next = pageGroups[i + 1];
+      if (cur.length - next.length >= 2) {
+        // cur가 next보다 2명 이상 많음 -> cur의 마지막 카드를 next의 맨 앞으로 넘겨봄
+        const lastIdx = cur[cur.length - 1];
+        const nextHeight = sumHeights(next, heights);
+        if (nextHeight + heights[lastIdx] <= budgetOf(i + 1)) {
+          cur.pop();
+          next.unshift(lastIdx);
+          changed = true;
+        }
+      } else if (next.length - cur.length >= 2) {
+        // next가 cur보다 2명 이상 많음 -> next의 맨 앞 카드를 cur의 마지막으로 당겨옴
+        const firstIdx = next[0];
+        const curHeight = sumHeights(cur, heights);
+        if (curHeight + heights[firstIdx] <= budgetOf(i)) {
+          next.shift();
+          cur.push(firstIdx);
+          changed = true;
+        }
+      }
+    }
+  }
+  return pageGroups;
+}
+
+// 목표 장수에 맞는 배율 + 실제 페이지 분할까지 한 번에 계산합니다.
+// 1) 100% 배율일 때 실측해서 1차 배율을 추정
+// 2) 그 배율로 다시 실측/분할해서 목표 장수보다 많이 나오면 조금씩 줄여가며 보정(최대 8회)
+// 너무 작거나 커지지 않도록 55%~130% 사이로 제한합니다.
+// 3) 마지막으로, 배율은 그대로 둔 채(=가독성 유지) 페이지별 인원수만 여유 있는 선에서 고르게 조정합니다.
+function computePrintPlan(targetPages) {
+  const items = Array.from(selected.values());
+  if (items.length === 0) return { scale: 1, pageGroups: [[]], items: [], cardHtmlArray: [], clampedUp: false, clampedDown: false };
+  const cardHtmlArray = buildPrintCardHtmlArray(items);
+  const headerHeight = measurePrintHeaderHeight();
+  const firstPageHeight = Math.max(50, PRINT_SAFE_PAGE_HEIGHT_PX - headerHeight);
+
+  const baseHeights = measureCardHeightsAtScale(cardHtmlArray, 1);
+  const baseTotalHeight = baseHeights.reduce((a, b) => a + b, 0) || 1;
+  const naturalPages = paginateByHeight(baseHeights, firstPageHeight, PRINT_SAFE_PAGE_HEIGHT_PX).length;
+  if (!targetPages || targetPages < 1) targetPages = naturalPages;
+
+  let scale = Math.min(1.3, Math.max(0.55, (targetPages * PRINT_SAFE_PAGE_HEIGHT_PX) / baseTotalHeight));
+  let heights = measureCardHeightsAtScale(cardHtmlArray, scale);
+  let pageGroups = paginateByHeight(heights, firstPageHeight, PRINT_SAFE_PAGE_HEIGHT_PX);
+
+  let guard = 0;
+  while (pageGroups.length > targetPages && scale > 0.55 && guard < 8) {
+    scale = Math.max(0.55, scale - 0.03);
+    heights = measureCardHeightsAtScale(cardHtmlArray, scale);
+    pageGroups = paginateByHeight(heights, firstPageHeight, PRINT_SAFE_PAGE_HEIGHT_PX);
+    guard++;
+  }
+
+  pageGroups = balancePagesForReadability(pageGroups, heights, firstPageHeight, PRINT_SAFE_PAGE_HEIGHT_PX);
+
+  return {
+    scale, pageGroups, items, cardHtmlArray,
+    clampedUp: scale >= 1.299,
+    clampedDown: scale <= 0.551 && pageGroups.length > targetPages
+  };
+}
+
+// 각 페이지를 실제 A4 비율의 작은 썸네일로 렌더링 (같은 print-card 스타일을 그대로
+// 축소해서 보여주므로, 실제 인쇄 결과와 거의 동일하게 보입니다). 1페이지에는 실제
+// 인쇄와 동일하게 제목/날짜도 함께 넣어서 그만큼 카드가 덜 들어가는 게 보이게 합니다.
+// 페이지마다 인원수와 이름 목록도 함께 보여줘서, 누가 몇 페이지에 들어가는지 바로 확인할 수 있게 합니다.
+function renderPrintPreview(plan) {
+  const wrap = document.getElementById('printPreviewPages');
+  const displayScale = PRINT_THUMB_WIDTH / A4_CONTENT_WIDTH_PX;
+  const thumbHeight = Math.round(A4_CONTENT_HEIGHT_PX * displayScale);
+  const headerHtml = `<div class="print-doc-title">OT인수인계 - 환자 기록</div><div class="print-doc-sub">${escapeHtml(new Date().toLocaleString('ko-KR'))}</div>`;
+
+  wrap.innerHTML = plan.pageGroups.map((group, idx) => {
+    const cardsHtml = group.map(i => plan.cardHtmlArray[i]).join('');
+    const namesHtml = group.map(i => `<div class="print-preview-name">${escapeHtml(plan.items[i].name)}</div>`).join('');
+    return `
+    <div class="print-preview-page" style="width:${PRINT_THUMB_WIDTH}px;">
+      <div style="
+        width:${PRINT_THUMB_WIDTH}px;height:${thumbHeight}px;overflow:hidden;
+        border:1px solid var(--border-color);border-radius:3px;background:#fff;
+        box-shadow:0 1px 3px rgba(0,0,0,.1);position:relative;
+      "><div style="width:${A4_CONTENT_WIDTH_PX}px;transform:scale(${displayScale});transform-origin:top left;--print-scale:${plan.scale};">${idx === 0 ? headerHtml : ''}${cardsHtml}</div></div>
+      <div class="print-preview-meta">${idx + 1}페이지 · ${group.length}명</div>
+      <div class="print-preview-names">${namesHtml}</div>
+    </div>
+  `;
+  }).join('');
+}
+
+function openPrintSettingsModal() {
+  if (selected.size === 0) { showToast('출력함에 담긴 기록이 없습니다.'); return; }
+  document.getElementById('printSettingsCount').textContent = selected.size;
+  const plan = computePrintPlan(0); // 0 -> 자동(현재 100% 기준 필요한 장수)
+  document.getElementById('printTargetPages').value = plan.pageGroups.length;
+  applyPrintPlanToUI(plan);
+  syncPrintPresetActiveState();
+  document.getElementById('printSettingsModal').classList.add('open');
+}
+function closePrintSettingsModal() {
+  document.getElementById('printSettingsModal').classList.remove('open');
+}
+// 인쇄 설정 모달도 새 환자 추가/수정 모달과 동일하게, 드래그로 장수를 조절하다
+// 실수로 바깥을 눌러 닫히는 일이 없도록 바깥 클릭으로는 닫히지 않고
+// 닫기 버튼 또는 ESC로만 닫힙니다.
+
+function applyPrintPlanToUI(plan) {
+  const pct = Math.round(plan.scale * 100);
+  const el = document.getElementById('printScalePreview');
+  const pageCount = plan.pageGroups.length;
+  if (plan.clampedDown) {
+    el.style.color = 'var(--warning-dark)';
+    el.textContent = `글자 크기 ${pct}% (최소 크기로도 약 ${pageCount}장이 필요합니다 — 그래도 인쇄는 진행됩니다)`;
+  } else if (plan.clampedUp) {
+    el.style.color = 'var(--neutral-500)';
+    el.textContent = `글자 크기 ${pct}% (이 인원수로는 이미 여유있게 들어갑니다)`;
+  } else {
+    el.style.color = 'var(--neutral-500)';
+    el.textContent = `글자 크기 약 ${pct}%로 조절하면 약 ${pageCount}장에 들어갑니다.`;
+  }
+  renderPrintPreview(plan);
+}
+
+const updatePrintScalePreview = debounce(function () {
+  const targetPages = parseInt(document.getElementById('printTargetPages').value, 10);
+  applyPrintPlanToUI(computePrintPlan(targetPages));
+}, 150);
+
+// 프리셋(1/2/3장) 버튼 클릭 시: 입력값을 채우고 바로 미리보기 갱신 + 버튼 활성 표시 갱신
+function setPrintTargetPages(n) {
+  document.getElementById('printTargetPages').value = n;
+  applyPrintPlanToUI(computePrintPlan(n));
+  syncPrintPresetActiveState();
+}
+
+// 직접 입력창에 타이핑할 때: 미리보기는 debounce로, 프리셋 버튼 활성 표시는 즉시 갱신
+function handlePrintTargetInput() {
+  updatePrintScalePreview();
+  syncPrintPresetActiveState();
+}
+
+// 현재 입력된 장수가 1/2/3 프리셋 중 하나와 같으면 그 버튼을 활성화 표시
+function syncPrintPresetActiveState() {
+  const val = parseInt(document.getElementById('printTargetPages').value, 10);
+  document.querySelectorAll('.print-preset-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.pages, 10) === val);
+  });
+}
+
+function resetPrintScale() {
+  const plan = computePrintPlan(0);
+  document.getElementById('printTargetPages').value = plan.pageGroups.length;
+  applyPrintPlanToUI(plan);
+  syncPrintPresetActiveState();
+}
+
+function confirmPrintWithSettings() {
+  const targetPages = parseInt(document.getElementById('printTargetPages').value, 10);
+  const plan = computePrintPlan(targetPages);
+  printScale = plan.scale;
+  // 미리보기에서 계산한 페이지 경계를, 실제 인쇄에도 강제로 그대로 적용한다.
+  // (이렇게 하지 않으면 실제 인쇄는 브라우저 자동 줄바꿈에 맡겨져서, 미리보기에서 본
+  //  페이지 수/인원 구성과 실제 출력 결과가 달라질 수 있었다.)
+  printPageBreakIds = new Set();
+  plan.pageGroups.forEach((group, idx) => {
+    if (idx === 0 || group.length === 0) return;
+    printPageBreakIds.add(plan.items[group[0]].id);
+  });
+  closePrintSettingsModal();
+  printSelected();
+}
+
+function printSelected() {
+  if (selected.size === 0) { showToast('출력함에 담긴 기록이 없습니다.'); return; }
+  const items = Array.from(selected.values()); // 선택(또는 순서변경)한 순서 그대로 출력
+  document.getElementById('printDate').textContent = new Date().toLocaleString('ko-KR');
+  document.getElementById('printCards').innerHTML = buildPrintCards(items, printPageBreakIds);
+  document.documentElement.style.setProperty('--print-scale', printScale);
+  window.print();
+}
+
+/* ---------- 엑셀 추출 (구글 스프레드시트와 동일한 열 구조) ---------- */
+function excelDateOrText(iso, onlyDate) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return onlyDate ? fmtDateOnly(iso) : d.toLocaleString('ko-KR');
+}
+
+function exportSelectedToExcel() {
+  if (typeof XLSX === 'undefined') { showToast('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.'); return; }
+  if (selected.size === 0) { showToast('출력함에 담긴 기록이 없습니다.'); return; }
+  const items = Array.from(selected.values()); // 선택(또는 순서변경)한 순서 그대로 내보냄
+
+  // 원본 구글 스프레드시트 열 순서(A~O)와 동일하게 구성
+  const header = [
+    '타임스탬프', '주의', '주치의', '환자성함', '치료사', '치료종류', 'ONSET',
+    '진단명', '증상', '치료내용', '주의사항', '최종수정일시', 'UID', 'Goal', '그랜드라운딩'
+  ];
+  const rows = items.map(r => [
+    excelDateOrText(r.timestamp, false),
+    r.warning || '',
+    r.doctor || '',
+    r.name || '',
+    r.therapist || '',
+    r.type || '',
+    excelDateOrText(r.onset, true),
+    r.dx || '',
+    r.cc || '',
+    r.tx || '',
+    r.note || '',
+    excelDateOrText(r.modified, false),
+    r.id || '',
+    r.goal || '',
+    r.grandRound || ''
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  ws['!cols'] = [
+    { wch: 16 }, { wch: 6 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 11 },
+    { wch: 22 }, { wch: 26 }, { wch: 32 }, { wch: 26 }, { wch: 16 }, { wch: 26 }, { wch: 22 }, { wch: 22 }
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '인수인계');
+
+  const stamp = new Date();
+  const y = stamp.getFullYear(), m = String(stamp.getMonth()+1).padStart(2,'0'), d = String(stamp.getDate()).padStart(2,'0');
+  XLSX.writeFile(wb, `OT인수인계_${y}${m}${d}.xlsx`);
+  showToast(`${items.length}명의 기록을 엑셀로 내보냈습니다.`);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = (str || '').toString();
+  return div.innerHTML;
+}
+
+function debounce(fn, delay) {
+  let t = null;
+  return function (...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+document.getElementById('searchName').addEventListener('input', debounce(renderList, 200));
+document.getElementById('sortOrder').addEventListener('change', renderList);
+
+// 웹폰트(Pretendard)를 최대한 미리 로드해 둔다. 인쇄 페이지 계산은 화면에 보이지
+// 않는 곳에서 카드 높이를 실측하는데, 이때 폰트가 아직 로딩 중이면 대체 폰트로
+// 측정되어 실제 인쇄 시(폰트 로딩 완료 후) 줄바꿈이 달라질 수 있다.
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.catch(() => {}); // 실패해도 무시 - 어차피 PRINT_SAFE_PAGE_HEIGHT_PX가 여유를 흡수함
+}
+
+loadFromCache();
+loadData(false);
+</script>
+
+</body>
+</html>

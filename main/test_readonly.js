@@ -46,9 +46,19 @@ const BAD = [
   [/mode\s*:\s*['"]readwrite['"]/, '읽기/쓰기 권한 요청(읽기만 허용)'],
   [/method\s*:\s*['"](POST|PUT|DELETE|PATCH)['"]/i, '서버 쓰기 요청(인수인계는 조회만 허용)'],
 ];
+// 예외: 인수인계 화면은 원래 쓰던 구글 시트 인수인계 프로그램 그대로라 휴지통·퇴원 처리 등 서버 쓰기가 있다(사용자 요청 2026-10-05).
+// 이건 시간표·현황 등 엑셀 원본이 아니라 인수인계 구글 시트 전용이며, 요청은 전부 그 시트 주소(GAS_URL)로만 간다.
+const HANDOVER_APP = 'renderer/tools/인수인계.html';
 for (const f of rendererFiles) {
   const text = fs.readFileSync(f, 'utf8');
-  for (const [re, why] of BAD) assert(!re.test(text), `${rel(f)}: ${why} 사용`);
+  for (const [re, why] of BAD) {
+    if (rel(f) === HANDOVER_APP && /서버 쓰기/.test(why)) continue;
+    assert(!re.test(text), `${rel(f)}: ${why} 사용`);
+  }
 }
+const ho = fs.readFileSync(path.join(root, HANDOVER_APP), 'utf8');
+const fetchTargets = [...ho.matchAll(/fetch\(\s*([^,)]+)/g)].map(m => m[1].trim());
+assert(fetchTargets.length > 0 && fetchTargets.every(t => /^(GAS_URL|`\$\{GAS_URL\})/.test(t)), `인수인계 화면이 구글 시트 주소(GAS_URL) 밖으로 요청을 보냄: ${fetchTargets}`);
+assert(!/createWritable|showSaveFilePicker|getFileHandle|removeEntry/.test(ho), '인수인계 화면에 로컬 파일 쓰기 API');
 console.log('OK ③ 화면 코드에 파일 쓰기·서버 쓰기 없음(폴더 선택은 읽기 전용)');
 console.log('ALL PASS');

@@ -2,3 +2,4 @@
 - xlsx.full.min.js — SheetJS Community Edition 0.18.5 (Apache License 2.0) https://sheetjs.com
 - jszip.min.js — JSZip 3.10.1 (MIT 또는 GPLv3 이중 라이선스) https://stuk.github.io/jszip/
 치료기록 QA 화면이 엑셀을 읽는 데 사용합니다. 예전에는 인터넷(cdn.jsdelivr.net)에서 매번 내려받았습니다.
+- Font Awesome Free 6.4.0 (fontawesome/) — 인수인계 화면의 아이콘. 아이콘 SIL OFL/CC BY 4.0, 코드 MIT. https://fontawesome.com/license/free (solid 글꼴만 포함)

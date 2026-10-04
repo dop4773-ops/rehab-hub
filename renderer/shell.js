@@ -222,7 +222,7 @@ async function applyRoles(roles) {
     updatingRoles.delete(role);
   }
   for (const key of loadedTools) {
-    if (!TOOLS[key]) continue; // 읽기 전용 viewer는 채울 파일이 없다
+    if (!TOOLS[key]) continue; // 인수인계 화면은 채울 파일이 없다
     const n = await autoFillTool(key, ok);
     if (n) logActivity(TOOLS[key].label, `${n}개 칸 자동 갱신`);
     scheduleRefresh();
@@ -291,8 +291,8 @@ const SCHEDULES_BRIDGE = {
 };
 
 // ── 사이드바 / 화면 전환 ───────────────────────────────────
-// 파일 자동 채움·홈 요약·보고서가 필요 없는 화면(읽기 전용 viewer)은 TOOLS 대신 여기에 둔다.
-const VIEWER_PAGES = { handover: 'tools/인수인계_뷰어.html' };
+// 파일 자동 채움·홈 요약·보고서가 필요 없는 화면(인수인계 화면)은 TOOLS 대신 여기에 둔다.
+const VIEWER_PAGES = { handover: 'tools/인수인계.html' };
 function ensureToolLoaded(key) {
   if (VIEWER_PAGES[key]) {
     if (!loadedTools.has(key)) { loadedTools.add(key); document.querySelector(`iframe[data-tool="${key}"]`).src = VIEWER_PAGES[key]; }
@@ -328,6 +328,16 @@ function showView(key) {
 }
 
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => showView(n.dataset.nav)));
+
+// 사이드바 접기/펼치기(접으면 아이콘만 남음, 상태는 이 PC에 기억)
+const SIDEBAR_KEY = 'rehab_sidebar_collapsed_v1';
+const sidebarEl = document.getElementById('sidebar'), sidebarBtn = document.getElementById('sidebarToggle');
+const setSidebar = (collapsed) => { sidebarEl.classList.toggle('collapsed', collapsed); sidebarBtn.textContent = collapsed ? '»' : '«'; };
+try { setSidebar(localStorage.getItem(SIDEBAR_KEY) === '1'); } catch (e) { /* 저장소를 못 써도 펼친 상태로 동작 */ }
+sidebarBtn.addEventListener('click', () => {
+  const c = !sidebarEl.classList.contains('collapsed'); setSidebar(c);
+  try { localStorage.setItem(SIDEBAR_KEY, c ? '1' : '0'); } catch (e) { /* 저장 실패해도 이번 실행엔 적용됨 */ }
+});
 document.querySelectorAll('[data-goto]').forEach(el => el.addEventListener('click', () => showView(el.dataset.goto)));
 
 // ── 렌더링 ─────────────────────────────────────────────────

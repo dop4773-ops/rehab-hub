@@ -31,7 +31,7 @@ if (!gotLock) {
       minWidth: 1100,
       minHeight: 700,
       backgroundColor: '#f4f7fb',
-      icon: path.join(__dirname, '..', 'build', 'icon.png'),
+      icon: path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
       webPreferences: {
         preload: path.join(__dirname, '..', 'preload.js'),
         contextIsolation: true,
@@ -48,6 +48,8 @@ if (!gotLock) {
     // mainWindow.webContents.openDevTools(); // 개발 중 디버깅용
   }
 
+  // 바로가기·작업표시줄 고정 아이콘과 실행 중인 창을 같은 앱으로 묶는다(설치기가 바로가기에 같은 ID를 넣는다 — package.json build.appId)
+  if (process.platform === 'win32') app.setAppUserModelId('com.rehabteam.rehabhub');
   app.whenReady().then(() => {
     registerProtocolHandler();
     registerFoldersIpc();

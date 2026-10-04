@@ -30,6 +30,13 @@ body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont
 #app{display:flex;height:calc(100vh - 60px)}
 #sidebar{width:212px;background:linear-gradient(180deg,var(--sidebar-bg),var(--sidebar-bg2));padding:14px 10px;overflow-y:auto;display:flex;flex-direction:column}
 .nav-list{flex:1}
+.sidebar-toggle{align-self:flex-end;border:none;background:rgba(255,255,255,.08);color:var(--sidebar-text);width:28px;height:24px;border-radius:7px;cursor:pointer;font-size:14px;line-height:1;margin-bottom:8px}
+.sidebar-toggle:hover{background:var(--sidebar-hover);color:#fff}
+#sidebar{transition:width .15s ease}
+#sidebar.collapsed{width:60px;padding:14px 8px}
+#sidebar.collapsed .sidebar-toggle{align-self:center}
+#sidebar.collapsed .nl,#sidebar.collapsed .nav-item .chev,#sidebar.collapsed .sidebar-status{display:none}
+#sidebar.collapsed .nav-item{justify-content:center;padding:10px 0;font-size:16px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;color:var(--sidebar-text);margin-bottom:2px}
 .nav-item .chev{margin-left:auto;font-size:9px;opacity:.6}
 .nav-item:hover{background:var(--sidebar-hover);color:#fff}
