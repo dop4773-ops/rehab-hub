@@ -327,6 +327,17 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .fix-item .tag{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:#eef2f7;color:#68758a;margin-left:6px}
 .fix-item .ppl{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--handover-bg);color:var(--handover);margin-left:6px}
 .fix-empty{padding:30px;text-align:center;color:var(--muted)}
+.histbox{font-size:12.5px;color:#33445c;margin:0 0 10px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.histbox:empty{display:none}
+.histbox b.new{color:var(--green)}.histbox b.res{color:var(--blue)}
+.histbox .hl{border:none;background:none;color:var(--blue);font-weight:700;font-size:12px;cursor:pointer;padding:2px 4px;text-decoration:underline}
+.hbadge{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:4px;background:#eef2f7;color:#68758a}
+.hbadge.new{background:var(--green-bg);color:var(--green)}.hbadge.hot{background:var(--record-bg);color:var(--record)}.hbadge.ack{background:#eef2f7;color:#8793a6}
+.issuecard.acked{opacity:.5}
+#changeBar{display:none;align-items:center;gap:8px}
+#changeBar label{font-size:12px;color:#4a5a72;display:inline-flex;align-items:center;gap:4px}
+.hist-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}.hist-table th,.hist-table td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right}.hist-table th:first-child,.hist-table td:first-child{text-align:left}
+.res-item{padding:7px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;font-size:12.5px;background:#fcfdff}.res-item b{margin-right:6px}
 .modal-close{float:right;border:none;background:#f1f4f9;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px}
 .dropOverlay{position:fixed;inset:0;background:rgba(17,35,64,.88);z-index:200;display:none;align-items:center;justify-content:center;pointer-events:none}
 .dropOverlay.show{display:flex}
@@ -398,6 +409,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
       </div>
       <div id="resultBody" style="display:none">
         <div id="freshBox" class="freshbox"></div>
+        <div id="histBox" class="histbox"></div>
         <div class="result-grid">
           <div class="donut" id="donut" style="--pct:0"><div class="donut-inner"><b id="pctText">0%</b><span>정상률</span></div></div>
           <div class="result-nums">
@@ -494,6 +506,10 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
         <button data-rsource="nopta">PTA에 없음</button>
         <button data-rsource="rm">주치의(RM) 다름</button>
         <button data-rsource="ptaonly">PTA에만 있음</button>
+      </div>
+      <div id="changeBar">
+        <div class="seg" id="changeSeg"></div>
+        <label><input type="checkbox" id="hideAck"> 확인함 숨기기</label>
       </div>
       <div class="right">
         <div class="seg" id="viewSeg">
@@ -626,6 +642,13 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
     <div id="fixBody"></div>
   </div>
 </div>
+<div class="modal-overlay" id="histModal">
+  <div class="modal-box wide">
+    <button class="modal-close" id="histClose">✕</button>
+    <h3>🕘 불일치 이력</h3>
+    <div id="histModalBody"></div>
+  </div>
+</div>
 <div id="printReport"></div>
 
 <div class="dropOverlay" id="dropOverlay">
@@ -655,8 +678,9 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 <script src="../core/parsers_handover.js"></script>
 <script src="../core/parsers_grids.js"></script>
 <script src="../core/fixplan.js"></script>
+<script src="../core/issuehistory.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, FIX_GROUPS, FIX_GROUP_ORDER } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, pruneAck, keyIssues, ISSUE_HISTORY_CATS } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
@@ -842,6 +866,7 @@ const FILES_META = [
 ];
 const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null, table10Book:null, mt3Book:null, handoverBook:null, ptaBook:null, handoverLiveList:null, handoverLiveOk:false, dateSheetOf:{}, fileMtime:{} };
 let handoverLiveFetchPromise=null; // 검증 실행 전 이 fetch가 끝나길 기다려서, 타이밍에 따라 인수인계 인식이 됐다 안 됐다 하는 걸 막는다
+let currentChange='all', hideAck=false, histState=null;
 let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentRSource='all', currentView='type', currentPage=1;
 let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
 let previewSaturday={occs:[], weekdayCode:new Map()};
@@ -2575,6 +2600,7 @@ async function handleRun(){
   if(btnRerun){ btnRerun.disabled=true; }
   try{
     const {stats, floorCount} = await runAllVerifications();
+    try{ trackHistory(); }catch(e){ console.error(e); } // 이력 추적 실패가 검증 화면을 막지 않게
     renderDashboard(stats, floorCount); renderFreshness(); if(document.getElementById('fixModal').classList.contains('show')) renderFixPlan();
     document.getElementById('resultEmpty').style.display='none';
     document.getElementById('resultBody').style.display='block';
@@ -2741,6 +2767,9 @@ function applyFilters(){
   if(currentCat==='handover' && currentHSource!=='all') list=list.filter(i=>i.source===currentHSource);
   if(currentCat==='room' && currentRSource!=='all') list=list.filter(i=>i.source===currentRSource);
   if(currentFloor!=='all') list=list.filter(i=>String(i.floor)===currentFloor);
+  if(currentChange==='new') list=list.filter(i=>i.hist&&i.hist.isNew);
+  if(currentChange==='cont') list=list.filter(i=>i.hist&&!i.hist.isNew);
+  if(hideAck) list=list.filter(i=>!(i.hist&&i.hist.acked));
   const q=normKey(document.getElementById('searchInput').value.trim());
   if(q) list=list.filter(i=>i.searchText.includes(q));
   list=sortIssues(list, document.getElementById('sortSelect').value);
@@ -2821,12 +2850,12 @@ function issueCardHtml(i){
   const tagCls = v ? v.cls : i.category;
   const tagText = cardBadgeText(i);
   const row2 = (i.detail && i.detail.kind==='handover_excess') ? excessRow2Html(i.detail) : esc(i.line);
-  return `<div class="issuecard${sel}" data-id="${i.id}">
+  return `<div class="issuecard${sel}${i.hist&&i.hist.acked?' acked':''}" data-id="${i.id}">
     <div class="row1">
       <span class="sevdot" style="background:var(${catColorVar(i.category, i)})"></span>
       <span class="pname" title="${esc(i.patient)}">${esc(i.patient)}</span>
       <span class="proom">${esc(i.room||'')}</span>
-      <span class="cattag ${tagCls}">${esc(tagText)}</span>
+      <span class="cattag ${tagCls}">${esc(tagText)}</span>${histBadgesHtml(i)}
     </div>
     <div class="row2">${row2}</div>
     <div class="row3"><span class="time">${i.floor?i.floor+'F':''} ${esc(i.time||'')}</span><span class="arrow">›</span></div>
@@ -3239,12 +3268,14 @@ function renderDetail(){
     ${bodyHtml}
     <div class="dnav">
       <button class="btn sm" id="dPrev">← 이전 문제</button>
+      <button class="btn sm" id="dAck" title="이미 알고 있는 불일치로 표시합니다. 해결되면 자동으로 사라져요.">${issue.hist&&issue.hist.acked?'✓ 확인함 해제':'✓ 확인함 표시'}</button>
       <span class="pos">${posText}</span>
       <button class="btn sm" id="dNext">다음 문제 →</button>
     </div>
   `;
   document.getElementById('dCloseBtn').addEventListener('click', closeDetail);
   document.getElementById('dPrev').addEventListener('click', ()=> stepDetail(-1));
+  document.getElementById('dAck').addEventListener('click', ()=> toggleAck(issue));
   document.getElementById('dNext').addEventListener('click', ()=> stepDetail(1));
 }
 function stepDetail(dir){
@@ -3401,6 +3432,65 @@ document.getElementById('fixPrint').addEventListener('click',()=>{
   document.getElementById('printReport').innerHTML=`<h1>교차검증 수정 지시서</h1><div class="meta">검증일: ${esc(currentDateLabel())} · 출력일시: ${new Date().toLocaleString('ko-KR')} · 원본 파일은 프로그램이 바꾸지 않았습니다. 안내를 보고 직접 고쳐 주세요.</div>${body}`;
   document.body.classList.add('printing'); window.print(); setTimeout(()=>document.body.classList.remove('printing'),300);
 });
+
+
+/* ======================================================================
+   불일치 이력 추적 (core/issuehistory.js) — 날마다 마지막 검증 결과를 localStorage에 남기고 이전 날짜와 비교한다.
+   검증 결과(환자 이름·불일치 문구)만 저장하고 원본 파일은 건드리지 않는다. 저장이 안 되는 환경이면 조용히 건너뜀.
+   ====================================================================== */
+const HIST_KEY='rehab_cross_history_v1', ACK_KEY='rehab_cross_ack_v1';
+const histLoad=(k,def)=>{ try{ const o=JSON.parse(localStorage.getItem(k)); return o||def; }catch(e){ return def; } };
+const histSave=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } };
+const CAT_KO={count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인',room:'PTA 대조'};
+function trackHistory(){
+  const sources={statusBook:!!state.statusBook, cards:!!(state.card10Book&&state.card3Book), grids:!!(state.mat10Book&&state.table10Book&&state.mt3Book), handover:!!(state.handoverBook||state.handoverLiveOk), ptaBook:!!state.ptaBook};
+  const snap=makeSnapshot(issues,sources), hist=histLoad(HIST_KEY,{v:1,snaps:[]}), cmp=compareIssueHistory(hist,snap);
+  const ack=pruneAck(histLoad(ACK_KEY,{}),snap);
+  for(const [k,i] of keyIssues(issues)) i.hist={key:k,isNew:cmp.isNew.has(k),streak:cmp.streak.get(k)||1,changed:cmp.changed.has(k),acked:!!ack[k]};
+  let next=addSnapshot(hist,snap); while(!histSave(HIST_KEY,next)&&next.snaps.length>7) next={v:1,snaps:next.snaps.slice(1)}; // 저장 공간이 모자라면 오래된 날부터 덜어낸다
+  histSave(ACK_KEY,ack);
+  histState={cmp,snap,hist:next,ack};
+  currentChange='all'; hideAck=false; document.getElementById('hideAck').checked=false;
+  renderHistBox();
+}
+function histBadgesHtml(i){
+  const h=i.hist; if(!h) return '';
+  return (h.isNew?'<span class="hbadge new">NEW</span>':(h.streak>1?`<span class="hbadge ${h.streak>=3?'hot':''}">${h.streak}일째</span>`:''))+(h.acked?'<span class="hbadge ack">확인함</span>':'');
+}
+function toggleAck(issue){
+  if(!issue.hist||!histState) return;
+  const ack=histState.ack; if(ack[issue.hist.key]) delete ack[issue.hist.key]; else ack[issue.hist.key]={t:Date.now()};
+  issue.hist.acked=!!ack[issue.hist.key]; histSave(ACK_KEY,ack); applyFilters(); renderDetail(); renderHistBox();
+}
+function renderHistBox(){
+  const box=document.getElementById('histBox'), bar=document.getElementById('changeBar'); if(!histState){ box.innerHTML=''; bar.style.display='none'; return; }
+  const {cmp}=histState, nNew=cmp.isNew.size, nRes=cmp.resolved.length, nCont=issues.filter(i=>i.hist&&!i.hist.isNew&&cmp.comparable.includes(i.category)).length, nAck=issues.filter(i=>i.hist&&i.hist.acked).length;
+  if(!cmp.baseline){ box.innerHTML='🕘 오늘이 첫 기록이에요. 내일부터 "어제 이후 새로 생긴 것 / 해결된 것"을 알려드려요. <button class="hl" id="histOpen">이력 보기</button>'; bar.style.display='none'; }
+  else {
+    const d=cmp.baseline.day.slice(5).replace('-','/');
+    box.innerHTML=`🕘 <b>${d}</b> 이후 — <b class="new">🆕 새로 생김 ${nNew}</b> · <b class="res">✅ 해결됨 ${nRes}</b> · 계속 ${nCont}${nAck?` · 확인함 ${nAck}`:''}${cmp.skipped.length?` <span style="color:var(--muted)">(자료 구성이 달라 비교 못 한 분류: ${cmp.skipped.map(c=>CAT_KO[c]).join(', ')})</span>`:''} <button class="hl" id="histOpen">해결된 것·이력 보기</button>`;
+    bar.style.display='flex';
+    document.getElementById('changeSeg').innerHTML=[['all','전체'],['new',`🆕 새로 생김 ${nNew}`],['cont',`계속 ${nCont}`]].map(([k,l])=>`<button data-c="${k}" class="${currentChange===k?'active':''}">${l}</button>`).join('');
+  }
+  const o=document.getElementById('histOpen'); if(o) o.onclick=openHistModal;
+}
+document.getElementById('changeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; currentChange=b.dataset.c; currentPage=1; renderHistBox(); applyFilters(); });
+document.getElementById('hideAck').addEventListener('change',e=>{ hideAck=e.target.checked; currentPage=1; applyFilters(); });
+function openHistModal(){
+  if(!histState) return; const {cmp,hist}=histState; let h='';
+  if(cmp.baseline){
+    h+=`<p class="fix-note">비교 기준: <b>${cmp.baseline.day}</b>에 마지막으로 검증한 결과 → 지금 결과. 자료 구성(파일 유무)이 다른 분류는 비교에서 뺐어요.</p>`;
+    h+=`<div class="fix-grp">✅ 해결된 것 <small>${cmp.resolved.length}건 — 이전에는 있었는데 지금은 없어요</small></div>`;
+    h+=cmp.resolved.length?cmp.resolved.map(r=>`<div class="res-item"><b>${esc(r.patient)}</b>${r.floor?r.floor+'F ':''}${esc(r.room?r.room+'호 ':'')}· ${esc(CAT_KO[r.cat]||r.cat)} · ${esc(r.title)}<div style="color:var(--muted);font-size:11.5px;margin-top:2px">${esc(r.line)}</div></div>`).join(''):'<div class="fix-empty" style="padding:12px">해결된 불일치가 없어요.</div>';
+    const nw=issues.filter(i=>i.hist&&i.hist.isNew); h+=`<div class="fix-grp">🆕 새로 생긴 것 <small>${nw.length}건 — 목록에서 "새로 생김" 버튼으로도 볼 수 있어요</small></div>`;
+    h+=nw.slice(0,30).map(i=>`<div class="res-item"><b>${esc(i.patient)}</b>${i.floor?i.floor+'F ':''}${esc(i.room?i.room+'호 ':'')}· ${esc(CAT_KO[i.category]||i.category)} · ${esc(i.title)}</div>`).join('')+(nw.length>30?`<div style="color:var(--muted);font-size:12px">…외 ${nw.length-30}건</div>`:'');
+  } else h+='<p class="fix-note">오늘이 첫 기록이라 비교할 이전 결과가 없어요. 검증을 실행한 날마다 마지막 결과가 저장돼요(최대 90일).</p>';
+  const snaps=hist.snaps.slice(-14).reverse(), cols=ISSUE_HISTORY_CATS;
+  h+=`<div class="fix-grp">📅 일별 불일치 수 <small>최근 ${snaps.length}일(그 날 마지막 검증 기준)</small></div><table class="hist-table"><thead><tr><th>날짜</th><th>전체</th>${cols.map(c=>`<th>${CAT_KO[c]}</th>`).join('')}</tr></thead><tbody>${snaps.map(sn=>`<tr><td>${sn.day.slice(5).replace('-','/')}</td><td><b>${Object.values(sn.counts).reduce((a,b)=>a+b,0)}</b></td>${cols.map(c=>`<td>${sn.cats.includes(c)?(sn.counts[c]||0):'<span style="color:#b3bccb">-</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="fix-note" style="margin-top:6px">"-"는 그 날 그 분류를 검사할 파일이 없어서 검사하지 않았다는 뜻이에요.</p>`;
+  document.getElementById('histModalBody').innerHTML=h; document.getElementById('histModal').classList.add('show');
+}
+document.getElementById('histClose').addEventListener('click',()=>document.getElementById('histModal').classList.remove('show'));
+document.getElementById('histModal').addEventListener('click',e=>{ if(e.target.id==='histModal') e.currentTarget.classList.remove('show'); });
 
 handoverLiveFetchPromise=fetchHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
 </script>
