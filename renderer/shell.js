@@ -222,6 +222,7 @@ async function applyRoles(roles) {
     updatingRoles.delete(role);
   }
   for (const key of loadedTools) {
+    if (!TOOLS[key]) continue; // 읽기 전용 viewer는 채울 파일이 없다
     const n = await autoFillTool(key, ok);
     if (n) logActivity(TOOLS[key].label, `${n}개 칸 자동 갱신`);
     scheduleRefresh();
@@ -290,7 +291,13 @@ const SCHEDULES_BRIDGE = {
 };
 
 // ── 사이드바 / 화면 전환 ───────────────────────────────────
+// 파일 자동 채움·홈 요약·보고서가 필요 없는 화면(읽기 전용 viewer)은 TOOLS 대신 여기에 둔다.
+const VIEWER_PAGES = { handover: 'tools/인수인계_뷰어.html' };
 function ensureToolLoaded(key) {
+  if (VIEWER_PAGES[key]) {
+    if (!loadedTools.has(key)) { loadedTools.add(key); document.querySelector(`iframe[data-tool="${key}"]`).src = VIEWER_PAGES[key]; }
+    return;
+  }
   if (!TOOLS[key]) return;
   const iframe = document.querySelector(`iframe[data-tool="${key}"]`);
   if (!loadedTools.has(key)) {

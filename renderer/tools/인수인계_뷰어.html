@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OT 인수인계 뷰어</title>
+<style>
+:root{
+  --navy:#17345f;--blue:#2f6fce;--line:#e3e8f0;--bg:#f3f6fb;--text:#1b2434;--muted:#707d92;
+  --green:#1f8f5f;--green-bg:#e6f7ee;
+  --warn:#d23a4f;--warn-bg:#fdecee;
+  --amber:#d9720f;--amber-bg:#fdead2;
+  --teal:#0e8a8a;--teal-bg:#e3f5f5;
+  --card-r:16px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);font-family:"Pretendard Variable","Malgun Gothic","맑은 고딕",Arial,sans-serif;color:var(--text);font-size:14px}
+button,input,select{font-family:inherit}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#c7d1e0;border-radius:6px}
+.app{max-width:1880px;margin:0 auto;padding:16px 22px 30px}
+
+.header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.header h1{margin:0;font-size:20px;letter-spacing:.2px;color:var(--navy)}
+.header .sub{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:#33445c;padding:8px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer}
+.hbtn:hover{background:#f4f8fd}
+.hbtn:disabled{opacity:.5;cursor:default}
+.upd{font-size:12px;color:var(--muted)}
+.upd.err{color:var(--warn);font-weight:700}
+
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 16px;min-width:110px}
+.stat b{display:block;font-size:20px;color:var(--navy)}
+.stat span{font-size:11.5px;color:var(--muted)}
+.stat.warn b{color:var(--warn)}
+
+.filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.seg button{border:none;background:none;padding:8px 12px;font-size:12.5px;font-weight:700;color:#4a5a72;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button.active{background:var(--navy);color:#fff}
+.sel,.search input{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 10px;font-size:12.5px;font-weight:600;color:#33445c}
+.search input{width:240px;font-weight:500}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:700;color:#4a5a72;cursor:pointer}
+.chip.active{background:var(--warn-bg);border-color:#f0b9c1;color:var(--warn)}
+.chip.active.mod{background:var(--amber-bg);border-color:#f2cf9f;color:var(--amber)}
+.count{font-size:12.5px;color:var(--muted);margin-left:auto}
+
+.main{display:grid;grid-template-columns:minmax(340px,440px) 1fr;gap:14px;align-items:start}
+@media(max-width:1000px){.main{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:var(--card-r);box-shadow:0 2px 10px rgba(20,40,70,.04)}
+.list{max-height:calc(100vh - 250px);overflow:auto;padding:6px}
+.row{display:flex;gap:10px;padding:10px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+.row:hover{background:#f4f8fd}
+.row.active{background:#eaf2fd;border-color:#b9d0f3}
+.dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex-shrink:0;background:#d5dce8}
+.dot.warn{background:var(--warn)}.dot.recent{background:var(--green)}
+.row .top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.row .nm{font-weight:800;font-size:14px}
+.row .sub{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:#eef2f7;color:#68758a;white-space:nowrap}
+.badge.warn{background:var(--warn-bg);color:var(--warn)}
+.badge.recent{background:var(--green-bg);color:var(--green)}
+.badge.mod{background:var(--amber-bg);color:var(--amber)}
+.badge.type{background:#e8f1fd;color:var(--blue)}
+.empty{padding:40px 16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7}
+
+.detail{padding:18px 20px;min-height:300px}
+.dtop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.dname{font-size:20px;font-weight:800;color:var(--navy)}
+.dmeta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted);margin:6px 0 14px}
+.dmeta b{color:var(--text)}
+.dright{margin-left:auto;display:flex;gap:8px}
+.others{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 14px;font-size:12px;color:var(--muted)}
+.others button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;color:#33445c;cursor:pointer}
+.others button:hover{background:#eef4ff}
+.others button.cur{background:var(--navy);color:#fff;border-color:var(--navy);cursor:default}
+.box{border:1px solid var(--line);border-left:4px solid #b8c4d8;border-radius:10px;padding:10px 14px;margin-bottom:10px;background:#fcfdff}
+.box .lb{font-size:11.5px;font-weight:800;color:var(--muted);margin-bottom:4px}
+.box .bd{white-space:pre-wrap;line-height:1.6;font-size:13.5px;word-break:break-word}
+.box.note{border-left-color:var(--warn);background:var(--warn-bg)}
+.box.note .lb{color:var(--warn)}
+.box.dx{border-left-color:var(--blue)}.box.cc{border-left-color:var(--teal)}.box.tx{border-left-color:var(--green)}
+.box.goal{border-left-color:var(--amber)}.box.grand{border-left-color:#7a5bd1}
+.box.muted .bd{color:var(--muted)}
+.hist-toggle{width:100%;text-align:left;border:1px dashed #cdd7e6;background:#fafcff;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:800;color:#33445c;cursor:pointer;margin-top:4px}
+.hist-body{display:none;margin-top:8px;flex-direction:column;gap:8px}
+.hist-body.open{display:flex}
+.hent{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;font-size:12.5px;line-height:1.6}
+.hent .ht{font-size:11.5px;font-weight:800;color:var(--muted);margin-bottom:4px}
+.hent .hl{display:inline-block;min-width:64px;font-weight:800;color:var(--muted)}
+.hent .f{white-space:pre-wrap;word-break:break-word}
+.hl-diff{background:#fff2a8;border-radius:3px;padding:0 2px}
+.foot{margin-top:14px;font-size:11.5px;color:var(--muted)}
+</style></head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1>📝 OT 인수인계 뷰어</h1>
+      <p class="sub">읽기 전용 · 작성·수정·삭제는 OT인수인계서(통합)에서 합니다. 이 화면은 아무것도 바꾸지 않아요.</p>
+    </div>
+    <div class="header-actions">
+      <span class="upd" id="updLabel">불러오는 중…</span>
+      <button class="hbtn" id="reloadBtn">🔄 새로고침</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b id="stTotal">-</b><span>전체 기록</span></div>
+    <div class="stat"><b id="stPatients">-</b><span>환자 수</span></div>
+    <div class="stat warn"><b id="stWarn">-</b><span>주의 표시</span></div>
+    <div class="stat"><b id="stRecent">-</b><span>최근 7일 작성</span></div>
+    <div class="stat"><b id="stMod">-</b><span>최근 7일 수정</span></div>
+  </div>
+
+  <div class="filterbar">
+    <div class="search"><input id="q" type="text" placeholder="환자 · 치료사 · 주치의(RM) · 내용 검색"></div>
+    <div class="seg" id="typeSeg"></div>
+    <select class="sel" id="therSel"><option value="">치료사 전체</option></select>
+    <select class="sel" id="docSel"><option value="">주치의 전체</option></select>
+    <button class="chip" id="warnChip">⚠ 주의만</button>
+    <button class="chip mod" id="modChip">✎ 최근 수정</button>
+    <select class="sel" id="sortSel">
+      <option value="recent">최근 작성순</option>
+      <option value="name">환자 이름순</option>
+      <option value="therapist">치료사순</option>
+    </select>
+    <span class="count" id="countLbl"></span>
+  </div>
+
+  <div class="main">
+    <div class="panel list" id="list"></div>
+    <div class="panel detail" id="detail"></div>
+  </div>
+</div>
+
+<script>
+// 같은 OT인수인계서(통합) 실시간 연동 엔드포인트 — GET만 쓴다(목록 + 이전 기록 조회). 쓰기 요청(POST)은 이 화면에 없다.
+const GAS_URL='https://script.google.com/macros/s/AKfycbwXwWquKYEy5irNjdQjZLYUsBl94L5yJZ_aD-UZLCHDonJDZ-smmCnSghILn9c15AN0OQ/exec';
+// 교차검증·그랜드라운딩이 쓰는 캐시와 같은 키(같은 출처라 공유됨): 열자마자 캐시로 채우고 뒤에서 갱신한다.
+const CACHE_KEY='rehab_handover_cache_v1';
+const WEEK=7*24*3600*1000;
+const TYPES=['SOT','RDT','CCRT','ERDT'];
+
+let records=[], byId=new Map(), curId=null, filtered=[];
+const f={q:'',type:'',ther:'',doc:'',warn:false,mod:false,sort:'recent'};
+let lastFetchAt=0, loading=false;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=v=>(v==null?'':String(v)).trim();
+const nameKey=n=>norm(n).replace(/\s+/g,'');
+function ts(iso){ const t=iso?new Date(iso).getTime():NaN; return Number.isFinite(t)?t:0; }
+function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?'-':`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function fmtDay(iso){ const d=new Date(iso); return isNaN(d)?'-':`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; }
+const isRecent=iso=>ts(iso)>=Date.now()-WEEK;
+
+function loadCache(){ try{ const o=JSON.parse(localStorage.getItem(CACHE_KEY)); return Array.isArray(o?.records)?o:null; }catch(e){ return null; } }
+function saveCache(recs){ try{ localStorage.setItem(CACHE_KEY,JSON.stringify({records:recs,fetchedAt:Date.now()})); }catch(e){} }
+
+function setRecords(recs){
+  records=recs.filter(r=>r&&norm(r.name)).map((r,i)=>({...r,id:r.id||`${r.timestamp||''}|${r.name}|${i}`}));
+  byId=new Map(records.map(r=>[r.id,r]));
+  if(!byId.has(curId)) curId=null;
+  fillSelects(); renderStats(); render();
+}
+async function load(manual){
+  if(loading) return; loading=true; $('reloadBtn').disabled=true;
+  try{
+    const res=await fetch(GAS_URL,{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const recs=Array.isArray(data.records)?data.records:(Array.isArray(data)?data:[]);
+    // 목록이 바뀌지 않은 이전 기록(history)은 그대로 이어서 쓴다 — 다시 열 때 바로 보이게
+    const prev=byId; setRecords(recs);
+    for(const r of records){ const p=prev.get(r.id); if(p&&p.history&&p.historyCount===r.historyCount) r.history=p.history; }
+    saveCache(recs); lastFetchAt=Date.now(); setUpd('');
+    if(curId) renderDetail();
+  }catch(e){
+    console.error(e);
+    setUpd(records.length?'새로고침 실패 — 저장된 데이터를 보고 있어요':'불러오지 못했어요 — 인터넷 연결을 확인해 주세요',true);
+  }
+  loading=false; $('reloadBtn').disabled=false;
+}
+function setUpd(msg,err){ const el=$('updLabel'); el.className='upd'+(err?' err':''); el.dataset.msg=msg; tickUpd(); }
+function tickUpd(){
+  const el=$('updLabel'), m=el.dataset.msg; if(m){ el.textContent=m; return; }
+  if(!lastFetchAt){ el.textContent='저장된 데이터 표시 중 · 최신 데이터 불러오는 중…'; return; }
+  const s=Math.floor((Date.now()-lastFetchAt)/1000);
+  el.textContent='마지막 업데이트: '+(s<60?`${s}초 전`:`${Math.floor(s/60)}분 전`);
+}
+setInterval(tickUpd,5000);
+setInterval(()=>{ if(!document.hidden) load(false); },60000); // 편집기와 같은 1분 자동 새로고침
+
+function renderStats(){
+  $('stTotal').textContent=records.length;
+  $('stPatients').textContent=new Set(records.map(r=>nameKey(r.name))).size;
+  $('stWarn').textContent=records.filter(r=>r.warning).length;
+  $('stRecent').textContent=records.filter(r=>isRecent(r.timestamp)).length;
+  $('stMod').textContent=records.filter(r=>isRecent(r.modified)).length;
+}
+function fillSelects(){
+  const keep=(sel,vals,label,cur)=>{ sel.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(''); sel.value=vals.includes(cur)?cur:''; };
+  const uniq=k=>[...new Set(records.map(r=>norm(r[k])).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
+  keep($('therSel'),uniq('therapist'),'치료사 전체',f.ther); f.ther=$('therSel').value;
+  keep($('docSel'),uniq('doctor'),'주치의 전체',f.doc); f.doc=$('docSel').value;
+}
+function getFiltered(){
+  const q=f.q.toLowerCase();
+  let list=records.filter(r=>{
+    if(q && !`${r.name} ${r.therapist||''} ${r.doctor||''} ${r.dx||''} ${r.cc||''} ${r.tx||''} ${r.goal||''} ${r.note||''} ${r.grandRound||''}`.toLowerCase().includes(q)) return false;
+    if(f.type && r.type!==f.type) return false;
+    if(f.ther && norm(r.therapist)!==f.ther) return false;
+    if(f.doc && norm(r.doctor)!==f.doc) return false;
+    if(f.warn && !r.warning) return false;
+    if(f.mod && !isRecent(r.modified)) return false;
+    return true;
+  });
+  const byName=(a,b)=>a.name.localeCompare(b.name,'ko');
+  if(f.sort==='name') list.sort(byName);
+  else if(f.sort==='therapist') list.sort((a,b)=>norm(a.therapist).localeCompare(norm(b.therapist),'ko')||byName(a,b));
+  else list.sort((a,b)=>ts(b.timestamp)-ts(a.timestamp));
+  return list;
+}
+function render(){
+  filtered=getFiltered();
+  const cnt={}; records.forEach(r=>{ cnt[r.type]=(cnt[r.type]||0)+1; });
+  $('typeSeg').innerHTML=[['','전체',records.length],...TYPES.map(t=>[t,t,cnt[t]||0])].map(([v,l,n])=>`<button data-type="${v}" class="${f.type===v?'active':''}">${l} ${n}</button>`).join('');
+  $('warnChip').classList.toggle('active',f.warn); $('modChip').classList.toggle('active',f.mod);
+  $('countLbl').textContent=`${filtered.length}건`;
+  $('list').innerHTML=filtered.length?filtered.map(r=>{
+    const recent=isRecent(r.timestamp), mod=isRecent(r.modified);
+    return `<div class="row ${r.id===curId?'active':''}" data-id="${esc(r.id)}">
+      <span class="dot ${r.warning?'warn':recent?'recent':''}"></span>
+      <div><div class="top"><span class="nm">${esc(r.name)}</span>${r.warning?'<span class="badge warn">주의</span>':recent?'<span class="badge recent">최근</span>':''}${mod?'<span class="badge mod">수정됨</span>':''}</div>
+      <div class="sub"><span>${esc(r.type||'-')}</span><span>${esc(r.therapist||'-')}</span>${r.doctor?`<span>주치의 ${esc(r.doctor)}</span>`:''}<span>${fmtDay(r.timestamp)}</span></div></div></div>`;
+  }).join(''):`<div class="empty">${records.length?'조건에 맞는 기록이 없어요':'기록이 없어요'}</div>`;
+  renderDetail();
+}
+function box(cls,label,text){ return `<div class="box ${cls}"><div class="lb">${label}</div><div class="bd">${esc(text||'-')}</div></div>`; }
+function renderDetail(){
+  const r=byId.get(curId), el=$('detail');
+  if(!r){ el.innerHTML='<div class="empty">왼쪽 목록에서 환자를 선택하면<br>인수인계 내용이 표시돼요</div>'; return; }
+  const others=records.filter(x=>nameKey(x.name)===nameKey(r.name)).sort((a,b)=>ts(b.timestamp)-ts(a.timestamp));
+  el.innerHTML=`
+    <div class="dtop">
+      ${r.warning?'<span class="badge warn">⚠ 주의</span>':''}
+      <span class="dname">${esc(r.name)}</span><span class="badge type">${esc(r.type||'-')}</span>
+      ${isRecent(r.modified)?'<span class="badge mod">✎ 수정됨</span>':''}
+      <span class="dright"><button class="hbtn" id="copyBtn">📋 내용 복사</button></span>
+    </div>
+    <div class="dmeta">
+      <span>담당치료사 <b>${esc(r.therapist||'-')}</b></span>${r.doctor?`<span>주치의 <b>${esc(r.doctor)}</b></span>`:''}
+      <span>ONSET <b>${fmtDay(r.onset)}</b></span><span>작성일 <b>${fmtDate(r.timestamp)}</b></span>${r.modified?`<span>최종수정 <b>${fmtDate(r.modified)}</b></span>`:''}
+    </div>
+    ${others.length>1?`<div class="others">이 환자의 다른 기록: ${others.map(o=>`<button class="${o.id===r.id?'cur':''}" data-id="${esc(o.id)}">${esc(o.type||'-')} · ${esc(o.therapist||'-')}</button>`).join('')}</div>`:''}
+    ${r.note?box('note','⚠ 주의사항',r.note):'<div class="box muted"><div class="bd">등록된 주의사항이 없습니다.</div></div>'}
+    ${box('dx','진단명 (Dx)',r.dx)}${box('cc','주요 증상 (C.C)',r.cc)}${box('tx','치료내용 (Tx)',r.tx)}${box('goal','Goal',r.goal)}${box('grand','그랜드라운딩',r.grandRound)}
+    ${r.historyCount>0?`<button class="hist-toggle" id="histBtn">🕘 이전 기록 보기 (${r.historyCount}건)</button><div class="hist-body" id="histBody"></div>`:''}
+    <div class="foot">읽기 전용 화면이에요. 내용을 고치려면 OT인수인계서(통합)에서 수정해 주세요.</div>`;
+  $('copyBtn').onclick=()=>copyRecord(r);
+  const hb=$('histBtn'); if(hb) hb.onclick=()=>toggleHistory(r);
+  if(openHist===r.id) toggleHistory(r,true);
+}
+async function copyRecord(r){
+  const t=[`${r.name} (${r.type||'-'}) · 치료사 ${r.therapist||'-'}${r.doctor?' · 주치의 '+r.doctor:''}`,
+    r.note&&`[주의사항] ${r.note}`,`[Dx] ${r.dx||'-'}`,`[C.C] ${r.cc||'-'}`,`[Tx] ${r.tx||'-'}`,`[Goal] ${r.goal||'-'}`,r.grandRound&&`[그랜드라운딩] ${r.grandRound}`].filter(Boolean).join('\n');
+  try{ await navigator.clipboard.writeText(t); $('copyBtn').textContent='복사됨 ✓'; }catch(e){ $('copyBtn').textContent='복사 실패'; }
+  setTimeout(()=>{ const b=$('copyBtn'); if(b) b.textContent='📋 내용 복사'; },1500);
+}
+
+// 이전 기록: 바뀐 칸은 형광펜으로 표시(편집기와 같은 방식, 더 최신 상태와 비교)
+let openHist=null;
+const HF=['therapist','doctor','type','dx','cc','tx','goal','note','grandRound'];
+const HL={therapist:'치료사',doctor:'주치의',type:'치료종류',dx:'Dx',cc:'C.C',tx:'Tx',goal:'Goal',note:'주의사항',grandRound:'그랜드라운딩'};
+function renderHistory(r){
+  const body=$('histBody'); if(!body||curId!==r.id) return;
+  const list=r.history||[];
+  if(!list.length){ body.innerHTML='<div class="empty">이전 기록이 없어요</div>'; return; }
+  body.innerHTML=list.map((h,i)=>{
+    const after=i===0?r:list[i-1], ch=k=>norm(h[k])!==norm(after[k]);
+    const val=k=>{ const t=esc(norm(h[k])||'-'); return ch(k)?`<span class="hl-diff">${t}</span>`:t; };
+    return `<div class="hent"><div class="ht">${fmtDate(h.modifiedAt)} 수정 전 내용${HF.some(ch)?' · 변경됨':''}</div>
+      ${HF.filter(k=>norm(h[k])||ch(k)).map(k=>`<div><span class="hl">${HL[k]}</span><span class="f">${val(k)}</span></div>`).join('')}</div>`;
+  }).join('');
+}
+async function toggleHistory(r,keepOpen){
+  const body=$('histBody'); if(!body) return;
+  const open=keepOpen?true:!body.classList.contains('open');
+  body.classList.toggle('open',open); openHist=open?r.id:null;
+  if(!open) return;
+  if(r.history){ renderHistory(r); return; }
+  body.innerHTML='<div class="empty">불러오는 중…</div>';
+  try{
+    const res=await fetch(`${GAS_URL}?historyKey=${encodeURIComponent(r.timestamp)}`,{cache:'no-store'});
+    const data=await res.json(); r.history=Array.isArray(data.history)?data.history:[];
+    renderHistory(r);
+  }catch(e){ console.error(e); if(curId===r.id&&$('histBody')) $('histBody').innerHTML='<div class="empty">불러오지 못했어요</div>'; }
+}
+
+function select(id){ curId=id; render(); const a=document.querySelector('.row.active'); if(a) a.scrollIntoView({block:'nearest'}); }
+$('list').addEventListener('click',e=>{ const row=e.target.closest('.row'); if(row) select(row.dataset.id); });
+$('detail').addEventListener('click',e=>{ const b=e.target.closest('.others button'); if(b&&!b.classList.contains('cur')) select(b.dataset.id); });
+$('typeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; f.type=b.dataset.type; render(); });
+$('q').addEventListener('input',e=>{ f.q=e.target.value.trim(); render(); });
+$('therSel').addEventListener('change',e=>{ f.ther=e.target.value; render(); });
+$('docSel').addEventListener('change',e=>{ f.doc=e.target.value; render(); });
+$('sortSel').addEventListener('change',e=>{ f.sort=e.target.value; render(); });
+$('warnChip').addEventListener('click',()=>{ f.warn=!f.warn; render(); });
+$('modChip').addEventListener('click',()=>{ f.mod=!f.mod; render(); });
+$('reloadBtn').addEventListener('click',()=>load(true));
+document.addEventListener('keydown',e=>{
+  if((e.key!=='ArrowDown'&&e.key!=='ArrowUp')||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  const i=filtered.findIndex(r=>r.id===curId), n=e.key==='ArrowDown'?i+1:i-1;
+  if(filtered[n]){ e.preventDefault(); select(filtered[n].id); }
+});
+
+// 데스크톱 앱 홈이 요약을 읽는 훅(다른 도구와 같은 방식)
+Object.defineProperty(window,'__handoverSummary',{get:()=>({count:records.length,patients:new Set(records.map(r=>nameKey(r.name))).size,warn:records.filter(r=>r.warning).length})});
+
+const cached=loadCache();
+if(cached){ lastFetchAt=0; setRecords(cached.records); }
+load(false);
+</script>
+</body></html>
