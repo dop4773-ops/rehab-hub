@@ -30,7 +30,6 @@ const CASES = {
   room_nopta: I({ kind: 'room_nopta', statusRoom: '501', cardRoom: '' }),
   room_rm: I({ kind: 'room_rm', pta: 'RM6', vals: [{ name: '현황판', value: 'RM6', bad: false }, { name: '전체시간표', value: 'RM7', bad: true }, { name: '인수인계', value: 'RM8', bad: true }] }),
   room_ptaonly: I({ kind: 'room_ptaonly', codes: ['B_06'], statusState: '퇴원' }),
-  room_admit: I({ kind: 'room_admit', statusAdmit: '2025-03-20', ptaAdmit: '2025-12-26', ptaStart: '', state: '입원', ptaLater: true }),
   nostatus_outp: I({ kind: 'card_nostatus', outpatient: true }),
 };
 
@@ -53,7 +52,7 @@ const rb = buildFixItems([CASES.room_both]); assert.deepStrictEqual(rb.map(x => 
 const rm = buildFixItems([CASES.room_rm]); assert.deepStrictEqual(rm.map(x => x.group).sort(), ['card', 'handover']); assert(!rm.some(x => /현황판의 주치의/.test(x.action)), '맞는 쪽(현황판)은 고치라고 하지 않는다');
 const ct = buildFixItems([CASES.count_sot])[0]; assert(/현황이 맞으면/.test(ct.action) && /시간표.*맞으면|가 맞으면/.test(ct.action), '개수 불일치는 두 방향 안내'); assert.strictEqual(ct.who, '김A, 이B');
 assert.strictEqual(buildFixItems([CASES.ho_notype])[0].who, '서송지'); assert.strictEqual(buildFixItems([CASES.ho_excess])[0].who, 'C');
-assert(/재입원/.test(buildFixItems([CASES.room_admit])[0].action), 'PTA 입원일이 더 늦으면 재입원 확인 안내'); assert(/외래로 등록/.test(buildFixItems([CASES.nostatus_outp])[0].action));
+assert(/외래로 등록/.test(buildFixItems([CASES.nostatus_outp])[0].action));
 console.log('OK ③ 고칠 쪽/담당자 판단');
 
 // ④ 정렬·번호·텍스트: 파일 묶음 순서(작업치료현황 → 전체시간표 → 매트·테이블 → 인수인계), 번호는 1부터

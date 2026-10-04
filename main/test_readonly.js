@@ -17,6 +17,7 @@ const ALLOWED = {
   'main/folderStore.js': /storePath|manualPath/,           // 등록 폴더 목록·직접 고른 파일 목록(경로만 저장)
   'main/scheduleArchive.js': /fileFor\(/,                  // 그랜드라운딩 일정 보관함(앱 데이터 폴더)
   'main/ipc/backup.ipc.js': /configPath/,                  // 백업 로그 위치 설정
+  'main/updateLog.js': /file\b/,                           // 업데이트 기록(앱 데이터 폴더의 update-log.json)
 };
 const mainFiles = walk(path.join(root, 'main')).filter(f => f.endsWith('.js') && !/\/test_/.test(f.split(path.sep).join('/')));
 const found = [];

@@ -506,7 +506,6 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
         <button data-rsource="nopta">PTA에 없음</button>
         <button data-rsource="rm">주치의(RM) 다름</button>
         <button data-rsource="ptaonly">PTA에만 있음</button>
-        <button data-rsource="admit">입원일 다름</button>
       </div>
       <div id="changeBar">
         <div class="seg" id="changeSeg"></div>
@@ -614,7 +613,6 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
       <li><b>퇴원 후 평일/토요일 시간표 잔존</b>: 현황판 “입원” 열이 퇴원인 환자(퇴원 뒤 다시 입원·외래 줄이 있는 이름은 제외)가 평일시간표(원본)·토요일&amp;공휴일 시간표(원본)에 아직 배정돼 있는 경우. 특이사항에 “전원”이 적힌 환자는 “전원 표기”로 따로 알려줍니다.</li>
       <li><b>병실 불일치(PTA 기준)</b>: PTA 재원현황을 병실의 기준값으로 보고(병실 “501:01”은 501호, 병록# 중복 줄은 하나로 합침), 현황판과 전체시간표 카드의 병실이 그 값과 다르면 알려줍니다. PTA에서 이름을 못 찾으면 “매칭 불가”로 표시합니다. PTA 재원현황 파일은 선택입니다.</li>
       <li><b>주치의(RM) 불일치(PTA 기준)</b>: PTA의 의사를 기준으로 현황판 진료과·전체시간표 카드·인수인계 주치의가 같은지 봅니다(PTA에 같은 이름이 여러 명이면 건너뜀).</li>
-      <li><b>입원일 불일치(PTA 기준)</b>: 현황판 입원일이 PTA의 입원일 또는 재활시작일 중 어느 것과도 같지 않으면 알립니다(현황판 입원일은 둘 중 어느 쪽으로 적힌 경우도 있어 하나와 같으면 정상). PTA 입원일이 더 늦으면 재입원 가능성도 함께 안내해요.</li>
       <li><b>PTA에만 있음</b>: PTA 재활 코드가 X·빈칸이 아닌 입원 환자가 현황판(입원·재입원)과 전체시간표 입원 카드 어디에도 없으면 신환 등록 누락 후보로 알립니다.</li>
       <li><b>현황판에 없는 입원 카드</b>(개수 불일치 &gt; 퇴원오류): 전체시간표 입원 카드는 있는데 현황판에 활성·퇴원 어느 쪽에도 이름이 없는 경우입니다.</li>
       <li><b>인수인계 치료 기록 없음</b>: 현황판에 SOT/RDT/CCRT 횟수가 있는데 인수인계에 그 치료 기록이 없는 환자를, 담당 치료사(평일시간표 → 카드 순)와 함께 알립니다.</li>
@@ -1767,27 +1765,6 @@ async function runAllVerifications(){
       }
     }
   }
-  // ---- ⑤-2 입원일 대조: 현황판 입원일이 PTA의 입원일 또는 재활시작일 어느 쪽과도 다르면 알린다 ----
-  // (현황판 입원일은 PTA 입원일일 때도, 재활 시작일일 때도 있어서 둘 중 하나와 같으면 정상으로 본다. PTA에 같은 이름이 여러 명이면 건너뜀)
-  if(ptaMapAll&&status){
-    const stRec=new Map(); for(const r of status.list){ if(r.admit==='입원'||r.admit==='재입원') stRec.set(normKey(r.name), r); }
-    for(const [k,pc] of ptaCandByKey){
-      const r=stRec.get(k); if(pc.ambiguous||!r||!r.admitDate||!pc.cand.adm) continue;
-      roomChecked++;
-      if(r.admitDate===pc.cand.adm||(pc.cand.start&&r.admitDate===pc.cand.start)) continue;
-      roomProblems++;
-      const fl=floorOfPatient(pc.name, null); if(fl) floorCount[fl]++;
-      const later=pc.cand.adm>r.admitDate;
-      allIssues.push({
-        id:'room-'+allIssues.length, category:'room', source:'admit', floor:fl,
-        patient:pc.name, room:pc.cand.room,
-        title:'입원일 불일치 (PTA 기준)',
-        line:`현황판 ${r.admitDate} ↔ PTA 입원일 ${pc.cand.adm}${pc.cand.start?` · 재활시작일 ${pc.cand.start}`:''}`,
-        time:'', searchText:normKey(`${pc.name} ${r.admitDate} ${pc.cand.adm}`), severityRank:Math.abs(Math.round((Date.parse(pc.cand.adm)-Date.parse(r.admitDate))/86400000)),
-        detail:{kind:'room_admit', patient:pc.name, room:pc.cand.room, statusAdmit:r.admitDate, ptaAdmit:pc.cand.adm, ptaStart:pc.cand.start||'', state:r.admit, ptaLater:later}
-      });
-    }
-  }
   // ---- ⑤ 주치의(RM) 대조: PTA 재원현황의 의사를 기준으로 현황판 진료과 · 전체시간표 카드 · 인수인계 주치의가 같은지 ----
   // PTA에 같은 이름이 여러 명이라 누구인지 못 고른 경우(ambiguous)는 오탐을 막기 위해 건너뛴다.
   if(ptaMapAll){
@@ -2709,13 +2686,13 @@ function renderDashboard(stats, floorCount){
   issues.filter(i=>i.category==='eval').forEach(i=>{ if(evalCounts[i.source]!=null) evalCounts[i.source]++; });
   document.getElementById('chipEvalBreak').innerHTML = `<span>볼드 기준 ${evalCounts.missing+evalCounts.extra}</span><span>이름 중복 ${evalCounts.dup}</span><span>현황판 기준 누락 ${evalCounts.noeval}</span>`;
   document.getElementById('chipRoom').textContent = stats.roomProblems||0;
-  const roomCounts={mismatch:0, nopta:0, rm:0, ptaonly:0, admit:0};
+  const roomCounts={mismatch:0, nopta:0, rm:0, ptaonly:0};
   issues.filter(i=>i.category==='room').forEach(i=>{ if(roomCounts[i.source]!=null) roomCounts[i.source]++; });
   document.querySelectorAll('#roomSourceSeg button').forEach(b=>{
     const k=b.dataset.rsource;
     b.textContent = k==='all' ? `전체 ${stats.roomProblems||0}` : `${ROOM_BADGE_LABEL[k]} ${roomCounts[k]}`;
   });
-  document.getElementById('chipRoomBreak').innerHTML = state.ptaBook ? `<span>병실 ${roomCounts.mismatch}</span><span>PTA에 없음 ${roomCounts.nopta}</span><span>RM ${roomCounts.rm}</span><span>PTA에만 ${roomCounts.ptaonly}</span><span>입원일 ${roomCounts.admit}</span>` : '<span>PTA 재원현황 파일 없음</span>';
+  document.getElementById('chipRoomBreak').innerHTML = state.ptaBook ? `<span>병실 ${roomCounts.mismatch}</span><span>PTA에 없음 ${roomCounts.nopta}</span><span>RM ${roomCounts.rm}</span><span>PTA에만 ${roomCounts.ptaonly}</span>` : '<span>PTA 재원현황 파일 없음</span>';
 
   const f10=(floorCount[10]||0), f3=(floorCount[3]||0), fAll=f10+f3;
   document.getElementById('floorAllNum').textContent=fAll+'건';
@@ -2871,7 +2848,7 @@ function catColorVar(cat, issue){
   return cat==='count'?'--count':cat==='location'?'--loc':cat==='handover'?'--handover':cat==='eval'?'--eval':cat==='room'?'--room':'--ther';
 }
 const EVAL_BADGE_LABEL={missing:'평가메인 누락', extra:'평가메인 초과', dup:'이름 중복', noeval:'평가메인 누락(현황판)'};
-const ROOM_BADGE_LABEL={mismatch:'병실 다름', nopta:'PTA에 없음', rm:'주치의(RM) 다름', ptaonly:'PTA에만 있음', admit:'입원일 다름'};
+const ROOM_BADGE_LABEL={mismatch:'병실 다름', nopta:'PTA에 없음', rm:'주치의(RM) 다름', ptaonly:'PTA에만 있음'};
 function cardBadgeText(i){
   if(i.category==='location'){ const v=locVerdictOf(i); if(v) return v.label; }
   if(i.category==='handover'){ const v=handoverVerdictOf(i); if(v) return v.label; }
@@ -3264,17 +3241,6 @@ function renderDetail(){
       </table>
       <div class="verdictbox">판정: PTA 재원현황엔 재활 코드가 있는 입원 환자인데 현황판(입원·재입원)과 전체시간표(원본) 입원 카드에서 찾지 못했어요. 신환 등록이 빠졌거나 재입원 표기가 갱신되지 않았을 수 있어요. 재활 코드의 의미는 병원 기준이라, 재활 대상이 아닌 코드면 무시해도 돼요.</div>
     `;
-  } else if(issue.detail.kind==='room_admit'){
-    const d=issue.detail;
-    bodyHtml = `
-      <div class="compare-box">
-        <div class="cb good"><div class="cbt">PTA 입원일 (기준)</div><div class="cbv">${esc(d.ptaAdmit)}</div></div>
-        <div class="cb"><div class="cbt">PTA 재활시작일</div><div class="cbv">${esc(d.ptaStart||'(없음)')}</div></div>
-        <div class="cb bad"><div class="cbt">현황판 입원일</div><div class="cbv">${esc(d.statusAdmit)}</div></div>
-      </div>
-      <table class="kv-table"><tr><td>환자</td><td>${esc(d.patient)}</td></tr><tr><td>현황판 상태</td><td>${esc(d.state)}</td></tr></table>
-      <div class="verdictbox">판정: 현황판 입원일이 PTA의 입원일·재활시작일 어느 쪽과도 달라요. ${d.ptaLater&&d.state==='입원'?'PTA 입원일이 더 늦으니 재입원일 수 있어요 — 재입원이면 입원 열도 "재입원"으로 확인해 주세요.':'현황판 입원일을 PTA 기준으로 확인해 주세요.'}</div>
-    `;
   } else if(issue.detail.kind==='card_nostatus'){
     const d=issue.detail;
     bodyHtml = `
@@ -3545,5 +3511,7 @@ document.getElementById('histClose').addEventListener('click',()=>document.getEl
 document.getElementById('histModal').addEventListener('click',e=>{ if(e.target.id==='histModal') e.currentTarget.classList.remove('show'); });
 
 handoverLiveFetchPromise=fetchHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
+// 검증 스크립트(scripts/golden.js)가 화면 데이터를 읽는 통로(CSP가 eval을 막음). 읽기 전용.
+window.__testHooks={ issues:()=>issues, state:()=>state };
 </script>
 </body></html>

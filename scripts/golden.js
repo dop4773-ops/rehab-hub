@@ -50,8 +50,8 @@ async function capture() {
     await sleep(4000);
     // 그랜드라운딩: 자동으로 채워진 환자 목록
     await ev("document.querySelector('[data-nav=rm]').click(); 1");
-    const okG = await waitFor(ev, `${toolWin('rm')}.eval('allPatients').length>0`, 60000);
-    out.grand = okG ? await ev(`(function(){const w=${toolWin('rm')}; const ps=w.eval('allPatients');
+    const okG = await waitFor(ev, `${toolWin('rm')}.__testHooks&&${toolWin('rm')}.__testHooks.allPatients().length>0`, 60000);
+    out.grand = okG ? await ev(`(function(){const w=${toolWin('rm')}; const ps=w.__testHooks.allPatients();
       return {patients:ps.map(p=>[p.name,p.reg,p.room,p.floor,p.category,p.rm,p.label,JSON.stringify(p.schedule),JSON.stringify(p.therapists||{})]),
         language:ps.filter(p=>w.grandIsLanguagePatient(p)).map(p=>p.name+'|'+p.floor)};})()`) : null;
     // 교차검증: 전체 실행 결과
@@ -59,7 +59,7 @@ async function capture() {
     await waitFor(ev, `typeof ${toolWin('cross')}.handleRun==='function'`, 30000);
     await sleep(6000); // 파일 자동 채움·읽기 대기
     out.cross = await ev(`(async function(){const w=${toolWin('cross')}; await w.handleRun(); await new Promise(r=>setTimeout(r,500));
-      return {stats:w.eval('window.__lastStats'), issues:w.eval('issues').map(i=>[i.category,i.source||i.field||'',i.title,i.patient,i.room||'',i.time||'',i.line])};})()`);
+      return {stats:w.__lastStats, issues:w.__testHooks.issues().map(i=>[i.category,i.source||i.field||'',i.title,i.patient,i.room||'',i.time||'',i.line])};})()`);
     // 치료기록 QA: 요약 카운트와 화면 결과 텍스트(내부 변수가 IIFE라 직접 못 읽음)
     await ev("document.querySelector('[data-nav=acting]').click(); 1");
     const okA = await waitFor(ev, `!!${toolWin('acting')}.__actingSummary`, 60000);

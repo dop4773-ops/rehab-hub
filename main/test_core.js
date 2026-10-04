@@ -4,7 +4,7 @@
 const assert = require('assert');
 const zlib = require('zlib');
 const { readWorkbookFile, getSheetCells, getCell, splitRef, colToNum, numToCol, decodeXml, getSheetBoldRefs } = require('../renderer/core/xlsx-reader.js');
-const { normalizeText, normKey, normDoctor, roomDigits, regDigits, excelTimeToHHMM, toIsoDate } = require('../renderer/core/normalize.js');
+const { normalizeText, normKey, normDoctor, roomDigits, regDigits, excelTimeToHHMM } = require('../renderer/core/normalize.js');
 
 // 손으로 만든 최소 xlsx(zip): 압축(deflate)·무압축 항목을 섞어서 둘 다 읽히는지 확인
 function crc32(buf) { let c, crc = ~0; for (const b of buf) { c = (crc ^ b) & 0xff; for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1; crc = (crc >>> 8) ^ c; } return ~crc >>> 0; }
@@ -50,7 +50,6 @@ const xlsx = zip([
   assert.strictEqual(normDoctor('RM 6'), 'RM6'); assert.strictEqual(normDoctor(6), 'RM6'); assert.strictEqual(normDoctor(''), '');
   assert.strictEqual(roomDigits('501:01'), '501'); assert.strictEqual(roomDigits('10층'), ''); assert.strictEqual(regDigits('0012-34'), '1234');
   assert.strictEqual(excelTimeToHHMM(0.375), '09:00'); assert.strictEqual(excelTimeToHHMM('x'), '');
-  assert.strictEqual(toIsoDate('45398'), '2024-04-16'); assert.strictEqual(toIsoDate('2026-6-26'), '2026-06-26'); assert.strictEqual(toIsoDate('2026.06.26 00:00'), '2026-06-26'); assert.strictEqual(toIsoDate(''), ''); assert.strictEqual(toIsoDate('abc'), ''); assert.strictEqual(toIsoDate('123'), '');
-  console.log('OK ② 정규화(이름·주치의·병실·시간·날짜)');
+  console.log('OK ② 정규화(이름·주치의·병실·시간)');
   console.log('ALL PASS');
 })().catch(e => { console.error(e); process.exit(1); });

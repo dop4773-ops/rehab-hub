@@ -40,6 +40,10 @@ if (!gotLock) {
       },
     });
     mainWindow.setMenu(null);
+    // 화면 안의 링크가 앱 창을 외부 사이트로 바꾸거나 새 창을 열지 못하게 막는다(앱은 app://rehab-shell 안에서만 움직인다).
+    // 외부 주소는 업데이트 설정의 "열기" 버튼처럼 정해진 경로(shell.openExternal)로만 연다.
+    mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    mainWindow.webContents.on('will-navigate', (event, url) => { if (!url.startsWith('app://rehab-shell/')) event.preventDefault(); });
     mainWindow.loadURL(shellUrl('/index.html'));
     // mainWindow.webContents.openDevTools(); // 개발 중 디버깅용
   }

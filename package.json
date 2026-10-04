@@ -1,6 +1,6 @@
 {
   "name": "rehab-hub",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "재활치료부 업무 통합 시스템 — 그랜드라운딩·치료기록 QA·교차검증 데스크톱 앱",
   "main": "main/main.js",
   "author": "",
@@ -10,7 +10,7 @@
     "build:win": "electron-builder --win nsis --x64",
     "postbuild:win": "npm run rebuild",
     "release:win": "electron-builder --win nsis --x64 --publish always",
-    "postrelease:win": "npm run rebuild",
+    "postrelease:win": "node scripts/set-release-notes.js && npm run rebuild",
     "test": "node scripts/run-tests.js",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3 && node scripts/postinstall-electron-fix.js"

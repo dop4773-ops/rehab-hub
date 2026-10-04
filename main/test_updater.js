@@ -35,4 +35,12 @@ initUpdater(fakeApp, fakeIpcMain, () => null);
   assert.strictEqual((await handlers.get('updater:checkNow')()).status, 'dev-mode');
   assert.strictEqual((await handlers.get('updater:quitAndInstall')()).status, 'dev-mode');
   console.log('OK ④ 개발 모드(패키징 안 됨)에서는 checkNow/quitAndInstall이 안전하게 dev-mode 응답');
+
+  // ⑤ 저장소 주소 정보와 업데이트 기록(위 ④에서 "지금 확인"을 눌렀으니 기록이 한 줄 남아 있어야 함)
+  const info = await handlers.get('updater:getInfo')();
+  assert.strictEqual(info.repoUrl, 'https://github.com/dop4773-ops/rehab-hub'); assert.strictEqual(info.releasesUrl, info.repoUrl + '/releases'); assert.strictEqual(info.version, '0.0.0-test');
+  const log = await handlers.get('updater:getLog')();
+  assert.strictEqual(log.length, 1); assert.strictEqual(log[0].event, 'dev-mode'); assert.strictEqual(log[0].source, '수동'); assert(log[0].t > 0);
+  assert.strictEqual(await handlers.get('updater:openUrl')(null, '아무주소'), false, '정해진 주소(repo/releases) 밖은 열지 않는다');
+  console.log('OK ⑤ 저장소 주소·업데이트 기록·허용된 주소만 열기');
 })();

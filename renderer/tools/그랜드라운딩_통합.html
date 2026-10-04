@@ -2517,6 +2517,8 @@ document.getElementById('resetBtn').addEventListener('click',resetApp); document
 document.getElementById('grandHelpBtn').addEventListener('click',()=>document.getElementById('grandHelpDialog').showModal());
 document.getElementById('grandHelpCloseBtn').addEventListener('click',()=>document.getElementById('grandHelpDialog').close());
 document.getElementById('grandHelpDialog').addEventListener('click',(e)=>{ if(e.target.id==='grandHelpDialog') e.target.close(); });
+// 검증 스크립트(scripts/golden.js)가 화면 데이터를 읽는 통로 — 보안 정책(CSP)이 eval을 막기 때문에 eval 대신 이 함수로 읽는다. 읽기 전용.
+window.__testHooks={ allPatients:()=>allPatients };
 </script>
 </body>
 </html>

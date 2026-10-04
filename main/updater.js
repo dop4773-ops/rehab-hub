@@ -4,6 +4,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { readEntries, appendEntry, normalizeReleases, repoInfo } = require('./updateLog');
 
 function settingsPath(app) { return path.join(app.getPath('userData'), 'update-settings.json'); }
 function loadMode(app) {
@@ -20,12 +21,41 @@ function initUpdater(app, ipcMain, getMainWindow) {
   ipcMain.handle('updater:getMode', () => loadMode(app));
   ipcMain.handle('updater:setMode', (event, mode) => { saveMode(app, mode); return loadMode(app); });
 
+  const logFile = path.join(app.getPath('userData'), 'update-log.json');
+  const log = (event, extra = {}) => { try { appendEntry(logFile, { event, ...extra }); } catch (e) { /* 기록 실패가 업데이트를 막지 않게 */ } };
+  let nextSource = '자동'; // 사용자가 "지금 확인"을 누른 경우만 수동으로 표시
+
+  let info = null; try { info = repoInfo(require('../package.json')); } catch (e) { /* 정보 없음 */ }
+  ipcMain.handle('updater:getInfo', () => ({ version: app.getVersion(), mode: loadMode(app), repoUrl: info && info.url, releasesUrl: info && info.releasesUrl }));
+  ipcMain.handle('updater:getLog', () => readEntries(logFile));
+  // GitHub 릴리즈 목록(공개 저장소 — 로그인 없이 조회). 렌더러가 아니라 메인에서 가져온다(화면 보안 정책으로 외부 통신을 막아 두었기 때문).
+  let relCache = { at: 0, list: null };
+  ipcMain.handle('updater:releases', async () => {
+    if (!info) return { error: '저장소 정보를 찾지 못했습니다.' };
+    if (relCache.list && Date.now() - relCache.at < 10 * 60 * 1000) return { list: relCache.list, cached: true };
+    try {
+      const { net } = require('electron');
+      const res = await net.fetch(info.apiUrl, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'rehab-hub' } });
+      if (!res.ok) throw new Error('GitHub 응답 ' + res.status);
+      relCache = { at: Date.now(), list: normalizeReleases(await res.json()) };
+      return { list: relCache.list };
+    } catch (e) { return { error: e.message || '릴리즈 목록을 가져오지 못했습니다.' }; }
+  });
+  // 정해진 두 주소(저장소/릴리즈 페이지)만 기본 브라우저로 연다
+  ipcMain.handle('updater:openUrl', async (event, kind) => {
+    const url = info && (kind === 'releases' ? info.releasesUrl : kind === 'repo' ? info.url : null);
+    if (!url) return false;
+    await require('electron').shell.openExternal(url); return true;
+  });
+
   // 개발 모드(패키징 안 된 상태)는 배포 메타데이터가 없어 electron-updater가 항상 에러만 낸다.
   if (!app.isPackaged) {
-    ipcMain.handle('updater:checkNow', () => ({
+    ipcMain.handle('updater:checkNow', () => {
+      log('dev-mode', { source: '수동', message: '개발 모드라 확인하지 않음' });
+      return {
       status: 'dev-mode',
       message: '개발 모드에서는 업데이트 확인을 지원하지 않습니다. 패키징된 빌드(설치 후)에서만 동작합니다.',
-    }));
+    }; });
     ipcMain.handle('updater:quitAndInstall', () => ({ status: 'dev-mode' }));
     return;
   }
@@ -45,10 +75,10 @@ function initUpdater(app, ipcMain, getMainWindow) {
     }
   }
 
-  autoUpdater.on('checking-for-update', () => sendStatus('checking'));
-  autoUpdater.on('update-available', (info) => sendStatus('available', { version: info.version }));
-  autoUpdater.on('update-not-available', () => sendStatus('not-available'));
-  autoUpdater.on('error', (err) => sendStatus('error', { message: err?.message || '알 수 없는 오류가 발생했습니다.' }));
+  autoUpdater.on('checking-for-update', () => { log('check', { source: nextSource }); sendStatus('checking'); });
+  autoUpdater.on('update-available', (u) => { log('available', { version: u.version }); sendStatus('available', { version: u.version }); });
+  autoUpdater.on('update-not-available', () => { log('not-available', { version: app.getVersion() }); sendStatus('not-available'); });
+  autoUpdater.on('error', (err) => { log('error', { message: err?.message || '알 수 없는 오류' }); sendStatus('error', { message: err?.message || '알 수 없는 오류가 발생했습니다.' }); });
   autoUpdater.on('download-progress', (p) => sendStatus('downloading', { percent: Math.round(p.percent) }));
 
   let installTriggered = false;
@@ -56,6 +86,7 @@ function initUpdater(app, ipcMain, getMainWindow) {
   function performSilentInstall() {
     if (installTriggered) return;
     installTriggered = true;
+    log('install', { source: '자동' });
     setImmediate(() => {
       try { autoUpdater.quitAndInstall(true, true); }
       catch (e) {
@@ -67,14 +98,15 @@ function initUpdater(app, ipcMain, getMainWindow) {
     });
   }
 
-  autoUpdater.on('update-downloaded', (info) => {
-    sendStatus('downloaded', { version: info.version });
+  autoUpdater.on('update-downloaded', (u) => {
+    log('downloaded', { version: u.version });
+    sendStatus('downloaded', { version: u.version });
     if (getMode() === 'auto') performSilentInstall();
   });
 
   ipcMain.handle('updater:checkNow', async () => {
     try {
-      await autoUpdater.checkForUpdates();
+      nextSource = '수동'; await autoUpdater.checkForUpdates(); nextSource = '자동';
       return { status: 'checked' };
     } catch (err) {
       return { status: 'error', message: err?.message || '업데이트 확인에 실패했습니다.' };
@@ -82,6 +114,7 @@ function initUpdater(app, ipcMain, getMainWindow) {
   });
 
   ipcMain.handle('updater:quitAndInstall', () => {
+    log('install', { source: '수동' });
     autoUpdater.quitAndInstall(false, true); // 설치 후 자동 재실행
     return { status: 'ok' };
   });

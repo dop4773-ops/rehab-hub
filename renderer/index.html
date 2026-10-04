@@ -248,8 +248,14 @@
           <input type="checkbox" id="updaterAutoToggle">
           자동 업데이트 — 새 버전을 조용히 받아서 재시작할 때 바로 적용 (끄면 "지금 확인"을 눌렀을 때만 확인)
         </label>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div class="upd-src">
+          <div class="upd-lbl">업데이트 소스 (GitHub)</div>
+          <div class="upd-url"><code id="updaterRepoUrl">-</code><button class="btn sm" id="updaterRepoBtn">열기</button></div>
+          <p class="muted" style="margin:6px 0 0">새 버전은 이 GitHub 저장소의 릴리즈에서만 받습니다. 손댈 필요 없고, "지금 확인"을 누르면 최신 버전이 있는지 확인해요.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
           <button class="btn primary" id="updaterCheckBtn">지금 확인</button>
+          <button class="btn" id="updaterLogBtn">업데이트 로그</button>
           <button class="btn" id="updaterInstallBtn" style="display:none">지금 재시작하고 설치</button>
         </div>
         <div class="status-line" id="updaterStatus"></div>
@@ -259,6 +265,14 @@
   </main>
 </div>
 
+<div class="modal-overlay" id="updLogModal">
+  <div class="modal-box">
+    <button class="modal-close" id="updLogClose">✕</button>
+    <h3>🕘 업데이트 로그</h3>
+    <div class="upd-tabs"><button class="active" data-t="rel">버전 이력 (GitHub)</button><button data-t="local">이 PC의 업데이트 기록</button></div>
+    <div id="updLogBody"></div>
+  </div>
+</div>
 <script src="sync-core.js"></script>
 <script src="shell.js"></script>
 </body>

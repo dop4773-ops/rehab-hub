@@ -15,13 +15,7 @@ function normDoctor(raw){
 function roomDigits(v){ const m=String(v==null?'':v).match(/\d{3,4}/); return m?m[0]:''; }
 function regDigits(v){ return String(v==null?'':v).replace(/\D/g,'').replace(/^0+/,''); }
 
-// 날짜 칸 → "YYYY-MM-DD". 엑셀 날짜 일련번호(45398), "2026-06-26", "2026.6.26", "2026/6/26" 형식을 읽고 못 읽으면 ''.
-function toIsoDate(v){
-  const s=String(v==null?'':v).trim(); if(!s) return '';
-  if(/^\d{5}(?:\.\d+)?$/.test(s)){ const n=Math.floor(Number(s)); if(n<20000||n>100000) return ''; const d=new Date(Date.UTC(1899,11,30)+n*86400000); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`; }
-  const m=/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/.exec(s); return m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`:'';
-}
-const api = { normalizeText, excelTimeToHHMM, normKey, normDoctor, roomDigits, regDigits, toIsoDate };
+const api = { normalizeText, excelTimeToHHMM, normKey, normDoctor, roomDigits, regDigits };
 root.RehabCore = Object.assign(root.RehabCore || {}, api);
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

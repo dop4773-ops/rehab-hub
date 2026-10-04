@@ -79,12 +79,7 @@ const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) 
   SHEETS = { Sheet1: sheet([['의사', '병실', '병록#', '성명', '재활', '재활종료일'], ['RM4', '501:01', '1', '재활환자', 'B_06', ''], ['RM4', '501:01', '1', '재활환자', 'X', '']]) };
   const pm = await ctx.pta(fakeBook(['Sheet1']));
   assert.strictEqual(pm.get('재활환자')[0].rehab, 'B_06', '재활 열(재활종료일과 구분)을 읽는다');
-  SHEETS = { '현황(회복기)': sheet([['진료과', '병실', '성명', '입원일', '입원'], ['RM4', '501', '날짜환자', '45398', '입원'], ['RM4', '502', '문자날짜', '2026-06-26', '재입원'], ['RM4', '503', '날짜없음', '', '입원']]) };
-  const st3 = await ctx.status(fakeBook(['현황(회복기)']));
-  assert.strictEqual(st3.list[0].admitDate, '2024-04-16', '엑셀 날짜 일련번호'); assert.strictEqual(st3.list[1].admitDate, '2026-06-26'); assert.strictEqual(st3.list[2].admitDate, '');
-  SHEETS = { Sheet1: sheet([['의사', '병실', '병록#', '성명', '재활', '입원일', '재활시작일'], ['RM4', '501:01', '1', '날짜환자', 'Y', '2026-06-26', '2025-05-29']]) };
-  const pm2 = await ctx.pta(fakeBook(['Sheet1'])); assert.strictEqual(pm2.get('날짜환자')[0].adm, '2026-06-26'); assert.strictEqual(pm2.get('날짜환자')[0].start, '2025-05-29');
-  console.log('OK ⑤ 현황판 진료과·PTA 재활 코드·입원일');
+  console.log('OK ⑤ 현황판 진료과·PTA 재활 코드');
 
   // ⑥ 파일 수정 시각 라벨: 달력 날짜 기준, 2일 이상 지나면 old
   const now = new Date(2026, 9, 4, 9, 0);

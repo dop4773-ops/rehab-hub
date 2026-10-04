@@ -11,6 +11,11 @@ const SCHEME = 'app';
 const HOST = 'rehab-shell';
 const RENDERER_ROOT = path.join(__dirname, '..', 'renderer');
 
+const CSP = [
+  "default-src 'self'", "script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob:", "font-src 'self' data:",
+  "connect-src 'self' https://script.google.com https://script.googleusercontent.com", "frame-src 'self'", "object-src 'none'", "base-uri 'self'",
+].join('; ');
+
 function registerSchemePrivileges() {
   protocol.registerSchemesAsPrivileged([
     { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
@@ -18,7 +23,7 @@ function registerSchemePrivileges() {
 }
 
 function registerProtocolHandler() {
-  protocol.handle(SCHEME, (request) => {
+  protocol.handle(SCHEME, async (request) => {
     const url = new URL(request.url);
     if (url.host !== HOST) return new Response('not found', { status: 404 });
     const relPath = decodeURIComponent(url.pathname || '/index.html');
@@ -26,7 +31,10 @@ function registerProtocolHandler() {
     // 상위 폴더 접근(../) 차단. startsWith(RENDERER_ROOT)만 쓰면 "renderer_evil" 같은 형제 폴더도
     // 문자열이 접두어로 겹쳐서 통과해버린다 — 구분자까지 포함해서 검사해야 진짜 하위 경로만 허용된다.
     if (filePath !== RENDERER_ROOT && !filePath.startsWith(RENDERER_ROOT + path.sep)) return new Response('forbidden', { status: 403 });
-    return net.fetch(pathToFileURL(filePath).toString());
+    // 화면(셸·도구) 전부에 같은 보안 정책을 붙인다: 앱 안 파일만 실행하고, 서버 통신은 인수인계 구글 시트(Apps Script)로만 허용.
+    const res = await net.fetch(pathToFileURL(filePath).toString());
+    const headers = new Headers(res.headers); headers.set('Content-Security-Policy', CSP);
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
   });
 }
 

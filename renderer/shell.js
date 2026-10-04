@@ -709,6 +709,32 @@ document.getElementById('updaterCheckBtn').addEventListener('click', async () =>
   if (r.status === 'dev-mode' || r.status === 'error') document.getElementById('updaterStatus').textContent = r.message || updaterStatusText(r);
 });
 document.getElementById('updaterInstallBtn').addEventListener('click', () => window.rehab.updater.quitAndInstall());
+document.getElementById('updaterRepoBtn').addEventListener('click', () => window.rehab.updater.openUrl('repo'));
+
+// 업데이트 로그 창: ① GitHub 릴리즈 이력(버전별 변경 내용) ② 이 PC에서 있었던 확인·다운로드·설치·오류 기록
+const UPD_EVENT = { check: '확인 시작', available: '새 버전 발견', 'not-available': '최신 버전', downloaded: '다운로드 완료', install: '설치·재시작', error: '오류', 'dev-mode': '개발 모드' };
+const updEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const updWhen = (ms) => { const d = new Date(ms); return `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+let updLogToken = 0; // 탭을 빠르게 바꿔도 늦게 도착한 이전 결과가 화면을 덮어쓰지 않게
+async function renderUpdLog(tab) {
+  const my = ++updLogToken, body = document.getElementById('updLogBody');
+  document.querySelectorAll('.upd-tabs button').forEach(b => b.classList.toggle('active', b.dataset.t === tab));
+  body.innerHTML = '<p class="muted">불러오는 중…</p>';
+  if (tab === 'local') {
+    const log = await window.rehab.updater.getLog(); if (my !== updLogToken) return;
+    body.innerHTML = log.length ? log.map(e => `<div class="upd-ev ${e.event === 'error' ? 'err' : ''}"><span class="t">${updWhen(e.t)}</span><span class="e">${updEsc(UPD_EVENT[e.event] || e.event)}</span><span>${updEsc([e.source, e.version && 'v' + e.version, e.message].filter(Boolean).join(' · '))}</span></div>`).join('')
+      : '<p class="muted">아직 기록이 없어요. "지금 확인"을 누르거나 자동 확인이 돌면 여기에 쌓여요.</p>';
+    return;
+  }
+  const [info, r] = await Promise.all([window.rehab.updater.getInfo(), window.rehab.updater.releases()]); if (my !== updLogToken) return;
+  if (r.error) { body.innerHTML = `<p class="muted">GitHub에서 릴리즈 이력을 가져오지 못했어요 (${updEsc(r.error)}). 인터넷 연결을 확인하거나 아래 버튼으로 GitHub에서 직접 보세요.</p><button class="btn" id="updOpenRel">GitHub 릴리즈 페이지 열기</button>`; document.getElementById('updOpenRel').onclick = () => window.rehab.updater.openUrl('releases'); return; }
+  body.innerHTML = r.list.map(x => `<div class="upd-rel ${x.version === info.version ? 'cur' : ''}"><div class="h">${updEsc(x.name || 'v' + x.version)}${x.version === info.version ? '<span class="upd-tag">현재 버전</span>' : ''}<small>${x.date ? updWhen(Date.parse(x.date)) : ''}</small></div>
+    <div class="b ${x.body ? '' : 'none'}">${updEsc(x.body || '(등록된 변경 내용이 없어요)')}</div></div>`).join('') || '<p class="muted">릴리즈가 없어요.</p>';
+}
+document.getElementById('updaterLogBtn').addEventListener('click', () => { document.getElementById('updLogModal').classList.add('show'); renderUpdLog('rel'); });
+document.getElementById('updLogClose').addEventListener('click', () => document.getElementById('updLogModal').classList.remove('show'));
+document.getElementById('updLogModal').addEventListener('click', (e) => { if (e.target.id === 'updLogModal') e.currentTarget.classList.remove('show'); });
+document.querySelector('.upd-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) renderUpdLog(b.dataset.t); });
 document.getElementById('updaterAutoToggle').addEventListener('change', async (e) => {
   updaterMode = await window.rehab.updater.setMode(e.target.checked ? 'auto' : 'manual');
 });
@@ -718,6 +744,7 @@ document.getElementById('updaterAutoToggle').addEventListener('change', async (e
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
   fileRoles = await window.rehab.folders.fileRoles();
   document.getElementById('updaterVersion').textContent = await window.rehab.updater.getVersion();
+  document.getElementById('updaterRepoUrl').textContent = (await window.rehab.updater.getInfo()).repoUrl || '-';
   updaterMode = await window.rehab.updater.getMode();
   document.getElementById('updaterAutoToggle').checked = updaterMode === 'auto';
   renderHome();

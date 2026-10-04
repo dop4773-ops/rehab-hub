@@ -4,17 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>미래병원 치료기록 오류 확인 프로그램 Ver.1.48 (언어/심리 분류판)</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script>
-    window.addEventListener('error', function(e){
-      if (String(e.filename || '').includes('xlsx')) {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        document.head.appendChild(s);
-      }
-    }, true);
-  </script>
+  <!-- 인터넷 없이도 동작하도록 라이브러리를 앱 안(renderer/vendor)에 넣어 둔다 -->
+  <script src="../vendor/xlsx.full.min.js"></script>
+  <script src="../vendor/jszip.min.js"></script>
   <style>
     :root {
       --navy:#17345f;
