@@ -8,18 +8,21 @@ const vm = require('vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../renderer/tools/작업치료_교차검증_도구_core내장.html'), 'utf8');
 const grab = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i + a.length); assert(i >= 0 && j > i, `marker 없음: ${a}`); return html.slice(i, j); };
-// 가짜 워크북: book.sheets=[{name}], 셀은 {시트이름: {"A1": 값}} → getSheetCells가 Map으로 돌려준다
+// 공통 모듈(core)의 파서를 그대로 쓴다. 가짜 워크북은 sheetCache에 시트를 미리 넣어 둔 book — getSheetCells가 그 캐시를 먼저 돌려준다.
 let SHEETS = {};
-// 공통 모듈(core)은 그대로 가져오고, 시트 읽기만 가짜로 바꾼다
-const ctx = { console, ...require('../renderer/core/xlsx-reader.js'), ...require('../renderer/core/normalize.js'), getSheetCells: async (book, name) => new Map(Object.entries(SHEETS[name] || {})) };
+const { parsePtaSheet } = require('../renderer/core/parsers_pta.js');
+const { parseStatusSheet } = require('../renderer/core/parsers_status.js');
+const { roomDigits } = require('../renderer/core/normalize.js');
+const fakeBook = (names) => ({ sheets: names.map(name => ({ name })), sheetCache: new Map(names.map(n => [n, new Map(Object.entries(SHEETS[n] || {}))])) });
+// HTML에 남아 있는 화면 쪽 함수(파일명 인식·수정 시각 라벨)만 아직 잘라서 쓴다
+const ctx = { console, ...require('../renderer/core/normalize.js') };
 vm.createContext(ctx);
 vm.runInContext([
-  grab('async function parsePtaSheet', 'async function runAllVerifications'),
-  grab('async function parseStatusSheet', 'function findScheduleSheet'),
   grab('function fileAgeLabel', 'function renderFreshness'),
   grab('function guessKeyFromFilename', '// 화면 어디에 파일을 끌어다'),
-  'this.room=roomDigits; this.pta=parsePtaSheet; this.status=parseStatusSheet; this.key=guessKeyFromFilename; this.age=fileAgeLabel;',
+  'this.key=guessKeyFromFilename; this.age=fileAgeLabel;',
 ].join('\n'), ctx);
+ctx.room = roomDigits; ctx.pta = (b) => parsePtaSheet(b); ctx.status = (b) => parseStatusSheet(b);
 const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) => { if (v !== null && v !== '') o[`${String.fromCharCode(65 + j)}${i + 1}`] = v; })); return o; };
 
 (async () => {
@@ -36,12 +39,12 @@ const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) 
     ['RM7', '703:01', '4001', '김동명', '', '', 'A'],       // 동명이인(다른 병록#)
     ['RM9', '', '5000', '병실없음', '', '', ''],            // 병실 없는 줄은 제외
   ]) };
-  const map = await ctx.pta({ sheets: [{ name: 'Sheet1' }] });
+  const map = await ctx.pta(fakeBook(['Sheet1']));
   assert.strictEqual(map.get('홍길동').length, 1, '병록# 중복 줄은 하나로');
   assert.strictEqual(map.get('홍길동')[0].room, '501'); assert.strictEqual(map.get('홍길동')[0].bed, '01'); assert.strictEqual(map.get('홍길동')[0].rm, 'RM4');
   assert.strictEqual(map.get('김동명').length, 2, '같은 이름 다른 병록#은 후보가 둘');
   assert(!map.has('병실없음'));
-  await assert.rejects(() => { SHEETS = { Sheet1: sheet([['a', 'b']]) }; return ctx.pta({ sheets: [{ name: 'Sheet1' }] }); }, /찾지 못했습니다|병실\/성명/, '엉뚱한 파일이면 오류');
+  await assert.rejects(() => { SHEETS = { Sheet1: sheet([['a', 'b']]) }; return ctx.pta(fakeBook(['Sheet1'])); }, /찾지 못했습니다|병실\/성명/, '엉뚱한 파일이면 오류');
   console.log('OK ② PTA 재원현황 파싱(병록# 합치기·동명이인 후보)');
 
   // ③ 현황판: 전원은 "입원" 열이 아니라 특이사항 글자에서만 표시 → transfer 플래그, 퇴원은 따로
@@ -54,7 +57,7 @@ const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) 
     [5, '일반', 'RM6', '505', '과거전원환자', '', '', '입원', '4/29 타병원 전원/5/2 재입원', 1, 0],
     [6, '일반', 'RM6', '506', '재입원전원기록', '', '', '재입원', '8/13 전원', 1, 0],
   ]) };
-  const st = await ctx.status({ sheets: [{ name: '현황(회복기)' }] });
+  const st = await ctx.status(fakeBook(['현황(회복기)']));
   const by = (n) => st.list.find(r => r.name === n);
   assert.strictEqual(by('정상환자').transfer, false); assert.strictEqual(by('전원환자').transfer, true);
   assert.strictEqual(by('재입원환자').admit, '재입원');
@@ -71,10 +74,10 @@ const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) 
 
   // ⑤ 추가 검증용 필드: 현황판 진료과(RM) · PTA 재활 코드
   SHEETS = { '현황(회복기)': sheet([['진료과', '병실', '성명', '입원'], ['RM 4', '501', '가나다', '입원'], [6, '502', '라마바', '재입원']]) };
-  const st2 = await ctx.status({ sheets: [{ name: '현황(회복기)' }] });
+  const st2 = await ctx.status(fakeBook(['현황(회복기)']));
   assert.strictEqual(st2.list[0].dept, 'RM4', '"RM 4"처럼 띄어 써도 RM4'); assert.strictEqual(st2.list[1].dept, 'RM6', '숫자만 저장된 칸도 RM6');
   SHEETS = { Sheet1: sheet([['의사', '병실', '병록#', '성명', '재활', '재활종료일'], ['RM4', '501:01', '1', '재활환자', 'B_06', ''], ['RM4', '501:01', '1', '재활환자', 'X', '']]) };
-  const pm = await ctx.pta({ sheets: [{ name: 'Sheet1' }] });
+  const pm = await ctx.pta(fakeBook(['Sheet1']));
   assert.strictEqual(pm.get('재활환자')[0].rehab, 'B_06', '재활 열(재활종료일과 구분)을 읽는다');
   console.log('OK ⑤ 현황판 진료과·PTA 재활 코드');
 

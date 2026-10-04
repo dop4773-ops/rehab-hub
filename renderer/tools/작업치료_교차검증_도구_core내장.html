@@ -608,196 +608,24 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 <script src="../core/normalize.js"></script>
 <script src="../core/treatment.js"></script>
 <script src="../core/cards.js"></script>
+<script src="../core/parsers_weekday.js"></script>
+<script src="../core/parsers_saturday.js"></script>
+<script src="../core/parsers_status.js"></script>
+<script src="../core/parsers_pta.js"></script>
+<script src="../core/parsers_handover.js"></script>
+<script src="../core/parsers_grids.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
 
-function timeStart(raw){
-  const s=normalizeText(raw); if(!s) return '';
-  if(/^[0-9.]+$/.test(s)) return excelTimeToHHMM(Number(s));
-  const m=/^(\d{1,2}:\d{2})/.exec(s); return m?m[1]:s;
-}
 
 /* ======================================================================
    검증 로직 (Tab1/Tab2/Tab3) — 기존 구현과 동일한 판정 규칙, 변경 없음
    ====================================================================== */
-async function parseStatusSheet(book){
-  const sh = book.sheets.find(s=>/현황/.test(s.name)&&/회복기/.test(s.name)) || book.sheets.find(s=>/현황/.test(s.name));
-  if(!sh) throw new Error('현황(회복기) 시트를 찾지 못했습니다.');
-  const cells = await getSheetCells(book, sh.name);
-  let headerRow=null;
-  for(const [ref,val] of cells.entries()){
-    if(normalizeText(val).replace(/\s+/g,'')==='성명'){ const rc=splitRef(ref); if(rc){ headerRow=rc.row; break; } }
-  }
-  if(headerRow==null) throw new Error('현황 시트에서 "성명" 헤더를 찾지 못했습니다.');
-  const headerMap={};
-  for(let c=1;c<=25;c++){ const v=normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,''); if(v) headerMap[v]=c; }
-  const nameCol=headerMap['성명'], roomCol=headerMap['병실'], admitCol=headerMap['입원'], noteCol=headerMap['특이사항'], deptCol=headerMap['진료과'];
-  const typeCols={sot:headerMap['SOT'], rdt:headerMap['RDT'], erdt:headerMap['ERDT'], ccrt:headerMap['CCRT'], lang:headerMap['언어']};
-  const list=[]; const dischargedList=[]; let maxRow=headerRow;
-  for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc && rc.row>maxRow) maxRow=rc.row; }
-  for(let r=headerRow+1;r<=maxRow;r++){
-    const name=normalizeText(getCell(cells,r,nameCol)); if(!name) continue;
-    const admit=admitCol?normalizeText(getCell(cells,r,admitCol)):'';
-    const room=normalizeText(getCell(cells,r,roomCol));
-    if(admit==='퇴원'){ dischargedList.push({name, room, admit}); continue; }
-    const note=noteCol?normalizeText(getCell(cells,r,noteCol)):'';
-    // "입원" 열에는 전원이 없고(퇴원/입원/재입원/외래), 전원은 특이사항 글자에만 나온다 → 상태가 아니라 "전원 표기"(확인 필요)로만 취급
-    // 특이사항의 "전원"은 과거 전원 기록인 경우가 많다("4/29 ○○ 전원/5/2 재입원", 재입원 환자의 "8/13 전원") — 그래서 아직 "입원"인데
-    // 마지막 "전원" 뒤에 재입원·복귀 표시가 없는 경우만 "전원 표기(확인 필요)"로 본다.
-    const transfer = admit==='입원' && /전원/.test(note) && !/재입원|복귀/.test(note.slice(note.lastIndexOf('전원')));
-    const rec={name, room, admit, note, transfer, dept:deptCol?normDoctor(getCell(cells,r,deptCol)):''};
-    for(const k of Object.keys(typeCols)){ const col=typeCols[k]; const raw=col?getCell(cells,r,col):''; const num=parseInt(raw,10); rec[k]=Number.isFinite(num)?num:0; }
-    list.push(rec);
-  }
-  return {sheetName:sh.name, list, dischargedList, hasLang:!!headerMap['언어']};
-}
-function findScheduleSheet(book){
-  return book.sheets.find(s=>normalizeText(s.name).replace(/\s+/g,'')==='평일시간표(원본)');
-}
-function likelyTherapistName(v){
-  const s=normalizeText(v).replace(/\s+/g,'');
-  if(!/^[가-힣]{2,6}$/.test(s)) return false;
-  return !/^(빈타임|치료시간|평가메인|연하치료|점심시간|팀구분|퇴원예정자|환자특이사항|치료사)$/.test(s);
-}
-function extractPatientAssignment(raw){
-  const r=normalizeText(raw); if(!r) return null;
-  const first=r.split('\n')[0].trim();
-  if(/CCRT|ERDT|BETTER|COMCOG|육아휴직|휴직|회의|교육|점심|치료실|빈타임|근무|VAC|OFF|외래|평가/i.test(first)) return null;
-  let isE=/(?:^|\s)E(?:$|\s)/i.test(first);
-  let isR=/(?:^|\s)R(?:$|\s)/i.test(first);
-  let name=first.replace(/\s+(?:ST|SM|SB|R|E|NWB|PWB|TEST)\b.*$/i,'').replace(/(?:ST|SM|SB|TEST)$/i,'').trim();
-  name=name.replace(/[^가-힣A-Za-z0-9]/g,'');
-  if(!isR && !isE && /^[가-힣]{2,6}R$/.test(name)){ isR=true; name=name.slice(0,-1); } // 공백없이 붙은 'R' 오기 보정
-  if(!/^[가-힣]{2,6}[A-Za-z0-9]{0,2}$/.test(name)) return null;
-  if(isE) return {name, type:'skip'};
-  if(isR) return {name, type:'rdt'};
-  return {name, type:'sot'};
-}
-function extractLocationFromRaw(raw){
-  const lines=normalizeText(raw).split('\n');
-  if(lines.length<2) return '';
-  return normLoc(lines[1]);
-}
-function extractCodeToken(raw){
-  // 이름 뒤에 붙는 ST/SM/SB/R 코드만 뽑는다(MSK 등은 대상 아님 — 신경쓰지 않아도 되는 코드)
-  const first=normalizeText(raw).split('\n')[0].trim();
-  const m=/(?:^|\s)(ST|SM|SB|R)(?:\s|$)/i.exec(first);
-  return m ? m[1].toUpperCase() : '';
-}
-async function parseMainTable(cells, boldRefs){
-  let header=null;
-  for(const [ref,val] of cells.entries()){
-    if(normalizeText(val).replace(/\s+/g,'')!=='치료시간') continue;
-    const rc=splitRef(ref); if(rc && rc.row<=6 && (!header || rc.row<header.row)) header=rc;
-  }
-  if(!header) throw new Error('평일시간표(원본)에서 "치료시간" 헤더를 찾지 못했습니다.');
-  const therapistRow=header.row+1, startRow=therapistRow+1;
-  let endRow=startRow+20;
-  for(let r=startRow;r<=startRow+25;r++){
-    const marker=normalizeText(getCell(cells,r,header.col)).replace(/\s+/g,'');
-    if(marker==='빈타임'||marker==='평가메인'||marker==='연하치료'){ endRow=r-1; break; }
-  }
-  const floorSplitCol = (()=>{
-    for(const [ref,val] of cells.entries()){ if(/3층\s*치료실/.test(normalizeText(val))){ const rc=splitRef(ref); if(rc) return rc.col; } }
-    return null;
-  })();
-  const therapistCols=[];
-  for(let c=header.col+1;c<=header.col+70;c++){
-    const v=getCell(cells,therapistRow,c);
-    if(likelyTherapistName(v)) therapistCols.push({col:c,name:normalizeText(v).replace(/\s+/g,''), floor: (floorSplitCol && c>=floorSplitCol)?3:10});
-  }
-  const occ=[];
-  for(const tc of therapistCols){
-    for(let r=startRow;r<=endRow;r++){
-      const raw=getCell(cells,r,tc.col); const asn=extractPatientAssignment(raw); if(!asn||asn.type==='skip') continue;
-      const time=normalizeText(getCell(cells,r,header.col));
-      const ref=numToCol(tc.col)+r;
-      occ.push({name:asn.name, type:asn.type, therapist:tc.name, therapistCol:tc.col, floor:tc.floor, time, timeKey:timeStart(time), loc:extractLocationFromRaw(raw), code:extractCodeToken(raw), bold: !!(boldRefs && boldRefs.has(ref)), row:r});
-    }
-  }
-  return occ;
-}
-function findLowerSections(cells){
-  const out=[];
-  for(const [ref,val] of cells.entries()){
-    const s=normalizeText(val).replace(/\s+/g,''); const rc=splitRef(ref); if(!rc||rc.row<20) continue;
-    let kind=null;
-    if(/^10F\)?ERDT$/.test(s)) kind='10F_ERDT'; else if(/^10F\)?CCRT$/.test(s)) kind='10F_CCRT';
-    else if(/^3F\)?ERDT$/.test(s)) kind='3F_ERDT'; else if(/^3F\)?BETTER$/.test(s)) kind='3F_BETTER'; else if(/^3F\)?COMCOG$/.test(s)) kind='3F_COMCOG';
-    if(!kind) continue; out.push({kind, row:rc.row, col:rc.col});
-  }
-  return out;
-}
-function parseSectionHeader(cells, labelRow, labelCol){
-  // 일부 시트(예: "3F) BETTER")는 "치료시간" 글자 자체가 비어있는 서식 오류가 있어
-  // "치료시간" 텍스트가 아니라 "치료사" 텍스트를 기준으로 헤더 행을 찾는다.
-  // 치료시간 열은 항상 구분 라벨(예: "3F) BETTER")과 같은 열에서 시작한다.
-  let headerRow=0, therapistCol=0;
-  for(let r=labelRow+1;r<=labelRow+3;r++){
-    for(let c=labelCol; c<=labelCol+10; c++){
-      if(normalizeText(getCell(cells,r,c)).replace(/\s+/g,'')==='치료사'){ headerRow=r; therapistCol=c; break; }
-    }
-    if(headerRow) break;
-  }
-  if(!headerRow) return null;
-  const timeCol=labelCol;
-  const subCols=[];
-  for(let c=therapistCol+1; c<=therapistCol+8; c++){ const v=normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,''); if(/^S\d$/.test(v) || ['월','화','수','목','금'].includes(v)) subCols.push({col:c,label:v}); }
-  if(!subCols.length) return null;
-  return {headerRow, timeCol, therapistCol, subCols, style: /^S\d$/.test(subCols[0].label)?'slot':'weekday'};
-}
-function extractLowerName(raw){
-  const first=normalizeText(raw).split('\n')[0].trim(); if(!first) return '';
-  if(/CCRT|ERDT|BETTER|COMCOG|점심|치료시간|치료사/i.test(first)) return '';
-  const cleaned=first.replace(/[^가-힣A-Za-z0-9]/g,'');
-  if(!/^[가-힣]{2,6}[A-Za-z0-9]{0,2}$/.test(cleaned)) return '';
-  return cleaned;
-}
-function dayCountFromRaw(raw){ const lines=normalizeText(raw).split('\n'); if(lines.length<2) return 5; const days=(lines[1].match(/[월화수목금]/g)||[]); return days.length?days.length:5; }
-function daysFromRaw(raw){ const lines=normalizeText(raw).split('\n'); if(lines.length<2) return []; return lines[1].match(/[월화수목금]/g)||[]; }
-async function parseLowerAll(cells){
-  const sections=findLowerSections(cells);
-  const erdt=[], ccrt=[];
-  for(const sec of sections){
-    const parsed=parseSectionHeader(cells, sec.row, sec.col); if(!parsed) continue;
-    const floor = sec.kind.startsWith('10F')?10:3;
-    for(let r=parsed.headerRow+1; r<=parsed.headerRow+20; r++){
-      for(const sc of parsed.subCols){
-        const raw=getCell(cells,r,sc.col); const nm=extractLowerName(raw); if(!nm) continue;
-        const therapist=normalizeText(getCell(cells,r,parsed.therapistCol)).replace(/\s+/g,'');
-        const time=normalizeText(getCell(cells,r,parsed.timeCol));
-        if(parsed.style==='slot'){ erdt.push({kind:sec.kind, floor, name:nm, count:dayCountFromRaw(raw), days:daysFromRaw(raw), therapist, time, timeKey:timeStart(time), slot:sc.label}); }
-        else { ccrt.push({kind:sec.kind, floor, name:nm, day:sc.label, therapist, time, timeKey:timeStart(time)}); }
-      }
-    }
-  }
-  return {erdt, ccrt};
-}
-async function buildScheduleData(book){
-  const sh=findScheduleSheet(book);
-  if(!sh) throw new Error('"평일시간표(원본)" 시트를 찾지 못했습니다.');
-  const cells=await getSheetCells(book, sh.name);
-  const boldRefs=await getSheetBoldRefs(book, sh.name);
-  const occ=await parseMainTable(cells, boldRefs);
-  const lower=await parseLowerAll(cells);
-  return {occ, erdt:lower.erdt, ccrt:lower.ccrt};
-}
 // "평가메인" 시트는 평일시간표(원본)에서 볼드로 표시된 환자만 따로 옮겨 적어둔 시트다(구조는 메인 표와 동일).
 // 이름 목록만 필요하므로 parseMainTable을 그대로 재사용한다.
-async function parseEvalMainNames(book){
-  const sh = book.sheets.find(s=>/평가\s*메인/.test(s.name));
-  if(!sh) return null; // 시트가 없으면 검증 불가(null)
-  const cells = await getSheetCells(book, sh.name);
-  if(!cells || !cells.size) return new Set();
-  let occ=[];
-  try{ occ = await parseMainTable(cells); }catch(e){ return new Set(); }
-  const names=new Set();
-  for(const o of occ) names.add(normKey(o.name));
-  return names;
-}
 // 연하전기(ERDT)는 "총 세션 수"가 아니라 "프로그램이 몇 개인지"를 현황에 1/2로 적는다.
 // 요일 정보가 없는 슬롯은 "평일 5일 모두"를 뜻하고, 요일이 적혀있으면 그 요일에만 시행한다는 뜻이다.
 // 같은 환자의 여러 슬롯 중 요일이 서로 겹치지 않는 것들은 "요일마다 담당/시간만 다른 같은 프로그램"으로 보고 하나로 합치고,
@@ -834,11 +662,6 @@ function buildOutpatientActual(card){
     erdt: (card.erdtWeekdayEntries||[]).length>0,
     ccrt: (card.cogWeekdayEntries||[]).length>0
   };
-}
-function normLoc(raw){
-  const s=normalizeText(raw).replace(/\n/g,' ');
-  const m=/^([가-힣A-Za-z]+)\s*-\s*0*(\d+)/.exec(s);
-  return m?`${m[1]}-${m[2]}`:'';
 }
 // 외래 카드는 "치료위치" 칸이 따로 없고, 치료명 뒤 괄호 안에 위치가 붙어있는 경우가 있다.
 // 예: "운동치료(나-14)" → 위치 "나-14". 괄호 안이 "T"처럼 구체 위치가 아니면 빈 문자열을 돌려준다.
@@ -927,35 +750,6 @@ async function parsePatientCards(book, floor){
     }
   }
   return results;
-}
-async function parseLocationGrid(cells){
-  const headerRows=[];
-  for(const [ref,val] of cells.entries()){ if(normalizeText(val).replace(/\s+/g,'')==='치료시간'){ const rc=splitRef(ref); if(rc) headerRows.push(rc); } }
-  const entries=[];
-  for(const hr of headerRows){
-    let blankRun=0;
-    for(let c=hr.col+1;c<hr.col+40;c++){
-      const label=getCell(cells,hr.row,c); const labelNorm=normalizeText(label).replace(/\s+/g,'');
-      if(labelNorm==='치료시간') break;
-      if(labelNorm===''){ blankRun++; if(blankRun>=3) break; continue; }
-      blankRun=0;
-      const loc=normLoc(label); if(!loc) continue;
-      for(let r=hr.row+1;r<=hr.row+30;r++){
-        const timeRaw=getCell(cells,r,hr.col);
-        if(normalizeText(timeRaw)===''){ break; }
-        const time=timeStart(timeRaw); if(!/^\d{1,2}:\d{2}$/.test(time)) continue;
-        const name=normalizeText(getCell(cells,r,c)); if(!name) continue;
-        entries.push({time,loc,name});
-      }
-    }
-  }
-  return entries;
-}
-async function collectGridEntries(book, sheetName){
-  if(!book) return [];
-  const cells=await getSheetCells(book, sheetName || book.sheets[0].name);
-  if(!cells) return [];
-  return parseLocationGrid(cells);
 }
 function compareFloor(cards, gridEntries, floor){
   const out=[];
@@ -1276,38 +1070,8 @@ function setStep(id, cls){ const el=document.getElementById(id); el.className='s
    (기존 판정 규칙은 그대로 두고, 아래 규칙은 별도 항목으로만 추가한다)
    ====================================================================== */
 // 평가메인 시트의 모든 배정 칸(같은 이름이 여러 번 나오는지 보려고 이름 집합이 아니라 목록 그대로)
-async function parseEvalMainOccurrences(book){
-  const sh = book.sheets.find(s=>/평가\s*메인/.test(s.name));
-  if(!sh) return null;
-  const cells = await getSheetCells(book, sh.name);
-  if(!cells || !cells.size) return [];
-  try{ return await parseMainTable(cells); }catch(e){ return []; }
-}
 // PTA 재원현황.xlsx: 의사(RM) / 병실("501:01" = 병실:침상) / 병록# / 성명 …  — 한 환자가 여러 줄(재활 구분별)로 나오므로 병록# 기준으로 하나로 합친다.
 // 반환: Map(normKey(이름) → [{name, reg, room, bed, rm}])  (같은 이름의 서로 다른 병록#이 있으면 후보가 여러 개)
-async function parsePtaSheet(book){
-  for(const sh of book.sheets){
-    const cells=await getSheetCells(book, sh.name); if(!cells||!cells.size) continue;
-    let hr=null;
-    for(const [ref,val] of cells.entries()){ if(/병록/.test(normalizeText(val))){ const rc=splitRef(ref); if(rc && (!hr||rc.row<hr)) hr=rc.row; } }
-    if(hr==null) continue;
-    const col={}; for(let c=1;c<=25;c++){ const v=normalizeText(getCell(cells,hr,c)).replace(/\s+/g,''); if(!v) continue; if(/병록/.test(v)) col.reg=c; else if(v==='의사') col.rm=c; else if(v==='병실') col.room=c; else if(v==='성명') col.name=c; else if(v==='재활') col.rehab=c; }
-    if(!col.name||!col.room) continue;
-    let maxRow=hr; for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc&&rc.row>maxRow) maxRow=rc.row; }
-    const byKey=new Map(), seen=new Set();
-    for(let r=hr+1;r<=maxRow;r++){
-      const name=normalizeText(getCell(cells,r,col.name)); const roomRaw=normalizeText(getCell(cells,r,col.room)); if(!name||!roomRaw) continue;
-      const reg=col.reg?normalizeText(getCell(cells,r,col.reg)):'';
-      const dedupeKey=regDigits(reg)?('R'+regDigits(reg)):('N'+normKey(name)+'|'+roomDigits(roomRaw));
-      if(seen.has(dedupeKey)) continue; seen.add(dedupeKey);
-      const [roomPart,bed]=roomRaw.split(':');
-      const rec={name, reg, room:roomDigits(roomPart), bed:(bed||'').trim(), rm:col.rm?normalizeText(getCell(cells,r,col.rm)):'', rehab:col.rehab?normalizeText(getCell(cells,r,col.rehab)):''};
-      const k=normKey(name); if(!byKey.has(k)) byKey.set(k,[]); byKey.get(k).push(rec);
-    }
-    return byKey;
-  }
-  throw new Error('PTA 재원현황에서 병실/성명 열을 찾지 못했습니다.');
-}
 async function runAllVerifications(){
   if(handoverLiveFetchPromise) await handoverLiveFetchPromise; // 실시간 인수인계 조회가 끝날 때까지 기다려서, 타이밍에 따라 인식이 됐다 안 됐다 하지 않게 한다
   const progress=document.getElementById('runProgress'); progress.classList.add('show');
@@ -2035,32 +1799,6 @@ function buildScheduleLocationIssue(r, idx){
 // OT 인수인계 시트: 환자성함/치료사/주치의/치료종류(SOT·RDT·CCRT)가 한 줄에 정리돼 있고,
 // 같은 환자가 시간이 지나며 여러 번(타임스탬프 최신순으로 위에서부터) 다시 등록된다.
 // 환자·치료종류별로 "가장 위(=가장 최근)" 항목 하나만 사용한다.
-async function parseHandoverSheet(book){
-  const sh = book.sheets.find(s=>/인수인계/.test(s.name)) || book.sheets[0];
-  if(!sh) return [];
-  const cells = await getSheetCells(book, sh.name);
-  if(!cells || !cells.size) return [];
-  let headerRow=null;
-  for(const [ref,val] of cells.entries()){
-    if(normalizeText(val)==='환자성함'){ const rc=splitRef(ref); if(rc){ headerRow=rc.row; break; } }
-  }
-  if(headerRow==null) return [];
-  const headerMap={};
-  for(let c=1;c<=20;c++){ const v=normalizeText(getCell(cells,headerRow,c)); if(v) headerMap[v]=c; }
-  const nameCol=headerMap['환자성함'], therCol=headerMap['치료사'], doctorCol=headerMap['주치의'], typeCol=headerMap['치료종류'];
-  if(!nameCol) return [];
-  let maxRow=headerRow; for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc && rc.row>maxRow) maxRow=rc.row; }
-  const list=[];
-  for(let r=headerRow+1;r<=maxRow;r++){
-    const name=normalizeText(getCell(cells,r,nameCol)); if(!name) continue;
-    const therapist=therCol?normalizeText(getCell(cells,r,therCol)):'';
-    const doctor=doctorCol?normDoctor(getCell(cells,r,doctorCol)):'';
-    const typeRaw=typeCol?normalizeText(getCell(cells,r,typeCol)):'';
-    const type = /RDT/i.test(typeRaw) ? 'rdt' : /CCRT/i.test(typeRaw) ? 'ccrt' : /SOT/i.test(typeRaw) ? 'sot' : '';
-    list.push({name, therapist, doctor, type, row:r});
-  }
-  return list;
-}
 // 그랜드라운딩 도구와 같은 OT인수인계서(통합) 실시간 연동 엔드포인트 — 파일 업로드 없이 자동으로 가져온다.
 const HANDOVER_LIVE_URL='https://script.google.com/macros/s/AKfycbwXwWquKYEy5irNjdQjZLYUsBl94L5yJZ_aD-UZLCHDonJDZ-smmCnSghILn9c15AN0OQ/exec';
 // Google Apps Script 콜드스타트로 5~15초씩 걸릴 수 있어서, 마지막 성공 응답을 localStorage에 캐시해뒀다가
@@ -2068,18 +1806,6 @@ const HANDOVER_LIVE_URL='https://script.google.com/macros/s/AKfycbwXwWquKYEy5irN
 const HANDOVER_CACHE_KEY='rehab_handover_cache_v1';
 function loadHandoverCache(){ try{ const raw=localStorage.getItem(HANDOVER_CACHE_KEY); if(!raw) return null; const obj=JSON.parse(raw); return Array.isArray(obj?.records)?obj:null; }catch(e){ return null; } }
 function saveHandoverCache(records){ try{ localStorage.setItem(HANDOVER_CACHE_KEY,JSON.stringify({records,fetchedAt:Date.now()})); }catch(e){ /* 저장 실패해도 기능엔 지장 없음 */ } }
-function handoverListFromLiveRecords(records){
-  const list=[];
-  for(const r of records){
-    const name=normalizeText(r.name||''); if(!name) continue;
-    const therapist=normalizeText(r.therapist||'');
-    const doctor=normDoctor(r.doctor||'');
-    const typeRaw=normalizeText(r.type||'');
-    const type = /RDT/i.test(typeRaw) ? 'rdt' : /CCRT/i.test(typeRaw) ? 'ccrt' : /SOT/i.test(typeRaw) ? 'sot' : '';
-    list.push({name, therapist, doctor, type, row:0});
-  }
-  return list;
-}
 async function fetchHandoverLive(){
   const badge=document.getElementById('badge-handoverBook'), sub=document.getElementById('sub-handoverBook');
   const cached=loadHandoverCache();
@@ -2107,15 +1833,6 @@ async function fetchHandoverLive(){
     }
   }
   refreshRunButton();
-}
-function buildHandoverIndex(list){
-  const map=new Map(); // normKey(name)+'|'+type -> 최신 항목
-  for(const e of list){
-    if(!e.type) continue;
-    const key=normKey(e.name)+'|'+e.type;
-    if(!map.has(key)) map.set(key, e); // 파일이 최신순 정렬이라 먼저 나온 것이 최신
-  }
-  return map;
 }
 // 인수인계의 담당 치료사 vs 평일시간표(원본)에서 실제로 그 환자·그 종류(SOT/RDT)를 맡은 치료사 비교
 function buildSchedTherapistIndex(schedOcc, schedCcrt){
@@ -2207,89 +1924,8 @@ function buildDoctorChecks(handoverList, findCardFn){
 
 // 평일시간표(원본)와 표 레이아웃이 조금 다르고, 10F/3F 층 구분 없이 한 팀(0팀)으로 통합돼 있다.
 // 그래서 여기서는 층을 열 위치가 아니라 전체시간표(원본) 카드에서 찾은 층을 그대로 쓴다.
-async function parseSaturdayScheduleSheet(book){
-  const sh = book.sheets.find(s=>/토요일/.test(s.name) && /공휴일/.test(s.name));
-  if(!sh) return [];
-  const cells = await getSheetCells(book, sh.name);
-  if(!cells || !cells.size) return [];
-  let header=null;
-  for(const [ref,val] of cells.entries()){
-    if(normalizeText(val).replace(/\s+/g,'')!=='치료시간') continue;
-    const rc=splitRef(ref); if(rc && rc.row<=4 && (!header || rc.row<header.row)) header=rc;
-  }
-  if(!header) return [];
-  const therapistRow=header.row; // 평일시간표(원본)와 달리 헤더와 같은 행에 치료사 이름이 있다
-  const startRow=header.row+1;
-  let endRow=startRow-1;
-  for(let r=startRow;r<=startRow+30;r++){
-    if(normalizeText(getCell(cells,r,header.col))==='') break;
-    endRow=r;
-  }
-  const therapistCols=[];
-  for(let c=header.col+1;c<=header.col+60;c++){
-    const v=getCell(cells,therapistRow,c);
-    const nv=normalizeText(v).replace(/\s+/g,'');
-    if(likelyTherapistName(v) && nv!=='추가') therapistCols.push({col:c,name:nv});
-  }
-  const occ=[];
-  for(const tc of therapistCols){
-    for(let r=startRow;r<=endRow;r++){
-      const raw=getCell(cells,r,tc.col); const asn=extractPatientAssignment(raw); if(!asn||asn.type==='skip') continue;
-      const time=normalizeText(getCell(cells,r,header.col));
-      occ.push({name:asn.name, type:asn.type, therapist:tc.name, therapistCol:tc.col, time, timeKey:timeStart(time), loc:extractLocationFromRaw(raw), code:extractCodeToken(raw), row:r});
-    }
-  }
-  occ.push(...parseSaturdayErdtSection(cells));
-  return occ;
-}
 // 토요일&공휴일 시간표에는 메인 표(SOT/RDT) 옆에 "ERDT"(연하전기) 구역이 별도로 있다.
 // 이 구역은 "치료사" 글자가 두 번(S1~S4용, S5~S8용) 나오는 구조라 메인 표와는 다르게 파싱해야 한다.
-function parseSaturdayErdtSection(cells){
-  let labelRef=null;
-  for(const [ref,val] of cells.entries()){
-    if(normalizeText(val).replace(/\s+/g,'')==='ERDT'){ const rc=splitRef(ref); if(rc && rc.row<=3){ labelRef=rc; break; } }
-  }
-  if(!labelRef) return [];
-  const timeCol=labelRef.col;
-  const headerRow=labelRef.row+1;
-  const therapistCols=[];
-  for(let c=timeCol+1;c<=timeCol+30;c++){
-    if(normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,'')==='치료사') therapistCols.push(c);
-  }
-  if(!therapistCols.length) return [];
-  const blocks=[];
-  for(let i=0;i<therapistCols.length;i++){
-    const tCol=therapistCols[i];
-    const nextT=therapistCols[i+1] || (tCol+20);
-    const slots=[];
-    for(let c=tCol+1;c<nextT;c++){
-      const lbl=normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,'');
-      if(/^S\d+$/i.test(lbl)) slots.push({col:c, label:lbl.toUpperCase()});
-    }
-    blocks.push({tCol, slots});
-  }
-  let endRow=headerRow;
-  for(let r=headerRow+1;r<=headerRow+20;r++){
-    if(normalizeText(getCell(cells,r,timeCol))==='') break;
-    endRow=r;
-  }
-  const out=[];
-  for(let r=headerRow+1;r<=endRow;r++){
-    const timeRaw=getCell(cells,r,timeCol);
-    const time=normalizeText(timeRaw);
-    const timeKey=timeStart(timeRaw);
-    if(!/^\d{1,2}:\d{2}$/.test(timeKey)) continue; // 점심시간 등 제외
-    for(const block of blocks){
-      const therapist=normalizeText(getCell(cells,r,block.tCol));
-      for(const sc of block.slots){
-        const nm=extractLowerName(getCell(cells,r,sc.col));
-        if(!nm) continue;
-        out.push({name:nm, type:'erdt', therapist, therapistCol:block.tCol, time, timeKey, loc:'', code:'', slot:sc.label});
-      }
-    }
-  }
-  return out;
-}
 // 토요일&공휴일 시간표엔 위치(매트/테이블 번호)가 기록되지 않고 이름+코드(ST/SM/MSK 등)만 있어서
 // 시간·위치까지 비교할 수는 없다. 대신 "이 시간표에 있는 환자가 전체시간표(원본)에 실제로 있는지"를 확인한다
 // (퇴원했는데 아직 토요일 배정표에 남아있거나, 이름이 다르게 적힌 경우 등을 잡아낼 수 있다).
