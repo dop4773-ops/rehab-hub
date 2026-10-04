@@ -218,3 +218,12 @@ table.data-table .btn{padding:3px 9px;font-size:11px;margin-right:4px}
 .upd-rel .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-weight:800}.upd-rel .h small{font-weight:600;color:var(--sub)}.upd-rel .b{white-space:pre-wrap;font-size:12.5px;line-height:1.65;margin-top:6px;color:#33445c}.upd-rel .b.none{color:#9aa8bd}
 .upd-tag{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:#e8f1fd;color:var(--blue)}
 .upd-ev{display:flex;gap:10px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:12.5px}.upd-ev .t{width:112px;color:var(--sub);flex-shrink:0}.upd-ev .e{font-weight:700;width:96px;flex-shrink:0}.upd-ev.err .e{color:var(--red)}
+
+/* Alt 단축키 안내 */
+.alt-overlay{position:fixed;inset:0;background:rgba(20,24,32,.4);display:flex;align-items:center;justify-content:center;z-index:9999}
+.alt-card{width:400px;max-width:90vw;max-height:88vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 24px 56px rgba(16,24,40,.32);padding:18px 20px}
+.alt-card h3{margin:0 0 12px;font-size:14px;color:var(--navy)}
+.alt-row{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:12.5px;color:var(--text);padding:4px 0}
+.alt-row kbd{font-size:11px;font-weight:600;color:var(--sub);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 9px;white-space:nowrap;font-family:inherit}
+.alt-sub{font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 6px;padding-top:10px;border-top:1px solid var(--border)}
+.alt-hint{margin:14px 0 0;font-size:11px;color:var(--muted);text-align:center}

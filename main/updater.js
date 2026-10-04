@@ -4,7 +4,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { readEntries, appendEntry, normalizeReleases, repoInfo } = require('./updateLog');
+const { readEntries, appendEntry, normalizeReleases, parseChangelog, repoInfo } = require('./updateLog');
 
 function settingsPath(app) { return path.join(app.getPath('userData'), 'update-settings.json'); }
 function loadMode(app) {
@@ -35,11 +35,15 @@ function initUpdater(app, ipcMain, getMainWindow) {
     if (relCache.list && Date.now() - relCache.at < 10 * 60 * 1000) return { list: relCache.list, cached: true };
     try {
       const { net } = require('electron');
-      const res = await net.fetch(info.apiUrl, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'rehab-hub' } });
+      const res = await net.fetch(info.apiUrl, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'rehab-hub' }, signal: AbortSignal.timeout(8000) }); // 막힌 망에서 무한정 기다리지 않게
       if (!res.ok) throw new Error('GitHub 응답 ' + res.status);
       relCache = { at: Date.now(), list: normalizeReleases(await res.json()) };
       return { list: relCache.list };
-    } catch (e) { return { error: e.message || '릴리즈 목록을 가져오지 못했습니다.' }; }
+    } catch (e) {
+      // GitHub에 못 닿으면 앱에 들어 있는 변경 내역(이 PC 버전까지)이라도 보여준다
+      try { const list = parseChangelog(require('fs').readFileSync(require('path').join(__dirname, '..', 'CHANGELOG.md'), 'utf8')); if (list.length) return { list, offline: true, error: e.message }; } catch (e2) { /* 파일이 없으면 아래 오류만 */ }
+      return { error: e.message || '릴리즈 목록을 가져오지 못했습니다.' };
+    }
   });
   // 정해진 두 주소(저장소/릴리즈 페이지)만 기본 브라우저로 연다
   ipcMain.handle('updater:openUrl', async (event, kind) => {

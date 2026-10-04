@@ -25,6 +25,16 @@ function normalizeReleases(json) {
     date: r.published_at || r.created_at || '', body: String(r.body || '').trim(), url: r.html_url || '', prerelease: !!r.prerelease,
   })).sort((a, b) => String(b.date).localeCompare(String(a.date)));
 }
+// GitHub에 연결이 안 될 때(병원망 차단·시간 초과 등) 대신 보여줄 목록 — 앱에 들어 있는 CHANGELOG.md("## 0.6.3 (2026-10-05)" 구역들)를 읽는다. 최신이 위.
+function parseChangelog(text) {
+  const out = []; let cur = null;
+  for (const l of String(text).split(/\r?\n/)) {
+    const m = /^##\s+v?(\d+\.\d+\.\d+)\s*(?:\((\d{4}-\d{2}-\d{2})\))?/.exec(l);
+    if (m) { cur = { tag: 'v' + m[1], version: m[1], name: 'v' + m[1], date: m[2] || '', body: [], url: '', prerelease: false }; out.push(cur); }
+    else if (cur) cur.body.push(l);
+  }
+  return out.map(r => ({ ...r, body: r.body.join('\n').trim() }));
+}
 // package.json의 build.publish에서 GitHub 저장소 주소를 만든다
 function repoInfo(pkg) {
   const p = pkg && pkg.build && pkg.build.publish;
@@ -33,4 +43,4 @@ function repoInfo(pkg) {
   return { owner: p.owner, repo: p.repo, url, releasesUrl: url + '/releases', apiUrl: `https://api.github.com/repos/${p.owner}/${p.repo}/releases?per_page=30` };
 }
 
-module.exports = { readEntries, appendEntry, normalizeReleases, repoInfo, MAX_ENTRIES };
+module.exports = { readEntries, appendEntry, normalizeReleases, parseChangelog, repoInfo, MAX_ENTRIES };

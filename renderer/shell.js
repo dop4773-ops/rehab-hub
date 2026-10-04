@@ -738,7 +738,8 @@ async function renderUpdLog(tab) {
   }
   const [info, r] = await Promise.all([window.rehab.updater.getInfo(), window.rehab.updater.releases()]); if (my !== updLogToken) return;
   if (r.error) { body.innerHTML = `<p class="muted">GitHub에서 릴리즈 이력을 가져오지 못했어요 (${updEsc(r.error)}). 인터넷 연결을 확인하거나 아래 버튼으로 GitHub에서 직접 보세요.</p><button class="btn" id="updOpenRel">GitHub 릴리즈 페이지 열기</button>`; document.getElementById('updOpenRel').onclick = () => window.rehab.updater.openUrl('releases'); return; }
-  body.innerHTML = r.list.map(x => `<div class="upd-rel ${x.version === info.version ? 'cur' : ''}"><div class="h">${updEsc(x.name || 'v' + x.version)}${x.version === info.version ? '<span class="upd-tag">현재 버전</span>' : ''}<small>${x.date ? updWhen(Date.parse(x.date)) : ''}</small></div>
+  const offNote = r.offline ? `<p class="muted">GitHub에 연결하지 못해(${updEsc(r.error || '')}) 앱에 들어 있는 변경 내용을 보여드려요. 이 PC 버전까지만 나옵니다.</p>` : '';
+  body.innerHTML = offNote + r.list.map(x => `<div class="upd-rel ${x.version === info.version ? 'cur' : ''}"><div class="h">${updEsc(x.name || 'v' + x.version)}${x.version === info.version ? '<span class="upd-tag">현재 버전</span>' : ''}<small>${x.date ? updWhen(Date.parse(x.date)) : ''}</small></div>
     <div class="b ${x.body ? '' : 'none'}">${updEsc(x.body || '(등록된 변경 내용이 없어요)')}</div></div>`).join('') || '<p class="muted">릴리즈가 없어요.</p>';
 }
 document.getElementById('updaterLogBtn').addEventListener('click', () => { document.getElementById('updLogModal').classList.add('show'); renderUpdLog('rel'); });
@@ -748,6 +749,79 @@ document.querySelector('.upd-tabs').addEventListener('click', (e) => { const b =
 document.getElementById('updaterAutoToggle').addEventListener('change', async (e) => {
   updaterMode = await window.rehab.updater.setMode(e.target.checked ? 'auto' : 'manual');
 });
+
+// ── 단축키 ─────────────────────────────────────────────────
+// Ctrl(맥은 ⌘)+키. 도구 화면은 iframe이라 키 이벤트가 셸까지 안 올라오므로, 로드될 때마다 같은 처리기를 달아 준다.
+// Alt를 두 번 누르거나 길게 누르면 전체 단축키 + 지금 보는 화면의 단축키를 보여 준다(잇다와 같은 방식).
+const NAV_ORDER = ['home', 'data', 'rm', 'acting', 'cross', 'handover', 'report', 'backup', 'settings'];
+const currentView = () => document.querySelector('.view.active')?.dataset.view;
+const viewDoc = (v) => (['home', 'data', 'report', 'settings', 'backup'].includes(v) ? document : document.querySelector(`iframe[data-tool="${v}"]`)?.contentDocument);
+const clickIn = (v, id) => () => viewDoc(v)?.getElementById(id)?.click();
+const focusIn = (v, id) => () => { const el = viewDoc(v)?.getElementById(id); if (el) { el.focus(); el.select && el.select(); } };
+const GLOBAL_KEYS = [
+  ...NAV_ORDER.map((v, i) => ({ keys: `Ctrl+${i + 1}`, label: `${document.querySelector(`.nav-item[data-nav=${v}] .nl`).textContent.trim()} 화면으로 이동`, run: () => showView(v) })),
+  { keys: 'Ctrl+\\', label: '사이드바 접기/펼치기', run: () => sidebarBtn.click() },
+];
+// run이 없는 항목은 그 화면이 스스로 처리하는 키(안내용)
+const VIEW_KEYS = {
+  home: [{ keys: 'Ctrl+R', label: '파일 자동 불러오기', run: clickIn('home', 'homeScanBtn') }],
+  data: [{ keys: 'Ctrl+R', label: '지금 업데이트', run: clickIn('data', 'dataScanBtn') }],
+  rm: [{ keys: 'Ctrl+E', label: '출력하기(Excel)', run: clickIn('rm', 'grandExportSelectedBtn') }],
+  acting: [{ keys: 'Ctrl+F', label: '환자·처방 검색', run: focusIn('acting', 'searchInput') }],
+  cross: [
+    { keys: 'Ctrl+F', label: '검색', run: focusIn('cross', 'searchInput') },
+    { keys: 'Ctrl+Enter', label: '교차검증 실행 / 다시 검증', run: () => { const d = viewDoc('cross'); (d.getElementById('btnRerun')?.offsetParent ? d.getElementById('btnRerun') : d.getElementById('btnRun'))?.click(); } },
+    { keys: 'Ctrl+Shift+F', label: '수정 지시서', run: clickIn('cross', 'btnFixPlan') },
+    { keys: 'Ctrl+E', label: '결과 Excel 저장', run: clickIn('cross', 'btnExcel') },
+    { keys: 'Ctrl+P', label: '인쇄', run: clickIn('cross', 'btnPrint') },
+  ],
+  handover: [
+    { keys: 'Ctrl+F', label: '이름 검색', run: focusIn('handover', 'searchName') },
+    { keys: 'F2', label: '이름 검색 (같은 기능)' },
+    { keys: 'Ctrl+R', label: '지금 새로고침', run: clickIn('handover', 'reloadBtn') },
+    { keys: 'Ctrl+N', label: '새 환자 추가', run: clickIn('handover', 'newPatientBtn') },
+    { keys: 'Esc', label: '창 닫기 / 선택 해제' },
+  ],
+  backup: [{ keys: 'Ctrl+R', label: '백업 상태 새로고침', run: () => refreshBackup() }],
+};
+const matchKeys = (e, keys) => {
+  const parts = keys.split('+'), key = parts.pop();
+  if ((e.ctrlKey || e.metaKey) !== parts.includes('Ctrl') || e.shiftKey !== parts.includes('Shift') || e.altKey) return false;
+  return (e.key.length === 1 ? e.key.toLowerCase() : e.key) === (key.length === 1 ? key.toLowerCase() : key);
+};
+const keyLabel = (k) => (/Mac/i.test(navigator.platform) ? k.replace('Ctrl', '⌘') : k);
+
+let altOverlay = null, altHold = null, altHeld = false, altCombo = false, altLastUp = 0;
+const hideAlt = () => { altOverlay?.remove(); altOverlay = null; altHeld = false; };
+function showAlt(byHold) {
+  if (altOverlay) return;
+  altHeld = byHold;
+  const view = currentView(), vname = document.querySelector(`.nav-item[data-nav=${view}] .nl`)?.textContent.trim() || '';
+  const rows = (list) => list.map(x => `<div class="alt-row"><span>${updEsc(x.label)}</span><kbd>${updEsc(keyLabel(x.keys))}</kbd></div>`).join('');
+  altOverlay = document.createElement('div'); altOverlay.className = 'alt-overlay';
+  altOverlay.innerHTML = `<div class="alt-card"><h3>단축키</h3>${rows(GLOBAL_KEYS)}${(VIEW_KEYS[view] || []).length ? `<div class="alt-sub">지금 화면 · ${updEsc(vname)}</div>${rows(VIEW_KEYS[view])}` : ''}<p class="alt-hint">Alt를 떼거나 Esc를 누르면 닫혀요</p></div>`;
+  document.body.appendChild(altOverlay);
+}
+function onKeyDown(e) {
+  if (e.key === 'Alt') { if (!e.repeat) { altCombo = false; clearTimeout(altHold); altHold = setTimeout(() => showAlt(true), 500); } return; }
+  if (e.altKey) altCombo = true;
+  if (e.key === 'Escape' && altOverlay) { hideAlt(); return; }
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const hit = [...(VIEW_KEYS[currentView()] || []), ...GLOBAL_KEYS].find(x => x.run && matchKeys(e, x.keys));
+  if (hit) { e.preventDefault(); hit.run(); }
+}
+function onKeyUp(e) {
+  if (e.key !== 'Alt') return;
+  clearTimeout(altHold);
+  if (altCombo) { altCombo = false; return; }
+  if (altHeld) { hideAlt(); return; }
+  const now = Date.now();
+  if (now - altLastUp < 400) { showAlt(false); altLastUp = 0; } else altLastUp = now;
+}
+const onBlur = () => { clearTimeout(altHold); altCombo = false; if (altHeld) hideAlt(); }; // Alt+Tab으로 나가면 keyup을 못 받는다
+const bindKeys = (doc, win) => { doc.addEventListener('keydown', onKeyDown, true); doc.addEventListener('keyup', onKeyUp, true); win.addEventListener('blur', onBlur); };
+bindKeys(document, window);
+document.querySelectorAll('iframe[data-tool]').forEach(f => f.addEventListener('load', () => { try { bindKeys(f.contentDocument, f.contentWindow); } catch (e) { /* 같은 출처가 아니면 건너뜀 */ } }));
 
 // ── 초기화 ─────────────────────────────────────────────────
 (async function init() {

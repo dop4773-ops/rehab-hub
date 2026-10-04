@@ -33,4 +33,9 @@ assert.strictEqual(ri.url, 'https://github.com/o/r'); assert.strictEqual(ri.rele
 assert.strictEqual(repoInfo({}), null); assert.strictEqual(repoInfo({ build: { publish: { provider: 's3' } } }), null);
 assert.strictEqual(repoInfo(require('../package.json')).url, 'https://github.com/dop4773-ops/rehab-hub', '실제 설정과 일치');
 console.log('OK ④⑤ 릴리즈 목록 정리·저장소 주소');
+const pc = require('./updateLog').parseChangelog('# 제목\n\n## 0.6.3 (2026-10-05)\n- 가\n- 나\n\n## 0.6.2 (2026-10-04)\n- 다\n');
+assert.deepStrictEqual(pc.map(r => [r.version, r.date, r.body]), [['0.6.3', '2026-10-05', '- 가\n- 나'], ['0.6.2', '2026-10-04', '- 다']]);
+assert.strictEqual(pc[0].tag, 'v0.6.3');
+assert.strictEqual(require('./updateLog').parseChangelog('내용 없음').length, 0);
+console.log('OK ⑥ GitHub 연결 실패 시 보여줄 CHANGELOG 읽기');
 console.log('ALL PASS');
