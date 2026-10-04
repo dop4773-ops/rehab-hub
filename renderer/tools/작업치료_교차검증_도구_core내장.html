@@ -606,8 +606,10 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 
 <script src="../core/xlsx-reader.js"></script>
 <script src="../core/normalize.js"></script>
+<script src="../core/treatment.js"></script>
+<script src="../core/cards.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
@@ -868,29 +870,18 @@ async function parsePatientCards(book, floor){
     // 이 시트는 보통 한 줄에 환자 카드 1개(A열 시작)지만, 일부 환자는 지면을 아끼려고
     // 같은 행대에 카드가 하나 더(예: X열 시작) 나란히 인쇄되어 있다. 검증 기준은 항상
     // 맨 앞(A~V열)에 있는 카드이므로, "이름"이 나오는 여러 열 중 가장 왼쪽 열 하나만 사용한다.
-    const nameCols=new Set();
-    for(const [ref,val] of cells.entries()){
-      if(normalizeText(val)==='이름'){
-        const rc=splitRef(ref);
-        if(rc && normalizeText(getCell(cells,rc.row,rc.col+3))==='등록번호') nameCols.add(rc.col);
-      }
-    }
-    if(!nameCols.size) continue;
-    const nameCol = Math.min(...nameCols); // 가장 왼쪽(A열에 가장 가까운) 카드열만 사용
+    const cardBlocks=findCardBlocks(cells).filter(b=>b.hasRegLabel);
+    if(!cardBlocks.length) continue;
+    const nameCol = Math.min(...cardBlocks.map(b=>b.col)); // 가장 왼쪽(A열에 가장 가까운) 카드열만 사용
     {
-      const blockStarts=[];
-      for(const [ref,val] of cells.entries()){
-        if(normalizeText(val)!=='이름') continue;
-        const rc=splitRef(ref);
-        if(rc && rc.col===nameCol && normalizeText(getCell(cells,rc.row,nameCol+3))==='등록번호') blockStarts.push(rc.row);
-      }
-      blockStarts.sort((a,b)=>a-b);
-      for(let i=0;i<blockStarts.length;i++){
-        const start=blockStarts[i]; const end=(i+1<blockStarts.length)?blockStarts[i+1]-1:start+40;
-        const name=normalizeText(getCell(cells,start+1,nameCol)); if(!name) continue;
-        const room=normalizeText(getCell(cells,start+1,nameCol+6));
-        const reg=normalizeText(getCell(cells,start+1,nameCol+3));
-        const doctor=normDoctor(getCell(cells,start+5,nameCol));
+      const blocks=cardBlocks.filter(b=>b.col===nameCol);
+      for(let i=0;i<blocks.length;i++){
+        const blk=blocks[i], start=blk.row; const end=(i+1<blocks.length)?blocks[i+1].row-1:start+40;
+        const head=readCardHead(cells,blk);
+        const name=head.name; if(!name) continue;
+        const room=head.room;
+        const reg=head.reg;
+        const doctor=normDoctor(head.rmRaw);
         const therapists={};
         for(let r=start;r<=Math.min(end,start+12);r++){
           for(let c=nameCol;c<=nameCol+24;c++){
@@ -902,17 +893,8 @@ async function parsePatientCards(book, floor){
           }
         }
         // "입원"/"7병동" 카드는 "시간|치료위치|월~금|토" 구성이지만, "외래" 카드는 "치료위치" 칸이 없어서
-        // "시간|월~금|토" 순서로 두 칸씩 당겨져 있다 — 어느 구성인지 먼저 판별한다.
-        let hdrRow=0, hasLocCol=true;
-        for(let r=start;r<=end;r++){
-          if(normalizeText(getCell(cells,r,nameCol))!=='시간') continue;
-          if(/치료위치/.test(normalizeText(getCell(cells,r,nameCol+2)))){ hdrRow=r; hasLocCol=true; break; }
-          if(/월요일/.test(normalizeText(getCell(cells,r,nameCol+2)))){ hdrRow=r; hasLocCol=false; break; }
-        }
-        const dayCols = hasLocCol
-          ? {월:nameCol+4, 화:nameCol+7, 수:nameCol+10, 목:nameCol+13, 금:nameCol+16}
-          : {월:nameCol+2, 화:nameCol+5, 수:nameCol+8, 목:nameCol+11, 금:nameCol+14};
-        const satCol = hasLocCol ? nameCol+19 : nameCol+17;
+        // "시간|월~금|토" 순서로 두 칸씩 당겨져 있다 — 어느 구성인지 먼저 판별한다(core/cards.js).
+        const hdr=findTimeHeader(cells,blk,end), hasLocCol=hdr?hdr.hasLocCol:true;
         const entries=[];
         let langCount=0; const langOccurrences=[];
         const satEntries=[]; // 카드의 "토요일/공휴일" 칸(월~금과 같은 줄)에 치료 문구가 있는 시간 목록 — 외래 카드는 안내문구가 섞여있어 수집하지 않음
@@ -920,21 +902,21 @@ async function parsePatientCards(book, floor){
         const cogWeekdayEntries=[]; // 카드의 평일 요일칸에 "인지치료"가 있는 (시간, 요일) 목록
         const sotWeekdayEntries=[]; // 카드의 평일 요일칸에 "작업치료"가 있는 (시간, 요일) 목록 — 외래 SOT 확인용
         const rdtWeekdayEntries=[]; // 카드의 평일 요일칸에 "연하치료"가 있는 (시간, 요일) 목록 — 외래 RDT 확인용
-        if(hdrRow){
-          for(let r=hdrRow+1;r<=end;r++){
-            const timeRaw=getCell(cells,r,nameCol); if(timeRaw==='') continue;
-            const time=timeStart(timeRaw); if(!/^\d{1,2}:\d{2}$/.test(time)) continue;
-            const loc=hasLocCol ? normLoc(getCell(cells,r,nameCol+2)) : '';
-            const days={월:normalizeText(getCell(cells,r,dayCols.월)),화:normalizeText(getCell(cells,r,dayCols.화)),수:normalizeText(getCell(cells,r,dayCols.수)),목:normalizeText(getCell(cells,r,dayCols.목)),금:normalizeText(getCell(cells,r,dayCols.금))};
-            const satVal=normalizeText(getCell(cells,r,satCol));
+        if(hdr){
+          const dayCols=cardDayCols(cells,blk,hdr.row,hdr.hasLocCol);
+          for(const row of cardRows(cells,blk,hdr,dayCols,end)){
+            const time=timeStart(row.timeRaw); if(!/^\d{1,2}:\d{2}$/.test(time)) continue;
+            const loc=hasLocCol ? normLoc(row.locRaw) : '';
+            const t=row.texts, days={월:t['월요일']||'',화:t['화요일']||'',수:t['수요일']||'',목:t['목요일']||'',금:t['금요일']||''};
+            const satVal=t['토요일/공휴일']||'';
             // 언어치료·연하전기·인지치료는 매트/테이블 위치 없이(치료위치 칸이 비어있는 채로) 요일칸에만 표시되는 경우가 많아
             // entries(위치 검증용)와는 별도로 여기서 직접 요일별 문구를 확인한다.
             for(const day of ['월','화','수','목','금']){
-              if(/언어치료/.test(days[day])){ langCount++; langOccurrences.push({time, day}); }
-              if(/연하전기/.test(days[day])) erdtWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
-              if(/인지치료/.test(days[day])) cogWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
-              if(/작업치료/.test(days[day])) sotWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
-              if(/연하치료/.test(days[day])) rdtWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
+              if(hasTreatment('speech',days[day])){ langCount++; langOccurrences.push({time, day}); }
+              if(hasTreatment('swallow_electric',days[day])) erdtWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
+              if(hasTreatment('cog',days[day])) cogWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
+              if(hasTreatment('ot',days[day])) sotWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
+              if(hasTreatment('swallow',days[day])) rdtWeekdayEntries.push({time, day, loc:extractParenLoc(days[day])});
             }
             if(hasLocCol && satVal) satEntries.push({time, treatment:satVal});
             if(loc) entries.push({time, loc, days});
@@ -2759,7 +2741,7 @@ function renderCcrtPreview(wrap, tabsHtml){
 function renderSaturdayErdtPreview(wrap, tabsHtml){
   function judge(o, card){
     if(!card) return 'mismatch';
-    const ok=(card.satEntries||[]).some(e=>e.time===o.timeKey && /연하전기/.test(e.treatment));
+    const ok=(card.satEntries||[]).some(e=>e.time===o.timeKey && hasTreatment('swallow_electric',e.treatment));
     return ok?'ok':'missing';
   }
   const cardByName=new Map([...(previewCards[10]||[]), ...(previewCards[3]||[])].map(c=>[normKey(c.name),c]));

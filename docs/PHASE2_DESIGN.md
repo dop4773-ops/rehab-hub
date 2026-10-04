@@ -1,6 +1,6 @@
 # Phase 2 설계안 — 공통 데이터 모델 / Core·Data 계층
 
-작성 2026-10-04 · 상태: **0–1단계 완료(2026-10-04)**, 2단계 이후는 제안. 0단계=`scripts/golden.js`(저장: `node scripts/golden.js save <이름>` / 비교: `compare <이름>`), 1단계=`renderer/core/xlsx-reader.js`·`normalize.js` + `main/test_core.js`. 1단계 전후 골든 비교: 그랜드라운딩 198명·언어 40명·교차검증 136건 전부 일치. 2026-09-19 초안(`PHASE2_DATA_MODEL.md`)에 Phase 3~8에서 확인한 사실을 반영한 갱신본입니다.
+작성 2026-10-04 · 상태: **0–2단계 완료(2026-10-04)**, 3단계 이후는 제안. 2단계=`renderer/core/treatment.js`(치료 문구 분류)·`cards.js`(카드 위치/요일 열/시간 줄 읽기) + `main/test_cards.js`. 2단계 전후 골든 비교: 교차검증 136건·언어 40명 일치, 그랜드라운딩 198명 중 **1명만 변경**(10F 입원 카드 1장의 금요일 머리글 칸이 비어 있어 그랜드라운딩이 그 환자의 금요일 일정 8칸을 읽지 못하던 것을, 교차검증이 쓰던 표준 열 간격 보충으로 읽게 함 — 다른 요일·치료사 정보는 동일). 0단계=`scripts/golden.js`(저장: `node scripts/golden.js save <이름>` / 비교: `compare <이름>`), 1단계=`renderer/core/xlsx-reader.js`·`normalize.js` + `main/test_core.js`. 1단계 전후 골든 비교: 그랜드라운딩 198명·언어 40명·교차검증 136건 전부 일치. 2026-09-19 초안(`PHASE2_DATA_MODEL.md`)에 Phase 3~8에서 확인한 사실을 반영한 갱신본입니다.
 
 ## 1. 왜 하는가 — 지금 상태 (실측)
 | 항목 | 현재 |

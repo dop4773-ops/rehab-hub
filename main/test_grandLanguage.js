@@ -8,12 +8,11 @@ const vm = require('vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../renderer/tools/그랜드라운딩_통합.html'), 'utf8');
 const grab = (startMarker, endMarker) => { const i = html.indexOf(startMarker), j = html.indexOf(endMarker, i); assert(i >= 0 && j > i, `marker 없음: ${startMarker}`); return html.slice(i, j); };
-const ctx = { console, ...require('../renderer/core/normalize.js') }; vm.createContext(ctx); // 공통 정규화는 core에서 그대로 가져온다
+const ctx = { console, ...require('../renderer/core/normalize.js'), ...require('../renderer/core/treatment.js') }; vm.createContext(ctx); // 공통 정규화는 core에서 그대로 가져온다
 vm.runInContext([
   grab('const DAY_ORDER', '\n') + '\n',
   'let grandOtTherapistMap=new Map(), grandSwallowTherapistMap=new Map(), grandCogTherapistMap=new Map();',
   grab('function normalizeGrandOtPatientKey', '\n') + '\n',
-  grab('function treatmentCore', '\n') + '\n',
   grab('function grandPrimaryFloorNum', 'function grandPatientLanguageDays'),
   grab('function grandOtTherapistText', 'function grandSwallowTherapistText'),
   grab('function grandSwallowTherapistText', 'function grandCogTherapistText'),
