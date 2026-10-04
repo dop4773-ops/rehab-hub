@@ -306,6 +306,27 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .modal-overlay.show{display:flex}
 .modal-box{background:#fff;border-radius:16px;max-width:640px;width:92%;max-height:80vh;overflow:auto;padding:22px 24px}
 .modal-box h3{margin-top:0}
+.modal-box.wide{max-width:1040px;max-height:88vh}
+.fix-note{font-size:12px;color:var(--muted);margin:2px 0 10px;line-height:1.6}
+.fix-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.fix-bar .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.fix-bar .seg button{border:none;background:none;padding:7px 11px;font-size:12px;font-weight:700;color:#4a5a72;cursor:pointer;border-right:1px solid var(--line)}
+.fix-bar .seg button:last-child{border-right:none}
+.fix-bar .seg button.active{background:var(--navy);color:#fff}
+.fix-bar select{border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:12px;font-weight:600;background:#fff}
+.fix-bar .sp{flex:1}
+.fix-bar label{font-size:12px;color:#4a5a72;display:inline-flex;align-items:center;gap:5px}
+.fix-grp{margin:14px 0 6px;font-size:13.5px;font-weight:800;color:var(--navy)}
+.fix-grp small{font-weight:600;color:var(--muted);margin-left:6px}
+.fix-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:#fcfdff}
+.fix-item.done{opacity:.45}.fix-item.done .fa{text-decoration:line-through}
+.fix-item input{margin-top:3px;width:16px;height:16px;flex-shrink:0;cursor:pointer}
+.fix-item .who{font-size:13px;font-weight:800}.fix-item .who small{font-weight:600;color:var(--muted);margin-left:6px}
+.fix-item .fa{font-size:13px;line-height:1.55;margin-top:3px}
+.fix-item .fw{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+.fix-item .tag{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:#eef2f7;color:#68758a;margin-left:6px}
+.fix-item .ppl{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--handover-bg);color:var(--handover);margin-left:6px}
+.fix-empty{padding:30px;text-align:center;color:var(--muted)}
 .modal-close{float:right;border:none;background:#f1f4f9;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px}
 .dropOverlay{position:fixed;inset:0;background:rgba(17,35,64,.88);z-index:200;display:none;align-items:center;justify-content:center;pointer-events:none}
 .dropOverlay.show{display:flex}
@@ -341,6 +362,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
     </div>
     <div class="header-actions">
       <span class="hbtn" style="cursor:default;background:#eef4ff;color:#234f87;border-color:#c7dbf7">📌 매트/테이블: 원본 시트 기준</span>
+      <button class="hbtn" id="btnFixPlan" title="불일치를 어느 파일의 어디를 어떻게 고치면 되는지 정리합니다(원본 파일은 바꾸지 않고 안내만 만들어요)">🛠 수정 지시서</button>
       <button class="hbtn" id="btnCopy">📋 결과 복사</button>
       <button class="hbtn" id="btnExcel" title="현재 선택된 필터(탭)만 저장됩니다 — 예: '인수인계 불일치' 탭에서 누르면 인수인계 문제만 저장">📊 Excel 저장</button>
       <button class="hbtn" id="btnPrint">🖨️ 인쇄</button>
@@ -586,6 +608,24 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 </div>
 
 
+<div class="modal-overlay" id="fixModal">
+  <div class="modal-box wide">
+    <button class="modal-close" id="fixClose">✕</button>
+    <h3>🛠 수정 지시서</h3>
+    <p class="fix-note">검증 결과를 <b>어느 파일의 어디를 어떻게 고치면 되는지</b>로 정리했어요. 이 프로그램은 <b>원본 파일을 바꾸지 않고 안내만</b> 만듭니다 — 아래를 보고 직접 고쳐 주세요. 병실·주치의(RM)는 PTA 재원현황, 퇴원은 현황판을 기준으로 고칠 쪽을 정했고, 어느 쪽이 맞는지 알 수 없는 불일치는 두 방향을 모두 적었어요. 체크는 이 창에서만 표시돼요(저장되지 않음).</p>
+    <div class="fix-note" id="fixWarn" style="color:#b45309;font-weight:700"></div>
+    <div class="fix-bar">
+      <div class="seg" id="fixGroupSeg"></div>
+      <select id="fixWhoSel"></select>
+      <label><input type="checkbox" id="fixHideDone"> 완료 숨기기</label>
+      <span class="sp"></span>
+      <button class="btn sm" id="fixCopy">📋 복사</button>
+      <button class="btn sm" id="fixCsv">📊 CSV 저장</button>
+      <button class="btn sm" id="fixPrint">🖨️ 인쇄</button>
+    </div>
+    <div id="fixBody"></div>
+  </div>
+</div>
 <div id="printReport"></div>
 
 <div class="dropOverlay" id="dropOverlay">
@@ -614,8 +654,9 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 <script src="../core/parsers_pta.js"></script>
 <script src="../core/parsers_handover.js"></script>
 <script src="../core/parsers_grids.js"></script>
+<script src="../core/fixplan.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, FIX_GROUPS, FIX_GROUP_ORDER } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
@@ -2534,7 +2575,7 @@ async function handleRun(){
   if(btnRerun){ btnRerun.disabled=true; }
   try{
     const {stats, floorCount} = await runAllVerifications();
-    renderDashboard(stats, floorCount); renderFreshness();
+    renderDashboard(stats, floorCount); renderFreshness(); if(document.getElementById('fixModal').classList.contains('show')) renderFixPlan();
     document.getElementById('resultEmpty').style.display='none';
     document.getElementById('resultBody').style.display='block';
     document.getElementById('mainArea').style.display='block';
@@ -3292,6 +3333,73 @@ document.getElementById('btnPrint').addEventListener('click', ()=>{
   document.body.classList.add('printing');
   window.print();
   setTimeout(()=>document.body.classList.remove('printing'), 300);
+});
+
+
+/* ======================================================================
+   수정 지시서 (core/fixplan.js가 이슈 → 지시 항목으로 바꾼다. 원본 파일은 읽기만 하고 아무것도 쓰지 않음)
+   ====================================================================== */
+const fixState={group:'all', who:'', hideDone:false, done:new Set()};
+const fixKey=(x)=>[x.group,x.patient,x.where,x.kind,x.action].join('|');
+function fixFileNames(group){
+  const n=(b)=>b&&b.fileName?b.fileName:'';
+  const map={status:[n(state.statusBook)], card:[n(state.card10Book),n(state.card3Book)], grid:[n(state.mat10Book),n(state.table10Book),n(state.mt3Book)], handover:[state.handoverBook?n(state.handoverBook):(state.handoverLiveOk?'실시간 연동(OT인수인계서(통합))':'')]};
+  return (map[group]||[]).filter(Boolean).join(' · ');
+}
+function fixVisibleItems(){
+  const all=buildFixItems(issues);
+  return all.filter(x=>(fixState.group==='all'||x.group===fixState.group)&&(!fixState.who||x.who.split(/\s*,\s*/).includes(fixState.who))&&!(fixState.hideDone&&fixState.done.has(fixKey(x))));
+}
+function renderFixPlan(){
+  const all=buildFixItems(issues);
+  // 오래된 파일 기준의 지시는 먼저 최신 파일로 다시 확인하도록 알린다(예: 3일 전 PTA 재원현황 → 병실 지시)
+  const old=FILES_META.filter(m=>state[m.key]&&state.fileMtime[m.key]&&fileAgeLabel(state.fileMtime[m.key]).old).map(m=>`${m.label}(${fileAgeLabel(state.fileMtime[m.key]).text})`);
+  document.getElementById('fixWarn').textContent=old.length?`⚠ 오래된 파일이 섞여 있어요: ${old.join(', ')} — 최신 파일로 다시 검증한 뒤 고치는 게 안전해요.`:'';
+  const cnt=g=>all.filter(x=>x.group===g).length;
+  document.getElementById('fixGroupSeg').innerHTML=[['all','전체',all.length],...FIX_GROUP_ORDER.filter(g=>cnt(g)).map(g=>[g,FIX_GROUPS[g].label,cnt(g)])].map(([k,l,n])=>`<button data-g="${k}" class="${fixState.group===k?'active':''}">${esc(l)} ${n}</button>`).join('');
+  const whos=[...new Set(all.flatMap(x=>x.who.split(/\s*,\s*/)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  const sel=document.getElementById('fixWhoSel'); if(fixState.who&&!whos.includes(fixState.who)) fixState.who='';
+  sel.innerHTML='<option value="">담당자 전체</option>'+whos.map(w=>`<option value="${esc(w)}">${esc(w)}</option>`).join(''); sel.value=fixState.who;
+  const items=fixVisibleItems(), body=document.getElementById('fixBody');
+  if(!all.length){ body.innerHTML='<div class="fix-empty">불일치가 없어요. 고칠 항목이 없습니다 🎉</div>'; return; }
+  if(!items.length){ body.innerHTML='<div class="fix-empty">조건에 맞는 항목이 없어요.</div>'; return; }
+  let html='';
+  for(const g of FIX_GROUP_ORDER){
+    const list=items.filter(x=>x.group===g); if(!list.length) continue;
+    const fn=fixFileNames(g);
+    html+=`<div class="fix-grp">${esc(FIX_GROUPS[g].label)} <small>${list.length}건${fn?' · '+esc(fn):''}</small></div>`;
+    html+=list.map(x=>{ const k=fixKey(x), d=fixState.done.has(k); return `<div class="fix-item ${d?'done':''}">
+      <input type="checkbox" data-k="${esc(k)}" ${d?'checked':''} title="완료 표시">
+      <div style="flex:1"><div class="who">${x.floor?x.floor+'F ':''}${esc(x.room?x.room+'호 ':'')}${esc(x.patient)}<span class="tag">${esc(x.kind)}</span>${x.who?`<span class="ppl">담당 ${esc(x.who)}</span>`:''}</div>
+      <div class="fa">${esc(x.action)}</div><div class="fw">${esc(x.where)}${x.basis?' · 근거: '+esc(x.basis):''}</div></div></div>`; }).join('');
+  }
+  body.innerHTML=html;
+}
+document.getElementById('btnFixPlan').addEventListener('click',()=>{ if(!issues.length&&!window.__lastStats){ alert('먼저 검증을 실행해 주세요.'); return; } renderFixPlan(); document.getElementById('fixModal').classList.add('show'); });
+document.getElementById('fixClose').addEventListener('click',()=>document.getElementById('fixModal').classList.remove('show'));
+document.getElementById('fixModal').addEventListener('click',e=>{ if(e.target.id==='fixModal') e.currentTarget.classList.remove('show'); });
+document.getElementById('fixGroupSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; fixState.group=b.dataset.g; renderFixPlan(); });
+document.getElementById('fixWhoSel').addEventListener('change',e=>{ fixState.who=e.target.value; renderFixPlan(); });
+document.getElementById('fixHideDone').addEventListener('change',e=>{ fixState.hideDone=e.target.checked; renderFixPlan(); });
+document.getElementById('fixBody').addEventListener('change',e=>{ const c=e.target.closest('input[data-k]'); if(!c) return; if(c.checked) fixState.done.add(c.dataset.k); else fixState.done.delete(c.dataset.k); renderFixPlan(); });
+document.getElementById('fixCopy').addEventListener('click',async()=>{
+  const text=fixItemsToText(fixVisibleItems(),{date:currentDateLabel()});
+  try{ await navigator.clipboard.writeText(text); flashBtn('fixCopy','✅ 복사됨'); }catch(_){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); flashBtn('fixCopy','✅ 복사됨'); }catch(e){ alert('복사에 실패했습니다.'); } document.body.removeChild(ta); }
+});
+document.getElementById('fixCsv').addEventListener('click',()=>{
+  const items=fixVisibleItems(); if(!items.length){ alert('저장할 항목이 없습니다.'); return; }
+  const rows=[['번호','수정할 파일','위치','층','병실','환자명','문제','수정 내용','근거','담당','완료']];
+  items.forEach(x=>rows.push([x.no,FIX_GROUPS[x.group].label,x.where,x.floor?x.floor+'F':'',x.room,x.patient,x.kind,x.action,x.basis,x.who,fixState.done.has(fixKey(x))?'완료':'']));
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download=`교차검증_수정지시서_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+});
+document.getElementById('fixPrint').addEventListener('click',()=>{
+  const items=fixVisibleItems(); if(!items.length){ alert('인쇄할 항목이 없습니다.'); return; }
+  let body='';
+  for(const g of FIX_GROUP_ORDER){ const list=items.filter(x=>x.group===g); if(!list.length) continue;
+    body+=`<h3>${esc(FIX_GROUPS[g].label)} (${list.length}건)${fixFileNames(g)?' <small>'+esc(fixFileNames(g))+'</small>':''}</h3><table><thead><tr><th>□</th><th>#</th><th>층·병실</th><th>환자</th><th>수정 내용</th><th>위치</th><th>담당</th></tr></thead><tbody>${list.map(x=>`<tr><td>${fixState.done.has(fixKey(x))?'☑':'□'}</td><td>${x.no}</td><td>${x.floor?x.floor+'F ':''}${esc(x.room)}</td><td>${esc(x.patient)}</td><td>${esc(x.action)}</td><td>${esc(x.where)}</td><td>${esc(x.who)}</td></tr>`).join('')}</tbody></table>`; }
+  document.getElementById('printReport').innerHTML=`<h1>교차검증 수정 지시서</h1><div class="meta">검증일: ${esc(currentDateLabel())} · 출력일시: ${new Date().toLocaleString('ko-KR')} · 원본 파일은 프로그램이 바꾸지 않았습니다. 안내를 보고 직접 고쳐 주세요.</div>${body}`;
+  document.body.classList.add('printing'); window.print(); setTimeout(()=>document.body.classList.remove('printing'),300);
 });
 
 handoverLiveFetchPromise=fetchHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
