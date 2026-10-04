@@ -58,7 +58,10 @@ function itemsFor(i) {
       return [mk('status', '현황(회복기) 입원 열', '현황엔 입원 중인데 전체시간표(원본)에 카드가 없어요 → 퇴원했다면 현황(회복기)의 입원 열을 "퇴원"으로 바꾸고, 입원 중이라면 전체시간표(원본)에 카드를 추가하세요')];
     case 'discharge_stillactive':
       return [mk('card', `${d.floor || ''}F 입원 시트 › 환자 카드`, '현황엔 퇴원인데 전체시간표(원본)에 입원 카드가 남아 있어요 → 카드를 삭제하세요(외래로 계속 다니면 외래 시트로 옮기세요)')];
+    case 'room_admit':
+      return [mk('status', '현황(회복기) 입원일 열', `현황판 입원일(${d.statusAdmit})이 PTA 입원일(${d.ptaAdmit})${d.ptaStart ? '·재활시작일(' + d.ptaStart + ')' : ''}과 달라요 → 현황(회복기)의 입원일을 PTA 기준으로 고치세요${d.ptaLater && d.state === '입원' ? '(PTA 입원일이 더 늦으니 재입원이면 입원 열도 "재입원"으로)' : ''}`, { basis: `현황 ${d.statusAdmit} · PTA 입원 ${d.ptaAdmit}${d.ptaStart ? ' · 재활시작 ' + d.ptaStart : ''}` })];
     case 'card_nostatus':
+      if (d.outpatient) return [mk('status', '현황(회복기) 외래 행', '전체시간표(원본)엔 외래 카드가 있는데 현황에 이름이 없어요 → 외래로 치료받는 환자면 현황(회복기)에 외래로 등록하고, 아니면 외래 카드를 정리하세요')];
       return [mk('status', '현황(회복기) 행 추가', '전체시간표(원본)엔 입원 카드가 있는데 현황에 이름이 없어요 → 신환/재입원이면 현황(회복기)에 행을 추가하고, 이미 퇴원했다면 전체시간표(원본)에서 카드를 지우세요')];
     case 'mismatch':
       return [mk('card', `${d.floor}F 전체시간표(원본) › ${d.patient} 카드 › ${d.time} 치료위치 (${d.loc})`,

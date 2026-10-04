@@ -3,7 +3,7 @@
 'use strict';
 (function (root) {
 if (typeof require === 'function' && typeof module !== 'undefined') { require('./xlsx-reader.js'); require('./normalize.js'); }
-const { normalizeText, getCell, splitRef, getSheetCells, normDoctor } = root.RehabCore;
+const { normalizeText, getCell, splitRef, getSheetCells, normDoctor, toIsoDate } = root.RehabCore;
 async function parseStatusSheet(book){
   const sh = book.sheets.find(s=>/현황/.test(s.name)&&/회복기/.test(s.name)) || book.sheets.find(s=>/현황/.test(s.name));
   if(!sh) throw new Error('현황(회복기) 시트를 찾지 못했습니다.');
@@ -15,7 +15,7 @@ async function parseStatusSheet(book){
   if(headerRow==null) throw new Error('현황 시트에서 "성명" 헤더를 찾지 못했습니다.');
   const headerMap={};
   for(let c=1;c<=25;c++){ const v=normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,''); if(v) headerMap[v]=c; }
-  const nameCol=headerMap['성명'], roomCol=headerMap['병실'], admitCol=headerMap['입원'], noteCol=headerMap['특이사항'], deptCol=headerMap['진료과'];
+  const nameCol=headerMap['성명'], roomCol=headerMap['병실'], admitCol=headerMap['입원'], noteCol=headerMap['특이사항'], deptCol=headerMap['진료과'], admitDateCol=headerMap['입원일'];
   const typeCols={sot:headerMap['SOT'], rdt:headerMap['RDT'], erdt:headerMap['ERDT'], ccrt:headerMap['CCRT'], lang:headerMap['언어']};
   const list=[]; const dischargedList=[]; let maxRow=headerRow;
   for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc && rc.row>maxRow) maxRow=rc.row; }
@@ -29,7 +29,7 @@ async function parseStatusSheet(book){
     // 특이사항의 "전원"은 과거 전원 기록인 경우가 많다("4/29 ○○ 전원/5/2 재입원", 재입원 환자의 "8/13 전원") — 그래서 아직 "입원"인데
     // 마지막 "전원" 뒤에 재입원·복귀 표시가 없는 경우만 "전원 표기(확인 필요)"로 본다.
     const transfer = admit==='입원' && /전원/.test(note) && !/재입원|복귀/.test(note.slice(note.lastIndexOf('전원')));
-    const rec={name, room, admit, note, transfer, dept:deptCol?normDoctor(getCell(cells,r,deptCol)):''};
+    const rec={name, room, admit, note, transfer, dept:deptCol?normDoctor(getCell(cells,r,deptCol)):'', admitDate:admitDateCol?toIsoDate(getCell(cells,r,admitDateCol)):''};
     for(const k of Object.keys(typeCols)){ const col=typeCols[k]; const raw=col?getCell(cells,r,col):''; const num=parseInt(raw,10); rec[k]=Number.isFinite(num)?num:0; }
     list.push(rec);
   }
