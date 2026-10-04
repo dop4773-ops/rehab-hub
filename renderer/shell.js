@@ -140,7 +140,7 @@ async function getFilesForRole(role) {
   const files = [];
   for (const m of entries) {
     const bytes = await window.rehab.folders.readFile(m.path);
-    files.push(new File([bytes], m.name));
+    files.push(new File([bytes], m.name, { lastModified: m.mtimeMs })); // 파일 수정 시각을 도구가 "N일 전 파일" 경고에 쓴다
   }
   fileCache.set(role, { sig, files });
   return files;

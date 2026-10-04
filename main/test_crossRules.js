@@ -17,9 +17,11 @@ vm.runInContext([
   grab('function normalizeText', '\n') + '\n', grab('function getCell', '\n') + '\n', grab('function normKey', '\n') + '\n',
   grab('function roomDigits', 'async function parseEvalMainOccurrences'),
   grab('async function parsePtaSheet', 'async function runAllVerifications'),
+  grab('function normDoctor', '\n}\n') + '\n}\n',
   grab('async function parseStatusSheet', 'function findScheduleSheet'),
+  grab('function fileAgeLabel', 'function renderFreshness'),
   grab('function guessKeyFromFilename', '// 화면 어디에 파일을 끌어다'),
-  'this.room=roomDigits; this.pta=parsePtaSheet; this.status=parseStatusSheet; this.key=guessKeyFromFilename;',
+  'this.room=roomDigits; this.pta=parsePtaSheet; this.status=parseStatusSheet; this.key=guessKeyFromFilename; this.age=fileAgeLabel;',
 ].join('\n'), ctx);
 const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) => { if (v !== null && v !== '') o[`${String.fromCharCode(65 + j)}${i + 1}`] = v; })); return o; };
 
@@ -69,5 +71,21 @@ const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) 
   assert.strictEqual(ctx.key('재원현황.xlsx'), 'ptaBook'); assert.strictEqual(ctx.key('작업치료현황.xlsx'), 'statusBook');
   assert.strictEqual(ctx.key('3F 환자전체시간표(원본).xlsx'), 'card3Book');
   console.log('OK ④ 파일명 인식');
+
+  // ⑤ 추가 검증용 필드: 현황판 진료과(RM) · PTA 재활 코드
+  SHEETS = { '현황(회복기)': sheet([['진료과', '병실', '성명', '입원'], ['RM 4', '501', '가나다', '입원'], [6, '502', '라마바', '재입원']]) };
+  const st2 = await ctx.status({ sheets: [{ name: '현황(회복기)' }] });
+  assert.strictEqual(st2.list[0].dept, 'RM4', '"RM 4"처럼 띄어 써도 RM4'); assert.strictEqual(st2.list[1].dept, 'RM6', '숫자만 저장된 칸도 RM6');
+  SHEETS = { Sheet1: sheet([['의사', '병실', '병록#', '성명', '재활', '재활종료일'], ['RM4', '501:01', '1', '재활환자', 'B_06', ''], ['RM4', '501:01', '1', '재활환자', 'X', '']]) };
+  const pm = await ctx.pta({ sheets: [{ name: 'Sheet1' }] });
+  assert.strictEqual(pm.get('재활환자')[0].rehab, 'B_06', '재활 열(재활종료일과 구분)을 읽는다');
+  console.log('OK ⑤ 현황판 진료과·PTA 재활 코드');
+
+  // ⑥ 파일 수정 시각 라벨: 달력 날짜 기준, 2일 이상 지나면 old
+  const now = new Date(2026, 9, 4, 9, 0);
+  const lab = (d, h = 23) => ctx.age(new Date(2026, 9, d, h).getTime(), now);
+  assert.strictEqual(lab(4).text, '오늘 수정'); assert.strictEqual(lab(3).text, '어제 수정'); assert(!lab(3).old);
+  assert.strictEqual(lab(1).text, '3일 전 수정 (10/1)'); assert(lab(1).old); assert(lab(2).old);
+  console.log('OK ⑥ 파일 수정 시각 라벨');
   console.log('ALL PASS');
 })().catch((e) => { console.error(e); process.exit(1); });
