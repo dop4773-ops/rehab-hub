@@ -59,10 +59,12 @@ const TOOLS = {
       { role: 'table10', selector: 'input[data-key="table10Book"]' },
       { role: 'mt3', selector: 'input[data-key="mt3Book"]' },
       { role: 'handover', selector: 'input[data-key="handoverBook"]' },
+      { role: 'pta', selector: 'input[data-key="ptaBook"]' }, // PTA 재원현황(선택) — 병실 대조의 기준
     ],
     readSummary: (w) => w.__crossSummary ? { count: w.__crossSummary.issueCount, label: '검증 결과', ...w.__crossSummary } : null,
     // 이 필수 역할이 폴더 스캔으로 전부 채워지면(=화면을 열지 않아도) 자동으로 전체 교차검증을 한 번 실행한다.
     requiredRoles: ['status', 'card10', 'card3', 'mat10', 'table10', 'mt3'],
+    optionalRoles: ['pta'],
     // 파일을 막 채운 직후엔 도구가 각 파일을 비동기로 읽는 중이라(칸마다 "읽는 중…" 표시) 다 끝나길 기다렸다가 실행한다.
     // 인수인계 칸은 실시간 조회라 오래 걸릴 수 있고 handleRun이 알아서 기다리므로 기다릴 대상에서 뺀다.
     autoRunFn: async (w) => {
@@ -184,7 +186,7 @@ async function maybeAutoRun(toolKey, iframe) {
   const t = TOOLS[toolKey];
   if (!t.requiredRoles || !t.autoRunFn) return;
   if (!t.requiredRoles.every(r => RehabSync.roleSig(lastScan, r))) return;
-  const sig = RehabSync.rolesSig(lastScan, t.requiredRoles);
+  const sig = RehabSync.rolesSig(lastScan, t.requiredRoles.concat(t.optionalRoles || [])); // 선택 파일이 바뀌어도 다시 실행
   if (autoRanSig.get(toolKey) === sig) return;
   const prev = autoRanSig.get(toolKey);
   autoRanSig.set(toolKey, sig); // 동시에 두 번 불리지 않게 먼저 표시

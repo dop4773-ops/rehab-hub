@@ -11,7 +11,7 @@
   --ther:#c79a12;--ther-bg:#fbf5df;
   --handover:#0e8a8a;--handover-bg:#e3f5f5;
   --excess:#a83e9c;--excess-bg:#f8e8f5;
-  --eval:#4a5578;--eval-bg:#e9ebf5;
+  --eval:#4a5578;--eval-bg:#e9ebf5;--room:#2d6f73;--room-bg:#e1f1f1;
   --card-r:16px;
 }
 *{box-sizing:border-box}
@@ -90,6 +90,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .cat-chip.therapist{background:var(--ther-bg);color:var(--ther)}
 .cat-chip.handover{background:var(--handover-bg);color:var(--handover)}
 .cat-chip.eval{background:var(--eval-bg);color:var(--eval)}
+.cat-chip.room{background:var(--room-bg);color:var(--room)}
 .cat-chip .cc-label{font-size:11.5px;font-weight:800;display:flex;align-items:center;gap:6px}
 .cat-chip .cc-num{font-size:21px;font-weight:800;margin-top:3px}
 .cat-chip .cc-breakdown{margin-top:6px;font-size:10.5px;font-weight:700;opacity:.85;display:flex;gap:8px;flex-wrap:wrap}
@@ -140,6 +141,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .issuecard .cattag.horphan{background:var(--record-bg);color:var(--record)}
 .issuecard .cattag.hexcess{background:var(--excess-bg);color:var(--excess)}
 .issuecard .cattag.eval{background:var(--eval-bg);color:var(--eval)}
+.issuecard .cattag.room{background:var(--room-bg);color:var(--room)}
 .issuecard .cattag.vname{background:var(--count-bg);color:var(--count)}
 .issuecard .cattag.vrecord{background:var(--record-bg);color:var(--record)}
 .issuecard .cattag.vloc{background:var(--loc-bg);color:var(--loc)}
@@ -187,6 +189,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .dhead .dtag.horphan{background:var(--record-bg);color:var(--record)}
 .dhead .dtag.hexcess{background:var(--excess-bg);color:var(--excess)}
 .dhead .dtag.eval{background:var(--eval-bg);color:var(--eval)}
+.dhead .dtag.room{background:var(--room-bg);color:var(--room)}
 .dhead .dtag.vname{background:var(--count-bg);color:var(--count)}
 .dhead .dtag.vrecord{background:var(--record-bg);color:var(--record)}
 .dhead .dtag.vloc{background:var(--loc-bg);color:var(--loc)}
@@ -395,7 +398,16 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
             <div class="cc-num" id="chipHandover">0</div>
             <div class="cc-breakdown" id="chipHandoverBreak"></div>
           </div>
-          <div class="cat-chip eval active" data-cat="eval"><div class="cc-label"><span class="dotmark"></span>평가메인 불일치</div><div class="cc-num" id="chipEval">0</div></div>
+          <div class="cat-chip eval active" data-cat="eval">
+            <div class="cc-label"><span class="dotmark"></span>평가메인 불일치</div>
+            <div class="cc-num" id="chipEval">0</div>
+            <div class="cc-breakdown" id="chipEvalBreak"></div>
+          </div>
+          <div class="cat-chip room active" data-cat="room">
+            <div class="cc-label"><span class="dotmark"></span>병실 불일치 (PTA 기준)</div>
+            <div class="cc-num" id="chipRoom">0</div>
+            <div class="cc-breakdown" id="chipRoomBreak"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -425,6 +437,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
         <button data-cat="therapist">치료사 불일치</button>
         <button data-cat="handover">인수인계 불일치</button>
         <button data-cat="eval">평가메인 불일치</button>
+        <button data-cat="room">병실 불일치</button>
       </div>
       <div class="seg" id="fieldSeg" style="display:none">
         <button class="active" data-field="all">전체</button>
@@ -541,10 +554,17 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
       <li>작업치료현황의 “평일시간표(원본)”에서 <b>볼드체(굵게)</b>로 표시된 환자 명단과, “평가메인” 시트에 실제로 적혀있는 환자 명단을 서로 비교합니다</li>
       <li><b>평가메인 누락</b>: 평일시간표(원본)엔 볼드로 표시돼 있는데 평가메인 시트엔 이름이 없는 경우</li>
       <li><b>평가메인 초과</b>: 평가메인 시트엔 있는데 평일시간표(원본)엔 볼드로 표시돼 있지 않은 경우</li>
+      <li><b>이름 중복</b>: 평가메인 시트에 같은 이름이 두 번 이상 적혀 있는 경우(현황판에 같은 이름이 여러 명이면 동명이인일 수 있다고 함께 알려줍니다)</li>
+      <li><b>평가메인 누락(현황판)</b>: 현황판 “입원” 열이 입원/재입원인 환자가 평가메인 시트에 없는 경우 — 볼드체 기준과는 별개로 현황판 기준으로 확인합니다</li>
       <li>“평가메인” 시트가 없는 파일이면 이 검증은 건너뜁니다</li>
     </ul>
+    <h4>⑥ 퇴원 환자 · 시간표 원본 / PTA 병실 대조</h4>
+    <ul>
+      <li><b>퇴원 후 평일/토요일 시간표 잔존</b>: 현황판 “입원” 열이 퇴원인 환자(퇴원 뒤 다시 입원·외래 줄이 있는 이름은 제외)가 평일시간표(원본)·토요일&amp;공휴일 시간표(원본)에 아직 배정돼 있는 경우. 특이사항에 “전원”이 적힌 환자는 “전원 표기”로 따로 알려줍니다.</li>
+      <li><b>병실 불일치(PTA 기준)</b>: PTA 재원현황을 병실의 기준값으로 보고(병실 “501:01”은 501호, 병록# 중복 줄은 하나로 합침), 현황판과 전체시간표 카드의 병실이 그 값과 다르면 알려줍니다. PTA에서 이름을 못 찾으면 “매칭 불가”로 표시합니다. PTA 재원현황 파일은 선택입니다.</li>
+    </ul>
     <h4>정상률 계산 방식</h4>
-    <p>개수·위치·치료사·인수인계·평가메인 다섯 검증은 서로 다른 단위로 수행됩니다(개수=환자×SOT/RDT/ERDT/CCRT 4개 항목 + 전체시간표(원본)에서 확인 가능한 환자의 언어 항목, 위치=시간·칸 단위, 치료사·인수인계·평가메인=건 단위). 정상률은 다섯 검증의 <b>전체 검사 건수 합</b> 대비 <b>문제 건수 합</b>으로 계산하며, 같은 건을 두 번 세지 않습니다.</p>
+    <p>개수·위치·치료사·인수인계·평가메인·병실 여섯 검증은 서로 다른 단위로 수행됩니다(개수=환자×SOT/RDT/ERDT/CCRT 4개 항목 + 전체시간표(원본)에서 확인 가능한 환자의 언어 항목, 위치=시간·칸 단위, 치료사·인수인계·평가메인=건 단위). 정상률은 다섯 검증의 <b>전체 검사 건수 합</b> 대비 <b>문제 건수 합</b>으로 계산하며, 같은 건을 두 번 세지 않습니다.</p>
   </div>
 </div>
 
@@ -714,7 +734,7 @@ async function parseStatusSheet(book){
   if(headerRow==null) throw new Error('현황 시트에서 "성명" 헤더를 찾지 못했습니다.');
   const headerMap={};
   for(let c=1;c<=25;c++){ const v=normalizeText(getCell(cells,headerRow,c)).replace(/\s+/g,''); if(v) headerMap[v]=c; }
-  const nameCol=headerMap['성명'], roomCol=headerMap['병실'], admitCol=headerMap['입원'];
+  const nameCol=headerMap['성명'], roomCol=headerMap['병실'], admitCol=headerMap['입원'], noteCol=headerMap['특이사항'];
   const typeCols={sot:headerMap['SOT'], rdt:headerMap['RDT'], erdt:headerMap['ERDT'], ccrt:headerMap['CCRT'], lang:headerMap['언어']};
   const list=[]; const dischargedList=[]; let maxRow=headerRow;
   for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc && rc.row>maxRow) maxRow=rc.row; }
@@ -723,7 +743,12 @@ async function parseStatusSheet(book){
     const admit=admitCol?normalizeText(getCell(cells,r,admitCol)):'';
     const room=normalizeText(getCell(cells,r,roomCol));
     if(admit==='퇴원'){ dischargedList.push({name, room, admit}); continue; }
-    const rec={name, room, admit};
+    const note=noteCol?normalizeText(getCell(cells,r,noteCol)):'';
+    // "입원" 열에는 전원이 없고(퇴원/입원/재입원/외래), 전원은 특이사항 글자에만 나온다 → 상태가 아니라 "전원 표기"(확인 필요)로만 취급
+    // 특이사항의 "전원"은 과거 전원 기록인 경우가 많다("4/29 ○○ 전원/5/2 재입원", 재입원 환자의 "8/13 전원") — 그래서 아직 "입원"인데
+    // 마지막 "전원" 뒤에 재입원·복귀 표시가 없는 경우만 "전원 표기(확인 필요)"로 본다.
+    const transfer = admit==='입원' && /전원/.test(note) && !/재입원|복귀/.test(note.slice(note.lastIndexOf('전원')));
+    const rec={name, room, admit, note, transfer};
     for(const k of Object.keys(typeCols)){ const col=typeCols[k]; const raw=col?getCell(cells,r,col):''; const num=parseInt(raw,10); rec[k]=Number.isFinite(num)?num:0; }
     list.push(rec);
   }
@@ -973,6 +998,7 @@ async function parsePatientCards(book, floor){
         const start=blockStarts[i]; const end=(i+1<blockStarts.length)?blockStarts[i+1]-1:start+40;
         const name=normalizeText(getCell(cells,start+1,nameCol)); if(!name) continue;
         const room=normalizeText(getCell(cells,start+1,nameCol+6));
+        const reg=normalizeText(getCell(cells,start+1,nameCol+3));
         const doctor=normDoctor(getCell(cells,start+5,nameCol));
         const therapists={};
         for(let r=start;r<=Math.min(end,start+12);r++){
@@ -1023,7 +1049,7 @@ async function parsePatientCards(book, floor){
             if(loc) entries.push({time, loc, days});
           }
         }
-        results.push({name, room, floor, doctor, therapists, entries, langCount, langOccurrences, satEntries, erdtWeekdayEntries, cogWeekdayEntries, sotWeekdayEntries, rdtWeekdayEntries, isOutpatient});
+        results.push({name, room, reg, floor, doctor, therapists, entries, langCount, langOccurrences, satEntries, erdtWeekdayEntries, cogWeekdayEntries, sotWeekdayEntries, rdtWeekdayEntries, isOutpatient});
       }
     }
   }
@@ -1104,8 +1130,9 @@ const FILES_META = [
   {key:'table10Book',  icon:'🟦', label:'10F 테이블현황',      sub:'원본 시트 사용', match:[/10\s*F?/i, /테이블/]},
   {key:'mt3Book',      icon:'🟨', label:'3F 매트·테이블현황',   sub:'매트/테이블 사용현황(3층) 시트 사용', match:[/3\s*F?/i, /매트|테이블/]},
   {key:'handoverBook', icon:'📝', label:'OT 인수인계',         sub:'환자별 담당치료사·주치의 대조(선택)', match:[/인수인계/]},
+  {key:'ptaBook',      icon:'🏥', label:'PTA 재원현황',        sub:'병실 기준(PTA) ↔ 전체시간표·현황판 병실 대조(선택)', match:[/재원\s*현황/]},
 ];
-const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null, table10Book:null, mt3Book:null, handoverBook:null, handoverLiveList:null, handoverLiveOk:false, dateSheetOf:{} };
+const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null, table10Book:null, mt3Book:null, handoverBook:null, ptaBook:null, handoverLiveList:null, handoverLiveOk:false, dateSheetOf:{} };
 let handoverLiveFetchPromise=null; // 검증 실행 전 이 fetch가 끝나길 기다려서, 타이밍에 따라 인수인계 인식이 됐다 안 됐다 하는 걸 막는다
 let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentView='type', currentPage=1;
 let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
@@ -1155,6 +1182,7 @@ function guessKeyFromFilename(name){
   if(/매트/.test(n)) return (is3 && !is10) ? 'mt3Book' : 'mat10Book';
   if(/테이블/.test(n)) return (is3 && !is10) ? 'mt3Book' : 'table10Book';
   if(/인수인계/.test(n)) return 'handoverBook';
+  if(/재원\s*현황/.test(n)) return 'ptaBook'; // "현황" 규칙(작업치료현황)보다 먼저
   if(/현황/.test(n)) return 'statusBook';
   return null;
 }
@@ -1307,7 +1335,7 @@ async function pickAndLoadFromFolder(reuseHandle){
   for(const meta of FILES_META){
     const f=bestByKey[meta.key];
     if(f){ await loadFile(meta.key, f); loadedLabels.push(meta.label); }
-    else if(meta.key!=='handoverBook') missing.push(meta.label); // 인수인계는 선택 항목이라 없어도 됨
+    else if(meta.key!=='handoverBook'&&meta.key!=='ptaBook') missing.push(meta.label); // 인수인계·PTA 재원현황은 선택 항목이라 없어도 됨
   }
   statusEl.innerHTML = `📁 <b>${esc(dirHandle.name)}</b> 폴더 · ${loadedLabels.length}개 불러옴`
     + (missing.length ? `<br>⚠️ 폴더에서 못 찾음: ${missing.map(esc).join(', ')} — 목록에서 직접 올려주세요.` : '');
@@ -1359,12 +1387,51 @@ document.getElementById('btnResetFiles').addEventListener('click', resetAllFiles
    통합 검증 실행
    ====================================================================== */
 function setStep(id, cls){ const el=document.getElementById(id); el.className='stepline '+cls; }
+/* ======================================================================
+   Phase 6 추가: 퇴원/전원 표기 vs 평일·토요일 원본, 평가메인 이름 중복·평가 누락, PTA 재원현황 병실 대조
+   (기존 판정 규칙은 그대로 두고, 아래 규칙은 별도 항목으로만 추가한다)
+   ====================================================================== */
+function roomDigits(v){ const m=String(v==null?'':v).match(/\d{3,4}/); return m?m[0]:''; }
+function regDigits(v){ return String(v==null?'':v).replace(/\D/g,'').replace(/^0+/,''); }
+// 평가메인 시트의 모든 배정 칸(같은 이름이 여러 번 나오는지 보려고 이름 집합이 아니라 목록 그대로)
+async function parseEvalMainOccurrences(book){
+  const sh = book.sheets.find(s=>/평가\s*메인/.test(s.name));
+  if(!sh) return null;
+  const cells = await getSheetCells(book, sh.name);
+  if(!cells || !cells.size) return [];
+  try{ return await parseMainTable(cells); }catch(e){ return []; }
+}
+// PTA 재원현황.xlsx: 의사(RM) / 병실("501:01" = 병실:침상) / 병록# / 성명 …  — 한 환자가 여러 줄(재활 구분별)로 나오므로 병록# 기준으로 하나로 합친다.
+// 반환: Map(normKey(이름) → [{name, reg, room, bed, rm}])  (같은 이름의 서로 다른 병록#이 있으면 후보가 여러 개)
+async function parsePtaSheet(book){
+  for(const sh of book.sheets){
+    const cells=await getSheetCells(book, sh.name); if(!cells||!cells.size) continue;
+    let hr=null;
+    for(const [ref,val] of cells.entries()){ if(/병록/.test(normalizeText(val))){ const rc=splitRef(ref); if(rc && (!hr||rc.row<hr)) hr=rc.row; } }
+    if(hr==null) continue;
+    const col={}; for(let c=1;c<=25;c++){ const v=normalizeText(getCell(cells,hr,c)).replace(/\s+/g,''); if(!v) continue; if(/병록/.test(v)) col.reg=c; else if(v==='의사') col.rm=c; else if(v==='병실') col.room=c; else if(v==='성명') col.name=c; }
+    if(!col.name||!col.room) continue;
+    let maxRow=hr; for(const ref of cells.keys()){ const rc=splitRef(ref); if(rc&&rc.row>maxRow) maxRow=rc.row; }
+    const byKey=new Map(), seen=new Set();
+    for(let r=hr+1;r<=maxRow;r++){
+      const name=normalizeText(getCell(cells,r,col.name)); const roomRaw=normalizeText(getCell(cells,r,col.room)); if(!name||!roomRaw) continue;
+      const reg=col.reg?normalizeText(getCell(cells,r,col.reg)):'';
+      const dedupeKey=regDigits(reg)?('R'+regDigits(reg)):('N'+normKey(name)+'|'+roomDigits(roomRaw));
+      if(seen.has(dedupeKey)) continue; seen.add(dedupeKey);
+      const [roomPart,bed]=roomRaw.split(':');
+      const rec={name, reg, room:roomDigits(roomPart), bed:(bed||'').trim(), rm:col.rm?normalizeText(getCell(cells,r,col.rm)):''};
+      const k=normKey(name); if(!byKey.has(k)) byKey.set(k,[]); byKey.get(k).push(rec);
+    }
+    return byKey;
+  }
+  throw new Error('PTA 재원현황에서 병실/성명 열을 찾지 못했습니다.');
+}
 async function runAllVerifications(){
   if(handoverLiveFetchPromise) await handoverLiveFetchPromise; // 실시간 인수인계 조회가 끝날 때까지 기다려서, 타이밍에 따라 인식이 됐다 안 됐다 하지 않게 한다
   const progress=document.getElementById('runProgress'); progress.classList.add('show');
   setStep('stepCount',''); setStep('stepLoc',''); setStep('stepTher','');
   const allIssues=[];
-  let countChecked=0, countProblems=0, locChecked=0, locProblems=0, therChecked=0, therProblems=0, handoverChecked=0, handoverProblems=0, evalChecked=0, evalProblems=0;
+  let countChecked=0, countProblems=0, locChecked=0, locProblems=0, therChecked=0, therProblems=0, handoverChecked=0, handoverProblems=0, evalChecked=0, evalProblems=0, roomChecked=0, roomProblems=0;
   const floorCount={10:0,3:0};
 
   let sched=null, status=null, actual=null;
@@ -1384,6 +1451,33 @@ async function runAllVerifications(){
     return fallbackFloor || null;
   }
 
+  // 현황판이 "퇴원"(또는 특이사항에 전원 표기)으로 보는 환자가 시간표 원본에 아직 남아 있는지 — 시트마다 환자 1명당 1건으로 묶어서 알린다.
+  // (퇴원 후 다시 입원/외래 줄이 있는 이름은 현재도 다니는 환자라 제외한다)
+  const dischargeTargets=new Map();
+  const residueLabel={sot:'SOT',rdt:'RDT',erdt:'ERDT',ccrt:'CCRT'};
+  function checkScheduleResidue(sheetLabel, ents){
+    const byKey=new Map();
+    for(const e of ents){ const k=normKey(e.name); if(!byKey.has(k)) byKey.set(k,{name:e.name,items:[]}); byKey.get(k).items.push(e); }
+    for(const [k,g] of byKey){
+      countChecked++;
+      const t=dischargeTargets.get(k); if(!t) continue;
+      countProblems++;
+      const fl=floorOfPatient(g.name, null); if(fl) floorCount[fl]++;
+      const counts={}; g.items.forEach(e=>{ const l=residueLabel[e.type]||e.type||'치료'; counts[l]=(counts[l]||0)+1; });
+      const summary=Object.entries(counts).map(([l,n])=>`${l} ${n}건`).join(' · ');
+      const word=t.kind==='discharged'?'퇴원':'전원 표기';
+      allIssues.push({
+        id:'dissched-'+allIssues.length, category:'count', field:'discharge', floor:fl,
+        patient:g.name, room:t.room,
+        title:`${word} 후 ${sheetLabel} 잔존`,
+        line:`현황판은 ${word}인데 ${sheetLabel}에 ${summary}이 남아있어요`,
+        time:'', searchText:normKey(`${g.name} ${t.room} ${sheetLabel}`),
+        severityRank:0,
+        detail:{kind:'discharge_in_sched', patient:g.name, room:t.room, sheet:sheetLabel, word, entries:g.items.map(e=>({time:e.time||'', type:residueLabel[e.type]||e.type||'', therapist:e.therapist||''}))}
+      });
+    }
+  }
+
   // ---- ① 개수 비교 ----
   setStep('stepCount','now');
   previewDischarged=new Set();
@@ -1393,6 +1487,9 @@ async function runAllVerifications(){
     actual=buildActualCounts(sched);
     previewWeekdayErdt={erdt: sched.erdt, ccrt: sched.ccrt};
     previewDischarged = new Set(status.dischargedList.map(r=>normKey(r.name)));
+    { const activeKeys=new Set(status.list.map(r=>normKey(r.name)));
+      for(const r of status.dischargedList){ const k=normKey(r.name); if(!activeKeys.has(k)&&!dischargeTargets.has(k)) dischargeTargets.set(k,{name:r.name,room:r.room,kind:'discharged'}); }
+      for(const r of status.list){ if((r.admit==='입원'||r.admit==='재입원')&&r.transfer) dischargeTargets.set(normKey(r.name),{name:r.name,room:r.room,kind:'transfer'}); } }
     // "평일시간표(원본)"은 1팀·2팀=10층, 3팀=3층으로 나뉘어 있고, 이미 각 배정 건에 floor가 태깅되어 있다.
     // 이걸 환자명 → 층 지도로 만들어 두면, 전체시간표(원본) 카드 파일이 없어도 개수 불일치의 층을 판정할 수 있다.
     for(const o of sched.occ){ if(!scheduleFloorByName.has(normKey(o.name))) scheduleFloorByName.set(normKey(o.name), o.floor); }
@@ -1477,6 +1574,12 @@ async function runAllVerifications(){
         }
       }
     }
+    // ---- ①-1.4 퇴원/전원 표기 vs 평일시간표(원본) (SOT/RDT/ERDT — CCRT는 아래 기존 규칙이 확인, 전체시간표 파일이 없을 때만 여기서 함께 확인) ----
+    checkScheduleResidue('평일시간표(원본)', [
+      ...sched.occ.map(o=>({name:o.name,type:o.type,time:o.time,therapist:o.therapist})),
+      ...sched.erdt.map(e=>({name:e.name,type:'erdt',time:e.time,therapist:e.therapist})),
+      ...((state.card10Book||state.card3Book)?[]:sched.ccrt.map(c=>({name:c.name,type:'ccrt',time:`${c.day} ${c.time}`,therapist:c.therapist}))),
+    ]);
     // ---- ①-1.5 인지치료(CCRT/BETTER/COMCOG 통합) 미리보기 기반 문제 목록에도 반영 ----
     if(state.card10Book || state.card3Book){
       const ccrtCardByName=new Map([...(cardsByFloor[10]||[]), ...(cardsByFloor[3]||[])].map(c=>[normKey(c.name),c]));
@@ -1585,9 +1688,96 @@ async function runAllVerifications(){
           });
         }
       }
+      // ---- ①-3 평가메인 이름 중복: 같은 이름이 평가메인에 두 번 이상 나오는 경우(볼드 기준과는 별개의 항목) ----
+      // 환자 식별 정보가 이름뿐이라 "같은 사람이 두 번 적힘"인지 "동명이인"인지는 현황판에 같은 이름이 몇 명 있는지로만 알려준다(판정은 사람이).
+      const evalOcc=await parseEvalMainOccurrences(state.statusBook);
+      if(evalOcc){
+        const byName=new Map();
+        for(const o of evalOcc){ const k=normKey(o.name); if(!byName.has(k)) byName.set(k,{name:o.name,items:[]}); byName.get(k).items.push(o); }
+        for(const [k,g] of byName){
+          evalChecked++;
+          if(g.items.length<2) continue;
+          evalProblems++;
+          const sameNameInStatus=status.list.filter(r=>normKey(r.name)===k).length;
+          const fl=floorOfPatient(g.name, null); if(fl) floorCount[fl]++;
+          const where=g.items.map(o=>`${o.time||'?'}${o.therapist?'·'+o.therapist:''}`).join(' / ');
+          allIssues.push({
+            id:'eval-'+allIssues.length, category:'eval', source:'dup', floor:fl,
+            patient:g.name, room:(status.list.find(r=>normKey(r.name)===k)||{}).room||'',
+            title:'평가메인 이름 중복',
+            line:`평가메인에 같은 이름이 ${g.items.length}번 나와요 (${where})`,
+            time:'', searchText:normKey(g.name),
+            severityRank:g.items.length,
+            detail:{kind:'eval_dup', patient:g.name, count:g.items.length, places:g.items.map(o=>({time:o.time||'', therapist:o.therapist||''})), sameNameInStatus}
+          });
+        }
+      }
+      // ---- ①-4 평가 누락(현황판 기준): 현황판에서 입원/재입원인 환자가 평가메인에 없는 경우 — 볼드 기준(위)과는 별도로 표시 ----
+      for(const rec of status.list){
+        if(rec.admit!=='입원' && rec.admit!=='재입원') continue;
+        evalChecked++;
+        if(evalNames.has(normKey(rec.name))) continue;
+        evalProblems++;
+        const fl=floorOfPatient(rec.name, null); if(fl) floorCount[fl]++;
+        allIssues.push({
+          id:'eval-'+allIssues.length, category:'eval', source:'noeval', floor:fl,
+          patient:rec.name, room:rec.room,
+          title:`평가메인 누락 (현황판 ${rec.admit})`,
+          line:`현황판엔 ${rec.admit} 환자인데 "평가메인" 시트엔 이름이 없어요`,
+          time:'', searchText:normKey(`${rec.name} ${rec.room}`),
+          severityRank:0,
+          detail:{kind:'eval_noeval', patient:rec.name, room:rec.room, admit:rec.admit}
+        });
+      }
     }
   }
   setStep('stepCount','done');
+
+  // ---- ①-5 PTA 재원현황 기준 병실 대조: 병실의 기준값은 PTA 재원현황 — 현황판·전체시간표 카드의 병실을 그 값과 비교한다 ----
+  if(state.ptaBook){
+    let ptaMap=null;
+    try{ ptaMap=await parsePtaSheet(state.ptaBook); }catch(e){ console.error(e); }
+    if(ptaMap){
+      const people=new Map(); // normKey → {name, statusRoom, cardRoom, cardReg}
+      const slot=(name)=>{ const k=normKey(name); if(!people.has(k)) people.set(k,{name,statusRoom:'',cardRoom:'',cardReg:''}); return people.get(k); };
+      if(status) for(const r of status.list){ if(r.admit==='입원'||r.admit==='재입원') slot(r.name).statusRoom=r.room; }
+      for(const fl of [10,3]) for(const c of cardsByFloor[fl]){ if(c.isOutpatient) continue; const p=slot(c.name); if(!p.cardRoom){ p.cardRoom=c.room; p.cardReg=c.reg; } }
+      for(const [k,p] of people){
+        roomChecked++;
+        const cands=ptaMap.get(k)||[];
+        const fl=floorOfPatient(p.name, null);
+        if(!cands.length){
+          roomProblems++; if(fl) floorCount[fl]++;
+          allIssues.push({
+            id:'room-'+allIssues.length, category:'room', source:'nopta', floor:fl,
+            patient:p.name, room:p.statusRoom||p.cardRoom,
+            title:'PTA 재원현황에서 환자를 찾지 못함',
+            line:'매칭 불가 — 퇴원·전원했거나 이름 표기가 달라서일 수 있어요(확인 필요)',
+            time:'', searchText:normKey(`${p.name} ${p.statusRoom} ${p.cardRoom}`), severityRank:0,
+            detail:{kind:'room_nopta', patient:p.name, statusRoom:p.statusRoom, cardRoom:p.cardRoom}
+          });
+          continue;
+        }
+        const sRoom=roomDigits(p.statusRoom), cRoom=roomDigits(p.cardRoom);
+        // 같은 이름이 PTA에 여러 명(서로 다른 병록#)이면 카드 등록번호 → 같은 병실이 있는 사람 순으로 골라서 비교한다.
+        const byReg=cands.length>1&&regDigits(p.cardReg)?cands.find(c=>regDigits(c.reg)===regDigits(p.cardReg)):null;
+        const byRoom=cands.length>1?cands.find(c=>c.room===sRoom||c.room===cRoom):null;
+        const cand=byReg||byRoom||cands[0], ambiguous=cands.length>1&&!byReg&&!byRoom;
+        const badStatus=!!sRoom&&sRoom!==cand.room, badCard=!!cRoom&&cRoom!==cand.room;
+        if(!badStatus&&!badCard) continue;
+        roomProblems++; if(fl) floorCount[fl]++;
+        const wrong=[badStatus?`현황판 ${p.statusRoom}`:'', badCard?`전체시간표 ${p.cardRoom}`:''].filter(Boolean).join(' · ');
+        allIssues.push({
+          id:'room-'+allIssues.length, category:'room', source:'mismatch', floor:fl,
+          patient:p.name, room:cand.room,
+          title:'병실 불일치 (PTA 기준)',
+          line:`PTA ${cand.room}호 ↔ ${wrong}${ambiguous?' · PTA에 같은 이름이 여러 명이라 확인 필요':''}`,
+          time:'', searchText:normKey(`${p.name} ${cand.room} ${p.statusRoom} ${p.cardRoom}`), severityRank:0,
+          detail:{kind:'room_mismatch', patient:p.name, pta:cand, statusRoom:p.statusRoom, cardRoom:p.cardRoom, badStatus, badCard, ambiguous}
+        });
+      }
+    }
+  }
 
   // ---- ② 위치 검증 (매트/테이블현황은 항상 "원본" 시트 기준) ----
   setStep('stepLoc','now');
@@ -1637,6 +1827,7 @@ async function runAllVerifications(){
   if(state.statusBook){
     const satOccs = await parseSaturdayScheduleSheet(state.statusBook);
     previewSaturday.occs = satOccs;
+    if(status) checkScheduleResidue('토요일&공휴일 시간표(원본)', satOccs.map(o=>({name:o.name,type:o.type,time:o.time,therapist:o.therapist})));
     if(sched){
       for(const o of sched.occ){
         if((o.type==='sot'||o.type==='rdt') && o.code){
@@ -1782,11 +1973,11 @@ async function runAllVerifications(){
   // 안 붙어서 iframe.contentWindow로 직접 못 읽기 때문에 명시적으로 저장한다. 화면 자체 로직에는 영향 없음.
   window.__crossSummary = {
     issueCount: issues.length,
-    checkedTotal: countChecked+locChecked+therChecked+handoverChecked+evalChecked,
-    problemTotal: countProblems+locProblems+therProblems+handoverProblems+evalProblems,
+    checkedTotal: countChecked+locChecked+therChecked+handoverChecked+evalChecked+roomChecked,
+    problemTotal: countProblems+locProblems+therProblems+handoverProblems+evalProblems+roomProblems,
   };
   return {
-    stats:{countChecked,countProblems,locChecked,locProblems,therChecked,therProblems,handoverChecked,handoverProblems,evalChecked,evalProblems},
+    stats:{countChecked,countProblems,locChecked,locProblems,therChecked,therProblems,handoverChecked,handoverProblems,evalChecked,evalProblems,roomChecked,roomProblems},
     floorCount
   };
 }
@@ -2755,8 +2946,8 @@ document.getElementById('btnRun').addEventListener('click', handleRun);
 document.getElementById('btnRerun').addEventListener('click', handleRun);
 
 function renderDashboard(stats, floorCount){
-  const total = stats.countChecked+stats.locChecked+stats.therChecked+stats.handoverChecked+stats.evalChecked;
-  const problems = stats.countProblems+stats.locProblems+stats.therProblems+stats.handoverProblems+stats.evalProblems;
+  const total = stats.countChecked+stats.locChecked+stats.therChecked+stats.handoverChecked+stats.evalChecked+(stats.roomChecked||0);
+  const problems = stats.countProblems+stats.locProblems+stats.therProblems+stats.handoverProblems+stats.evalProblems+(stats.roomProblems||0);
   const ok = total-problems;
   const pct = total? Math.round((ok/total)*1000)/10 : 100;
   document.getElementById('donut').style.setProperty('--pct', pct);
@@ -2794,6 +2985,13 @@ function renderDashboard(stats, floorCount){
     b.textContent = s==='all' ? `전체 ${stats.handoverProblems}` : `${handoverSourceLabel[s]} ${handoverCounts[s]}`;
   });
   document.getElementById('chipEval').textContent = stats.evalProblems;
+  const evalCounts={missing:0, extra:0, dup:0, noeval:0};
+  issues.filter(i=>i.category==='eval').forEach(i=>{ if(evalCounts[i.source]!=null) evalCounts[i.source]++; });
+  document.getElementById('chipEvalBreak').innerHTML = `<span>볼드 기준 ${evalCounts.missing+evalCounts.extra}</span><span>이름 중복 ${evalCounts.dup}</span><span>현황판 기준 누락 ${evalCounts.noeval}</span>`;
+  document.getElementById('chipRoom').textContent = stats.roomProblems||0;
+  const roomCounts={mismatch:0, nopta:0};
+  issues.filter(i=>i.category==='room').forEach(i=>{ if(roomCounts[i.source]!=null) roomCounts[i.source]++; });
+  document.getElementById('chipRoomBreak').innerHTML = state.ptaBook ? `<span>병실 다름 ${roomCounts.mismatch}</span><span>PTA에 없음 ${roomCounts.nopta}</span>` : '<span>PTA 재원현황 파일 없음</span>';
 
   const f10=(floorCount[10]||0), f3=(floorCount[3]||0), fAll=f10+f3;
   document.getElementById('floorAllNum').textContent=fAll+'건';
@@ -2861,7 +3059,7 @@ document.querySelectorAll('.cat-chip').forEach(chip=>{
 document.getElementById('searchInput').addEventListener('input', ()=>{ currentPage=1; applyFilters(); });
 document.getElementById('sortSelect').addEventListener('change', ()=>{ applyFilters(); });
 
-const CAT_RANK={count:0, location:1, therapist:2, handover:3, eval:4};
+const CAT_RANK={count:0, location:1, therapist:2, handover:3, eval:4, room:5};
 function sortIssues(list, mode){
   const arr=[...list];
   if(mode==='name') arr.sort((a,b)=> a.patient.localeCompare(b.patient,'ko') || CAT_RANK[a.category]-CAT_RANK[b.category]);
@@ -2932,13 +3130,15 @@ function handoverVerdictOf(issue){ return HANDOVER_VERDICT[issue.source] || null
 function catColorVar(cat, issue){
   if(cat==='location' && issue){ const v=locVerdictOf(issue); if(v) return v.cls==='vname'?'--count':v.cls==='vrecord'?'--record':'--loc'; }
   if(cat==='handover' && issue){ const v=handoverVerdictOf(issue); if(v) return v.cvar; }
-  return cat==='count'?'--count':cat==='location'?'--loc':cat==='handover'?'--handover':cat==='eval'?'--eval':'--ther';
+  return cat==='count'?'--count':cat==='location'?'--loc':cat==='handover'?'--handover':cat==='eval'?'--eval':cat==='room'?'--room':'--ther';
 }
-const EVAL_BADGE_LABEL={missing:'평가메인 누락', extra:'평가메인 초과'};
+const EVAL_BADGE_LABEL={missing:'평가메인 누락', extra:'평가메인 초과', dup:'이름 중복', noeval:'평가메인 누락(현황판)'};
+const ROOM_BADGE_LABEL={mismatch:'병실 다름', nopta:'PTA에 없음'};
 function cardBadgeText(i){
   if(i.category==='location'){ const v=locVerdictOf(i); if(v) return v.label; }
   if(i.category==='handover'){ const v=handoverVerdictOf(i); if(v) return v.label; }
   if(i.category==='eval') return EVAL_BADGE_LABEL[i.source] || i.title;
+  if(i.category==='room') return ROOM_BADGE_LABEL[i.source] || i.title;
   return i.title;
 }
 function excessRow2Html(d){
@@ -3254,6 +3454,66 @@ function renderDetail(){
       </table>
       <div class="verdictbox">판정: ${esc(d.verdict)}</div>
     `;
+  } else if(issue.detail.kind==='discharge_in_sched'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+        <tr><td>시간표</td><td>${esc(d.sheet)}</td></tr>
+        <tr><td>현황판 상태</td><td>${esc(d.word)}</td></tr>
+      </table>
+      <div class="verdictbox">판정: 현황판(작업치료현황)에서는 이 환자가 ${esc(d.word)}로 표시돼 있는데, ${esc(d.sheet)}에는 아직 치료 배정이 남아있어요. ${d.word==='퇴원'?'시간표에서 이 환자를 정리하지 않았을 가능성이 있어요.':'전원 여부를 확인하고, 전원했다면 현황판 상태와 시간표를 정리해야 해요.'}</div>
+      <div class="occ-title">남아있는 배정 · ${d.entries.length}건</div>
+      <div class="timeline-row">${d.entries.map(e=>`<div class="tl-chip"><span class="tl-time">${esc(e.time||'-')}</span><span class="tl-loc">${esc(e.type)}${e.therapist?' · '+esc(e.therapist):''}</span></div>`).join('')}</div>
+    `;
+  } else if(issue.detail.kind==='eval_dup'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>평가메인 등장 횟수</td><td>${d.count}번</td></tr>
+        <tr><td>현황판에 같은 이름</td><td>${d.sameNameInStatus}명</td></tr>
+      </table>
+      <div class="verdictbox">판정: "평가메인" 시트에 같은 이름이 ${d.count}번 적혀 있어요. ${d.sameNameInStatus>1?'현황판에도 같은 이름이 여러 명이라 동명이인일 수 있어요(확인 필요).':'현황판에는 같은 이름이 1명뿐이라 같은 환자가 중복으로 적혔을 가능성이 높아요. 환자별 식별번호가 시트에 없어서 최종 판단은 직접 확인해 주세요.'}</div>
+      <div class="occ-title">평가메인에서 나온 위치 · ${d.places.length}건</div>
+      <div class="timeline-row">${d.places.map(e=>`<div class="tl-chip"><span class="tl-time">${esc(e.time||'-')}</span><span class="tl-loc">${esc(e.therapist||'-')}</span></div>`).join('')}</div>
+    `;
+  } else if(issue.detail.kind==='eval_noeval'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+        <tr><td>현황판 상태</td><td>${esc(d.admit)}</td></tr>
+      </table>
+      <div class="verdictbox">판정: 현황판에서 ${esc(d.admit)} 상태인 환자인데 "평가메인" 시트에서 이름을 찾지 못했어요. 평가메인 시트에 추가하지 않았을 수 있어요. (볼드체 기준 검증과는 별개로 현황판 기준으로 확인한 결과예요.)</div>
+    `;
+  } else if(issue.detail.kind==='room_mismatch'){
+    const d=issue.detail, mark=(bad)=>bad?'bad':'good';
+    bodyHtml = `
+      <div class="compare-box">
+        <div class="cb good"><div class="cbt">PTA 재원현황 (기준)</div><div class="cbv">${esc(d.pta.room)}호${d.pta.bed?` · ${esc(d.pta.bed)}번 침상`:''}</div></div>
+        <div class="cb ${d.statusRoom?mark(d.badStatus):''}"><div class="cbt">현황판(작업치료현황)</div><div class="cbv">${esc(d.statusRoom||'(없음)')}</div></div>
+        <div class="cb ${d.cardRoom?mark(d.badCard):''}"><div class="cbt">전체시간표(원본) 카드</div><div class="cbv">${esc(d.cardRoom||'(카드 없음)')}</div></div>
+      </div>
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>PTA 주치의(RM)</td><td>${esc(d.pta.rm||'-')}</td></tr>
+        <tr><td>PTA 병록#</td><td>${esc(d.pta.reg||'-')}</td></tr>
+      </table>
+      <div class="verdictbox">판정: 병실의 기준값은 PTA 재원현황이에요. PTA의 병실과 다른 쪽(${[d.badStatus?'현황판':'',d.badCard?'전체시간표':''].filter(Boolean).join(', ')})을 수정해야 해요.${d.ambiguous?' PTA에 같은 이름이 여러 명이라 어느 환자인지 확인이 필요해요.':''}</div>
+    `;
+  } else if(issue.detail.kind==='room_nopta'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>환자</td><td>${esc(d.patient)}</td></tr>
+        <tr><td>현황판 병실</td><td>${esc(d.statusRoom||'-')}</td></tr>
+        <tr><td>전체시간표 병실</td><td>${esc(d.cardRoom||'-')}</td></tr>
+      </table>
+      <div class="verdictbox">판정: PTA 재원현황에서 이 이름을 찾지 못해 병실을 비교하지 못했어요(매칭 불가). 이미 퇴원·전원했거나 PTA와 이름 표기가 다를 수 있어요. 재원현황 파일이 최신인지도 확인해 주세요.</div>
+    `;
   }
 
   const headV = issue.category==='location' ? locVerdictOf(issue) : issue.category==='handover' ? handoverVerdictOf(issue) : null;
@@ -3307,7 +3567,7 @@ function summaryText(){
   const total=s.countChecked+s.locChecked+s.therChecked, problems=s.countProblems+s.locProblems+s.therProblems;
   let out=`작업치료 교차검증 결과\n검증 날짜: ${currentDateLabel()}\n\n`;
   out+=`전체 검증 ${total}건 · 정상 ${total-problems}건 · 확인 필요 ${problems}건\n`;
-  out+=`개수 불일치 ${s.countProblems}건 · 위치 불일치 ${s.locProblems}건 · 치료사 불일치 ${s.therProblems}건 · 인수인계 불일치 ${s.handoverProblems}건 · 평가메인 불일치 ${s.evalProblems}건\n\n`;
+  out+=`개수 불일치 ${s.countProblems}건 · 위치 불일치 ${s.locProblems}건 · 치료사 불일치 ${s.therProblems}건 · 인수인계 불일치 ${s.handoverProblems}건 · 평가메인 불일치 ${s.evalProblems}건 · 병실 불일치 ${s.roomProblems||0}건\n\n`;
   out+=`[문제 목록]\n`;
   sortIssues(issues,'priority').forEach((i,idx)=>{
     out+=`${idx+1}. [${i.title}] ${i.patient}(${i.room||'-'}) ${i.floor?i.floor+'F ':''}${i.line}\n`;
@@ -3338,7 +3598,7 @@ document.getElementById('btnExcel').addEventListener('click', ()=>{
   const catLabel={all:'전체',count:'개수',location:'위치',therapist:'치료사',handover:'인수인계'}[currentCat]||'전체';
   const rows=[['구분','층','환자명','병실','제목','내용','시간']];
   sortIssues(list,'priority').forEach(i=>{
-    rows.push([{count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인'}[i.category], i.floor?i.floor+'F':'', i.patient, i.room||'', i.title, i.line, i.time||'']);
+    rows.push([{count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인',room:'병실'}[i.category], i.floor?i.floor+'F':'', i.patient, i.room||'', i.title, i.line, i.time||'']);
   });
   const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob=new Blob([csv], {type:'text/csv;charset=utf-8;'});
@@ -3348,7 +3608,7 @@ document.getElementById('btnPrint').addEventListener('click', ()=>{
   if(!issues.length){ alert('먼저 검증을 실행해 주세요.'); return; }
   const s=window.__lastStats;
   const total=s.countChecked+s.locChecked+s.therChecked, problems=s.countProblems+s.locProblems+s.therProblems;
-  const rows=sortIssues(issues,'priority').map((i,idx)=>`<tr><td>${idx+1}</td><td>${esc({count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인'}[i.category])}</td><td>${i.floor?i.floor+'F':''}</td><td>${esc(i.patient)}</td><td>${esc(i.room||'')}</td><td>${esc(i.title)}</td><td>${esc(i.line)}</td></tr>`).join('');
+  const rows=sortIssues(issues,'priority').map((i,idx)=>`<tr><td>${idx+1}</td><td>${esc({count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인',room:'병실'}[i.category])}</td><td>${i.floor?i.floor+'F':''}</td><td>${esc(i.patient)}</td><td>${esc(i.room||'')}</td><td>${esc(i.title)}</td><td>${esc(i.line)}</td></tr>`).join('');
   document.getElementById('printReport').innerHTML = `
     <h1>작업치료 교차검증 결과</h1>
     <div class="meta">검증일: ${esc(currentDateLabel())} · 출력일시: ${new Date().toLocaleString('ko-KR')}</div>
@@ -3356,7 +3616,7 @@ document.getElementById('btnPrint').addEventListener('click', ()=>{
       <div>전체 검증 : <b>${total}</b></div><div>정상 : <b>${total-problems}</b></div><div>확인 필요 : <b>${problems}</b></div>
     </div>
     <div class="sumrow">
-      <div>개수 불일치 : <b>${s.countProblems}</b></div><div>위치 불일치 : <b>${s.locProblems}</b></div><div>치료사 불일치 : <b>${s.therProblems}</b></div><div>인수인계 불일치 : <b>${s.handoverProblems}</b></div><div>평가메인 불일치 : <b>${s.evalProblems}</b></div>
+      <div>개수 불일치 : <b>${s.countProblems}</b></div><div>위치 불일치 : <b>${s.locProblems}</b></div><div>치료사 불일치 : <b>${s.therProblems}</b></div><div>인수인계 불일치 : <b>${s.handoverProblems}</b></div><div>평가메인 불일치 : <b>${s.evalProblems}</b></div><div>병실 불일치 : <b>${s.roomProblems||0}</b></div>
     </div>
     <h3>문제 목록</h3>
     <table><thead><tr><th>#</th><th>구분</th><th>층</th><th>환자명</th><th>병실</th><th>제목</th><th>내용</th></tr></thead><tbody>${rows}</tbody></table>
