@@ -33,6 +33,9 @@ assert.strictEqual(ri.url, 'https://github.com/o/r'); assert.strictEqual(ri.rele
 assert.strictEqual(repoInfo({}), null); assert.strictEqual(repoInfo({ build: { publish: { provider: 's3' } } }), null);
 assert.strictEqual(repoInfo(require('../package.json')).url, 'https://github.com/dop4773-ops/rehab-hub', '실제 설정과 일치');
 console.log('OK ④⑤ 릴리즈 목록 정리·저장소 주소');
+const { repoInfoOf } = require('./updateLog');
+assert.deepStrictEqual(repoInfoOf({ name: 'x' }), repoInfo(require('../package.json')), '설치본처럼 build 항목이 없어도 같은 저장소 주소(package.json과 일치해야 함)');
+console.log('OK ⑦ 설치본(build 항목 없음)에서도 저장소 주소를 찾음');
 const pc = require('./updateLog').parseChangelog('# 제목\n\n## 0.6.3 (2026-10-05)\n- 가\n- 나\n\n## 0.6.2 (2026-10-04)\n- 다\n');
 assert.deepStrictEqual(pc.map(r => [r.version, r.date, r.body]), [['0.6.3', '2026-10-05', '- 가\n- 나'], ['0.6.2', '2026-10-04', '- 다']]);
 assert.strictEqual(pc[0].tag, 'v0.6.3');

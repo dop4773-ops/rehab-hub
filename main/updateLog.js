@@ -43,4 +43,8 @@ function repoInfo(pkg) {
   return { owner: p.owner, repo: p.repo, url, releasesUrl: url + '/releases', apiUrl: `https://api.github.com/repos/${p.owner}/${p.repo}/releases?per_page=30` };
 }
 
-module.exports = { readEntries, appendEntry, normalizeReleases, parseChangelog, repoInfo, MAX_ENTRIES };
+// 설치된 앱의 package.json에서는 빌드 도구가 "build" 항목을 지우므로(개발 중에만 있음) 저장소 주소를 코드에도 둔다 — package.json build.publish와 같아야 하며 테스트가 확인한다
+const DEFAULT_PKG = { build: { publish: { provider: 'github', owner: 'dop4773-ops', repo: 'rehab-hub' } } };
+const repoInfoOf = (pkg) => repoInfo(pkg) || repoInfo(DEFAULT_PKG);
+
+module.exports = { readEntries, appendEntry, normalizeReleases, parseChangelog, repoInfo, repoInfoOf, MAX_ENTRIES };

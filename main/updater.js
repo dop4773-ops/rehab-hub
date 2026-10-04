@@ -4,7 +4,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { readEntries, appendEntry, normalizeReleases, parseChangelog, repoInfo } = require('./updateLog');
+const { readEntries, appendEntry, normalizeReleases, parseChangelog, repoInfoOf } = require('./updateLog');
 
 function settingsPath(app) { return path.join(app.getPath('userData'), 'update-settings.json'); }
 function loadMode(app) {
@@ -25,7 +25,7 @@ function initUpdater(app, ipcMain, getMainWindow) {
   const log = (event, extra = {}) => { try { appendEntry(logFile, { event, ...extra }); } catch (e) { /* 기록 실패가 업데이트를 막지 않게 */ } };
   let nextSource = '자동'; // 사용자가 "지금 확인"을 누른 경우만 수동으로 표시
 
-  let info = null; try { info = repoInfo(require('../package.json')); } catch (e) { /* 정보 없음 */ }
+  let info = null; try { info = repoInfoOf(require('../package.json')); } catch (e) { /* 정보 없음 */ }
   ipcMain.handle('updater:getInfo', () => ({ version: app.getVersion(), mode: loadMode(app), repoUrl: info && info.url, releasesUrl: info && info.releasesUrl }));
   ipcMain.handle('updater:getLog', () => readEntries(logFile));
   // GitHub 릴리즈 목록(공개 저장소 — 로그인 없이 조회). 렌더러가 아니라 메인에서 가져온다(화면 보안 정책으로 외부 통신을 막아 두었기 때문).
