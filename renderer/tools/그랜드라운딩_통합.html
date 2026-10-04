@@ -40,6 +40,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .stats{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px}.stat{padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fbfcfe}.stat .label{font-size:11px;color:var(--muted)}.stat .value{font-size:20px;font-weight:800;margin-top:5px;color:var(--navy)}
 .toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:end}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:10px;color:var(--muted);font-weight:700}.field select,.field input[type=text]{height:36px;border:1px solid #cdd8e5;border-radius:8px;background:#fff;padding:0 10px;min-width:135px;color:#1d2b40}.field.search input{min-width:210px}.check{height:36px;display:flex;align-items:center;gap:7px;border:1px solid #d7e0eb;border-radius:8px;padding:0 10px;background:#fafcff;color:#43546d;font-size:12px}.export-group{margin-left:auto;display:flex;gap:8px;align-items:center}.export-group .btn{flex:none}
 #grandArchiveSaveStatus{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+.ga-who{margin:0 0 8px;padding:6px 10px;border-radius:8px;background:#fff7e6;border:1px solid #f1d9a8;color:#7a5200;font-size:12px;font-weight:700}
 .grand-team-menu{position:fixed;z-index:9999;background:#fff;border:1px solid #cbd6e4;border-radius:9px;box-shadow:0 6px 18px rgba(20,30,50,.16);padding:4px;display:flex;flex-direction:column;min-width:150px}
 .grand-team-menu button{border:none;background:none;text-align:left;padding:7px 10px;border-radius:6px;font-size:12px;color:#1d2b40;cursor:pointer}
 .grand-team-menu button:hover{background:#eef4fb}.current-slot{font-size:11px;color:#51637b;background:#eef4fb;border-radius:999px;padding:6px 10px;white-space:nowrap}
@@ -1166,17 +1167,27 @@ function grandArchiveWardLabel(patients){
   const wards=[...new Set(patients.map(p=>roomFloor(p.room)).filter(Boolean))].sort((a,b)=>a-b);
   return wards.length?`${wards.join('·')}병동`:'-';
 }
-// 담당 치료사 표기의 단일 기준: ① 작업치료현황(평일시간표 기준 치료사 맵) → ② 없으면 인수인계에 적힌 치료사("(인수인계 기재)"로 보조임을 표시)
-// → ③ 그것도 없으면 "확인 필요". 미등록·미작성·미반영(확인필요) 어디서든 같은 환자는 같은 담당자명이 나오도록 이 함수만 쓴다.
-// treatment를 주면 그 치료 종류(연하/인지/그 외=작업)의 치료사를 먼저 본다(치료별 일부 미작성 항목용).
-function grandTherapistLabel(name,handoverFallback,treatment){
-  const p={name:name||''}, ot=grandOtTherapistText(p), sw=grandSwallowTherapistText(p), cg=grandCogTherapistText(p);
-  const core=treatment?treatmentCore(treatment):'';
-  const chain=core==='swallow'?[sw,ot,cg]:core==='cog'?[cg,ot,sw]:[ot,sw,cg];
-  const t=chain.find(Boolean); if(t) return t;
-  const f=normalizeText(handoverFallback||'').replace(/\s*\(인수인계 기재\)$/,'');
-  if(f&&f!=='-'&&f!=='확인 필요') return `${f} (인수인계 기재)`;
-  return '확인 필요';
+// "누가 작성해야 하는가" — 환자의 담당 치료사 전원이 아니라, 그 항목에서 작성에 문제가 있는 치료사만 보여준다.
+//  · 치료별 미작성 / 전체 공란 / RM 오기입 / 미반영: 그 인수인계 행을 쓴 치료사(인수인계에 적힌 치료사)
+//  · 미등록(인수인계 기록 자체가 없음): 작업치료현황의 작업·연하·인지 치료사 전원(치료 종류와 함께) — 아무도 안 썼으므로
+//  인수인계에 치료사가 안 적혀 있으면 작업치료현황(치료 종류가 있으면 그 종류의 치료사)으로 보충하고, 그래도 없으면 "확인 필요".
+function grandTherapistKinds(name){
+  const p={name:name||''};
+  return [['작업',grandOtTherapistText(p)],['연하',grandSwallowTherapistText(p)],['인지',grandCogTherapistText(p)]].filter(x=>x[1]);
+}
+function grandWhoLabel(name,{writers,treatment}={}){
+  const w=[...new Set((writers||[]).flatMap(x=>String(x||'').split('/')).map(x=>normalizeText(x).replace(/\s*\(인수인계 기재\)$/,'')).filter(x=>x&&x!=='-'&&x!=='확인 필요'))];
+  if(w.length) return w.join(' / ');
+  const kinds=grandTherapistKinds(name);
+  if(treatment){ const core=treatmentCore(treatment), want=core==='swallow'?'연하':core==='cog'?'인지':'작업', hit=kinds.find(k=>k[0]===want); if(hit) return hit[1]; }
+  if(kinds.length===1) return kinds[0][1];
+  return kinds.length?kinds.map(([k,t])=>`${k} ${t}`).join(' · '):'확인 필요';
+}
+// "작성 확인 필요 치료사 · 엄주용 2 · 하승유 1" — 항목들의 치료사 문구에서 이름별 건수를 센다(치료 종류 표시는 떼고).
+function grandWhoSummary(whoTexts){
+  const cnt=new Map();
+  for(const t of whoTexts) for(const n of String(t||'').split(/\s*(?:\/|·)\s*/).map(x=>x.replace(/^(작업|연하|인지)\s+/,'').trim()).filter(Boolean)) cnt.set(n,(cnt.get(n)||0)+1);
+  return [...cnt.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko')).map(([n,c])=>`${n} ${c}`).join(' · ');
 }
 // updateGrandHandoverStatus()와 같은 매칭 로직을 스코프된(선택 RM) 환자 목록 기준으로 계산해
 // 등록 시점의 미반영·미작성 명단을 이름+담당치료사와 함께 스냅샷으로 저장한다.
@@ -1197,12 +1208,12 @@ function grandArchiveComputeIssues(scoped,rm){
   });
   const missing=scoped.filter(p=>!grandHandoverMap.has(grandHandoverKey(p.rm,p.name)));
   const matched=records.filter(x=>currentKeys.has(grandHandoverKey(x.rm,x.name)));
-  const unmatchedList=unmatched.map(x=>({name:x.name,therapist:grandTherapistLabel(x.name,[...new Set(grandHandoverEntries(x).map(e=>e.therapist).filter(Boolean))].join(' / '))}));
-  const notWrittenList=missing.map(p=>({name:p.name,therapist:grandTherapistLabel(p.name,''),missing:'전체'}));
+  const unmatchedList=unmatched.map(x=>({name:x.name,therapist:grandWhoLabel(x.name,{writers:grandHandoverEntries(x).map(e=>e.therapist)})}));
+  const notWrittenList=missing.map(p=>({name:p.name,therapist:grandWhoLabel(p.name),missing:'전체'}));
   const partialList=[];
   for(const rec of matched) for(const e of grandHandoverEntries(rec)){
     const miss=[]; if(!normalizeText(e.goal)) miss.push('Goal'); if(!normalizeText(e.rounding)) miss.push('그랜드라운딩');
-    if(miss.length) partialList.push({name:rec.name,therapist:grandTherapistLabel(rec.name,e.therapist,e.treatment),treatment:e.treatment||'',missing:miss.join('+')});
+    if(miss.length) partialList.push({name:rec.name,therapist:grandWhoLabel(rec.name,{writers:[e.therapist],treatment:e.treatment}),treatment:e.treatment||'',missing:miss.join('+')});
   }
   return {unmatched:unmatchedList,notWritten:[...notWrittenList,...partialList]};
 }
@@ -1215,7 +1226,8 @@ function grandArchiveStatusHtml(issues){
 }
 function grandArchiveGroupHtml(cls,title,items,pillCls,pillText){
   if(!items.length) return `<div class="grp ${cls}"><div class="ttl">${xmlEscape(title)}</div><div class="ga-empty">없음</div></div>`;
-  const rows=items.map(x=>`<div class="ga-prow"><span class="pname">${xmlEscape(x.name)}</span><span class="ptherapist">담당: ${xmlEscape(grandTherapistLabel(x.name,x.therapist,x.treatment))}</span><span class="ga-pill ${pillCls}">${xmlEscape(x.missing?`${x.missing} 미작성`:pillText)}</span></div>`).join('');
+  const whoOf=(x)=>{ const stored=grandWhoLabel(x.name,{writers:[x.therapist],treatment:x.treatment}); if(x.missing!=='전체') return stored; const now=grandWhoLabel(x.name); return now!=='확인 필요'?now:stored; };
+  const rows=items.map(x=>`<div class="ga-prow"><span class="pname">${xmlEscape(x.name)}</span><span class="ptherapist">작성: ${xmlEscape(whoOf(x))}${x.treatment?` · ${xmlEscape(x.treatment)}`:''}</span><span class="ga-pill ${pillCls}">${xmlEscape(x.missing?`${x.missing} 미작성`:pillText)}</span></div>`).join('');
   return `<div class="grp ${cls}"><div class="ttl">${xmlEscape(title)} · ${items.length}명</div><div class="ga-plist">${rows}</div></div>`;
 }
 function updateGrandArchiveSelectionUi(){
@@ -1250,6 +1262,7 @@ async function renderGrandArchiveList(){
         </span>
       </div>
       <div class="ga-row-detail" style="display:none">
+        ${(()=>{ const who=grandWhoSummary([...issues.unmatched,...issues.notWritten].map(x=>(x.missing==='전체'&&grandWhoLabel(x.name)!=='확인 필요')?grandWhoLabel(x.name):grandWhoLabel(x.name,{writers:[x.therapist],treatment:x.treatment}))); return who?`<div class="ga-who">작성 확인 필요 치료사 · ${xmlEscape(who)}</div>`:''; })()}
         <div class="ga-detail-cols">
           ${grandArchiveGroupHtml('red','미반영 · 확인 필요 (전원·퇴원 가능)',issues.unmatched,'unsure','확인필요(퇴원·전원)')}
           ${grandArchiveGroupHtml('amber','미등록 (인수인계 기록 없음)',issues.notWritten.filter(x=>x.missing==='전체'),'missing','미등록')}
@@ -1988,8 +2001,10 @@ function updateGrandHandoverStatus(){
   const unmatched=records.filter(x=>!currentKeys.has(grandHandoverKey(x.rm,x.name)));
   const missing=current.filter(p=>!grandHandoverMap.has(grandHandoverKey(p.rm,p.name)));
   const missingClassified=missing.map(p=>({p,...grandHandoverMissingDetail(p)}));
-  const withT=(name,fb,tr)=>`${name} · 담당 ${grandTherapistLabel(name,fb,tr)}`; // 어느 목록이든 같은 환자는 같은 담당자명(작업치료현황 기준)
-  const notWritten=missingClassified.filter(x=>x.type==='notWritten').map(x=>withT(x.p.name,''));
+  const writersOf=(rec)=>grandHandoverEntries(rec).map(e=>e.therapist);
+  const whoTexts=[]; // 작성 확인 필요 치료사 요약용
+  const withT=(name,who)=>{ whoTexts.push(who); return `${name} · 작성 ${who}`; }; // 환자 담당 전원이 아니라 작성에 문제 있는 치료사만
+  const notWritten=missingClassified.filter(x=>x.type==='notWritten').map(x=>withT(x.p.name,grandWhoLabel(x.p.name)));
   const rmMismatch=missingClassified.filter(x=>x.type==='rmMismatch');
   const empty=matched.filter(x=>!grandHandoverHasAnyContent(x));
   const partial=grandHandoverPartialItems(matched);
@@ -1997,16 +2012,17 @@ function updateGrandHandoverStatus(){
   st.className=`grand-handover-status ${hasWarn?'warn':'ok'}`;
   st.textContent=`${grandHandoverFileName} · ${grandHandoverSheetName||'인수인계'} · ${rm==='ALL'?'전체 RM':rm} · 인수인계 ${records.length}명 / 현재 환자 ${matched.length}명 매칭 · 치료행 ${matched.reduce((n,x)=>n+grandHandoverEntries(x).length,0)}건`;
   const groups=[
-    grandHandoverGroupHtml('unmatched','미반영 · 확인 필요 (퇴원·전원 가능)',unmatched.map(x=>withT(x.name,[...new Set(grandHandoverEntries(x).map(e=>e.therapist).filter(Boolean))].join(' / ')))),
+    grandHandoverGroupHtml('unmatched','미반영 · 확인 필요 (퇴원·전원 가능)',unmatched.map(x=>withT(x.name,grandWhoLabel(x.name,{writers:writersOf(x)})))),
     grandHandoverGroupHtml('notwritten','미등록 (인수인계 기록 없음)',notWritten),
-    grandHandoverGroupHtml('rmmismatch','RM 오기입 의심',rmMismatch.map(x=>`${withT(x.p.name,'')} (환자 RM: ${x.p.rm||'-'} · 인수인계엔 ${x.foundRm||'-'}로 기입됨)`)),
-    grandHandoverGroupHtml('empty','매칭됐지만 전체 공란 (미작성)',empty.map(x=>withT(x.name,grandHandoverEntries(x).map(e=>e.therapist).filter(Boolean).join(' / ')))),
-    grandHandoverGroupHtml('partial','치료별 일부 미작성',partial.map(x=>`${withT(x.name,x.therapist,x.treatment)} (${normalizeText(x.treatment)||'인수인계'} · ${x.missing} 미작성)`) /* 괄호엔 치료 종류만 — 담당자명은 앞의 한 곳(작업치료현황 기준)에서만 보여준다 */),
+    grandHandoverGroupHtml('rmmismatch','RM 오기입 의심',rmMismatch.map(x=>`${withT(x.p.name,grandWhoLabel(x.p.name,{writers:writersOf(grandHandoverData(x.p)||{})}))} (환자 RM: ${x.p.rm||'-'} · 인수인계엔 ${x.foundRm||'-'}로 기입됨)`)),
+    grandHandoverGroupHtml('empty','매칭됐지만 전체 공란 (미작성)',empty.map(x=>withT(x.name,grandWhoLabel(x.name,{writers:writersOf(x)})))),
+    grandHandoverGroupHtml('partial','치료별 일부 미작성',partial.map(x=>`${withT(x.name,grandWhoLabel(x.name,{writers:[x.therapist],treatment:x.treatment}))} (${normalizeText(x.treatment)||'인수인계'} · ${x.missing} 미작성)`) /* 괄호엔 치료 종류만 — 담당자명은 앞의 한 곳(작업치료현황 기준)에서만 보여준다 */),
   ].join('');
   box.style.display='block';
   if(!groups){ box.className='grand-handover-summary ok'; box.textContent='선택한 주치의의 현재 환자와 인수인계 치료행이 모두 매칭되었고 Goal·그랜드라운딩도 모두 작성되어 있습니다.'; return; }
   box.className=`grand-handover-summary grand-handover-groups ${hasWarn?'warn':'ok'}`;
-  box.innerHTML=groups;
+  const whoSum=grandWhoSummary(whoTexts);
+  box.innerHTML=(whoSum?`<div class="ga-who">작성 확인 필요 치료사 · ${xmlEscape(whoSum)}</div>`:'')+groups;
 }
 async function handleGrandHandoverFile(file){
   if(!file) return; const st=document.getElementById('grandHandoverStatus');

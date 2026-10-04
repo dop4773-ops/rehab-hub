@@ -19,8 +19,8 @@ vm.runInContext([
   grab('function grandOtTherapistText', 'function grandSwallowTherapistText'),
   grab('function grandSwallowTherapistText', 'function grandCogTherapistText'),
   grab('function grandCogTherapistText', '\n\nfunction'),
-  grab('function grandTherapistLabel', '// updateGrandHandoverStatus()'),
-  'this.info=grandLanguageInfo; this.label=grandTherapistLabel; this.maps={ot:grandOtTherapistMap,sw:grandSwallowTherapistMap,cg:grandCogTherapistMap};',
+  grab('function grandTherapistKinds', '// updateGrandHandoverStatus()'),
+  'this.info=grandLanguageInfo; this.who=grandWhoLabel; this.sum=grandWhoSummary; this.maps={ot:grandOtTherapistMap,sw:grandSwallowTherapistMap,cg:grandCogTherapistMap};',
 ].join('\n'), ctx);
 
 const pt = (floor, primary, treatments) => ({ floor, primary, schedule: { 월요일: Object.fromEntries(treatments.map((t, i) => [`0${i}:00`, { treatment: t, floor }])) } });
@@ -41,17 +41,24 @@ assert.strictEqual(floors(pt(10, '', ['언어치료'])), '["10F"]', '주 치료�
 assert.strictEqual(floors(pt(10, '10층 치료실', ['(3층)언어치료', '언어치료(10F)'])), '["10F","3F"]', '두 층 모두면 둘 다(레거시와 같은 문자열 정렬)');
 console.log('OK ② 층 판단 순서');
 
-// ③ 담당 치료사 단일 기준: 작업치료현황 → 인수인계(보조 표시) → 확인 필요
+// ③ 작성 확인 필요 치료사: 항목에서 작성에 문제가 있는 치료사만(환자 담당 전원 아님)
 ctx.maps.ot.set('홍길동', ['김가나', '이다라']);
-ctx.maps.sw.set('최연하', ['박마바']);
-assert.strictEqual(ctx.label('홍길동', '다른사람'), '김가나 / 이다라', '작업치료현황이 있으면 인수인계 값은 쓰지 않는다');
-assert.strictEqual(ctx.label('홍길동', '', 'SOT'), '김가나 / 이다라');
-assert.strictEqual(ctx.label('최연하', ''), '박마바', '작업치료사가 없으면 연하 치료사');
-assert.strictEqual(ctx.label('최연하', '', '연하치료'), '박마바', '연하 치료행은 연하 치료사 우선');
-assert.strictEqual(ctx.label('없는환자', '사아자'), '사아자 (인수인계 기재)', '현황에 없으면 인수인계 값을 보조로 표시');
-assert.strictEqual(ctx.label('없는환자', '사아자 (인수인계 기재)'), '사아자 (인수인계 기재)', '표시가 중복으로 붙지 않는다');
-assert.strictEqual(ctx.label('없는환자', '-'), '확인 필요');
-assert.strictEqual(ctx.label('없는환자', '확인 필요'), '확인 필요');
-console.log('OK ③ 담당 치료사 표기 단일 기준');
+ctx.maps.sw.set('홍길동', ['박마바']);
+ctx.maps.ot.set('최작업', ['정사아']);
+assert.strictEqual(ctx.who('홍길동', { writers: ['엄주용'], treatment: 'RDT' }), '엄주용', '미작성 행을 쓴 치료사만 — 환자 담당 전원이 아니다');
+assert.strictEqual(ctx.who('홍길동', { writers: ['엄주용 / 하승유'] }), '엄주용 / 하승유');
+assert.strictEqual(ctx.who('홍길동', { writers: ['엄주용 (인수인계 기재)'] }), '엄주용', '예전 보조 표시는 떼어낸다');
+assert.strictEqual(ctx.who('홍길동', { writers: [''], treatment: '연하치료' }), '박마바', '쓴 사람이 없으면 그 치료 종류의 치료사만');
+assert.strictEqual(ctx.who('홍길동', { writers: [''], treatment: 'SOT' }), '김가나 / 이다라');
+assert.strictEqual(ctx.who('홍길동'), '작업 김가나 / 이다라 · 연하 박마바', '미등록: 아무도 안 썼으므로 치료 종류별 치료사 전원');
+assert.strictEqual(ctx.who('최작업'), '정사아', '치료 종류가 하나뿐이면 종류 표시 없이');
+assert.strictEqual(ctx.who('없는환자', { writers: ['-'] }), '확인 필요');
+console.log('OK ③ 작성 확인 필요 치료사 표기');
+
+// ④ 치료사별 건수 요약
+const sm = ctx.sum(['엄주용', '엄주용 / 하승유', '작업 김가나 / 이다라 · 연하 박마바']);
+assert(sm.startsWith('엄주용 2'), '많이 빠뜨린 치료사가 맨 앞');
+assert(/하승유 1/.test(sm) && /박마바 1/.test(sm) && !/작업|연하/.test(sm), '치료 종류 표시는 이름 집계에서 제외');
+console.log('OK ④ 치료사별 건수 요약');
 
 console.log('ALL PASS');
