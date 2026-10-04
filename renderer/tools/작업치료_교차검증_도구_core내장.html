@@ -461,6 +461,11 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
         <button data-hsource="orphan">근거 없음</button>
         <button data-hsource="excess">작성자 수 초과</button>
       </div>
+      <div class="seg" id="roomSourceSeg" style="display:none">
+        <button class="active" data-rsource="all">전체</button>
+        <button data-rsource="mismatch">병실 다름</button>
+        <button data-rsource="nopta">PTA에 없음</button>
+      </div>
       <div class="right">
         <div class="seg" id="viewSeg">
           <button class="active" data-view="type">문제 유형별</button>
@@ -1134,7 +1139,7 @@ const FILES_META = [
 ];
 const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null, table10Book:null, mt3Book:null, handoverBook:null, ptaBook:null, handoverLiveList:null, handoverLiveOk:false, dateSheetOf:{} };
 let handoverLiveFetchPromise=null; // 검증 실행 전 이 fetch가 끝나길 기다려서, 타이밍에 따라 인수인계 인식이 됐다 안 됐다 하는 걸 막는다
-let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentView='type', currentPage=1;
+let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentRSource='all', currentView='type', currentPage=1;
 let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
 let previewSaturday={occs:[], weekdayCode:new Map()};
 let previewWeekdayErdt={erdt:[], ccrt:[]};
@@ -2927,11 +2932,12 @@ async function handleRun(){
     document.getElementById('resultEmpty').style.display='none';
     document.getElementById('resultBody').style.display='block';
     document.getElementById('mainArea').style.display='block';
-    currentCat='all'; currentFloor='all'; currentField='all'; currentSource='all'; currentHSource='all'; currentPage=1; selectedIssueId=null;
+    currentCat='all'; currentFloor='all'; currentField='all'; currentSource='all'; currentHSource='all'; currentRSource='all'; currentPage=1; selectedIssueId=null;
     document.querySelectorAll('#catSeg button').forEach(b=>b.classList.toggle('active', b.dataset.cat==='all'));
     document.getElementById('fieldSeg').style.display='none';
     document.getElementById('locSourceSeg').style.display='none';
     document.getElementById('handoverSourceSeg').style.display='none';
+    document.getElementById('roomSourceSeg').style.display='none';
     document.querySelectorAll('.floor-row2').forEach(el=>el.classList.toggle('active', el.dataset.floor==='all'));
     applyFilters();
   }catch(err){
@@ -2991,6 +2997,10 @@ function renderDashboard(stats, floorCount){
   document.getElementById('chipRoom').textContent = stats.roomProblems||0;
   const roomCounts={mismatch:0, nopta:0};
   issues.filter(i=>i.category==='room').forEach(i=>{ if(roomCounts[i.source]!=null) roomCounts[i.source]++; });
+  document.querySelectorAll('#roomSourceSeg button').forEach(b=>{
+    const k=b.dataset.rsource;
+    b.textContent = k==='all' ? `전체 ${stats.roomProblems||0}` : `${ROOM_BADGE_LABEL[k]} ${roomCounts[k]}`;
+  });
   document.getElementById('chipRoomBreak').innerHTML = state.ptaBook ? `<span>병실 다름 ${roomCounts.mismatch}</span><span>PTA에 없음 ${roomCounts.nopta}</span>` : '<span>PTA 재원현황 파일 없음</span>';
 
   const f10=(floorCount[10]||0), f3=(floorCount[3]||0), fAll=f10+f3;
@@ -3009,13 +3019,15 @@ function renderDashboard(stats, floorCount){
 document.getElementById('catSeg').addEventListener('click', e=>{
   const btn=e.target.closest('button'); if(!btn) return;
   document.querySelectorAll('#catSeg button').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); currentCat=btn.dataset.cat; currentField='all'; currentSource='all'; currentHSource='all'; currentPage=1;
+  btn.classList.add('active'); currentCat=btn.dataset.cat; currentField='all'; currentSource='all'; currentHSource='all'; currentRSource='all'; currentPage=1;
   document.getElementById('fieldSeg').style.display = currentCat==='count' ? 'flex' : 'none';
   document.getElementById('locSourceSeg').style.display = currentCat==='location' ? 'flex' : 'none';
   document.getElementById('handoverSourceSeg').style.display = currentCat==='handover' ? 'flex' : 'none';
+  document.getElementById('roomSourceSeg').style.display = currentCat==='room' ? 'flex' : 'none';
   document.querySelectorAll('#fieldSeg button').forEach(b=>b.classList.toggle('active', b.dataset.field==='all'));
   document.querySelectorAll('#locSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.source==='all'));
   document.querySelectorAll('#handoverSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.hsource==='all'));
+  document.querySelectorAll('#roomSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.rsource==='all'));
   applyFilters();
 });
 document.getElementById('fieldSeg').addEventListener('click', e=>{
@@ -3033,6 +3045,11 @@ document.getElementById('handoverSourceSeg').addEventListener('click', e=>{
   document.querySelectorAll('#handoverSourceSeg button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active'); currentHSource=btn.dataset.hsource; currentPage=1; applyFilters();
 });
+document.getElementById('roomSourceSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#roomSourceSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentRSource=btn.dataset.rsource; currentPage=1; applyFilters();
+});
 document.getElementById('viewSeg').addEventListener('click', e=>{
   const btn=e.target.closest('button'); if(!btn) return;
   document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.remove('active'));
@@ -3045,14 +3062,16 @@ document.getElementById('floorList').addEventListener('click', e=>{
 });
 document.querySelectorAll('.cat-chip').forEach(chip=>{
   chip.addEventListener('click', ()=>{
-    currentCat=chip.dataset.cat; currentField='all'; currentSource='all'; currentHSource='all'; currentPage=1;
+    currentCat=chip.dataset.cat; currentField='all'; currentSource='all'; currentHSource='all'; currentRSource='all'; currentPage=1;
     document.querySelectorAll('#catSeg button').forEach(b=>b.classList.toggle('active', b.dataset.cat===currentCat));
     document.getElementById('fieldSeg').style.display = currentCat==='count' ? 'flex' : 'none';
     document.getElementById('locSourceSeg').style.display = currentCat==='location' ? 'flex' : 'none';
     document.getElementById('handoverSourceSeg').style.display = currentCat==='handover' ? 'flex' : 'none';
+    document.getElementById('roomSourceSeg').style.display = currentCat==='room' ? 'flex' : 'none';
     document.querySelectorAll('#fieldSeg button').forEach(b=>b.classList.toggle('active', b.dataset.field==='all'));
     document.querySelectorAll('#locSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.source==='all'));
     document.querySelectorAll('#handoverSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.hsource==='all'));
+    document.querySelectorAll('#roomSourceSeg button').forEach(b=>b.classList.toggle('active', b.dataset.rsource==='all'));
     applyFilters();
   });
 });
@@ -3073,6 +3092,7 @@ function applyFilters(){
   if(currentCat==='count' && currentField!=='all') list=list.filter(i=>i.field===currentField);
   if(currentCat==='location' && currentSource!=='all') list=list.filter(i=>i.source===currentSource);
   if(currentCat==='handover' && currentHSource!=='all') list=list.filter(i=>i.source===currentHSource);
+  if(currentCat==='room' && currentRSource!=='all') list=list.filter(i=>i.source===currentRSource);
   if(currentFloor!=='all') list=list.filter(i=>String(i.floor)===currentFloor);
   const q=normKey(document.getElementById('searchInput').value.trim());
   if(q) list=list.filter(i=>i.searchText.includes(q));
