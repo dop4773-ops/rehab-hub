@@ -15,6 +15,8 @@ function entryId(dateKey, rm) {
   return `${dateKey}__${slugRm(rm)}`;
 }
 function fileFor(storeDir, id) {
+  // 렌더러가 넘긴 id로 보관 폴더 밖의 파일을 읽거나 지우지 못하게 한다(경로 구분자·상위 폴더 표기 거부).
+  if (typeof id !== 'string' || !id || /[\\/]|\.\./.test(id)) throw new Error('올바르지 않은 보관 항목입니다.');
   return path.join(storeDir, `${id}.json`);
 }
 
