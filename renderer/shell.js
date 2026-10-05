@@ -540,8 +540,7 @@ const FILES_CSS = {
   rm: 'body.rh-collapsed .upload-grid,body.rh-collapsed .grand-pt-upload{display:none!important}'
     + 'body.rh-collapsed section.panel:has(.upload-grid)>.panel-head{display:none!important}body.rh-collapsed section.panel:has(.upload-grid)>.panel-body{padding:8px 18px!important}body.rh-collapsed #statusLine{margin:0!important}'
     + 'body.rh-collapsed .grand-ot-upload>:not(#grandHandoverStatus):not(#grandHandoverMatchSummary):not(#grandHandoverRefreshBtn){display:none!important}',
-  acting: '#dropZone{min-height:0!important;padding:12px!important}#dropZone .upload-ico{display:none}' // 접었든 펼쳤든 업로드 칸은 작게
-    + 'body.rh-collapsed #dropZone,body.rh-collapsed #msDropZone,body.rh-collapsed #dcDropZone,body.rh-collapsed #dcFolderPickBtn,body.rh-collapsed label[for=dcFileInput]{display:none!important}',
+  acting: 'body.rh-collapsed #dropZone,body.rh-collapsed #msDropZone,body.rh-collapsed #dcDropZone,body.rh-collapsed #dcFolderPickBtn,body.rh-collapsed label[for=dcFileInput]{display:none!important}',
   cross: 'body.rh-collapsed #prepPanel:not(:has(.prep-badge.err)){display:none!important}body.rh-collapsed .toprow{grid-template-columns:1fr 260px!important}'
     + '@media(max-width:1400px){body.rh-collapsed .toprow{grid-template-columns:1fr!important}}',
 };

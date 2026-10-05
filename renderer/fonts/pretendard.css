@@ -1,0 +1,11 @@
+/* 모든 화면(셸·그랜드라운딩·치료기록 QA·교차검증·인수인계)이 같이 쓰는 글꼴 — 잇다와 같은 Pretendard Variable을 앱에 넣어 둔 파일로 로드(인터넷 필요 없음).
+   입력창·버튼·선택창도 같은 글꼴을 쓰게 해서 화면마다 글씨체가 달라 보이지 않게 한다. */
+@font-face{
+  font-family:"Pretendard Variable";
+  src:url("PretendardVariable.woff2") format("woff2-variations"), url("PretendardVariable.woff2") format("woff2");
+  font-weight:45 920;
+  font-style:normal;
+  font-display:swap;
+}
+html,body{font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Malgun Gothic","맑은 고딕",sans-serif!important}
+button,input,select,textarea,optgroup{font-family:inherit!important}
