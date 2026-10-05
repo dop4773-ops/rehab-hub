@@ -273,8 +273,8 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
   </section>
 
   <section class="panel" id="statsPanel" style="display:none">
-    <div class="panel-head"><h2><span class="step">2</span>분석 결과</h2><div id="rmMini" class="legend"></div></div>
-    <div class="panel-body"><div class="stats">
+    <div class="panel-head"><h2><span class="step">2</span>분석 결과</h2><div id="rmMini" class="legend"></div><button type="button" class="btn small" id="statsToggle">펼치기 ▾</button></div>
+    <div class="panel-body" id="statsBody" style="display:none"><div class="stats">
       <div class="stat"><div class="label">최종 환자</div><div class="value" id="stPatients">0</div></div>
       <div class="stat"><div class="label">원본 환자카드</div><div class="value" id="stCards">0</div></div>
       <div class="stat"><div class="label">3층 환자</div><div class="value" id="st3">0</div></div>
@@ -2538,6 +2538,8 @@ async function grandItdaLoad(){
   list.onclick=ev=>{ const b=ev.target.closest('.grand-itda-chip'); if(b) grandItdaApply(r.events[+b.dataset.i],b); };
 }
 document.getElementById('grandItdaBtn').addEventListener('click',grandItdaLoad);
+// 2. 분석 결과는 기본으로 접어 둔다(RM별 인원은 머리글 오른쪽에 그대로 보임)
+document.getElementById('statsToggle').addEventListener('click',()=>{ const b=document.getElementById('statsBody'), open=b.style.display==='none'; b.style.display=open?'':'none'; document.getElementById('statsToggle').textContent=open?'접기 ▴':'펼치기 ▾'; });
 document.getElementById('grandArchiveSaveBtn').addEventListener('click',grandArchiveSave);
 grandArchiveWireBatchBar();
 grandDateInput.addEventListener('change',async()=>{ const d=grandDateToDay(grandDateInput.value); if(d) grandDaySel.value=d; if(grandOtBook) await rebuildGrandOtTherapistMap(); if(grandPtBooks[10]||grandPtBooks[3]) await rebuildGrandPtTherapistMap(); renderGrandTable(); });

@@ -90,6 +90,7 @@ body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont
 .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
 .btn.green{background:var(--green);color:#fff;border-color:var(--green)}
 .btn.purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn.teal{background:#0e8a8a;color:#fff;border-color:#0e8a8a}
 .btn:disabled{opacity:.5;cursor:default}
 .status-line{font-size:11px;color:var(--sub);margin-top:8px}
 
@@ -118,8 +119,8 @@ body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont
 .badge.green{background:#e6f5ec;color:var(--green)}
 
 /* ── 빠른 실행 ─────────────────────────────────────────── */
-.quick-list{display:flex;flex-direction:column;gap:8px}
-.quick-list button{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;padding:11px 13px}
+.quick-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quick-list button{display:flex;align-items:center;width:100%;text-align:left;padding:12px 13px}
 .quick-list button .arrow{opacity:.85}
 
 /* ── 기능 카드(4열) ────────────────────────────────────── */
