@@ -28,7 +28,7 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     const step = async (name, fn) => { try { const r = await fn(); console.log('✓', name, r === undefined ? '' : JSON.stringify(r).slice(0, 220)); } catch (e) { add('STEP-FAIL', name + ': ' + e.message); console.log('✕', name, e.message); } };
     // 홈/데이터/설정/보고서
     for (const k of ['home', 'data', 'settings', 'report']) await step('화면 ' + k, async () => { await nav(k); return await ev(`document.querySelector('.view.active').dataset.view`); });
-    await step('홈 새로고침/스캔 버튼', async () => { await nav('home'); await ev(`document.getElementById('homeRefreshBtn')?.click(); 1`); await sleep(1500); return await ev(`document.getElementById('homeAlerts').innerText.slice(0,80)`); });
+    await step('홈 새로고침/스캔 버튼', async () => { await nav('home'); await ev(`document.getElementById('homeScanBtn')?.click(); 1`); await sleep(1500); return await ev(`document.getElementById('homeTodo').innerText.slice(0,80)`); });
     await step('동기화 주기 변경 후 복구', async () => { await nav('settings'); await ev(`document.querySelector('input[name=syncMode][value="10"]').click(); 1`); const s = await ev(`localStorage.getItem('rehab_sync_mode')`); await ev(`document.querySelector('input[name=syncMode][value="launch"]').click(); 1`); return s; });
     // 그랜드라운딩
     await nav('rm'); await sleep(6000);

@@ -1802,6 +1802,7 @@ async function runAllVerifications(){
     issueCount: issues.length,
     checkedTotal: countChecked+locChecked+therChecked+handoverChecked+evalChecked+roomChecked,
     problemTotal: countProblems+locProblems+therProblems+handoverProblems+evalProblems+roomProblems,
+    cats: issues.reduce((m,i)=>{ m[i.category]=(m[i.category]||0)+1; return m; },{}), // 홈 "오늘 할 일"의 분류별 건수
   };
   return {
     stats:{countChecked,countProblems,locChecked,locProblems,therChecked,therProblems,handoverChecked,handoverProblems,evalChecked,evalProblems,roomChecked,roomProblems},

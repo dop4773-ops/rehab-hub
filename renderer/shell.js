@@ -323,7 +323,7 @@ function showView(key) {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.dataset.view === key));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.nav === key));
   ensureToolLoaded(key);
-  if (key === 'home') renderHome();
+  if (key === 'home') { renderHome(); loadHomeGrandEvent(); }
   if (key === 'data') renderDataView();
   if (key === 'settings') renderSettingsView();
   if (key === 'report') renderReportView();
@@ -365,21 +365,6 @@ function roleInfo(role) {
   };
 }
 
-function fileChecklistHtml() {
-  return fileRoles.map(r => {
-    // 인수인계는 그랜드라운딩·교차검증이 폴더의 파일 없이도 실시간 조회로 자동으로 가져온다 —
-    // 폴더 스캔 결과("미발견")로 표시하면 항상 안 찾아진 것처럼 보여 혼란을 준다.
-    if (r.key === 'handover') {
-      return `<div class="file-card"><span class="ico">🌐</span><div class="info"><div class="n">${r.label}</div><div class="m">실시간 자동연동</div></div><span class="st ok">정상</span></div>`;
-    }
-    const i = roleInfo(r.key);
-    const times = i.entries.length
-      ? `${i.entries.length > 1 ? i.entries.length + '개 파일 · ' : ''}수정 ${fmtTime(i.modified)}${i.reflectedAt ? ' · 반영 ' + fmtTime(i.reflectedAt) : ''}`
-      : (lastScan ? '아직 못 찾음' : '확인 중…');
-    return `<div class="file-card"><span class="ico">📊</span><div class="info"><div class="n">${r.label}${r.required ? '' : ' <span class="muted">(선택)</span>'}</div><div class="m" title="${i.error}">${times}</div></div><span class="st ${STATE_CLASS[i.state]}">${RehabSync.STATE_LABEL[i.state]}</span></div>`;
-  }).join('');
-}
-
 function renderActivity() {
   const body = document.getElementById('activityBody');
   if (!body) return;
@@ -419,38 +404,104 @@ function wireItdaPushButtons() {
   });
 }
 
-function renderHome() {
-  document.getElementById('homeFileList').innerHTML = fileChecklistHtml();
+// ── 홈 ─────────────────────────────────────────────────────
+let homeGrandEvent = null, homeGrandAt = 0;
+async function loadHomeGrandEvent() { // 잇다의 다가오는 그랜드라운딩 일정 한 건(읽기 전용). 잇다가 없으면 조용히 넘어간다.
+  if (Date.now() - homeGrandAt < 60 * 1000) return;
+  homeGrandAt = Date.now();
+  try { const r = await window.rehab.itda.grandEvents(); homeGrandEvent = r && r.ok && r.events.length ? r.events[0] : null; } catch (e) { homeGrandEvent = null; }
+  renderHome();
+}
+async function applyHomeGrandEvent() {
+  const ev = homeGrandEvent; if (!ev) return;
+  showView('rm');
+  const win = () => document.querySelector('iframe[data-tool="rm"]').contentWindow;
+  for (let i = 0; i < 80; i++) { try { if (win().grandItdaApply && win().document.getElementById('grandItdaMsg')) break; } catch (e) { /* 아직 로드 중 */ } await new Promise(r => setTimeout(r, 250)); }
+  try { win().grandItdaApply(ev, null); } catch (e) { /* 화면이 준비되지 않았으면 직접 선택 */ }
+}
+const chipHtml = (cls, text, small = '') => `<span class="chip ${cls}"><i></i>${text}${small ? `<small>${small}</small>` : ''}</span>`;
+const todoHtml = (cls, icon, title, detail, buttons) => `<div class="todo ${cls}"><span class="ic">${icon}</span><div class="tx"><b>${title}</b><div class="muted">${detail}</div></div><span class="bt">${buttons}</span></div>`;
+const fmtDay = (iso) => { const d = new Date(iso + 'T00:00:00'), t = new Date(); t.setHours(0, 0, 0, 0); const wd = d.toLocaleDateString('ko-KR', { weekday: 'short' }); return d.getTime() === t.getTime() ? `오늘(${wd})` : `${d.getMonth() + 1}/${d.getDate()}(${wd})`; };
+const CROSS_CAT_LABEL = { count: '개수', location: '위치', therapist: '치료사', handover: '인수인계', eval: '평가메인', room: 'PTA 대조' };
 
+function handoverCacheStats() {
+  try {
+    const o = JSON.parse(localStorage.getItem('rehab_handover_cache_v1')); if (!o || !Array.isArray(o.records)) return null;
+    const week = Date.now() - 7 * 24 * 3600 * 1000;
+    return { total: o.records.length, recent: o.records.filter(r => r.modified && new Date(r.modified).getTime() >= week).length };
+  } catch (e) { return null; }
+}
+
+function renderHome() {
   const matched = (lastScan && lastScan.matched) || {};
-  const required = fileRoles.filter(r => r.required);
-  const requiredFound = required.filter(r => matched[r.key]).length;
-  const pct = required.length ? Math.round((requiredFound / required.length) * 100) : 0;
-  document.getElementById('homeDonut').style.background = lastScan ? `conic-gradient(var(--green) ${pct}%, var(--border) 0)` : '';
-  document.getElementById('homeDonutText').textContent = lastScan ? `${pct}%` : '-';
-  // 인수인계는 폴더 파일이 아니라 실시간 연동이라 "전체 파일" 분모/분자 어디에도 안 넣는다.
-  const localFileRoles = fileRoles.filter(r => r.key !== 'handover');
-  document.getElementById('homeChecklist').innerHTML = `
-    <div class="row"><span>필수 파일</span><b>${requiredFound}/${required.length}</b></div>
-    <div class="row"><span>전체 파일</span><b>${Object.keys(matched).length}/${localFileRoles.length}</b></div>`;
+  const localRoles = fileRoles.filter(r => r.key !== 'handover'); // 인수인계는 실시간 연동이라 파일 수에 넣지 않는다
+  const reqRoles = localRoles.filter(r => r.required), optRoles = localRoles.filter(r => !r.required);
+  const reqFound = reqRoles.filter(r => matched[r.key]).length, optFound = optRoles.filter(r => matched[r.key]).length;
+  const stateOf = (r) => roleStateOf(r.key);
+  const staleRoles = lastScan ? localRoles.filter(r => stateOf(r) === 'stale') : [], errRoles = lastScan ? localRoles.filter(r => stateOf(r) === 'error') : [];
+  const missReq = lastScan ? reqRoles.filter(r => !matched[r.key]) : [], missOpt = lastScan ? optRoles.filter(r => !matched[r.key]) : [];
 
   const summaries = {};
   for (const key of Object.keys(TOOLS)) {
-    const s = readToolSummary(key);
-    summaries[key] = s;
+    summaries[key] = readToolSummary(key);
     const boxesEl = document.getElementById(TOOLS[key].statBoxesElId);
-    if (boxesEl) boxesEl.innerHTML = TOOLS[key].statBoxes(s).map(b =>
-      `<div class="statbox ${b.cls}"><span class="num">${b.num}</span><span class="lbl">${b.lbl}</span></div>`).join('');
+    if (boxesEl) boxesEl.innerHTML = TOOLS[key].statBoxes(summaries[key]).map(b => `<div class="statbox ${b.cls}"><span class="num">${b.num}</span><span class="lbl">${b.lbl}</span></div>`).join('');
   }
-  const alerts = ALERT_ORDER.map(key => TOOLS[key].alertRow(summaries[key])).filter(Boolean);
-  const bk = backupAlertRow(); if (bk) alerts.push(bk);
-  document.getElementById('homeAlerts').innerHTML = alerts.join('') || '<div class="muted">화면을 열면 요약이 표시됩니다.</div>';
+  const cross = summaries.cross, acting = summaries.acting, bk = backupStatus;
+  const ho = handoverCacheStats();
+
+  // 1) 맨 위 한 줄 요약
+  const o = syncOverview(scanRoles());
+  const bkChip = !bk || bk.level === 'off' ? '' : bk.level === 'ok' ? chipHtml('ok', '백업 정상') : chipHtml('warn', bk.level === 'unknown' ? '백업 기록 없음' : '백업 확인 필요');
+  document.getElementById('homeBand').innerHTML = `<b class="band-title ${o.cls}">${o.cls === 'ok' ? '● 오늘 상태 정상' : o.text}</b>`
+    + chipHtml(!lastScan ? 'off' : missReq.length ? 'err' : 'ok', `필수 파일 ${reqFound}/${reqRoles.length}`, lastScan && !missReq.length ? '최신' : '')
+    + chipHtml(optFound ? 'ok' : 'off', `선택 파일 ${optFound}/${optRoles.length}`)
+    + (cross ? (cross.count ? chipHtml('warn', `교차검증 불일치 ${cross.count}건`) : chipHtml('ok', '교차검증 이상 없음')) : chipHtml('off', '교차검증 확인 전'))
+    + (acting && acting.count ? chipHtml('err', `치료기록 오류 ${acting.count}건`) : acting ? chipHtml('ok', '치료기록 오류 없음') : chipHtml('off', '치료기록 QA 파일 없음'))
+    + bkChip
+    + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span><button class="btn primary" id="homeScanBtn" data-sync-now>🔄 지금 업데이트</button>`;
+
+  // 2) 오늘 할 일(확인이 필요한 것만)
+  const itda = (content) => `<button class="btn" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>`;
+  const todos = [];
+  if (missReq.length) todos.push(todoHtml('err', '📦', `필수 파일 ${missReq.length}개를 못 찾았어요`, missReq.map(r => r.label).join(' · '), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
+  if (errRoles.length) todos.push(todoHtml('err', '⚠️', `읽기 오류 ${errRoles.length}개`, errRoles.map(r => r.label).join(' · '), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
+  if (staleRoles.length) todos.push(todoHtml('warn', '🔄', `업데이트 필요 ${staleRoles.length}개`, staleRoles.map(r => r.label).join(' · ') + ' — 파일이 바뀌었어요', '<button class="btn primary" data-sync-now>지금 업데이트</button>'));
+  if (cross && cross.count) {
+    const cats = cross.cats ? Object.keys(CROSS_CAT_LABEL).filter(k => cross.cats[k]).map(k => `${CROSS_CAT_LABEL[k]} ${cross.cats[k]}`).join(' · ') : '';
+    todos.push(todoHtml('warn', '🔍', `교차검증 불일치 ${cross.count}건`, cats || '자세한 내용은 교차검증 화면에서 확인하세요', `<button class="btn" data-open-fixplan>🛠 수정 지시서</button><button class="btn purple" data-goto="cross">열기 →</button>` + itda(`[교차검증] 불일치 ${cross.count}건 발견 — 재활치료부 앱에서 확인`)));
+  }
+  if (acting && acting.count) todos.push(todoHtml('err', '📋', `치료기록 오류 ${acting.count}건`, '치료기록 QA 화면에서 오류 목록을 확인하세요', '<button class="btn green" data-goto="acting">열기 →</button>' + itda(`[치료기록 QA] 치료기록 오류 ${acting.count}건 발견 — 재활치료부 앱에서 확인`)));
+  else if (!acting) todos.push(todoHtml('off', '📋', '치료기록 QA — 액팅 기록 파일을 올려 주세요', '담당자별 기록통계.xlsx를 올리면 오류를 바로 검사합니다.', '<button class="btn green" data-goto="acting">파일 올리기 →</button>'));
+  if (bk && bk.level !== 'ok' && bk.level !== 'off') todos.push(todoHtml('warn', '💾', bk.level === 'unknown' ? '백업 기록 없음' : '백업 확인 필요', bk.detail || bk.title || '', '<button class="btn" data-goto="backup">백업 상태 보기 →</button>' + itda(`[백업] ${bk.title}`)));
+  if (homeGrandEvent) todos.push(todoHtml('teal', '📅', `다가오는 그랜드라운딩 · ${fmtDay(homeGrandEvent.date)} ${homeGrandEvent.rm || homeGrandEvent.title}${homeGrandEvent.wards ? ' ' + homeGrandEvent.wards.replace(',', '·') + '병동' : ''}`, '잇다 일정에서 가져왔어요. 누르면 회차·RM·요일이 맞춰진 채로 열립니다.', '<button class="btn primary" data-grand-apply>설정 적용하고 열기 →</button>'));
+  document.getElementById('homeTodo').innerHTML = todos.join('') || '<div class="muted" style="padding:10px 2px">오늘 확인할 항목이 없어요 ✅</div>';
   wireItdaPushButtons();
 
-  const refreshNote = document.getElementById('homeRefreshNote');
-  if (refreshNote) refreshNote.textContent = lastScan ? `${lastSyncAt ? '마지막 동기화 ' + fmtTime(lastSyncAt, true) + ' · ' : ''}폴더 ${lastScan.folders.length}개 · ${Object.keys(matched).length}/${localFileRoles.length}개 파일 인식` : '아직 자동 불러오기를 하지 않았습니다.';
+  // 3) 파일 현황(문제 있는 것만)
+  const total = localRoles.length, found = Object.keys(matched).filter(k => localRoles.some(r => r.key === k)).length;
+  document.getElementById('homeDonut').style.background = lastScan ? `conic-gradient(var(--green) ${total ? Math.round(found / total * 100) : 0}%, var(--border) 0)` : '';
+  document.getElementById('homeDonutText').textContent = lastScan ? `${found}/${total}` : '-';
+  document.getElementById('homeChecklist').innerHTML = `
+    <div class="row"><span>필수 파일</span><b class="${missReq.length ? 'bad' : 'good'}">${reqFound}/${reqRoles.length}${missReq.length ? '' : ' ✔'}</b></div>
+    <div class="row"><span>선택 파일</span><b>${optFound}/${optRoles.length}</b></div>
+    <div class="row"><span>실시간 인수인계</span><b class="good">연동 ✔</b></div>`;
+  document.getElementById('homeFileChips').innerHTML = lastScan ? chipHtml(staleRoles.length ? 'warn' : 'off', `업데이트 필요 ${staleRoles.length}`) + chipHtml(errRoles.length ? 'err' : 'off', `읽기 오류 ${errRoles.length}`) : '';
+  document.getElementById('homeFileProblems').innerHTML = (missOpt.length
+    ? `<details class="miss-opt"><summary>파일 없음(선택) ${missOpt.length}개 <small>펼치기</small></summary><div>${missOpt.map(r => `<div>· ${r.label}</div>`).join('')}</div></details>` : '');
 
-  renderSysInfo(matched, localFileRoles);
+  // 4) 화면별 카드 배지·인수인계 카드
+  const badge = (id, cls, text) => { const el = document.getElementById(id); if (el) el.innerHTML = chipHtml(cls, text); };
+  const rmS = summaries.rm;
+  badge('rmBadge', rmS ? 'ok' : 'off', rmS ? '준비됨' : '확인 전');
+  badge('actingBadge', acting ? (acting.count ? 'err' : 'ok') : 'off', acting ? (acting.count ? '확인 필요' : '정상') : '파일 없음');
+  badge('crossBadge', cross ? (cross.count ? 'warn' : 'ok') : 'off', cross ? (cross.count ? '확인 필요' : '정상') : '확인 전');
+  badge('hoBadge', ho ? 'ok' : 'off', ho ? '실시간' : '조회 전');
+  document.getElementById('hoStatBoxes').innerHTML = ho
+    ? `<div class="statbox neutral"><span class="num">${ho.total}</span><span class="lbl">환자</span></div><div class="statbox teal"><span class="num">${ho.recent}</span><span class="lbl">최근 7일 수정</span></div>`
+    : '<div class="statbox neutral"><span class="num">-</span><span class="lbl">환자</span></div>';
+
+  renderSysInfo(matched, localRoles);
   renderActivity();
   renderSyncPill();
   renderToolStrips();
@@ -476,36 +527,51 @@ async function renderSysInfo(matched, localFileRoles) {
   openBtn.onclick = () => folders.length && window.rehab.folders.openFolder(folders[0].dirPath);
 }
 
-// 데이터 준비 화면: 역할별로 파일 수정 시각 / 프로그램 반영 시각 / 상태를 따로 보여준다.
+// 데이터 준비 화면: 필수 / 선택 / 실시간으로 묶어서, 파일마다 "파일 수정 → 프로그램 반영" 시각과 상태를 색으로 보여준다.
 function renderDataView() {
   const box = document.getElementById('dataFileList');
   const banner = document.getElementById('dataBanner');
   if (!box) return;
-  const rows = fileRoles.map(r => {
-    if (r.key === 'handover') {
-      return `<tr><td>${r.label}</td><td class="fname">실시간 연동(파일 없음)</td><td>-</td><td>-</td><td><span class="st ok">✓ 최신</span></td><td></td></tr>`;
-    }
-    const i = roleInfo(r.key);
-    const names = i.entries.length ? i.entries.map(e => `${e.name}${e.manual ? ' <span class="muted">(직접 선택)</span>' : ''}`).join('<br>') : '<span class="muted">못 찾음</span>';
+  const matched = (lastScan && lastScan.matched) || {};
+  const fileRow = (r) => {
+    const i = roleInfo(r.key), st = i.state;
+    const cls = st === 'latest' ? 'ok' : st === 'stale' ? 'warn' : st === 'updating' ? 'busy' : st === 'error' ? 'err' : r.required ? 'err' : 'off';
     const manual = (lastScan && lastScan.manualRoles || []).includes(r.key);
-    const actions = `<button class="btn" data-manual-pick="${r.key}">직접 선택</button>${manual ? `<button class="btn" data-manual-clear="${r.key}">해제</button>` : ''}`;
-    return `<tr><td>${r.label}${r.required ? '' : ' <span class="muted">(선택)</span>'}</td><td class="fname">${names}</td>`
-      + `<td class="nowrap">${i.modified ? fmtTime(i.modified) : '-'}</td><td class="nowrap">${i.reflectedAt ? fmtTime(i.reflectedAt) : '-'}</td>`
-      + `<td><span class="st ${STATE_CLASS[i.state]}" title="${i.error}">${RehabSync.STATE_LABEL[i.state]}</span>${i.error ? `<div class="muted">${i.error}</div>` : ''}</td><td class="nowrap">${actions}</td></tr>`;
-  }).join('');
-  box.innerHTML = `<table class="data-table"><thead><tr><th>종류</th><th>파일</th><th>파일 수정</th><th>프로그램 반영</th><th>상태</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    const names = i.entries.length ? i.entries.map(e => e.name).join(', ') : '못 찾음';
+    const when = i.entries.length ? `${st === 'stale' ? '<b class="amber">' : ''}파일 ${fmtTime(i.modified)}${st === 'stale' ? '</b>' : ''} → ${i.reflectedAt ? '반영 ' + fmtTime(i.reflectedAt) : '<span class="muted">반영 전</span>'}` : '<span class="muted">-</span>';
+    const label = st === 'missing' ? (r.required ? '없음' : '선택 안 함') : RehabSync.STATE_LABEL[st].replace(/^[^\s]+\s/, '');
+    return `<div class="frow ${cls}"><b>${r.label}${manual ? ' <span class="muted man">직접 선택</span>' : ''}</b><span class="muted fn" title="${updEsc(names)}">${updEsc(names)}${i.error ? `<span class="errtxt"> · ${updEsc(i.error)}</span>` : ''}</span><span class="wh">${when}</span>`
+      + `<span class="chip ${cls}"><i></i>${label}</span><span class="ac"><button class="btn" data-manual-pick="${r.key}" title="직접 선택">📂</button>${manual ? `<button class="btn" data-manual-clear="${r.key}" title="직접 선택 해제">✕</button>` : ''}</span></div>`;
+  };
+  const roles = fileRoles.filter(r => r.key !== 'handover');
+  const req = roles.filter(r => r.required), opt = roles.filter(r => !r.required);
+  const optHave = opt.filter(r => matched[r.key] || roleInfo(r.key).entries.length), optMiss = opt.filter(r => !optHave.includes(r));
+  const ho = handoverCacheStats();
+  const hoRow = fileRoles.some(r => r.key === 'handover') ? `<div class="frow live"><b>🌐 OT 인수인계</b><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="wh">실시간</span><span class="chip ok"><i></i>연동됨</span><span class="ac"></span></div>` : '';
+  box.innerHTML = `<div class="grp"><b>필수 파일</b><span class="muted">${req.length}개 · 모두 있어야 검증이 정확해요</span></div>${req.map(fileRow).join('')}`
+    + `<div class="grp"><b>선택 파일</b><span class="muted">있으면 더 많이 검증해요</span></div>${optHave.map(fileRow).join('')}`
+    + (optMiss.length ? `<details class="miss-opt wide"><summary>파일 없음 ${optMiss.length}개 <small>펼치기</small></summary>${optMiss.map(fileRow).join('')}</details>` : '')
+    + (hoRow ? `<div class="grp"><b>실시간 연동</b></div>${hoRow}` : '');
+
+  const states = lastScan ? roles.map(r => roleStateOf(r.key)) : [];
+  const n = (st) => states.filter(x => x === st).length;
+  const reqOk = req.filter(r => roleStateOf(r.key) === 'latest').length;
+  document.getElementById('dataChips').innerHTML = lastScan
+    ? chipHtml(reqOk === req.length ? 'ok' : 'err', `필수 ${reqOk}/${req.length} 최신`) + chipHtml(optHave.length ? 'ok' : 'off', `선택 ${optHave.length} 있음`)
+      + (n('stale') ? chipHtml('warn', `업데이트 필요 ${n('stale')}`) : '') + (n('error') ? chipHtml('err', `읽기 오류 ${n('error')}`) : '') + chipHtml('off', `없음 ${optMiss.length + req.filter(r => !matched[r.key]).length}`)
+    : '';
 
   // "파일은 바뀌었는데 아직 프로그램에 반영되지 않은" 경우를 단순히 '최신'으로 두지 않고 따로 알린다.
-  const stale = lastScan ? fileRoles.filter(r => r.key !== 'handover' && roleStateOf(r.key) === 'stale') : [];
+  const stale = lastScan ? roles.filter(r => roleStateOf(r.key) === 'stale') : [];
   if (stale.length) {
     const min = RehabSync.MODE_MINUTES[syncMode];
-    banner.innerHTML = `<div class="sync-banner"><b>⚠ 새로운 데이터 발견</b>`
-      + stale.map(r => { const i = roleInfo(r.key); return `<div class="row"><span>${r.label} — 파일 수정 ${fmtTime(i.modified)} · 마지막 반영 ${i.reflectedAt ? fmtTime(i.reflectedAt) : '없음'}</span></div>`; }).join('')
-      + `<div class="hint">${min ? `자동 동기화(${min}분 주기)가 켜져 있어 곧 반영됩니다. ` : ''}<button class="btn primary" data-sync-now>지금 업데이트</button></div></div>`;
+    banner.innerHTML = `<div class="sync-banner"><b>⚠ 새로운 데이터 발견</b> · ` + stale.map(r => { const i = roleInfo(r.key); return `${r.label} — 파일 ${fmtTime(i.modified)} (마지막 반영 ${i.reflectedAt ? fmtTime(i.reflectedAt) : '없음'})`; }).join(' / ')
+      + ` &nbsp;${min ? `자동 동기화(${min}분 주기)가 켜져 있어 곧 반영됩니다. ` : ''}<button class="btn primary" data-sync-now>지금 업데이트</button></div>`;
   } else banner.innerHTML = '';
 
   document.getElementById('dataStatus').textContent = lastScan
-    ? `${lastSyncAt ? '마지막 동기화 ' + fmtTime(lastSyncAt, true) + ' · ' : ''}폴더 ${lastScan.folders.length}개 · 미인식 파일 ${lastScan.unmatched.length}건`
+    ? `${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) + ' · ' : ''}폴더 ${lastScan.folders.length}개`
+      + (lastScan.unmatched.length ? ` · 미인식 파일 ${lastScan.unmatched.length}건` : '')
       + (lastScan.errors.length ? ` · 폴더 읽기 오류 ${lastScan.errors.length}건(${lastScan.errors.map(e => e.error).join(' / ')})` : '')
     : '아직 불러오지 않았습니다.';
 }
@@ -699,12 +765,12 @@ document.getElementById('addFolderBtn').addEventListener('click', async () => {
   const entry = await window.rehab.folders.choose();
   if (entry) { logActivity('설정', `폴더 등록: ${entry.label}`); renderSettingsView(); }
 });
-document.getElementById('homeScanBtn').addEventListener('click', () => syncNow());
 document.getElementById('dataScanBtn').addEventListener('click', () => syncNow({ statusEl: document.getElementById('dataStatus') }));
-document.getElementById('homeRefreshBtn').addEventListener('click', () => syncNow());
 // "지금 업데이트"/"데이터 업데이트" 버튼은 화면을 다시 그릴 때마다 새로 생기므로 위임으로 한 번만 연결한다.
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-sync-now]')) { syncNow(); return; }
+  if (e.target.closest('[data-grand-apply]')) { applyHomeGrandEvent(); return; }
+  if (e.target.closest('[data-open-fixplan]')) { showView('cross'); setTimeout(() => viewDoc('cross')?.getElementById('btnFixPlan')?.click(), 300); return; }
   const ft = e.target.closest('[data-files-toggle]'); if (ft) { const k = ft.dataset.filesToggle; filesOpen[k] = !filesIsOpen(k); renderToolStrips(); return; }
   const pick = e.target.closest('[data-manual-pick]');
   if (pick) {
@@ -871,9 +937,11 @@ document.querySelectorAll('iframe[data-tool]').forEach(f => f.addEventListener('
   updaterMode = await window.rehab.updater.getMode();
   document.getElementById('updaterAutoToggle').checked = updaterMode === 'auto';
   renderHome();
+  loadHomeGrandEvent();
   // 교차검증 화면을 아직 한 번도 안 열었어도, 화면 밖에서 미리 로드해둬야 "자동 불러오기"가
   // 그 도구까지 채워줄 수 있다(loadedTools에 들어있는 도구만 동기화 때 갱신 대상이 됨).
   ensureToolLoaded('cross');
+  ensureToolLoaded('rm'); // 홈 카드에 환자 수가 바로 보이도록 화면 밖에서 미리 로드
   refreshBackup();
   // 시작할 때 파일 상태를 확인하고, 수동 모드가 아니면 곧바로 반영한다(등록된 폴더가 없으면 조용히 넘어감).
   try { await refreshScan(); } catch (e) { /* 아래 syncNow가 같은 오류를 상태줄에 보여준다 */ }
