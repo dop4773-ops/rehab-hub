@@ -311,6 +311,34 @@
     #errorView .stat .num{font-size:18px !important;}
     .empty-state strong{font-size:15px !important;}
     .ms-sum b{font-size:16px !important;}
+
+    /* 오류 확인 목록: 환자 단위 요약 + 펼침 */
+    .grp-bar{display:flex;align-items:center;gap:10px;justify-content:space-between;margin:2px 0 6px;font-size:12.5px;color:#66718f;}
+    .grp-bar a{color:#5b72b4;font-weight:700;}
+    .grp-table td,.grp-table th{padding:8px 10px;}
+    .grp-row{cursor:pointer;}
+    .grp-row:hover td{background:#f5f8fe;}
+    .grp-row.open td{background:#f0f4fd;}
+    .grp-caret{color:#8a96b8;text-align:center;}
+    .ichips{display:flex;flex-wrap:wrap;gap:5px;}
+    .ichip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;border:1px solid transparent;}
+    .ichip.err{background:#fdeaec;color:#c4505c;border-color:#f3c6cc;}
+    .ichip.warn{background:#fff3dc;color:#b9782d;border-color:#f1d9a8;}
+    .grp-detail td{background:#fafbfe;padding:6px 14px 10px;}
+    .iss{padding:7px 0;border-bottom:1px dashed #e3e9f5;}
+    .iss:last-child{border-bottom:none;}
+    .iss-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;}
+    .iss-meta{color:#4a5f95;}.iss-meta2{margin-left:auto;color:#a2abc2;font-size:11.5px;}
+    .iss .details{margin-top:4px;font-size:12px;color:#4a5570;}
+
+    /* 미액팅 상단: 날짜(시트) 선택 오른쪽에 요약을 모아 한 줄로, 옆 칸보다 높아지지 않게 */
+    .ms-top{display:flex;gap:16px;align-items:stretch;flex-wrap:wrap;}
+    .ms-top > #msDropZone{flex:1 1 300px;}
+    .ms-right{flex:2 1 520px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+    .ms-pickrow{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+    .ms-pickrow .field{width:240px;margin:0;}
+    .ms-pickrow .ms-sumbar{margin:0;flex:1 1 auto;min-height:40px;padding:4px 12px;}
+    .ms-right .btns{margin:0;}
 </style>
 <style>
 /* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
@@ -438,8 +466,8 @@
           <div class="toolbar">
             <div class="filters">
               <select id="severityFilter">
-                <option value="all">전체 심각도</option>
-                <option value="오류">오류만</option>
+                <option value="all">전체 심각도(주의 포함)</option>
+                <option value="오류" selected>오류만</option>
                 <option value="주의">주의만</option>
               </select>
               <select id="typeFilter">
@@ -460,24 +488,20 @@
             </div>
           </div>
 
+          <div class="grp-bar" id="grpBar"></div>
           <div class="table-wrap">
-            <table>
+            <table class="grp-table">
               <thead>
                 <tr>
-                  <th>심각도</th>
-                  <th>유형</th>
-                  <th>엑셀행</th>
-                  <th>처방일자</th>
-                  <th>등록번호</th>
-                  <th>환자성명</th>
-                  <th>시간</th>
-                  <th>처방명칭</th>
-                  <th>치료사</th>
-                  <th>상세 내용</th>
+                  <th style="width:150px;">환자</th>
+                  <th style="width:150px;">치료사</th>
+                  <th style="width:130px;">시간</th>
+                  <th>오류 내용</th>
+                  <th style="width:32px;"></th>
                 </tr>
               </thead>
               <tbody id="resultBody">
-                <tr><td colspan="10"><div class="empty-state"><strong>파일을 업로드해 주세요.</strong>엑셀 업로드 후 오류 목록이 자동으로 표시됩니다.</div></td></tr>
+                <tr><td colspan="5"><div class="empty-state"><strong>파일을 업로드해 주세요.</strong>엑셀 업로드 후 오류 목록이 자동으로 표시됩니다.</div></td></tr>
               </tbody>
             </table>
           </div>
@@ -485,7 +509,7 @@
         </div>
 
         <div class="card-bd" id="missingView" style="display:none;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="ms-top">
             <div class="upload-box" id="msDropZone" role="button" tabindex="0" aria-label="시간표 엑셀 업로드" style="min-height:110px;">
               <div class="upload-ico">🗓️</div>
               <strong id="msUploadTitle">작업치료실 시간표 엑셀을 끌어다 놓거나 클릭</strong>
@@ -493,10 +517,19 @@
             </div>
             <input id="msFileInput" type="file" accept=".xlsx,.xls" multiple />
             <input id="msSatFileInput" type="file" accept=".xlsx,.xls" />
-            <div>
-              <div class="field" style="margin-top:0;">
-                <label for="msSheetPicker">대조할 날짜(시트)</label>
-                <select id="msSheetPicker" style="width:100%;"></select>
+            <div class="ms-right">
+              <div class="ms-pickrow">
+                <div class="field" style="margin-top:0;">
+                  <label for="msSheetPicker">대조할 날짜(시트)</label>
+                  <select id="msSheetPicker" style="width:100%;"></select>
+                </div>
+                <div class="ms-sumbar" id="msStatGrid">
+                  <span class="ms-sum"><span class="l">전체 환자</span><b id="msStatPatients">0</b></span>
+                  <span class="ms-sum"><span class="l">예정 오더</span><b id="msStatOrders">0</b></span>
+                  <span class="ms-sum"><span class="l">액팅</span><b id="msStatActs">0</b></span>
+                  <span class="ms-sum err"><span class="l">미액팅</span><b id="msStatMissing">0</b></span>
+                  <span class="ms-sum warn"><span class="l">액팅 초과</span><b id="msStatOver">0</b></span>
+                </div>
               </div>
               <div class="btns">
                 <button id="msRunBtn" disabled>미액팅 오더 검증 실행</button>
@@ -521,13 +554,6 @@
 
 
 
-          <div class="ms-sumbar" id="msStatGrid">
-            <span class="ms-sum"><span class="l">전체 환자</span><b id="msStatPatients">0</b></span>
-            <span class="ms-sum"><span class="l">예정 오더</span><b id="msStatOrders">0</b></span>
-            <span class="ms-sum"><span class="l">액팅</span><b id="msStatActs">0</b></span>
-            <span class="ms-sum err"><span class="l">미액팅</span><b id="msStatMissing">0</b></span>
-            <span class="ms-sum warn"><span class="l">액팅 초과</span><b id="msStatOver">0</b></span>
-          </div>
 
           <div class="ms-view-tabs">
             <button type="button" class="ms-view-tab active" data-ms-view="list">목록형</button>
@@ -1648,33 +1674,62 @@ ${text}`,
     return escapeHtml(text);
   }
 
+  // 오류 확인 목록: 환자 한 명을 한 줄로 묶고(오류 유형은 칩), 줄을 누르면 엑셀행·처방명칭·상세 설명을 펼친다.
+  const grpOpen = new Set(); // 펼쳐 둔 환자(필터를 바꿔도 유지)
   function renderTable(){
-    const body = $('resultBody');
+    const body = $('resultBody'), bar = $('grpBar');
     if(!state.issues.length){
-      body.innerHTML = '<tr><td colspan="10"><div class="empty-state"><strong>현재 기준으로 오류가 없습니다.</strong>필요하면 검사 허용 코드를 조정한 뒤 다시 검사해 주세요.</div></td></tr>';
+      bar.innerHTML = '';
+      body.innerHTML = '<tr><td colspan="5"><div class="empty-state"><strong>현재 기준으로 오류가 없습니다.</strong>필요하면 검사 허용 코드를 조정한 뒤 다시 검사해 주세요.</div></td></tr>';
       return;
     }
+    // 기본 보기는 오류만이라, 숨겨진 주의 건수를 알려주고 바로 볼 수 있게 한다
+    const hiddenWarn = $('severityFilter').value==='오류' ? state.issues.filter(issueMatchesOrderScope).filter(x=>x.severity!=='오류').length : 0;
     if(!state.filtered.length){
-      body.innerHTML = '<tr><td colspan="10"><div class="empty-state"><strong>필터에 맞는 항목이 없습니다.</strong>검색어나 필터를 변경해 주세요.</div></td></tr>';
+      bar.innerHTML = hiddenWarn ? `<span class="grp-note">주의 ${hiddenWarn}건은 숨겨져 있어요 · <a href="#" data-show-warn>주의까지 보기</a></span>` : '';
+      body.innerHTML = '<tr><td colspan="5"><div class="empty-state"><strong>필터에 맞는 항목이 없습니다.</strong>검색어나 필터를 변경해 주세요.</div></td></tr>';
       return;
     }
-    body.innerHTML = state.filtered.map((x, idx) => {
-      const pillClass = x.severity === '오류' ? 'err' : 'warn';
-      return `<tr>
-        <td><span class="pill ${pillClass}">${escapeHtml(x.severity)}</span></td>
-        <td><span class="type">${escapeHtml(x.type)}</span><span class="info-q" data-issue-info="${idx}" title="왜 오류인가요?">?</span></td>
-        <td>${escapeHtml(x.excelRow)}</td>
-        <td>${escapeHtml(x.date)}</td>
-        <td>${escapeHtml(x.regNo)}</td>
-        <td><b>${escapeHtml(x.patientName)}</b></td>
-        <td>${escapeHtml(x.time)}</td>
-        <td class="order">${escapeHtml(x.orderName)}</td>
-        <td>${escapeHtml(x.therapist)}</td>
-        <td class="details">${formatDetailHtml(x.detail, x)}</td>
-      </tr>`;
+    // 환자 단위로 묶기(등록번호+이름). 원래 순서는 처음 나온 위치를 따른다.
+    const groups = new Map();
+    state.filtered.forEach((x, idx) => {
+      const key = `${x.regNo||''}|${x.patientName||''}`;
+      if(!groups.has(key)) groups.set(key, { key, name:x.patientName, regNo:x.regNo, items:[] });
+      groups.get(key).items.push({ x, idx });
+    });
+    const list = [...groups.values()];
+    bar.innerHTML = `<span class="grp-note">환자 ${list.length}명 · 오류/주의 ${state.filtered.length}건${hiddenWarn ? ` · 주의 ${hiddenWarn}건 숨김 (<a href="#" data-show-warn>주의까지 보기</a>)` : ''}</span><button type="button" class="secondary" id="grpToggleAll" style="padding:4px 10px !important;font-size:12px !important;">${grpOpen.size >= list.length ? '모두 접기' : '모두 펼치기'}</button>`;
+    body.innerHTML = list.map((g, gi) => {
+      const open = grpOpen.has(g.key);
+      const ther = [...new Set(g.items.map(i=>i.x.therapist).filter(Boolean))];
+      const times = [...new Set(g.items.map(i=>i.x.time).filter(Boolean))];
+      const chips = [];
+      const seen = new Map();
+      g.items.forEach(({x}) => { const k = x.severity+'|'+x.type; seen.set(k, (seen.get(k)||0)+1); });
+      seen.forEach((n, k) => { const [sev, type] = k.split('|'); chips.push(`<span class="ichip ${sev==='오류'?'err':'warn'}">${escapeHtml(type)}${n>1?` ×${n}`:''}</span>`); });
+      const detail = g.items.map(({x, idx}) => `<div class="iss">
+          <div class="iss-head"><span class="pill ${x.severity==='오류'?'err':'warn'}">${escapeHtml(x.severity)}</span><b>${escapeHtml(x.type)}</b><span class="info-q" data-issue-info="${idx}" title="왜 오류인가요?">?</span>
+            <span class="iss-meta">${escapeHtml(x.time||'')}${x.orderName?' · '+escapeHtml(x.orderName):''}${x.therapist?' · '+escapeHtml(x.therapist):''}</span>
+            <span class="iss-meta2">엑셀 ${escapeHtml(x.excelRow)}행 · ${escapeHtml(x.date||'')} · ${escapeHtml(x.regNo||'')}</span></div>
+          <div class="details">${formatDetailHtml(x.detail, x)}</div></div>`).join('');
+      return `<tr class="grp-row${open?' open':''}" data-grp="${gi}" data-grp-key="${escapeHtml(g.key)}">
+          <td><b>${escapeHtml(g.name)}</b></td><td>${escapeHtml(ther.join(', '))}</td>
+          <td>${escapeHtml(times[0]||'')}${times.length>1?` <span class="muted">외 ${times.length-1}</span>`:''}</td>
+          <td class="ichips">${chips.join('')}</td><td class="grp-caret">${open?'▾':'▸'}</td></tr>
+        <tr class="grp-detail" data-of="${gi}" style="${open?'':'display:none;'}"><td colspan="5">${detail}</td></tr>`;
     }).join('');
   }
   $('resultBody').addEventListener('click', e=>{
+    const row = e.target.closest('.grp-row');
+    if(row && !e.target.closest('[data-issue-info]')){
+      const gi = row.getAttribute('data-grp'), key = row.getAttribute('data-grp-key');
+      const det = $('resultBody').querySelector(`.grp-detail[data-of="${gi}"]`);
+      const open = !grpOpen.has(key);
+      if(open) grpOpen.add(key); else grpOpen.delete(key);
+      row.classList.toggle('open', open); row.querySelector('.grp-caret').textContent = open ? '▾' : '▸';
+      if(det) det.style.display = open ? '' : 'none';
+      return;
+    }
     const btn = e.target.closest('[data-issue-info]');
     if(!btn) return;
     const x = state.filtered[+btn.getAttribute('data-issue-info')];
@@ -1683,6 +1738,15 @@ ${text}`,
       <div style="margin-top:4px;">환자: ${escapeHtml(x.patientName)} · 행 ${escapeHtml(x.excelRow)}${x.time?(' · '+escapeHtml(x.time)):''}</div>
       <div style="margin-top:8px;white-space:pre-line;">${formatDetailHtml(x.detail, x)}</div>`;
     msShowInfoPopover(btn, html);
+  });
+  $('grpBar').addEventListener('click', e=>{
+    if(e.target.closest('[data-show-warn]')){ e.preventDefault(); $('severityFilter').value = 'all'; applyFilters(); return; }
+    if(e.target.id === 'grpToggleAll'){
+      const rows = [...$('resultBody').querySelectorAll('.grp-row')];
+      const allOpen = rows.length && rows.every(r=>grpOpen.has(r.getAttribute('data-grp-key')));
+      rows.forEach(r=>{ const k = r.getAttribute('data-grp-key'); if(allOpen) grpOpen.delete(k); else grpOpen.add(k); });
+      renderTable();
+    }
   });
   function toCsvValue(v){
     const s = String(v ?? '').replace(/\r?\n/g, ' ');
