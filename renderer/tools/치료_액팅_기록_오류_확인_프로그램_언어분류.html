@@ -255,6 +255,17 @@
     .criteria-body .note-box, .criteria-body > .small { grid-column:1 / -1; }
     #msDropZone, #dcDropZone { min-height:0 !important; padding:10px 14px !important; }
     #msDropZone .upload-ico, #dcDropZone .upload-ico { display:none; }
+
+    /* 일일통계 인식 현황 */
+    .dc-status{margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fbfcfe;display:grid;gap:6px;}
+    .dc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:900;font-size:13px;color:#0d3659;}
+    .dc-head .dc-date{margin-left:auto;font-weight:600;font-size:12px;color:#5b6a80;}
+    .dc-sum{font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 10px;border:1px solid transparent;}
+    .dc-sum.ok{background:#e6f7ee;color:#1a7f4b;border-color:#bfe6d0;}.dc-sum.warn{background:#fff3dc;color:#a05d12;border-color:#f1d9a8;}.dc-sum.off{background:#f1f3f6;color:#8a94a4;border-color:#e0e4ea;}
+    .dc-chip{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:baseline;padding:7px 10px;border-radius:9px;border:1px solid transparent;font-size:12.5px;}
+    .dc-chip b{font-size:13px;}.dc-chip small{color:#7a8ba1;margin-left:6px;font-size:11.5px;}
+    .dc-chip.ok{background:#eef8f0;border-color:#cfe9d6;color:#1f6f3c;}.dc-chip.warn{background:#fff7e8;border-color:#f1d9a8;color:#8a5a12;}
+    .dc-chip.err{background:#fdeeee;border-color:#f3c3c3;color:#a4231a;}.dc-chip.off{background:#f3f5f8;border-color:#e0e4ea;color:#6b778a;}
 </style>
 <style>
 /* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
@@ -543,6 +554,22 @@
   </div>
   <div id="msInfoPopover" class="info-popover" style="display:none;"></div>
   <div id="msDetailPanel" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(10,25,45,.5);align-items:center;justify-content:center;padding:20px;"></div>
+  <div id="dcModal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(10,25,45,.55);align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:18px;max-width:760px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);">
+        <b style="font-size:15px;color:#0d3659;">일일통계 인식 현황</b>
+        <button id="dcModalClose" class="secondary" style="padding:5px 12px;font-size:12px;">닫기</button>
+      </div>
+      <div style="padding:14px 20px;overflow:auto;">
+        <div id="dcStatus" class="dc-status"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+          <button id="dcModalPick" type="button" style="padding:8px 14px;font-size:12.5px;">📂 일일통계 파일 올리기 (여러 팀 한 번에)</button>
+          <button id="dcModalFolder" type="button" class="secondary" style="padding:8px 14px;font-size:12.5px;">📁 폴더에서 선택</button>
+        </div>
+        <div class="small" style="margin-top:8px;color:#7a8ba1;">파일 이름에 "1팀·2팀·3팀"이 들어 있으면 팀별로 나눠서 인식합니다. 화면 아무 곳에 끌어다 놓아도 됩니다.</div>
+      </div>
+    </div>
+  </div>
   <div id="kakaoModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(10,25,45,.55);align-items:center;justify-content:center;padding:20px;">
     <div style="background:#fff;border-radius:18px;max-width:600px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35);">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);">
@@ -1698,7 +1725,7 @@ ${text}`,
 
   // ==================== 미액팅 오더 확인 (병합 기능) ====================
   const WEEKDAY_CHARS = ['일','월','화','수','목','금','토'];
-  const msState = { schedFiles:{}, schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[] };
+  const msState = { schedFiles:{}, schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[], dcResults:{} };
 
   function msNormText(v){ if(v==null) return ''; return String(v).replace(/\u3000/g,' ').replace(/\r\n?/g,'\n').trim(); }
   const MS_MINI_TITLE_RE = /^(ERDT|CCRT|BETTER|COMCOG)$/i;
@@ -2091,6 +2118,7 @@ ${text}`,
   }
 
   function msUpdateRunBtn(){
+    msRenderDcStatus(); // 액팅 기록이 바뀌면 대조 날짜가 달라질 수 있어 일일통계 인식 현황도 다시 그린다
     const ready = state.dataRows.length && msState.schedWB;
     $('msRunBtn').disabled = !ready;
     // 시간표/일일통계/액팅 파일이 갖춰지면 "검증 실행"을 누르지 않아도 자동으로 다시 검증합니다.
@@ -2154,7 +2182,7 @@ ${text}`,
     }
     if(!headers.length && !nonRecoveryTitles.length) return { entries:[], error:'"D/C환자" 표를 찾지 못했습니다.' };
 
-    function parseTableFrom(dataStartRow, headerCol){
+    function parseTableFrom(dataStartRow, headerCol, kind){
       const therapistCol = headerCol-1, reasonCol = headerCol+1, categoryCol = headerCol+2;
       const found = [];
       for(let r=dataStartRow;r<rows.length;r++){
@@ -2169,7 +2197,8 @@ ${text}`,
           patientName: name.replace(/\s+/g,''),
           therapist: ther,
           reason: row ? msNormText(row[reasonCol]) : '',
-          category: row ? msNormText(row[categoryCol]) : ''
+          category: row ? msNormText(row[categoryCol]) : '',
+          kind
         });
       }
       return found;
@@ -2179,16 +2208,48 @@ ${text}`,
     const usedHeaderCols = new Set();
     headers.forEach(({row:headerRow, col:headerCol})=>{
       usedHeaderCols.add(headerCol);
-      entries.push(...parseTableFrom(headerRow+1, headerCol));
+      entries.push(...parseTableFrom(headerRow+1, headerCol, 'recovery'));
     });
     // "비회복기 D/C 명단" 제목은, 근처(제목 기준 위/아래 6행 이내)에 이미 찾은 "D/C환자" 헤더의 칸 위치를 재사용해
     // 제목 바로 다음 줄부터(헤더 행 없이) 데이터로 읽습니다. 근처에 헤더가 없으면 제목과 같은 칸을 그대로 씁니다.
     nonRecoveryTitles.forEach(({row:titleRow, col:titleCol})=>{
       let headerCol = [...usedHeaderCols].find(c => Math.abs(c-titleCol)<=2);
       if(headerCol==null) headerCol = titleCol+1; // 회복기 표에서 "D/C환자"가 보통 제목 칸 바로 오른쪽에 옴
-      entries.push(...parseTableFrom(titleRow+1, headerCol));
+      entries.push(...parseTableFrom(titleRow+1, headerCol, 'nonrecovery'));
     });
     return { entries, error: entries.length ? null : '"D/C환자" 표를 찾지 못했습니다.' };
+  }
+  // 일일통계 인식 현황: 팀(1·2·3팀)별로 "인식함 / 날짜 시트 없음 / 표 못 찾음 / 읽기 실패 / 파일 없음"을 한눈에 보여준다.
+  const DC_TEAMS = ['1팀','2팀','3팀'];
+  const dcTeamOf = (name) => { const m = /(\d)\s*팀/.exec(name); return m ? m[1]+'팀' : null; };
+  const dcDateLabel = (d) => { if(!d) return ''; const dt = new Date(d+'T00:00:00'); return `${d}(${['일','월','화','수','목','금','토'][dt.getDay()]})`; };
+  function msRenderDcStatus(){
+    const el = $('dcStatus'); if(!el) return;
+    let target = null; try{ target = msPrimaryDate(); }catch(e){}
+    const results = Object.values(msState.dcResults);
+    const byTeam = {}; results.forEach(r => { if(r.team) byTeam[r.team] = r; });
+    const others = results.filter(r => !r.team);
+    const chip = (cls, head, body) => `<div class="dc-chip ${cls}"><b>${escapeHtml(head)}</b><span>${body}</span></div>`;
+    const one = (label, r) => {
+      if(!r) return chip('off', label, '❌ 파일 없음 · 아직 올리지 않았어요');
+      const stale = target && r.date && r.date !== target;
+      if(r.status === 'ok') return stale
+        ? chip('warn', label, `⚠ ${escapeHtml(r.sheet)} 시트로 읽음 · 지금 대조 날짜(${dcDateLabel(target)})와 달라요 — 다시 올려 주세요`)
+        : chip('ok', label, `✅ ${escapeHtml(r.sheet)} 시트 인식 · D/C <b>${r.total}명</b> (회복기 ${r.rec} / 비회복기 ${r.non}) <small>${escapeHtml(r.file)}</small>`);
+      if(r.status === 'nodate' && !r.date) return chip('warn', label, `⚠ 액팅 기록을 먼저 올려야 날짜를 알 수 있어요 — 액팅 기록을 올린 뒤 이 파일을 다시 올려 주세요 <small>${escapeHtml(r.file)}</small>`);
+      if(r.status === 'nodate') return chip('err', label, `❌ ${r.date ? dcDateLabel(r.date) : '대조 날짜'}에 맞는 시트가 없어요 <small>${escapeHtml(r.file)}${r.sheets && r.sheets.length ? ' · 있는 시트: ' + escapeHtml(r.sheets.slice(0,6).join(', ')) + (r.sheets.length>6 ? ' …' : '') : ''}</small>`);
+      if(r.status === 'notable') return chip('err', label, `❌ ${escapeHtml(r.sheet)} 시트에서 D/C 표를 못 찾았어요 <small>${escapeHtml(r.file)}</small>`);
+      return chip('err', label, `❌ 파일을 읽지 못했어요 <small>${escapeHtml(r.file)}</small>`);
+    };
+    // 셸의 위쪽 파일 띠가 읽는 요약(화면 안에서 직접 올린 일일통계도 "올림"으로 보이게)
+    const prevOk = window.__dcSummary && window.__dcSummary.ok;
+    window.__dcSummary = { ok: DC_TEAMS.filter(t => byTeam[t] && byTeam[t].status==='ok' && !(target && byTeam[t].date!==target)).length, total: DC_TEAMS.length };
+    if(prevOk !== window.__dcSummary.ok){ try{ setTimeout(()=>window.parent.__onToolSummary&&window.parent.__onToolSummary(),0); }catch(e){} }
+    const head = target ? `대조 날짜 <b>${dcDateLabel(target)}</b> 기준` : '액팅 기록을 올리면 대조 날짜가 정해져요';
+    const okTeams = DC_TEAMS.filter(t => byTeam[t] && byTeam[t].status==='ok' && !(target && byTeam[t].date!==target)).length;
+    el.innerHTML = `<div class="dc-head">📋 일일통계 인식 현황 <span class="dc-sum ${okTeams===DC_TEAMS.length?'ok':okTeams?'warn':'off'}">${okTeams}/${DC_TEAMS.length}팀 인식</span><span class="dc-date">${head}</span></div>`
+      + DC_TEAMS.map(t => one(t, byTeam[t])).join('')
+      + others.map(r => one(r.file, r)).join('');
   }
   async function msHandleDcFiles(fileList){
     const files = Array.from(fileList || []);
@@ -2197,31 +2258,49 @@ ${text}`,
     const newEntries = [];
     const errors = [];
     for(const file of files){
+      // 같은 파일을 다시 올리면 이전에 읽은 내용은 바꿔 끼운다(중복 반영 방지)
+      msState.dcEntries = msState.dcEntries.filter(e => e.sourceFile !== file.name);
+      const team = dcTeamOf(file.name);
+      const key = team || file.name;
       try{
         const wb = await msReadWorkbook(file);
         const sheetName = msFindDcSheet(wb, targetDate);
         if(!sheetName){
           errors.push(`${file.name}: 날짜(${targetDate||'?'})에 맞는 시트를 찾지 못했습니다.`);
+          msState.dcResults[key] = { team, file:file.name, date:targetDate, status:'nodate', sheets:wb.SheetNames };
           continue;
         }
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header:1, defval:null, raw:true });
         const parsed = msParseDcSheet(rows);
-        if(parsed.error){ errors.push(`${file.name} (${sheetName}): ${parsed.error}`); continue; }
+        if(parsed.error){ errors.push(`${file.name} (${sheetName}): ${parsed.error}`); msState.dcResults[key] = { team, file:file.name, date:targetDate, status:'notable', sheet:sheetName }; continue; }
         parsed.entries.forEach(e => newEntries.push({ ...e, sourceFile: file.name, sheetName }));
+        msState.dcResults[key] = { team, file:file.name, date:targetDate, status:'ok', sheet:sheetName, total:parsed.entries.length,
+          rec:parsed.entries.filter(e=>e.kind==='recovery').length, non:parsed.entries.filter(e=>e.kind==='nonrecovery').length };
       } catch(err){
         console.error(err);
         errors.push(`${file.name}: 파일을 읽을 수 없습니다(형식 호환 문제일 수 있습니다).`);
+        msState.dcResults[key] = { team, file:file.name, date:targetDate, status:'readerr' };
       }
     }
     msState.dcEntries = msState.dcEntries.concat(newEntries);
     msState.dcFileErrors = errors;
     const infoParts = [];
     if(msState.dcEntries.length) infoParts.push(`D/C ${msState.dcEntries.length}명 반영됨`);
-    if(errors.length) infoParts.push(`⚠ ${errors.length}건 처리 실패: ${errors.join(' / ')}`);
+    if(errors.length) infoParts.push(`⚠ ${errors.length}건 처리 실패`);
     $('dcFileInfo').textContent = infoParts.join(' · ') || '업로드하면 D/C(오늘 치료 제외) 명단을 자동으로 반영해 미액팅 집계에서 제외합니다.';
+    msRenderDcStatus();
+    if(errors.length) window.__showDcStatus(); // 인식에 실패한 팀이 있으면 이유를 바로 팝업으로 보여준다
     if(msState.result){ msRunAnalysis(); }
   }
   $('dcFileInput').addEventListener('change', e => { msHandleDcFiles(e.target.files); e.target.value=''; });
+  msRenderDcStatus(); // 처음에도 팀별 "파일 없음" 상태를 만들어 둔다
+  // 일일통계 인식 현황은 위쪽 파일 띠의 "일일통계" 칩을 누르면 팝업으로 열린다(셸이 이 함수를 부른다)
+  window.__showDcStatus = () => { msRenderDcStatus(); $('dcModal').style.display = 'flex'; };
+  $('dcModalClose').addEventListener('click', () => { $('dcModal').style.display = 'none'; });
+  $('dcModal').addEventListener('click', e => { if(e.target === $('dcModal')) $('dcModal').style.display = 'none'; });
+  document.addEventListener('keydown', e => { if(e.key==='Escape' && $('dcModal').style.display!=='none') $('dcModal').style.display = 'none'; });
+  $('dcModalPick').addEventListener('click', () => $('dcFileInput').click());
+  $('dcModalFolder').addEventListener('click', () => $('dcFolderInput').click());
   $('dcDropZone').addEventListener('click', () => $('dcFileInput').click());
   $('dcFolderPickBtn').addEventListener('click', () => $('dcFolderInput').click());
   function msIsArchiveFolderName(name){

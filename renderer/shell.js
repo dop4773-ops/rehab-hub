@@ -405,7 +405,8 @@ function wireItdaPushButtons() {
 }
 
 // ── 홈 ─────────────────────────────────────────────────────
-let homeGrandEvent = null, homeGrandAt = 0;
+let homeGrandEvent = null, homeGrandAt = 0, homeMissOptOpen = false;
+document.addEventListener('toggle', (e) => { if (e.target.id === 'homeMissOpt') homeMissOptOpen = e.target.open; }, true);
 async function loadHomeGrandEvent() { // 잇다의 다가오는 그랜드라운딩 일정 한 건(읽기 전용). 잇다가 없으면 조용히 넘어간다.
   if (Date.now() - homeGrandAt < 60 * 1000) return;
   homeGrandAt = Date.now();
@@ -487,8 +488,9 @@ function renderHome() {
     <div class="row"><span>선택 파일</span><b>${optFound}/${optRoles.length}</b></div>
     <div class="row"><span>실시간 인수인계</span><b class="good">연동 ✔</b></div>`;
   document.getElementById('homeFileChips').innerHTML = lastScan ? chipHtml(staleRoles.length ? 'warn' : 'off', `업데이트 필요 ${staleRoles.length}`) + chipHtml(errRoles.length ? 'err' : 'off', `읽기 오류 ${errRoles.length}`) : '';
+  // 펼친 목록에서 바로 파일을 직접 고를 수 있다(화면이 다시 그려져도 펼친 상태는 유지)
   document.getElementById('homeFileProblems').innerHTML = (missOpt.length
-    ? `<details class="miss-opt"><summary>파일 없음(선택) ${missOpt.length}개 <small>펼치기</small></summary><div>${missOpt.map(r => `<div>· ${r.label}</div>`).join('')}</div></details>` : '');
+    ? `<details class="miss-opt" id="homeMissOpt"${homeMissOptOpen ? ' open' : ''}><summary>파일 없음(선택) ${missOpt.length}개 <small>펼치기</small></summary><div class="mo-list">${missOpt.map(r => `<div class="mo-row"><span>· ${r.label}</span><button class="btn" data-manual-pick="${r.key}" title="이 파일을 직접 골라서 불러오기">📂 파일 고르기</button></div>`).join('')}</div></details>` : '');
 
   // 4) 화면별 카드 배지·인수인계 카드
   const badge = (id, cls, text) => { const el = document.getElementById(id); if (el) el.innerHTML = chipHtml(cls, text); };
@@ -656,11 +658,14 @@ function applyFilesCollapse(key) {
 function fileChip(role, key) {
   const i = roleInfo(role), def = roleDef(role) || {}, st = i.state;
   const manualLoaded = key === 'acting' && role === 'acting' && st === 'missing' && readToolSummary('acting'); // 화면에서 직접 올린 경우
-  const cls = manualLoaded ? 'ok' : st === 'latest' ? 'ok' : st === 'stale' ? 'stale' : st === 'updating' ? 'busy' : st === 'error' ? 'err' : def.required ? 'err' : 'off';
+  let dcLocal = null; // 일일통계를 화면 안에서 직접 올린 경우: 팀별 인식 수를 칩에 보여준다
+  if (key === 'acting' && role === 'dailyStats' && st === 'missing') { try { const q = document.querySelector('iframe[data-tool="acting"]').contentWindow.__dcSummary; if (q && q.ok) dcLocal = q; } catch (e) { /* 아직 로드 전 */ } }
+  const cls = dcLocal ? (dcLocal.ok === dcLocal.total ? 'ok' : 'stale') : manualLoaded ? 'ok' : st === 'latest' ? 'ok' : st === 'stale' ? 'stale' : st === 'updating' ? 'busy' : st === 'error' ? 'err' : def.required ? 'err' : 'off';
   const manual = (lastScan && lastScan.manualRoles || []).includes(role);
-  const when = manualLoaded ? '직접 올림' : st === 'missing' ? (def.required ? '없음' : '미선택') : (i.modified ? fmtTime(i.modified) : '') + (manual ? ' · 직접' : '');
+  const when = dcLocal ? `직접 올림 · ${dcLocal.ok}/${dcLocal.total}팀` : manualLoaded ? '직접 올림' : st === 'missing' ? (def.required ? '없음' : '미선택') : (i.modified ? fmtTime(i.modified) : '') + (manual ? ' · 직접' : '');
   const tip = [def.label, i.entries.length ? '파일: ' + i.entries.map(e => e.name).join(', ') : '파일 없음', i.modified ? '파일 수정: ' + fmtTime(i.modified) : '', i.reflectedAt ? '프로그램 반영: ' + fmtTime(i.reflectedAt) : '', RehabSync.STATE_LABEL[st], i.error || ''].filter(Boolean).join('\n');
-  return `<span class="fchip ${cls}" title="${updEsc(tip)}"><i></i>${CHIP_NAME[role] || def.label || role}<small>${updEsc(when)}</small></span>`;
+  const dcClick = key === 'acting' && role === 'dailyStats'; // 누르면 팀별 인식 현황 팝업
+  return `<span class="fchip ${cls}${dcClick ? ' click' : ''}"${dcClick ? ' data-open-dc' : ''} title="${updEsc(tip + (dcClick ? '\n클릭: 팀별 인식 현황 보기' : ''))}"><i></i>${CHIP_NAME[role] || def.label || role}<small>${updEsc(when)}</small>${dcClick ? '<small>▸</small>' : ''}</span>`;
 }
 const fmtDateTime = (ms) => { const d = new Date(ms); return `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
 function renderToolStrips() {
@@ -809,6 +814,7 @@ document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-sync-now]')) { syncNow(); return; }
   const dv = e.target.closest('[data-dv]'); if (dv) { dataViewMode = dv.dataset.dv; renderDataView(); return; }
   if (e.target.closest('#dataViewDefault')) { setDataViewDefault(dataViewMode); renderDataView(); renderSettingsDefaults(); return; }
+  if (e.target.closest('[data-open-dc]')) { try { document.querySelector('iframe[data-tool="acting"]').contentWindow.__showDcStatus(); } catch (err) { /* 화면이 아직 로드 전 */ } return; }
   if (e.target.closest('[data-grand-apply]')) { applyHomeGrandEvent(); return; }
   if (e.target.closest('[data-open-fixplan]')) { showView('cross'); setTimeout(() => viewDoc('cross')?.getElementById('btnFixPlan')?.click(), 300); return; }
   const ft = e.target.closest('[data-files-toggle]'); if (ft) { const k = ft.dataset.filesToggle; filesOpen[k] = !filesIsOpen(k); renderToolStrips(); return; }
