@@ -1725,7 +1725,7 @@ ${text}`,
 
   // ==================== 미액팅 오더 확인 (병합 기능) ====================
   const WEEKDAY_CHARS = ['일','월','화','수','목','금','토'];
-  const msState = { schedFiles:{}, schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[], dcResults:{} };
+  const msState = { schedFiles:{}, schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[], dcResults:{}, dcFileObjs:{}, dcReparsing:false };
 
   function msNormText(v){ if(v==null) return ''; return String(v).replace(/\u3000/g,' ').replace(/\r\n?/g,'\n').trim(); }
   const MS_MINI_TITLE_RE = /^(ERDT|CCRT|BETTER|COMCOG)$/i;
@@ -2117,7 +2117,19 @@ ${text}`,
     return dates[0] || null;
   }
 
+  // 일일통계는 "대조 날짜"(액팅 기록의 처방일자)에 맞는 시트를 읽는다. 액팅 기록과 일일통계가 거의 동시에 들어오면(자동 불러오기) 일일통계가 날짜를 모른 채
+  // 읽혀 실패하거나 이전 날짜로 읽히므로, 날짜가 정해지거나 바뀌면 이미 올라온 일일통계를 새 날짜로 다시 읽는다.
+  async function msReparseDcIfNeeded(){
+    if(msState.dcReparsing) return;
+    let target = null; try{ target = msPrimaryDate(); }catch(e){}
+    if(!target) return;
+    const redo = Object.values(msState.dcResults).filter(r => r.date !== target && msState.dcFileObjs[r.file]).map(r => msState.dcFileObjs[r.file]);
+    if(!redo.length) return;
+    msState.dcReparsing = true;
+    try{ await msHandleDcFiles(redo); } finally { msState.dcReparsing = false; }
+  }
   function msUpdateRunBtn(){
+    msReparseDcIfNeeded();
     msRenderDcStatus(); // 액팅 기록이 바뀌면 대조 날짜가 달라질 수 있어 일일통계 인식 현황도 다시 그린다
     const ready = state.dataRows.length && msState.schedWB;
     $('msRunBtn').disabled = !ready;
@@ -2236,7 +2248,7 @@ ${text}`,
       if(r.status === 'ok') return stale
         ? chip('warn', label, `⚠ ${escapeHtml(r.sheet)} 시트로 읽음 · 지금 대조 날짜(${dcDateLabel(target)})와 달라요 — 다시 올려 주세요`)
         : chip('ok', label, `✅ ${escapeHtml(r.sheet)} 시트 인식 · D/C <b>${r.total}명</b> (회복기 ${r.rec} / 비회복기 ${r.non}) <small>${escapeHtml(r.file)}</small>`);
-      if(r.status === 'nodate' && !r.date) return chip('warn', label, `⚠ 액팅 기록을 먼저 올려야 날짜를 알 수 있어요 — 액팅 기록을 올린 뒤 이 파일을 다시 올려 주세요 <small>${escapeHtml(r.file)}</small>`);
+      if(r.status === 'nodate' && !r.date) return chip('warn', label, `⏳ 액팅 기록을 올리면 대조 날짜가 정해져서 자동으로 다시 읽어요 <small>${escapeHtml(r.file)}</small>`);
       if(r.status === 'nodate') return chip('err', label, `❌ ${r.date ? dcDateLabel(r.date) : '대조 날짜'}에 맞는 시트가 없어요 <small>${escapeHtml(r.file)}${r.sheets && r.sheets.length ? ' · 있는 시트: ' + escapeHtml(r.sheets.slice(0,6).join(', ')) + (r.sheets.length>6 ? ' …' : '') : ''}</small>`);
       if(r.status === 'notable') return chip('err', label, `❌ ${escapeHtml(r.sheet)} 시트에서 D/C 표를 못 찾았어요 <small>${escapeHtml(r.file)}</small>`);
       return chip('err', label, `❌ 파일을 읽지 못했어요 <small>${escapeHtml(r.file)}</small>`);
@@ -2260,26 +2272,29 @@ ${text}`,
     for(const file of files){
       // 같은 파일을 다시 올리면 이전에 읽은 내용은 바꿔 끼운다(중복 반영 방지)
       msState.dcEntries = msState.dcEntries.filter(e => e.sourceFile !== file.name);
+      msState.dcFileObjs[file.name] = file; // 대조 날짜가 나중에 정해지거나 바뀌면 이 파일을 다시 읽는다
       const team = dcTeamOf(file.name);
       const key = team || file.name;
+      let fileDate = targetDate;
       try{
         const wb = await msReadWorkbook(file);
-        const sheetName = msFindDcSheet(wb, targetDate);
+        fileDate = msPrimaryDate() || targetDate; // 파일을 읽는 사이 액팅 분석이 끝나 날짜가 정해졌을 수 있으니 읽은 직후의 날짜로 맞춘다
+        const sheetName = msFindDcSheet(wb, fileDate);
         if(!sheetName){
-          errors.push(`${file.name}: 날짜(${targetDate||'?'})에 맞는 시트를 찾지 못했습니다.`);
-          msState.dcResults[key] = { team, file:file.name, date:targetDate, status:'nodate', sheets:wb.SheetNames };
+          errors.push(`${file.name}: 날짜(${fileDate||'?'})에 맞는 시트를 찾지 못했습니다.`);
+          msState.dcResults[key] = { team, file:file.name, date:fileDate, status:'nodate', sheets:wb.SheetNames };
           continue;
         }
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header:1, defval:null, raw:true });
         const parsed = msParseDcSheet(rows);
-        if(parsed.error){ errors.push(`${file.name} (${sheetName}): ${parsed.error}`); msState.dcResults[key] = { team, file:file.name, date:targetDate, status:'notable', sheet:sheetName }; continue; }
+        if(parsed.error){ errors.push(`${file.name} (${sheetName}): ${parsed.error}`); msState.dcResults[key] = { team, file:file.name, date:fileDate, status:'notable', sheet:sheetName }; continue; }
         parsed.entries.forEach(e => newEntries.push({ ...e, sourceFile: file.name, sheetName }));
-        msState.dcResults[key] = { team, file:file.name, date:targetDate, status:'ok', sheet:sheetName, total:parsed.entries.length,
+        msState.dcResults[key] = { team, file:file.name, date:fileDate, status:'ok', sheet:sheetName, total:parsed.entries.length,
           rec:parsed.entries.filter(e=>e.kind==='recovery').length, non:parsed.entries.filter(e=>e.kind==='nonrecovery').length };
       } catch(err){
         console.error(err);
         errors.push(`${file.name}: 파일을 읽을 수 없습니다(형식 호환 문제일 수 있습니다).`);
-        msState.dcResults[key] = { team, file:file.name, date:targetDate, status:'readerr' };
+        msState.dcResults[key] = { team, file:file.name, date:fileDate, status:'readerr' };
       }
     }
     msState.dcEntries = msState.dcEntries.concat(newEntries);
@@ -2289,7 +2304,8 @@ ${text}`,
     if(errors.length) infoParts.push(`⚠ ${errors.length}건 처리 실패`);
     $('dcFileInfo').textContent = infoParts.join(' · ') || '업로드하면 D/C(오늘 치료 제외) 명단을 자동으로 반영해 미액팅 집계에서 제외합니다.';
     msRenderDcStatus();
-    if(errors.length) window.__showDcStatus(); // 인식에 실패한 팀이 있으면 이유를 바로 팝업으로 보여준다
+    if(!msState.dcReparsing) setTimeout(msReparseDcIfNeeded, 0); // 그 사이 대조 날짜가 바뀌었으면 새 날짜로 다시 읽는다
+    if(errors.length && !(!targetDate && msPrimaryDate())) window.__showDcStatus(); // 인식에 실패한 팀이 있으면 이유를 바로 팝업으로 보여준다
     if(msState.result){ msRunAnalysis(); }
   }
   $('dcFileInput').addEventListener('change', e => { msHandleDcFiles(e.target.files); e.target.value=''; });

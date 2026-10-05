@@ -465,7 +465,7 @@ function renderHome() {
   // 2) 오늘 할 일(확인이 필요한 것만)
   const itda = (content) => `<button class="btn" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>`;
   const todos = [];
-  if (missReq.length) todos.push(todoHtml('err', '📦', `필수 파일 ${missReq.length}개를 못 찾았어요`, missReq.map(r => r.label).join(' · '), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
+  if (missReq.length) todos.push(todoHtml('err', '📦', `필수 파일 ${missReq.length}개를 못 찾았어요`, missReq.map(r => r.label).join(' · '), missReq.map(r => `<button class="btn primary" data-manual-pick="${r.key}" title="${updEsc(r.label)} — 파일을 직접 골라서 불러오기">📂 ${CHIP_NAME[r.key] || r.label}</button>`).join('') + '<button class="btn" data-goto="data">데이터 준비 →</button>'));
   if (errRoles.length) todos.push(todoHtml('err', '⚠️', `읽기 오류 ${errRoles.length}개`, errRoles.map(r => r.label).join(' · '), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
   if (staleRoles.length) todos.push(todoHtml('warn', '🔄', `업데이트 필요 ${staleRoles.length}개`, staleRoles.map(r => r.label).join(' · ') + ' — 파일이 바뀌었어요', '<button class="btn primary" data-sync-now>지금 업데이트</button>'));
   if (cross && cross.count) {
