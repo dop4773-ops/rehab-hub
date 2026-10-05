@@ -4,15 +4,15 @@
 <link rel="stylesheet" href="../fonts/pretendard.css">
 <style>
 :root{
-  --navy:#17345f;--blue:#2f6fce;--line:#e3e8f0;--bg:#f3f6fb;--text:#1b2434;--muted:#707d92;
-  --green:#1f8f5f;--green-bg:#e6f7ee;
-  --count:#d23a4f;--count-bg:#fdecee;
-  --loc:#2f6fce;--loc-bg:#e8f1fd;
-  --record:#d9720f;--record-bg:#fdead2;
-  --ther:#c79a12;--ther-bg:#fbf5df;
-  --handover:#0e8a8a;--handover-bg:#e3f5f5;
+  --navy:#5b72b4;--blue:#6f94e3;--line:#e3e8f0;--bg:#f3f6fb;--text:#1b2434;--muted:#707d92;
+  --green:#3f9a78;--green-bg:#e6f7ee;
+  --count:#d4606c;--count-bg:#fdecee;
+  --loc:#6f94e3;--loc-bg:#e8f1fd;
+  --record:#d38a3e;--record-bg:#fdead2;
+  --ther:#c9a23c;--ther-bg:#fbf5df;
+  --handover:#4fa9a5;--handover-bg:#e3f5f5;
   --excess:#a83e9c;--excess-bg:#f8e8f5;
-  --eval:#4a5578;--eval-bg:#e9ebf5;--room:#2d6f73;--room-bg:#e1f1f1;
+  --eval:#7c87bd;--eval-bg:#e9ebf5;--room:#4f9ea2;--room-bg:#e1f1f1;
   --card-r:16px;
 }
 *{box-sizing:border-box}
@@ -59,7 +59,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .folder-status b{color:#2a3850}
 .btn{border:1px solid #cbd6e4;border-radius:9px;background:#fff;color:#24344d;padding:10px 14px;font-weight:800;cursor:pointer;font-size:12.5px}
 .btn.block{width:100%}
-.btn.primary{background:linear-gradient(120deg,#1c3f6f,#2f6fce);color:#fff;border-color:transparent}
+.btn.primary{background:linear-gradient(120deg,#1c3f6f,#6f94e3);color:#fff;border-color:transparent}
 .btn.primary:disabled{opacity:.4;cursor:not-allowed;background:#9aa8bd}
 .btn.sm{padding:6px 10px;font-size:11.5px}
 .run-progress{margin-top:10px;font-size:11.5px;color:#48586e;line-height:2;display:none}
@@ -236,7 +236,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .tl-chip.clickable:hover{filter:brightness(.96)}
 .tl-chip.erdt-bad{border-color:var(--record);background:var(--record-bg)}
 .tl-chip.erdt-bad .tl-loc{color:var(--record)}
-.tl-chip.ccrt-discharged{border-color:#7a1f2b;background:#7a1f2b;color:#fff}
+.tl-chip.ccrt-discharged{border-color:#b84a56;background:#b84a56;color:#fff}
 .tl-chip.ccrt-discharged .tl-loc{color:#fdd}
 .tl-chip.hl{border-color:var(--navy);background:#eef4ff;box-shadow:0 0 0 2px rgba(23,52,95,.15)}
 .tl-time{display:block;font-size:10.5px;color:var(--muted);font-weight:700}
@@ -245,7 +245,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .ccrt-kind-block{border:1px solid var(--line);border-radius:12px;padding:12px 14px 14px;background:#fbfcfe}
 .ccrt-kind-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .ccrt-kind-badge{font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px;color:#fff;letter-spacing:.2px}
-.ccrt-kind-badge.k10ccrt{background:#17345f}
+.ccrt-kind-badge.k10ccrt{background:#5b72b4}
 .ccrt-kind-badge.k3ccrt{background:#3d63a3}
 .ccrt-kind-badge.k3better{background:#1f9d7c}
 .ccrt-kind-badge.k3comcog{background:#b8721f}
@@ -258,7 +258,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .ccrt-grid-daylabel{font-size:12px;font-weight:800;color:#2a3850;display:flex;align-items:center;padding:6px 6px 6px 0;border-top:1px dashed #e6eaf1;white-space:nowrap}
 .ccrt-grid-cell{display:flex;flex-direction:column;gap:4px;justify-content:center;padding:5px 3px;border-top:1px dashed #e6eaf1;min-height:34px}
 .ccrt-cell-chip{font-size:12px;font-weight:700;text-align:center;padding:5px 6px;border-radius:8px;background:#eef2f8;color:#2a3850;cursor:pointer}
-.ccrt-cell-chip.ccrt-discharged{background:#7a1f2b;color:#fff}
+.ccrt-cell-chip.ccrt-discharged{background:#b84a56;color:#fff}
 .ccrt-cell-chip.erdt-bad{background:#fde3e3;color:#8a2020}
 .verdictbox{padding:12px 14px;border-radius:10px;background:#fff7ec;border:1px solid #f0d9a6;font-size:12.5px;color:#7a4a08;margin-bottom:14px;font-weight:600}
 .occ-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
@@ -290,7 +290,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .gpcell.mismatch{background:var(--count-bg);color:var(--count);font-weight:800}
 .gpcell.wrongloc{background:var(--loc-bg);color:var(--loc);font-weight:800}
 .gpcell.cardonly{background:#f2f4f8;color:#8895a8}
-.gpcell.rule{background:#7a1f2b;color:#fff;font-weight:800}
+.gpcell.rule{background:#b84a56;color:#fff;font-weight:800}
 .gpcell.missing{background:var(--record-bg);color:var(--record);font-weight:800}
 .gpcell.duplicate{outline:2.5px solid #8a4fd6;outline-offset:-2.5px}
 .gpcell.codeborder{box-shadow:inset 0 0 0 2.5px var(--loc)}
@@ -358,6 +358,38 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
   #printReport .meta{font-size:11px;color:#444;margin-bottom:14px}
   #printReport .sumrow{display:flex;gap:18px;margin:10px 0 16px;font-size:12px}
 }
+
+/* 공간 정리 */
+.freshbox:empty{display:none}
+.result-grid{gap:14px !important}
+.donut{width:64px !important;height:64px !important}
+.donut-inner{width:46px !important;height:46px !important}
+.donut-inner b{font-size:13px !important}
+.donut-inner span{display:none !important}
+.result-nums .n b{font-size:20px !important}
+.cat-chips{align-items:flex-start !important}
+.cat-chip{padding:8px 11px !important}
+.cat-chip .cc-num{font-size:20px !important;margin-top:2px !important}
+.cat-chip .cc-breakdown{margin-top:3px !important;gap:4px !important}
+.floor-list{flex-direction:row !important;flex-wrap:wrap}
+.floor-row2{padding:5px 12px !important;gap:12px}
+
+    /* 파스텔 버튼 */
+    .btn.primary{background:#dbe6fb !important;color:#2f4378 !important;border-color:#c1d3f4 !important;}
+    .btn.green{background:#d9f1e6 !important;color:#2b6e55 !important;border-color:#b6dfcb !important;}
+    .btn.purple{background:#e8e0f8 !important;color:#5a409a !important;border-color:#d2c4f0 !important;}
+    .btn.primary:hover{background:#cfdef9 !important;}
+
+/* 글자 크기 정리 */
+.header h1{font-size:16px !important}
+.result-nums .n b{font-size:18px !important}
+.cat-chip .cc-num{font-size:17px !important}
+.diffbox .db .val{font-size:20px !important}
+.dhead .dname{font-size:16px !important}
+.ev-name{font-size:14px !important}
+.empty-ok .big{font-size:26px !important}
+.donut-inner b{font-size:12px !important}
+.btn{font-size:12.5px}
 </style>
 <style>
 /* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
@@ -373,7 +405,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
       <p class="sub">스케줄 · 위치 · 치료사 자동 검증</p>
     </div>
     <div class="header-actions">
-      <span class="hbtn" style="cursor:default;background:#eef4ff;color:#234f87;border-color:#c7dbf7">📌 매트/테이블: 원본 시트 기준</span>
+      <span class="hbtn" style="cursor:default;background:#eef4ff;color:#7189c8;border-color:#c7dbf7">📌 매트/테이블: 원본 시트 기준</span>
       <button class="hbtn" id="btnFixPlan" title="불일치를 어느 파일의 어디를 어떻게 고치면 되는지 정리합니다(원본 파일은 바꾸지 않고 안내만 만들어요)">🛠 수정 지시서</button>
       <button class="hbtn" id="btnCopy">📋 결과 복사</button>
       <button class="hbtn" id="btnExcel" title="현재 선택된 필터(탭)만 저장됩니다 — 예: '인수인계 불일치' 탭에서 누르면 인수인계 문제만 저장">📊 Excel 저장</button>
@@ -915,7 +947,8 @@ function fileAgeLabel(ms, now=new Date()){
 }
 function renderFreshness(){
   const box=document.getElementById('freshBox'); if(!box) return;
-  box.innerHTML=FILES_META.filter(m=>state[m.key]&&state.fileMtime[m.key]).map(m=>{ const a=fileAgeLabel(state.fileMtime[m.key]); return `<span class="${a.old?'old':''}">${a.old?'⚠ ':''}${esc(m.label)} ${esc(a.text)}</span>`; }).join('');
+  // 오래된(2일 이상) 파일만 경고로 보여준다 — 오늘·어제 수정된 파일은 위쪽 띠에 이미 있어 반복하지 않는다
+  box.innerHTML=FILES_META.filter(m=>state[m.key]&&state.fileMtime[m.key]&&fileAgeLabel(state.fileMtime[m.key]).old).map(m=>{ const a=fileAgeLabel(state.fileMtime[m.key]); return `<span class="old">⚠ ${esc(m.label)} ${esc(a.text)}</span>`; }).join('');
 }
 function guessKeyFromFilename(name){
   // macOS(Finder)에서 끌어온 한글 파일명은 자모가 풀어써진(NFD) 형태로 들어오는 경우가 있어
@@ -2407,7 +2440,7 @@ function renderCcrtPreview(wrap, tabsHtml){
     <span><i class="gp-dot ok"></i>정상</span>
     <span><i class="gp-dot missing"></i>전체시간표(원본)의 요일과 다름/없음</span>
     <span><i class="gp-dot mismatch"></i>이름 없음(전체시간표에 환자 자체가 없음)</span>
-    <span><i class="gp-dot" style="background:#7a1f2b"></i>퇴원 처리된 환자인데 남아있음</span>
+    <span><i class="gp-dot" style="background:#b84a56"></i>퇴원 처리된 환자인데 남아있음</span>
     <span style="color:var(--muted)">· 칸을 클릭하면 근거를 볼 수 있습니다</span>
   </div>`;
   if(!list.length){
@@ -2485,7 +2518,7 @@ function renderSaturdayPreview(wrap, tabsHtml){
     <span><i class="gp-dot ok"></i>정상</span>
     <span><i class="gp-dot missing"></i>토요일시간표에만 있음(전체시간표에 없음)</span>
     <span><i class="gp-dot mismatch"></i>이름 없음(전체시간표에 환자 자체가 없음)</span>
-    <span><i class="gp-dot" style="background:#7a1f2b"></i>회복기 아닌 환자 SOT/RDT 배정(규칙 위반)</span>
+    <span><i class="gp-dot" style="background:#b84a56"></i>회복기 아닌 환자 SOT/RDT 배정(규칙 위반)</span>
     <span><i class="gp-dot duplicate"></i>중복(같은 시간 다른 치료사에도 있음)</span>
     <span><i class="gp-dot" style="background:#fff;border:2px solid var(--loc)"></i>SM/ST 코드가 평일원본과 다름(테두리, R 제외)</span>
     <span style="color:var(--muted)">· 칸을 클릭하면 근거를 볼 수 있습니다</span>
@@ -2525,7 +2558,7 @@ function showSaturdayCellDetail(c){
   const isWeekday = c.context==='weekday';
   const isCcrt = c.context==='ccrt';
   const statusLabel = c.status==='ok' ? '정상' : c.status==='discharged' ? '퇴원 처리됨' : c.status==='missing' ? '기록 없음' : c.status==='rule' ? '규칙 위반' : '이름 불일치';
-  const statusStyle = c.status==='ok' ? 'background:var(--green-bg);color:var(--green)' : c.status==='discharged' ? 'background:#7a1f2b;color:#fff' : c.status==='missing' ? 'background:var(--record-bg);color:var(--record)' : c.status==='rule' ? 'background:#7a1f2b;color:#fff' : 'background:var(--count-bg);color:var(--count)';
+  const statusStyle = c.status==='ok' ? 'background:var(--green-bg);color:var(--green)' : c.status==='discharged' ? 'background:#b84a56;color:#fff' : c.status==='missing' ? 'background:var(--record-bg);color:var(--record)' : c.status==='rule' ? 'background:#b84a56;color:#fff' : 'background:var(--count-bg);color:var(--count)';
   const badgeCss='font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;margin-right:6px;display:inline-block';
   let verdict='';
   if(c.status==='discharged') verdict=`현황(회복기) 시트엔 이 환자가 <b>퇴원</b>으로 표시돼 있는데, 평일시간표(원본)엔 ${esc(c.day)}요일 ${esc(c.time)}에 인지치료(${esc(c.kind||'CCRT')}) 배정이 아직 남아있어요.`;
@@ -3426,7 +3459,7 @@ function renderFixPlan(){
     html+=list.map(x=>{ const k=fixKey(x), d=fixState.done.has(k); return `<div class="fix-item ${d?'done':''}">
       <input type="checkbox" data-k="${esc(k)}" ${d?'checked':''} title="완료 표시">
       <div style="flex:1"><div class="who">${x.floor?x.floor+'F ':''}${esc(x.room?x.room+'호 ':'')}${esc(x.patient)}<span class="tag">${esc(x.kind)}</span>${x.who?`<span class="ppl">담당 ${esc(x.who)}</span>`:''}</div>
-      <div class="fa">${esc(x.action)}</div><div class="fw">${esc(x.where)}${x.basis?' · 근거: '+esc(x.basis):''}</div>${x.cellText?`<div class="fw" style="color:#2f6fce;font-weight:700">📍 ${esc(x.cellText)}</div>`:''}</div></div>`; }).join('');
+      <div class="fa">${esc(x.action)}</div><div class="fw">${esc(x.where)}${x.basis?' · 근거: '+esc(x.basis):''}</div>${x.cellText?`<div class="fw" style="color:#6f94e3;font-weight:700">📍 ${esc(x.cellText)}</div>`:''}</div></div>`; }).join('');
   }
   body.innerHTML=html;
 }

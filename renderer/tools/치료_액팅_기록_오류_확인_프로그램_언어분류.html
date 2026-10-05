@@ -10,9 +10,9 @@
   <script src="../vendor/jszip.min.js"></script>
   <style>
     :root {
-      --navy:#17345f;
-      --navy2:#234f87;
-      --blue:#2f6fce;
+      --navy:#5b72b4;
+      --navy2:#7189c8;
+      --blue:#6f94e3;
       --sky:#eaf4ff;
       --line:#d9e3ef;
       --soft:#f6f9fc;
@@ -55,12 +55,12 @@
       border:0; border-radius:999px; padding:7px 13px; background:transparent; color:#35536c;
       font-size:13px; font-weight:950; box-shadow:none;
     }
-    .order-scope-tab:hover { transform:none; background:#e8f2fb; color:#0d3659; }
+    .order-scope-tab:hover { transform:none; background:#e8f2fb; color:#5b72b4; }
     .order-scope-tab.active { background:var(--navy); color:white; }
     .order-date-badge {
       display:inline-flex; align-items:center; min-height:40px; padding:8px 18px;
       border-radius:999px; background:#eef7ff; border:1px solid #cfe3f7;
-      color:#0d3659; font-size:18px; font-weight:950; letter-spacing:-.035em;
+      color:#5b72b4; font-size:18px; font-weight:950; letter-spacing:-.035em;
     }
     .order-date-badge.empty { color:#70869a; background:#f5f8fb; border-color:#dce6ef; }
     .card-hd p { margin:6px 0 0; color:var(--muted); font-size:13px; }
@@ -99,7 +99,7 @@
       margin-top:18px; border-radius:16px; background:#f8fafc; border:1px solid #e1e8f0; padding:15px 16px;
       font-size:13px; color:#33475b;
     }
-    .note-box b { color:#0d3659; }
+    .note-box b { color:#5b72b4; }
     .note-box ul { margin:10px 0 0 18px; padding:0; }
     .note-box li { margin:5px 0; }
     .stats { display:grid; grid-template-columns:repeat(7,minmax(118px,1fr)); gap:12px; }
@@ -188,35 +188,35 @@
     }
   .info-q{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#eef2f8;color:#4a5c73;font-size:11px;font-weight:900;border:1px solid var(--line);cursor:pointer;line-height:1;margin-left:5px;flex:none;}
   .info-q:hover{background:#dce7f5;}
-  .info-popover{position:fixed;z-index:9999;max-width:320px;background:#0d3659;color:#fff;padding:12px 14px;border-radius:12px;font-size:12.5px;line-height:1.6;box-shadow:0 16px 36px rgba(9,31,58,.35);}
+  .info-popover{position:fixed;z-index:9999;max-width:320px;background:#5b72b4;color:#fff;padding:12px 14px;border-radius:12px;font-size:12.5px;line-height:1.6;box-shadow:0 16px 36px rgba(9,31,58,.35);}
   .info-popover b{color:#bfe0ff;}
   .info-popover .close-x{position:absolute;top:6px;right:9px;cursor:pointer;opacity:.7;font-size:12px;}
   .ms-view-tabs{display:flex;gap:8px;margin:14px 0 4px;}
-  .ms-view-tab{padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:800;color:#0d3659;cursor:pointer;}
-  .ms-view-tab.active{background:#0d3659;color:#fff;border-color:#0d3659;}
+  .ms-view-tab{padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:800;color:#5b72b4;cursor:pointer;}
+  .ms-view-tab.active{background:#5b72b4;color:#fff;border-color:#5b72b4;}
   .ms-group-tabs{display:flex;gap:6px;}
   .grid-preview{overflow:auto;border:1px solid var(--line);border-radius:14px;max-height:calc(100vh - 260px);min-height:320px;margin-top:12px;}
   .grid-preview table{border-collapse:collapse;font-size:11px;table-layout:fixed;}
   .grid-preview th, .grid-preview td{border:1px solid #e6ecf3;padding:2px 3px;text-align:center;white-space:normal;overflow:hidden;text-overflow:ellipsis;word-break:break-all;max-width:0;line-height:1.2;}
-  .grid-preview thead th{position:sticky;top:0;background:#0d3659;color:#fff;z-index:2;font-size:11px;}
-  .grid-preview td.timecell{position:sticky;left:0;background:#f4f7fb;font-weight:800;color:#0d3659;z-index:1;}
-  .grid-preview td.cell-ok{background:#eef8f0;color:#1f6f3c;}
-  .grid-preview td.cell-missing{background:#ffe3e0;color:#a4231a;font-weight:800;}
+  .grid-preview thead th{position:sticky;top:0;background:#5b72b4;color:#fff;z-index:2;font-size:11px;}
+  .grid-preview td.timecell{position:sticky;left:0;background:#f4f7fb;font-weight:800;color:#5b72b4;z-index:1;}
+  .grid-preview td.cell-ok{background:#eef8f0;color:#3f9a78;}
+  .grid-preview td.cell-missing{background:#ffe3e0;color:#c4505c;font-weight:800;}
   .grid-preview td.cell-empty{background:#fff;}
   .grid-preview td.cell-excluded{background:#f0f0f0;color:#999;text-decoration:line-through;}
   .grid-preview td.cell-dc{background:#e8eef7;color:#3a5a8c;font-style:italic;}
   .grid-preview td.lunch{background:#f2f2f2;color:#999;}
   .team-grid-wrap{display:grid;gap:10px;margin-top:12px;align-items:start;}
   .team-panel{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;min-width:0;}
-  .team-panel .team-panel-hd{background:#0d3659;color:#fff;padding:7px 10px;font-size:12.5px;font-weight:900;}
+  .team-panel .team-panel-hd{background:#5b72b4;color:#fff;padding:7px 10px;font-size:12.5px;font-weight:900;}
   .team-panel .team-panel-body{overflow:auto;max-height:600px;}
   .team-panel table{border-collapse:collapse;font-size:9.5px;width:100%;table-layout:fixed;}
   .team-panel th, .team-panel td{border:1px solid #e6ecf3;padding:2px 2px;text-align:center;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow:hidden;line-height:1.25;max-width:0;}
   .team-panel thead th{position:sticky;top:0;background:#123b63;color:#fff;z-index:2;font-size:8.7px;font-weight:700;padding:3px 1px;}
-  .team-panel td.timecell{position:sticky;left:0;background:#f4f7fb;font-weight:800;color:#0d3659;z-index:1;font-size:9px;width:44px;}
+  .team-panel td.timecell{position:sticky;left:0;background:#f4f7fb;font-weight:800;color:#5b72b4;z-index:1;font-size:9px;width:44px;}
   .team-panel th:first-child{position:sticky;left:0;z-index:3;width:44px;}
-  .team-panel td.cell-ok{background:#eef8f0;color:#1f6f3c;}
-  .team-panel td.cell-missing{background:#ffe3e0;color:#a4231a;font-weight:800;}
+  .team-panel td.cell-ok{background:#eef8f0;color:#3f9a78;}
+  .team-panel td.cell-missing{background:#ffe3e0;color:#c4505c;font-weight:800;}
   .team-panel td.cell-empty{background:#fff;}
   .team-panel td.cell-excluded{background:#eee;color:#999;text-decoration:line-through;}
   .team-panel td.lunch{background:#f2f2f2;color:#999;}
@@ -225,12 +225,12 @@
   .legend-swatch{width:12px;height:12px;border-radius:4px;display:inline-block;}
   .schedule-grid{display:grid;border:1px solid var(--line);border-radius:14px;overflow:hidden;width:100%;}
   .schedule-grid .g-cell{border-right:1px solid #e6ecf3;border-bottom:1px solid #e6ecf3;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:1px 2px;font-size:10.5px;line-height:1.18;min-width:0;min-height:0;}
-  .schedule-grid .g-head{background:#0d3659;color:#fff;font-weight:700;font-size:9.5px;position:sticky;top:0;z-index:2;}
-  .schedule-grid .g-time{background:#f4f7fb;font-weight:800;color:#0d3659;font-size:9px;position:sticky;left:0;z-index:1;}
+  .schedule-grid .g-head{background:#5b72b4;color:#fff;font-weight:700;font-size:9.5px;position:sticky;top:0;z-index:2;}
+  .schedule-grid .g-time{background:#f4f7fb;font-weight:800;color:#5b72b4;font-size:9px;position:sticky;left:0;z-index:1;}
   .schedule-grid .g-lunch{background:#f2f2f2;color:#999;}
   .schedule-grid .g-empty{background:#fff;}
-  .schedule-grid .g-ok{background:#eef8f0;color:#1f6f3c;cursor:pointer;}
-  .schedule-grid .g-missing{background:#ffe3e0;color:#a4231a;font-weight:800;cursor:pointer;}
+  .schedule-grid .g-ok{background:#eef8f0;color:#3f9a78;cursor:pointer;}
+  .schedule-grid .g-missing{background:#ffe3e0;color:#c4505c;font-weight:800;cursor:pointer;}
   .schedule-grid .g-excluded{background:#eee;color:#999;text-decoration:line-through;cursor:pointer;}
   .schedule-grid .g-dc{background:#e8eef7;color:#3a5a8c;font-style:italic;cursor:pointer;}
   
@@ -247,7 +247,7 @@
     .upload-bar .btns { margin:0; display:flex; gap:8px; flex:0 0 auto; }
     .upload-bar .fatal { margin:0 18px 8px; }
     details.criteria { border-top:1px solid var(--line); }
-    details.criteria > summary { cursor:pointer; padding:11px 18px; font-weight:800; font-size:13.5px; color:#0d3659; list-style:none; }
+    details.criteria > summary { cursor:pointer; padding:11px 18px; font-weight:800; font-size:13.5px; color:#5b72b4; list-style:none; }
     details.criteria > summary::-webkit-details-marker { display:none; }
     details.criteria > summary small { font-weight:500; color:var(--muted); margin-left:6px; }
     details.criteria[open] > summary { border-bottom:1px solid var(--line); }
@@ -258,28 +258,59 @@
 
     /* 일일통계 인식 현황 */
     .dc-status{margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fbfcfe;display:grid;gap:6px;}
-    .dc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:900;font-size:13px;color:#0d3659;}
+    .dc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:900;font-size:13px;color:#5b72b4;}
     .dc-head .dc-date{margin-left:auto;font-weight:600;font-size:12px;color:#5b6a80;}
     .dc-sum{font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 10px;border:1px solid transparent;}
-    .dc-sum.ok{background:#e6f7ee;color:#1a7f4b;border-color:#bfe6d0;}.dc-sum.warn{background:#fff3dc;color:#a05d12;border-color:#f1d9a8;}.dc-sum.off{background:#f1f3f6;color:#8a94a4;border-color:#e0e4ea;}
+    .dc-sum.ok{background:#e6f7ee;color:#3f9a78;border-color:#bfe6d0;}.dc-sum.warn{background:#fff3dc;color:#b9782d;border-color:#f1d9a8;}.dc-sum.off{background:#f1f3f6;color:#8a94a4;border-color:#e0e4ea;}
     .dc-chip{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:baseline;padding:7px 10px;border-radius:9px;border:1px solid transparent;font-size:12.5px;}
     .dc-chip b{font-size:13px;}.dc-chip small{color:#7a8ba1;margin-left:6px;font-size:11.5px;}
-    .dc-chip.ok{background:#eef8f0;border-color:#cfe9d6;color:#1f6f3c;}.dc-chip.warn{background:#fff7e8;border-color:#f1d9a8;color:#8a5a12;}
-    .dc-chip.err{background:#fdeeee;border-color:#f3c3c3;color:#a4231a;}.dc-chip.off{background:#f3f5f8;border-color:#e0e4ea;color:#6b778a;}
+    .dc-chip.ok{background:#eef8f0;border-color:#cfe9d6;color:#3f9a78;}.dc-chip.warn{background:#fff7e8;border-color:#f1d9a8;color:#8a5a12;}
+    .dc-chip.err{background:#fdeeee;border-color:#f3c3c3;color:#c4505c;}.dc-chip.off{background:#f3f5f8;border-color:#e0e4ea;color:#6b778a;}
 
     .schedule-grid .g-marker{background:#f1e6fb;color:#6b3fa0;font-weight:800;cursor:pointer;}
     .schedule-grid .g-marker:hover{background:#e6d3f7;}
-    .schedule-grid .g-marker-bad{background:#fbe0e8;color:#a4231a;}
+    .schedule-grid .g-marker-bad{background:#fbe0e8;color:#c4505c;}
 
     #msSheetPicker{max-width:280px;}
     /* 미액팅 요약: 큰 카드 5칸 대신 한 줄 */
     .ms-sumbar{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;margin-top:12px;padding:8px 14px;border:1px solid var(--line);border-radius:12px;background:#f8fbff;}
     .ms-sum{display:inline-flex;align-items:baseline;gap:6px;font-size:12.5px;color:#647789;}
-    .ms-sum b{font-size:17px;font-weight:900;color:#0d3659;letter-spacing:-.02em;}
-    .ms-sum.err b{color:var(--red);}.ms-sum.warn b{color:#a05d12;}
+    .ms-sum b{font-size:17px;font-weight:900;color:#5b72b4;letter-spacing:-.02em;}
+    .ms-sum.err b{color:var(--red);}.ms-sum.warn b{color:#b9782d;}
     .ms-sum + .ms-sum{padding-left:14px;border-left:1px solid var(--line);}
-    .ms-help{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:#fff;color:#0d3659;font-weight:900;font-size:13px;cursor:pointer;align-items:center;justify-content:center;padding:0;}
+    .ms-help{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:#fff;color:#5b72b4;font-weight:900;font-size:13px;cursor:pointer;align-items:center;justify-content:center;padding:0;}
     .ms-help:hover{background:#eef4fb;}
+
+    /* 공간 정리: 큰 카드·설명·배지를 줄이고 자주 안 보는 정보는 접는다 */
+    .header .sub{display:none;}
+    .header{margin-bottom:8px;}
+    .header-actions .hbtn{font-size:11px;padding:4px 10px;opacity:.8;}
+    #errorView .stats{grid-template-columns:repeat(auto-fit,minmax(120px,1fr)) !important;gap:8px !important;}
+    #errorView .stat{padding:8px 12px;border-radius:12px;display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+    #errorView .stat .label{font-size:12px;}
+    #errorView .stat .num{margin:0;font-size:20px;}
+    #quickSummary{font-size:12px;color:var(--muted);margin:6px 0 !important;}
+    details.detected-wrap{margin:6px 0;font-size:12px;color:#647789;}
+    details.detected-wrap>summary{cursor:pointer;list-style:none;}
+    details.detected-wrap>summary::-webkit-details-marker{display:none;}
+    details.detected-wrap .detected{margin-top:6px;}
+    .order-date-badge{font-size:13px !important;padding:4px 12px !important;}
+
+    /* 파스텔 버튼(기본 버튼) */
+    button{background:#dbe6fb;color:#2f4378;border:1px solid #c1d3f4;}
+    button:hover{background:#cfdef9;}
+    button.secondary{background:#f3f6fd;color:#4a5f95;border:1px solid #dfe6f5;}
+    .order-scope-tab.active,.ms-view-tab.active{background:#5b72b4;color:#fff;border-color:#5b72b4;}
+    /* 글자 크기 정리 */
+    .header h1{font-size:16px !important;}
+    .card-hd h2{font-size:15px !important;}
+    .upload-bar .ub-title h2{font-size:14px !important;}
+    button{font-size:12.5px !important;padding:8px 12px !important;}
+    .order-scope-tab{font-size:12.5px !important;padding:7px 12px !important;}
+    .upload-box strong{font-size:14px !important;}
+    #errorView .stat .num{font-size:18px !important;}
+    .empty-state strong{font-size:15px !important;}
+    .ms-sum b{font-size:16px !important;}
 </style>
 <style>
 /* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
@@ -400,7 +431,7 @@
           </div>
           <div class="quick-summary" id="quickSummary">전체 검사 결과를 아래 목록에 표시합니다. 중복처방·동일 처방 중복·검사 시간 중복·특이사항 오류/누락·치료내용 누락·치료내용 오류·시간 오류 카드를 누르면 아래 목록이 해당 항목으로 바뀝니다.</div>
 
-          <div class="detected" id="detectedBox">헤더 감지 결과가 여기에 표시됩니다.</div>
+          <details class="detected-wrap"><summary>ⓘ 헤더 감지 결과 보기</summary><div class="detected" id="detectedBox">헤더 감지 결과가 여기에 표시됩니다.</div></details>
           <div class="ok-panel" id="okPanel">오류가 발견되지 않았습니다. 현재 기준으로는 정상입니다.</div>
 
 
@@ -558,7 +589,7 @@
   <div id="msCriteriaModal" style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(10,25,45,.55);align-items:center;justify-content:center;padding:20px;">
     <div style="background:#fff;border-radius:18px;max-width:820px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35);">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);">
-        <b style="font-size:15px;color:#0d3659;">오더 집계 기준</b>
+        <b style="font-size:15px;color:#5b72b4;">오더 집계 기준</b>
         <button id="msCriteriaClose" class="secondary" style="padding:5px 12px;font-size:12px;">닫기</button>
       </div>
       <div class="note-box" style="margin:0;border:none;padding:14px 20px;overflow:auto;">
@@ -579,7 +610,7 @@
   <div id="dcModal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(10,25,45,.55);align-items:center;justify-content:center;padding:20px;">
     <div style="background:#fff;border-radius:18px;max-width:760px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35);">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);">
-        <b style="font-size:15px;color:#0d3659;">일일통계 인식 현황</b>
+        <b style="font-size:15px;color:#5b72b4;">일일통계 인식 현황</b>
         <button id="dcModalClose" class="secondary" style="padding:5px 12px;font-size:12px;">닫기</button>
       </div>
       <div style="padding:14px 20px;overflow:auto;">
@@ -595,7 +626,7 @@
   <div id="kakaoModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(10,25,45,.55);align-items:center;justify-content:center;padding:20px;">
     <div style="background:#fff;border-radius:18px;max-width:600px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35);">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);">
-        <b style="font-size:15px;color:#0d3659;">카톡 공유용 텍스트</b>
+        <b style="font-size:15px;color:#5b72b4;">카톡 공유용 텍스트</b>
         <button id="kakaoCloseBtn" class="secondary" style="padding:5px 12px;font-size:12px;">닫기</button>
       </div>
       <div id="kakaoScopeTabs" class="ms-group-tabs" style="padding:12px 20px 0;">
@@ -609,7 +640,7 @@
       </div>
       <textarea id="kakaoText" readonly style="flex:1;min-height:360px;margin:12px 20px 16px;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:13px;line-height:1.6;font-family:inherit;resize:vertical;"></textarea>
       <div style="padding:0 20px 18px;display:flex;gap:8px;justify-content:flex-end;">
-        <span id="kakaoCopyStatus" style="align-self:center;font-size:12px;color:#1f6f3c;margin-right:auto;"></span>
+        <span id="kakaoCopyStatus" style="align-self:center;font-size:12px;color:#3f9a78;margin-right:auto;"></span>
         <button id="kakaoCopyBtn" style="padding:9px 18px;font-size:13px;">복사하기</button>
       </div>
     </div>
@@ -2856,7 +2887,7 @@ ${text}`,
       const key = `${o.source}|${o.row}|${o.col}`;
       const flagged = msState.slotFlagMap[key]==='missing';
       const baseStyle = 'padding:6px 9px;border:1px solid var(--line);border-radius:9px;margin-bottom:5px;font-size:12.5px;background:var(--soft);';
-      const style = flagged ? 'padding:6px 9px;border:1px solid #f3b6b0;border-radius:9px;margin-bottom:5px;font-size:12.5px;background:#ffe3e0;color:#a4231a;font-weight:800;' : baseStyle;
+      const style = flagged ? 'padding:6px 9px;border:1px solid #f3b6b0;border-radius:9px;margin-bottom:5px;font-size:12.5px;background:#ffe3e0;color:#c4505c;font-weight:800;' : baseStyle;
       return `<li style="${style}">[${escapeHtml(o.type)}] ${escapeHtml(o.timeSlot||'')}${o.therapist?(' · '+escapeHtml(o.therapist)):''}${flagged?' (미액팅 후보)':''}</li>`;
     }).join('') : '<li style="padding:6px 9px;border:1px solid var(--line);border-radius:9px;background:var(--soft);">예정 오더 없음</li>';
     const actHtml = r.actList.length ? r.actList.map(a=>`<li>${escapeHtml(a.start)}~${escapeHtml(a.end)} · ${escapeHtml(a.orderName)} · ${escapeHtml(a.therapist)}${a.patientName?(' · '+escapeHtml(a.patientName)):''}</li>`).join('') : '<li>액팅 기록 없음</li>';
@@ -2993,10 +3024,10 @@ ${text}`,
         const style = e.conflict
           ? 'background:#f1e6fb;border:1px solid #d9bdf2;color:#6b3fa0;text-decoration:line-through;'
           : st==='missing'
-          ? 'background:#ffe3e0;border:1px solid #f3b6b0;color:#a4231a;'
+          ? 'background:#ffe3e0;border:1px solid #f3b6b0;color:#c4505c;'
           : st==='dc'
           ? 'background:#e8eef7;border:1px solid #c7d4ea;color:#3a5a8c;'
-          : 'background:#eef8f0;border:1px solid #c9e7cf;color:#1f6f3c;';
+          : 'background:#eef8f0;border:1px solid #c9e7cf;color:#3f9a78;';
         const title = e.conflict ? `${e.therapist} 선생님은 이 시간에 메인 표에서 ${e.conflict.withName}님을 치료 중이라 이 오더는 진행되지 않았을 가능성이 높습니다(시간 충돌, 미액팅 집계 제외)` : '';
         chipsHtml += `<span data-ms-cell="${msEscapeAttr(key)}" data-ms-conflict="${e.conflict? '1':'0'}" title="${msEscapeAttr(title)}" style="cursor:pointer;padding:4px 9px;border-radius:999px;font-size:11.5px;font-weight:700;${style}">${escapeHtml(e.name)} · ${escapeHtml(e.timeSlot||'')}${e.conflict?' ⚠':''}</span>`;
       });
