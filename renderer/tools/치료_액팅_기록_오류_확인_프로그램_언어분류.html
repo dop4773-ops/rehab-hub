@@ -1391,6 +1391,7 @@ ${text}`,
       totalCount: issues.length,
       rowCount: dataRows.length,
     };
+    try{ setTimeout(()=>window.parent.__onToolSummary&&window.parent.__onToolSummary(),0); }catch(e){} // 셸이 홈·상단 띠를 바로 갱신하도록 알림
     updateSummary(dataRows.length, missing);
     applyFilters();
     $('reanalyzeBtn').disabled = false;
@@ -2790,47 +2791,13 @@ ${text}`,
       if(e.source==='메인표') entryByPos[`${e.row}|${e.col}`] = e;
     });
 
-    function buildTableHtml(cols, compact, colWidthMode){
-      let html = '<table>';
-      if(colWidthMode==='percent'){
-        const timeColPct = 8;
-        const restPct = (100 - timeColPct) / Math.max(cols.length,1);
-        html += `<colgroup><col style="width:${timeColPct}%">` + cols.map(()=>`<col style="width:${restPct}%">`).join('') + '</colgroup>';
-      } else if(colWidthMode==='fixed'){
-        html += `<colgroup><col style="width:64px">` + cols.map(()=>'<col style="width:76px">').join('') + '</colgroup>';
-      }
-      html += '<thead><tr><th>시간</th>';
-      cols.forEach(tc => { html += `<th title="${msEscapeAttr(tc.name)}">${escapeHtml(tc.name)}</th>`; });
-      html += '</tr></thead><tbody>';
-      grid.timeRows.forEach(tr=>{
-        if(tr.lunch){
-          html += `<tr><td class="timecell">${escapeHtml(tr.label)}</td><td class="lunch" colspan="${cols.length}">점심</td></tr>`;
-          return;
-        }
-        html += `<tr><td class="timecell">${escapeHtml(tr.label)}</td>`;
-        cols.forEach(tc=>{
-          const e = entryByPos[`${tr.row}|${tc.col}`];
-          if(!e){ html += '<td class="cell-empty"></td>'; return; }
-          const key = `${e.source}|${e.row}|${e.col}`;
-          const excluded = msState.excludedSlots.has(key);
-          const status = msState.slotFlagMap[key];
-          const flagged = status==='missing' && !excluded;
-          const isDc = status==='dc';
-          const cls = flagged ? 'cell-missing' : (excluded ? 'cell-excluded' : (isDc ? 'cell-dc' : 'cell-ok'));
-          const label = compact ? escapeHtml(e.name) : `${escapeHtml(e.name)}<br><span style="font-size:9.5px;opacity:.75;">${escapeHtml(msTypeAbbr(e.type))}</span>`;
-          html += `<td class="${cls}" title="${msEscapeAttr(e.name)}" data-ms-cell="${msEscapeAttr(key)}">${label}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-      return html;
-    }
-
     // 팀 확대(팀 1개)는 CSS Grid로 그려서 열/행 폭을 항상 똑같이, 스크롤 없이 화면에 꽉 차게 만듭니다.
     // (표(table)는 내용에 따라 특정 칸이 넓어지는 문제가 있었는데, CSS Grid는 내용과 무관하게 1fr씩 정확히 균등 분배됩니다.)
-    function buildCssGridHtml(cols){
+    // colPx를 주면 열 폭을 그 값으로 고정하고(가로 스크롤), 줄 높이는 컨테이너 높이에 맞춰 나눠서 세로 스크롤이 생기지 않게 한다.
+    function buildCssGridHtml(cols, colPx){
       const totalRows = 1 + grid.timeRows.length;
-      let html = `<div class="schedule-grid" style="grid-template-columns:52px repeat(${cols.length},1fr);grid-template-rows:24px repeat(${grid.timeRows.length},1fr);height:100%;">`;
+      const colsCss = colPx ? `80px repeat(${cols.length},${colPx}px)` : `52px repeat(${cols.length},1fr)`; // 가로 스크롤 보기는 시간 열(08:30~09:00)이 잘리지 않게 넓힘
+      let html = `<div class="schedule-grid" style="grid-template-columns:${colsCss};grid-template-rows:24px repeat(${grid.timeRows.length},minmax(0,1fr));height:100%;${colPx ? 'width:max-content;min-width:100%;' : ''}">`;
       html += `<div class="g-cell g-head">시간</div>`;
       cols.forEach(tc=>{ html += `<div class="g-cell g-head" title="${msEscapeAttr(tc.name)}">${escapeHtml(tc.name)}</div>`; });
       grid.timeRows.forEach(tr=>{
@@ -2865,14 +2832,16 @@ ${text}`,
     if(activeTeam){
       // 팀 확대: 가로·세로 모두 화면(컨테이너) 안에 꽉 차게, 스크롤 없음
       holder.innerHTML = buildCssGridHtml(visibleCols);
-      holder.style.overflow = 'hidden';
+      holder.style.overflowX = 'hidden';
+      holder.style.overflowY = 'hidden';
       holder.style.height = 'calc(100vh - 260px)';
       holder.style.maxHeight = 'calc(100vh - 260px)';
     } else {
-      // 전체: 열이 너무 많아 화면에 다 담기 어려우므로 가로 스크롤 가능한 고정 폭 표로 표시
-      holder.innerHTML = buildTableHtml(visibleCols, false, 'fixed');
-      holder.style.overflow = 'auto';
-      holder.style.height = '';
+      // 전체: 열이 너무 많아 화면에 다 담기 어려우므로 가로로만 스크롤하고, 세로는 화면 높이에 맞춰 줄 높이를 나눠 스크롤 없이 보여준다
+      holder.innerHTML = buildCssGridHtml(visibleCols, 84);
+      holder.style.overflowX = 'auto';
+      holder.style.overflowY = 'hidden';
+      holder.style.height = 'calc(100vh - 260px)';
       holder.style.maxHeight = 'calc(100vh - 260px)';
     }
 

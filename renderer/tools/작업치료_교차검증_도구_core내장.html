@@ -1804,6 +1804,7 @@ async function runAllVerifications(){
     problemTotal: countProblems+locProblems+therProblems+handoverProblems+evalProblems+roomProblems,
     cats: issues.reduce((m,i)=>{ m[i.category]=(m[i.category]||0)+1; return m; },{}), // 홈 "오늘 할 일"의 분류별 건수
   };
+  try{ setTimeout(()=>window.parent.__onToolSummary&&window.parent.__onToolSummary(),0); }catch(e){} // 셸이 홈·상단 띠를 바로 갱신하도록 알림
   return {
     stats:{countChecked,countProblems,locChecked,locProblems,therChecked,therProblems,handoverChecked,handoverProblems,evalChecked,evalProblems,roomChecked,roomProblems},
     floorCount

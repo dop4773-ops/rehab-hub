@@ -286,3 +286,21 @@ details.miss-opt.wide{margin-top:4px;padding:9px 14px;border:1px dashed var(--bo
 details.miss-opt.wide>summary{margin-bottom:0}details.miss-opt.wide[open]>summary{margin-bottom:8px}
 details.miss-opt.wide .frow{background:#fff}
 @media (max-width:1250px){.frow{grid-template-columns:1fr 1fr;}}
+
+/* 데이터 준비 — 보기 전환 / 보드형 */
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}
+.seg button{border:none;background:none;padding:7px 12px;font-size:12.5px;font-weight:700;color:#4a5a72;cursor:pointer;border-right:1px solid var(--border);font-family:inherit}
+.seg button:last-child{border-right:none}.seg button.active{background:var(--navy);color:#fff}
+.data-head .btn:disabled{opacity:.6;cursor:default}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px;align-items:start}
+@media (max-width:1100px){.board{grid-template-columns:1fr}}
+.bcol{background:#f4f7fb;border:1px solid var(--border);border-radius:12px;padding:10px 10px 4px}
+.bcol.ok{border-top:3px solid var(--green)}.bcol.warn{border-top:3px solid #d9981f}.bcol.off{border-top:3px solid #c8ced8}
+.bcol .bh{display:flex;align-items:center;justify-content:space-between;margin:2px 4px 10px}.bcol .bh b{font-size:14px;color:var(--navy)}
+.bcard{background:#fff;border:1px solid var(--border);border-left:4px solid var(--green);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.bcard.warn{border-left-color:#d9981f;background:#fffaf0}.bcard.err{border-left-color:var(--red);background:#fff7f7}.bcard.off{border-left-color:#c8ced8}.bcard.busy{border-left-color:var(--blue)}.bcard.live{border-left-color:#0e8a8a;background:#f1fafa}
+.bcard .bt{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.bcard .bt b{font-size:13.5px}.bcard .req{font-size:10.5px;font-weight:800;color:var(--red);background:#fdeaea;border-radius:999px;padding:1px 7px}.bcard .man{font-size:11px}
+.bcard .bf{font-size:12px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bcard .bw{font-size:12px}.bcard .amber{color:var(--orange)}.bcard .errtxt{color:var(--red)}
+.bcard .bb{display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:8px}
+.bcard .bt .chip{margin-left:auto;padding:2px 9px;font-size:11.5px}.bcard .ac{display:flex;gap:4px}.bcard .ac .btn{padding:3px 8px;font-size:12px}
+.bempty{padding:10px 6px 14px;text-align:center}

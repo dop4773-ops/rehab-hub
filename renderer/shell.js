@@ -527,31 +527,65 @@ async function renderSysInfo(matched, localFileRoles) {
   openBtn.onclick = () => folders.length && window.rehab.folders.openFolder(folders[0].dirPath);
 }
 
-// 데이터 준비 화면: 필수 / 선택 / 실시간으로 묶어서, 파일마다 "파일 수정 → 프로그램 반영" 시각과 상태를 색으로 보여준다.
+// 데이터 준비 화면: 목록형(필수/선택/실시간 묶음) 또는 보드형(최신 / 확인 필요 / 선택 안 함 열)으로 보여준다.
+// 기본 보기는 이 PC에 저장(설정 > 화면 기본값, 또는 위의 "기본으로" 버튼)하고, 화면 위 버튼으로 언제든 바꿔 볼 수 있다.
+const DATAVIEW_KEY = 'rehab_data_view_v1';
+const dvLoad = () => { try { return localStorage.getItem(DATAVIEW_KEY) === 'board' ? 'board' : 'list'; } catch (e) { return 'list'; } };
+let dataViewDefault = dvLoad(), dataViewMode = dataViewDefault;
+function setDataViewDefault(mode) {
+  dataViewDefault = mode;
+  try { localStorage.setItem(DATAVIEW_KEY, mode); } catch (e) { /* 저장 실패해도 이번 실행엔 적용됨 */ }
+}
 function renderDataView() {
   const box = document.getElementById('dataFileList');
   const banner = document.getElementById('dataBanner');
   if (!box) return;
   const matched = (lastScan && lastScan.matched) || {};
-  const fileRow = (r) => {
+  const detail = (r) => {
     const i = roleInfo(r.key), st = i.state;
     const cls = st === 'latest' ? 'ok' : st === 'stale' ? 'warn' : st === 'updating' ? 'busy' : st === 'error' ? 'err' : r.required ? 'err' : 'off';
     const manual = (lastScan && lastScan.manualRoles || []).includes(r.key);
     const names = i.entries.length ? i.entries.map(e => e.name).join(', ') : '못 찾음';
     const when = i.entries.length ? `${st === 'stale' ? '<b class="amber">' : ''}파일 ${fmtTime(i.modified)}${st === 'stale' ? '</b>' : ''} → ${i.reflectedAt ? '반영 ' + fmtTime(i.reflectedAt) : '<span class="muted">반영 전</span>'}` : '<span class="muted">-</span>';
     const label = st === 'missing' ? (r.required ? '없음' : '선택 안 함') : RehabSync.STATE_LABEL[st].replace(/^[^\s]+\s/, '');
-    return `<div class="frow ${cls}"><b>${r.label}${manual ? ' <span class="muted man">직접 선택</span>' : ''}</b><span class="muted fn" title="${updEsc(names)}">${updEsc(names)}${i.error ? `<span class="errtxt"> · ${updEsc(i.error)}</span>` : ''}</span><span class="wh">${when}</span>`
-      + `<span class="chip ${cls}"><i></i>${label}</span><span class="ac"><button class="btn" data-manual-pick="${r.key}" title="직접 선택">📂</button>${manual ? `<button class="btn" data-manual-clear="${r.key}" title="직접 선택 해제">✕</button>` : ''}</span></div>`;
+    const btns = `<button class="btn" data-manual-pick="${r.key}" title="직접 선택">📂</button>${manual ? `<button class="btn" data-manual-clear="${r.key}" title="직접 선택 해제">✕</button>` : ''}`;
+    return { r, i, st, cls, manual, names, when, label, btns };
+  };
+  const fileRow = (r) => {
+    const d = detail(r);
+    return `<div class="frow ${d.cls}"><b>${r.label}${d.manual ? ' <span class="muted man">직접 선택</span>' : ''}</b><span class="muted fn" title="${updEsc(d.names)}">${updEsc(d.names)}${d.i.error ? `<span class="errtxt"> · ${updEsc(d.i.error)}</span>` : ''}</span><span class="wh">${d.when}</span>`
+      + `<span class="chip ${d.cls}"><i></i>${d.label}</span><span class="ac">${d.btns}</span></div>`;
+  };
+  const boardCard = (r) => {
+    const d = detail(r);
+    return `<div class="bcard ${d.cls}"><div class="bt"><b>${r.label}</b>${r.required ? '<span class="req">필수</span>' : ''}${d.manual ? '<span class="muted man">직접 선택</span>' : ''}<span class="chip ${d.cls}"><i></i>${d.label}</span></div>`
+      + `<div class="muted bf" title="${updEsc(d.names)}">${updEsc(d.names)}${d.i.error ? `<span class="errtxt"> · ${updEsc(d.i.error)}</span>` : ''}</div>`
+      + `<div class="bb"><span class="bw">${d.when}</span><span class="ac">${d.btns}</span></div></div>`;
   };
   const roles = fileRoles.filter(r => r.key !== 'handover');
   const req = roles.filter(r => r.required), opt = roles.filter(r => !r.required);
   const optHave = opt.filter(r => matched[r.key] || roleInfo(r.key).entries.length), optMiss = opt.filter(r => !optHave.includes(r));
   const ho = handoverCacheStats();
-  const hoRow = fileRoles.some(r => r.key === 'handover') ? `<div class="frow live"><b>🌐 OT 인수인계</b><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="wh">실시간</span><span class="chip ok"><i></i>연동됨</span><span class="ac"></span></div>` : '';
-  box.innerHTML = `<div class="grp"><b>필수 파일</b><span class="muted">${req.length}개 · 모두 있어야 검증이 정확해요</span></div>${req.map(fileRow).join('')}`
-    + `<div class="grp"><b>선택 파일</b><span class="muted">있으면 더 많이 검증해요</span></div>${optHave.map(fileRow).join('')}`
-    + (optMiss.length ? `<details class="miss-opt wide"><summary>파일 없음 ${optMiss.length}개 <small>펼치기</small></summary>${optMiss.map(fileRow).join('')}</details>` : '')
-    + (hoRow ? `<div class="grp"><b>실시간 연동</b></div>${hoRow}` : '');
+  const hasHo = fileRoles.some(r => r.key === 'handover');
+  if (dataViewMode === 'board') {
+    const need = roles.filter(r => { const st = roleStateOf(r.key); return ['stale', 'error', 'updating'].includes(st) || (st === 'missing' && r.required); });
+    const fresh = roles.filter(r => roleStateOf(r.key) === 'latest');
+    const none = optMiss.filter(r => !need.includes(r));
+    const col = (title, cls, list, extra = '') => `<div class="bcol ${cls}"><div class="bh"><b>${title}</b><span class="chip ${cls === 'ok' ? 'ok' : cls === 'warn' ? 'warn' : 'off'}">${list.length + (extra ? 1 : 0)}</span></div>${list.map(boardCard).join('')}${extra}${(list.length || extra) ? '' : '<div class="muted bempty">없음</div>'}</div>`;
+    const hoCard = hasHo ? `<div class="bcard live"><div class="bt"><b>🌐 OT 인수인계</b><span class="chip ok"><i></i>연동됨</span></div><div class="muted bf">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''} · 실시간</div></div>` : '';
+    box.innerHTML = `<div class="board">${col('✅ 최신', 'ok', fresh, hoCard)}${col('⚠ 확인 필요', 'warn', need)}${col('⬜ 선택 안 함', 'off', none)}</div>`;
+  } else {
+    const hoRow = hasHo ? `<div class="frow live"><b>🌐 OT 인수인계</b><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="wh">실시간</span><span class="chip ok"><i></i>연동됨</span><span class="ac"></span></div>` : '';
+    box.innerHTML = `<div class="grp"><b>필수 파일</b><span class="muted">${req.length}개 · 모두 있어야 검증이 정확해요</span></div>${req.map(fileRow).join('')}`
+      + `<div class="grp"><b>선택 파일</b><span class="muted">있으면 더 많이 검증해요</span></div>${optHave.map(fileRow).join('')}`
+      + (optMiss.length ? `<details class="miss-opt wide"><summary>파일 없음 ${optMiss.length}개 <small>펼치기</small></summary>${optMiss.map(fileRow).join('')}</details>` : '')
+      + (hoRow ? `<div class="grp"><b>실시간 연동</b></div>${hoRow}` : '');
+  }
+
+  // 보기 전환·기본값 표시
+  document.querySelectorAll('#dataViewSeg [data-dv]').forEach(b => b.classList.toggle('active', b.dataset.dv === dataViewMode));
+  const defBtn = document.getElementById('dataViewDefault');
+  if (defBtn) { const isDef = dataViewMode === dataViewDefault; defBtn.textContent = isDef ? '★ 기본 보기' : '☆ 이 보기를 기본으로'; defBtn.disabled = isDef; }
 
   const states = lastScan ? roles.map(r => roleStateOf(r.key)) : [];
   const n = (st) => states.filter(x => x === st).length;
@@ -750,7 +784,12 @@ function wireBackupView() {
 }
 setInterval(() => refreshBackup(), 60 * 1000);
 
+function renderSettingsDefaults() {
+  document.querySelectorAll('input[name=dataViewDefault]').forEach(r => { r.checked = r.value === dataViewDefault; });
+}
+document.querySelectorAll('input[name=dataViewDefault]').forEach(r => r.addEventListener('change', () => { setDataViewDefault(r.value); dataViewMode = r.value; renderDataView(); }));
 async function renderSettingsView() {
+  renderSettingsDefaults();
   const folders = await window.rehab.folders.list();
   document.getElementById('folderList').innerHTML = folders.length
     ? folders.map(f => `<div class="folder-row"><span style="flex:1">📁 ${f.label} <span class="muted">${f.dirPath}</span></span><button class="btn" data-remove="${f.id}">제거</button></div>`).join('')
@@ -769,6 +808,8 @@ document.getElementById('dataScanBtn').addEventListener('click', () => syncNow({
 // "지금 업데이트"/"데이터 업데이트" 버튼은 화면을 다시 그릴 때마다 새로 생기므로 위임으로 한 번만 연결한다.
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-sync-now]')) { syncNow(); return; }
+  const dv = e.target.closest('[data-dv]'); if (dv) { dataViewMode = dv.dataset.dv; renderDataView(); return; }
+  if (e.target.closest('#dataViewDefault')) { setDataViewDefault(dataViewMode); renderDataView(); renderSettingsDefaults(); return; }
   if (e.target.closest('[data-grand-apply]')) { applyHomeGrandEvent(); return; }
   if (e.target.closest('[data-open-fixplan]')) { showView('cross'); setTimeout(() => viewDoc('cross')?.getElementById('btnFixPlan')?.click(), 300); return; }
   const ft = e.target.closest('[data-files-toggle]'); if (ft) { const k = ft.dataset.filesToggle; filesOpen[k] = !filesIsOpen(k); renderToolStrips(); return; }
@@ -927,6 +968,10 @@ const onBlur = () => { clearTimeout(altHold); altCombo = false; if (altHeld) hid
 const bindKeys = (doc, win) => { doc.addEventListener('keydown', onKeyDown, true); doc.addEventListener('keyup', onKeyUp, true); win.addEventListener('blur', onBlur); };
 bindKeys(document, window);
 document.querySelectorAll('iframe[data-tool]').forEach(f => f.addEventListener('load', () => { try { bindKeys(f.contentDocument, f.contentWindow); } catch (e) { /* 같은 출처가 아니면 건너뜀 */ } }));
+
+// 도구가 분석을 끝내 요약이 바뀌면 알려 준다(화면 안에서 직접 파일을 올린 경우도 홈·상단 띠가 바로 바뀜)
+let toolSummaryTimer = null;
+window.__onToolSummary = () => { clearTimeout(toolSummaryTimer); toolSummaryTimer = setTimeout(renderHome, 200); };
 
 // ── 초기화 ─────────────────────────────────────────────────
 (async function init() {

@@ -7,7 +7,7 @@ const { spawn } = require('child_process'); const fs = require('fs'); const path
 const R = require('../renderer/core/xlsx-reader.js'); const sleep = ms => new Promise(r => setTimeout(r, ms));
 const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 260); if (!msgs.includes(k)) msgs.push(k); };
 (async () => {
-  const mainLog = []; const app = spawn(process.execPath, [path.join(__dirname, '..', 'node_modules', 'electron', 'cli.js'), '.', `--remote-debugging-port=${PORT}`, '--remote-allow-origins=*'], { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe'] });
+  const mainLog = []; const app = spawn(process.execPath, [path.join(__dirname, '..', 'node_modules', 'electron', 'cli.js'), '.', `--remote-debugging-port=${PORT}`, '--remote-allow-origins=*', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'], { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe'] });
   app.stdout.on('data', d => mainLog.push(String(d))); app.stderr.on('data', d => mainLog.push(String(d)));
   try {
     let url; for (let i = 0; i < 60 && !url; i++) { try { const l = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json(); const p = l.find(t => t.type === 'page' && /rehab-shell/.test(t.url)); if (p) url = p.webSocketDebuggerUrl; } catch (e) {} if (!url) await sleep(500); }

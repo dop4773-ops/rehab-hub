@@ -130,6 +130,8 @@
           <h2>📦 데이터 준비</h2>
           <div class="chips" id="dataChips"></div>
           <span class="when" id="dataStatus"></span>
+          <span class="seg" id="dataViewSeg"><button type="button" data-dv="list">☰ 목록형</button><button type="button" data-dv="board">▦ 보드형</button></span>
+          <button class="btn" id="dataViewDefault" type="button"></button>
           <button class="btn" data-goto="settings">폴더·동기화 설정 →</button>
           <button class="btn primary" id="dataScanBtn">🔄 지금 업데이트</button>
         </div>
@@ -206,6 +208,15 @@
           <label><input type="radio" name="syncMode" value="30"> 30분마다</label>
           <label><input type="radio" name="syncMode" value="60"> 1시간마다</label>
           <label><input type="radio" name="syncMode" value="manual"> 수동 (직접 "지금 업데이트"를 누를 때만)</label>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>🖥 화면 기본값</h2>
+        <p class="muted">데이터 준비 화면을 열 때 처음 보이는 모양입니다. 화면 위의 "목록형 / 보드형" 버튼으로 언제든 바꿔 볼 수 있고, "이 보기를 기본으로"로도 저장됩니다.</p>
+        <div class="sync-modes">
+          <label><input type="radio" name="dataViewDefault" value="list"> 데이터 준비: 목록형 (필수 / 선택 / 실시간 묶음)</label>
+          <label><input type="radio" name="dataViewDefault" value="board"> 데이터 준비: 보드형 (최신 / 확인 필요 / 선택 안 함 열)</label>
         </div>
       </div>
 
