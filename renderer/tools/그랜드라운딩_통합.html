@@ -1261,7 +1261,8 @@ async function grandArchiveExport(ids,kind,btn,opt){
   const api=grandArchiveApi(); if(!api||!ids.length) return '';
   const oldText=btn?btn.textContent:'';
   const flash=(msg)=>{ if(!btn) return; btn.textContent=msg; setTimeout(()=>{btn.textContent=oldText;},1800); };
-  const entries=await api.load(ids);
+  // 여러 항목을 골랐을 때 시트 순서가 뒤섞이지 않게 날짜순(같은 날짜면 RM 번호순)으로 정렬해 둔다
+  const entries=(await api.load(ids)).slice().sort((a,b)=>String(a.dateKey||'').localeCompare(String(b.dateKey||''))||rmSort(a.rm||'',b.rm||''));
   if(!entries.length){ flash('불러오기 실패'); return ''; }
   const period=grandPrintPeriodKey(), label=grandArchiveExportLabel(entries);
   // 같은 환자가 여러 항목에 있으면 최신 날짜 것을 채택한다(grandIdentityKey는 등록번호 우선이라 병실이 바뀌어도 같은 환자로 인식).
@@ -1285,7 +1286,7 @@ async function grandArchiveExport(ids,kind,btn,opt){
     const allowed=team?(grandTeamRoster.get(team)||new Set()):null;
     // 여러 RM이 섞여 있으면 RM별로 시트를 나눈다(치료사 시트 이름은 "치료사(RM)"). RM이 하나뿐이면 예전과 같은 구성.
     const rms=[...new Set(pooled.map(p=>p.rm||'미지정'))].sort(rmSort), split=rms.length>1;
-    const defs=[], overview=[];
+    const defs=[], overview=[], ovDefs=[]; // ovDefs: "전체(RM)" 시트 — 치료사 시트보다 앞에 모아 둔다
     const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1';
     for(const rm of (split?rms:[null])){
       const scope=split?pooled.filter(p=>(p.rm||'미지정')===rm):pooled;
@@ -1293,12 +1294,12 @@ async function grandArchiveExport(ids,kind,btn,opt){
       if(allowed) for(const n of [...groups.keys()]) if(!allowed.has(n)) groups.delete(n);
       const members=[...new Set([...groups.values()].flat())];
       if(!members.length) continue;
-      if(split) defs.push(buildGrandOverviewSheetDef(members,`전체(${rm})`));
+      if(split) ovDefs.push(buildGrandOverviewSheetDef(members,`전체(${rm})`));
       else overview.push(...members);
       for(const [name,pts] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko'))) defs.push({name:split?`${name}(${rm})`:name,title:`${name}${split?` · ${rm}`:''} · ${keyLabel}`,patients:pts});
     }
     if(!defs.length){ flash('대상 없음'); return ''; }
-    if(!split) defs.unshift(buildGrandOverviewSheetDef(overview));
+    if(split) defs.unshift(...ovDefs); else defs.unshift(buildGrandOverviewSheetDef(overview)); // 전체 시트(들)를 맨 앞에
     downloadBytes(buildGrandWorkbookXlsx(defs,day,hour,routeKey,period),`그랜드라운딩_팀별_${keyLabel}${team?`_${team}`:''}_${label}.xlsx`);
     return split?`RM ${rms.length}개(${rms.join('·')})를 시트로 나눴습니다.`:'';
   }else if(kind==='lang'){

@@ -47,6 +47,9 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       const names = Object.keys(exp.files); if (names.length < 3) throw new Error('내보낸 파일이 ' + names.length + '개뿐');
       const res = [];
       for (const n of names) { const buf = Buffer.from(exp.files[n], 'base64'); const book = await R.readWorkbookFile({ name: n, arrayBuffer: async () => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length) });
+        const names = book.sheets.map(x => x.name), nn = n.normalize('NFC'); // 시트 순서 규칙: 팀별=전체(RM) 시트가 맨 앞, 전체=날짜순
+        if (/그랜드라운딩_팀별/.test(nn)) { const i = names.findIndex(x => !/^전체/.test(x)); if (i >= 0 && names.slice(i).some(x => /^전체/.test(x))) throw new Error(nn + ' 전체 시트가 앞에 모여 있지 않음: ' + names.join('|')); }
+        if (/그랜드라운딩_전체_/.test(nn)) { const d = names.filter(x => /^\d{4}-/.test(x)); if (JSON.stringify(d) !== JSON.stringify([...d].sort())) throw new Error(nn + ' 시트가 날짜순이 아님: ' + d.join('|')); }
         let cells = 0; for (const s of book.sheets) { const c = await R.getSheetCells(book, s.name); if (!c) throw new Error(n + ' 시트를 못 읽음: ' + s.name); cells += c.size; }
         if (!book.sheets.length || !cells) throw new Error(n + ' 비어 있음'); res.push(`${n.normalize('NFC').slice(0, 24)}: 시트 ${book.sheets.length}·셀 ${cells}`); }
       return res; });
