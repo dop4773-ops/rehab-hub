@@ -47,7 +47,10 @@ assert.strictEqual(byName(r, '환자삼')[0].therapist, '김기범OT', 'S3는 �
 assert.strictEqual(byName(r, '환자일')[0].therapist, '박모모');
 assert(byName(r, '환자일')[0].conflict, '박모모가 같은 시간에 메인 표에서 다른 환자를 보면 시간 충돌');
 assert.strictEqual(byName(r, '환자이')[0].conflict && byName(r, '환자이')[0].conflict.withName, '사아자');
-console.log('OK ① 토요일/공휴일(ERDT 표 옆) 형식');
+// 메인 표의 "3F ERDT / 10층 ERDT / ERDT" 표시 칸은 환자가 아니지만 미리보기에서 보여줄 수 있게 마커로 남긴다
+same(r.grid.markers.map(m => [m.therapist, m.timeSlot, m.kind]), [['김기범OT', '10:15~10:45', 'ERDT'], ['박모모', '10:15~10:45', 'ERDT'], ['이승규', '10:50~11:20', 'ERDT']], '병동 ERDT·단독 ERDT 칸이 마커로 기록됨');
+assert(r.grid.markers.every(m => m.row > 0 && m.col > 0 && m.label), '마커에 위치·표기 글자가 있어야 함');
+console.log('OK ① 토요일/공휴일(ERDT 표 옆) 형식 + ERDT 표시 칸 마커');
 
 // ② 토요일 옛 형식 — ERDT 표가 메인 표 아래, 그 시간대 줄이 메인 표로 읽히면 안 됨
 const belowRows = [
