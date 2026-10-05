@@ -558,9 +558,8 @@ function renderDataView() {
   };
   const boardCard = (r) => {
     const d = detail(r);
-    return `<div class="bcard ${d.cls}"><div class="bt"><b>${r.label}</b>${r.required ? '<span class="req">필수</span>' : ''}${d.manual ? '<span class="muted man">직접 선택</span>' : ''}<span class="chip ${d.cls}"><i></i>${d.label}</span></div>`
-      + `<div class="muted bf" title="${updEsc(d.names)}">${updEsc(d.names)}${d.i.error ? `<span class="errtxt"> · ${updEsc(d.i.error)}</span>` : ''}</div>`
-      + `<div class="bb"><span class="bw">${d.when}</span><span class="ac">${d.btns}</span></div></div>`;
+    return `<div class="bcard ${d.cls}"><div class="bt"><b>${r.label}</b>${r.required ? '<span class="req">필수</span>' : ''}${d.manual ? '<span class="muted man">직접</span>' : ''}<span class="rt"><span class="chip ${d.cls}"><i></i>${d.label}</span><span class="ac">${d.btns}</span></span></div>`
+      + `<div class="bf2"><span class="muted fn" title="${updEsc(d.names)}">${updEsc(d.names)}${d.i.error ? `<span class="errtxt"> · ${updEsc(d.i.error)}</span>` : ''}</span><span class="bw">${d.when}</span></div></div>`;
   };
   const roles = fileRoles.filter(r => r.key !== 'handover');
   const req = roles.filter(r => r.required), opt = roles.filter(r => !r.required);
@@ -572,7 +571,7 @@ function renderDataView() {
     const fresh = roles.filter(r => roleStateOf(r.key) === 'latest');
     const none = optMiss.filter(r => !need.includes(r));
     const col = (title, cls, list, extra = '') => `<div class="bcol ${cls}"><div class="bh"><b>${title}</b><span class="chip ${cls === 'ok' ? 'ok' : cls === 'warn' ? 'warn' : 'off'}">${list.length + (extra ? 1 : 0)}</span></div>${list.map(boardCard).join('')}${extra}${(list.length || extra) ? '' : '<div class="muted bempty">없음</div>'}</div>`;
-    const hoCard = hasHo ? `<div class="bcard live"><div class="bt"><b>🌐 OT 인수인계</b><span class="chip ok"><i></i>연동됨</span></div><div class="muted bf">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''} · 실시간</div></div>` : '';
+    const hoCard = hasHo ? `<div class="bcard live"><div class="bt"><b>🌐 OT 인수인계</b><span class="rt"><span class="chip ok"><i></i>연동됨</span></span></div><div class="bf2"><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="bw">실시간</span></div></div>` : '';
     box.innerHTML = `<div class="board">${col('✅ 최신', 'ok', fresh, hoCard)}${col('⚠ 확인 필요', 'warn', need)}${col('⬜ 선택 안 함', 'off', none)}</div>`;
   } else {
     const hoRow = hasHo ? `<div class="frow live"><b>🌐 OT 인수인계</b><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="wh">실시간</span><span class="chip ok"><i></i>연동됨</span><span class="ac"></span></div>` : '';
