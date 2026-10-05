@@ -30,6 +30,7 @@ const TOOLS = {
   },
   acting: {
     label: '치료기록 QA',
+    primaryRoles: ['acting'], // 이 화면은 액팅 기록을 직접 올리는 게 핵심이라, 없으면 업로드 영역을 펼쳐 둔다
     page: 'tools/치료_액팅_기록_오류_확인_프로그램_언어분류.html',
     targets: [
       { role: 'acting', selector: '#fileInput' },
@@ -304,6 +305,7 @@ function ensureToolLoaded(key) {
     loadedTools.add(key);
     iframe.addEventListener('load', async () => {
       iframe.contentWindow.__schedulesApi = SCHEDULES_BRIDGE;
+      applyFilesCollapse(key);
       iframe.contentWindow.__itdaApi = { grandEvents: () => window.rehab.itda.grandEvents() }; // 그랜드라운딩 일정 불러오기(읽기 전용)
       // 도구 쪽에서 "브리지가 막 연결됐다"는 걸 알아야 하는 화면(그랜드라운딩의 일정 보관함 목록 등)을 위한
       // 선택적 훅 — 함수를 정의해둔 도구만 반응하고, 없으면 그냥 넘어간다.
@@ -530,18 +532,54 @@ function renderSyncPill() {
   el.textContent = o.text + (lastSyncAt ? ` · 마지막 동기화 ${fmtTime(lastSyncAt, true)}` : '');
 }
 
-// 각 도구 화면 위의 데이터 상태 띠 — 지금 화면의 검증/출력이 어떤 데이터 기준인지 바로 보이게 한다.
+// 각 도구 화면 위의 파일 상태 띠 — 이 화면이 쓰는 파일이 올라와 있는지(색 칩), 마지막 동기화 일시, 불러오기·직접 넣기 버튼을 한 줄로 보여준다.
+// 도구 안의 큰 업로드 영역은 기본으로 접어 두고(아래 FILES_CSS), 필요한 파일이 없거나 사용자가 "직접 넣기"를 누르면 펼친다.
+const CHIP_NAME = { card3: '3F 시간표', card10: '10F 시간표', pt3: '3F 물리치료', pt10: '10F 물리치료', mt3: '3F 매트·테이블', mat10: '10F 매트', table10: '10F 테이블',
+  dailyStats: '일일통계', acting: '액팅 기록', status: '작업치료현황', dailySchedule: 'OT 시간표(평일)', satSchedule: 'OT 시간표(토·공)', pta: 'PTA 재원현황' };
+const FILES_CSS = {
+  rm: 'body.rh-collapsed .upload-grid,body.rh-collapsed .grand-pt-upload{display:none!important}'
+    + 'body.rh-collapsed section.panel:has(.upload-grid)>.panel-head{display:none!important}body.rh-collapsed section.panel:has(.upload-grid)>.panel-body{padding:8px 18px!important}body.rh-collapsed #statusLine{margin:0!important}'
+    + 'body.rh-collapsed .grand-ot-upload>:not(#grandHandoverStatus):not(#grandHandoverMatchSummary):not(#grandHandoverRefreshBtn){display:none!important}',
+  acting: '#dropZone{min-height:0!important;padding:12px!important}#dropZone .upload-ico{display:none}' // 접었든 펼쳤든 업로드 칸은 작게
+    + 'body.rh-collapsed #dropZone,body.rh-collapsed #msDropZone,body.rh-collapsed #dcDropZone,body.rh-collapsed #dcFolderPickBtn,body.rh-collapsed label[for=dcFileInput]{display:none!important}',
+  cross: 'body.rh-collapsed #prepPanel:not(:has(.prep-badge.err)){display:none!important}body.rh-collapsed .toprow{grid-template-columns:1fr 260px!important}'
+    + '@media(max-width:1400px){body.rh-collapsed .toprow{grid-template-columns:1fr!important}}',
+};
+const filesOpen = {}; // 사용자가 직접 펼침/접음을 정한 도구(없으면 자동 판단)
+const primaryRolesOf = (key) => TOOLS[key].primaryRoles || toolRoles(key).filter(r => (roleDef(r) || {}).required);
+// 자동 판단: 꼭 필요한 파일이 없거나 읽기 오류가 있고, 도구에도 직접 올린 분석 결과가 없으면 펼쳐서 바로 넣을 수 있게 한다
+const filesIsOpen = (key) => (key in filesOpen) ? filesOpen[key]
+  : primaryRolesOf(key).some(r => ['missing', 'error'].includes(roleStateOf(r))) && !readToolSummary(key);
+function applyFilesCollapse(key) {
+  const doc = viewDoc(key); if (!doc || !doc.body || !FILES_CSS[key]) return;
+  if (!doc.getElementById('rh-collapse-css')) { const st = doc.createElement('style'); st.id = 'rh-collapse-css'; st.textContent = FILES_CSS[key]; doc.head.appendChild(st); }
+  doc.body.classList.toggle('rh-collapsed', !filesIsOpen(key));
+}
+function fileChip(role, key) {
+  const i = roleInfo(role), def = roleDef(role) || {}, st = i.state;
+  const manualLoaded = key === 'acting' && role === 'acting' && st === 'missing' && readToolSummary('acting'); // 화면에서 직접 올린 경우
+  const cls = manualLoaded ? 'ok' : st === 'latest' ? 'ok' : st === 'stale' ? 'stale' : st === 'updating' ? 'busy' : st === 'error' ? 'err' : def.required ? 'err' : 'off';
+  const manual = (lastScan && lastScan.manualRoles || []).includes(role);
+  const when = manualLoaded ? '직접 올림' : st === 'missing' ? (def.required ? '없음' : '미선택') : (i.modified ? fmtTime(i.modified) : '') + (manual ? ' · 직접' : '');
+  const tip = [def.label, i.entries.length ? '파일: ' + i.entries.map(e => e.name).join(', ') : '파일 없음', i.modified ? '파일 수정: ' + fmtTime(i.modified) : '', i.reflectedAt ? '프로그램 반영: ' + fmtTime(i.reflectedAt) : '', RehabSync.STATE_LABEL[st], i.error || ''].filter(Boolean).join('\n');
+  return `<span class="fchip ${cls}" title="${updEsc(tip)}"><i></i>${CHIP_NAME[role] || def.label || role}<small>${updEsc(when)}</small></span>`;
+}
+const fmtDateTime = (ms) => { const d = new Date(ms); return `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
 function renderToolStrips() {
   for (const key of Object.keys(TOOLS)) {
     const el = document.querySelector(`[data-tool-status="${key}"]`);
     if (!el) continue;
     const roles = toolRoles(key);
     const o = syncOverview(roles);
-    const need = o.cls === 'stale' || o.cls === 'err';
+    const hasHandover = TOOLS[key].targets.some(t => (t.roles || [t.role]).includes('handover'));
+    const open = filesIsOpen(key);
     el.className = `tool-status ${o.cls}`;
-    el.innerHTML = `<span><b>${o.cls === 'ok' ? '● 데이터 최신' : o.text}</b></span>`
-      + `<span>${lastSyncAt ? '마지막 동기화 ' + fmtTime(lastSyncAt, true) : '아직 동기화 전'}</span>`
-      + (need ? '<button class="btn primary" data-sync-now>데이터 업데이트</button>' : '');
+    el.innerHTML = `<b>${o.cls === 'ok' ? '● 데이터 최신' : o.text}</b>`
+      + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>`
+      + `<span class="chips">${roles.map(r => fileChip(r, key)).join('')}${hasHandover ? '<span class="fchip ok" title="인수인계 구글 시트에서 실시간으로 읽어옵니다"><i></i>인수인계<small>실시간</small></span>' : ''}</span>`
+      + `<span class="acts"><button class="btn${o.cls === 'ok' ? '' : ' primary'}" data-sync-now>🔄 불러오기</button>`
+      + `<button class="btn" data-files-toggle="${key}">📂 직접 넣기 ${open ? '▴' : '▾'}</button></span>`;
+    if (loadedTools.has(key)) applyFilesCollapse(key);
   }
 }
 
@@ -668,6 +706,7 @@ document.getElementById('homeRefreshBtn').addEventListener('click', () => syncNo
 // "지금 업데이트"/"데이터 업데이트" 버튼은 화면을 다시 그릴 때마다 새로 생기므로 위임으로 한 번만 연결한다.
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-sync-now]')) { syncNow(); return; }
+  const ft = e.target.closest('[data-files-toggle]'); if (ft) { const k = ft.dataset.filesToggle; filesOpen[k] = !filesIsOpen(k); renderToolStrips(); return; }
   const pick = e.target.closest('[data-manual-pick]');
   if (pick) {
     const r = await window.rehab.folders.chooseFile(pick.dataset.manualPick);

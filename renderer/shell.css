@@ -148,7 +148,7 @@ table.mini th,table.mini td{text-align:left;padding:5px 6px;border-bottom:1px so
 #topbar .pill.sync-pill.ok{background:rgba(26,127,75,.35)}
 #topbar .pill.sync-pill.stale{background:rgba(224,140,30,.55)}
 #topbar .pill.sync-pill.err{background:rgba(194,59,59,.6)}
-.tool-status{height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:12px;border-bottom:1px solid var(--border);background:#fff;color:var(--sub)}
+.tool-status{min-height:38px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;padding:6px 14px;font-size:12px;border-bottom:1px solid var(--border);background:#fff;color:var(--sub)}
 .tool-status.ok b{color:var(--green)} .tool-status.stale{background:#fff7e8} .tool-status.stale b{color:var(--orange)}
 .tool-status.err{background:#fdeeee} .tool-status.err b{color:var(--red)}
 .tool-status .btn{padding:3px 10px;font-size:11px}
@@ -227,3 +227,15 @@ table.data-table .btn{padding:3px 9px;font-size:11px;margin-right:4px}
 .alt-row kbd{font-size:11px;font-weight:600;color:var(--sub);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 9px;white-space:nowrap;font-family:inherit}
 .alt-sub{font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 6px;padding-top:10px;border-top:1px solid var(--border)}
 .alt-hint{margin:14px 0 0;font-size:11px;color:var(--muted);text-align:center}
+
+/* 도구 화면 위 파일 상태 띠 */
+.tool-status .chips{display:flex;flex-wrap:wrap;gap:6px;order:3;flex-basis:100%}
+.tool-status .acts{margin-left:auto;display:flex;gap:6px}
+.fchip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;border:1px solid transparent;white-space:nowrap}
+.fchip i{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.fchip small{font-size:10.5px;font-weight:600;opacity:.8}
+.fchip.ok{background:#e6f7ee;color:#1a7f4b;border-color:#bfe6d0}
+.fchip.stale{background:#fff3dc;color:#a05d12;border-color:#f1d9a8}
+.fchip.err{background:#fdeaea;color:#c23b3b;border-color:#f3c3c3}
+.fchip.busy{background:#e8f0fe;color:#2f6fce;border-color:#c3d6f7}
+.fchip.off{background:#f1f3f6;color:#8a94a4;border-color:#e0e4ea}
