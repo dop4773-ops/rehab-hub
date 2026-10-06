@@ -441,17 +441,17 @@ function wireItdaPushButtons() {
 }
 
 // ── 홈 ─────────────────────────────────────────────────────
-let homeGrandEvent = null, homeGrandAt = 0, homeMissOptOpen = false;
+let homeGrandEvent = null, homeGrandEvents = [], homeGrandAt = 0, homeMissOptOpen = false;
 document.addEventListener('toggle', (e) => { if (e.target.id === 'homeMissOpt') homeMissOptOpen = e.target.open; }, true);
 async function loadHomeGrandEvent() { // 잇다의 다가오는 그랜드라운딩 일정 한 건(읽기 전용). 잇다가 없으면 조용히 넘어간다.
-  if (!settings.itda) { homeGrandEvent = null; return; }
+  if (!settings.itda) { homeGrandEvent = null; homeGrandEvents = []; return; }
   if (Date.now() - homeGrandAt < 60 * 1000) return;
   homeGrandAt = Date.now();
-  try { const r = await window.rehab.itda.grandEvents(settings.itdaCategory); homeGrandEvent = r && r.ok && r.events.length ? r.events[0] : null; } catch (e) { homeGrandEvent = null; }
+  try { const r = await window.rehab.itda.grandEvents(settings.itdaCategory); homeGrandEvents = r && r.ok ? r.events.slice(0, 3) : []; homeGrandEvent = homeGrandEvents[0] || null; } catch (e) { homeGrandEvent = null; homeGrandEvents = []; }
   renderHome();
 }
-async function applyHomeGrandEvent() {
-  const ev = homeGrandEvent; if (!ev) return;
+async function applyHomeGrandEvent(i = 0) {
+  const ev = homeGrandEvents[i] || homeGrandEvent; if (!ev) return;
   showView('rm');
   const win = () => document.querySelector('iframe[data-tool="rm"]').contentWindow;
   for (let i = 0; i < 80; i++) { try { if (win().grandItdaApply && win().document.getElementById('grandItdaMsg')) break; } catch (e) { /* 아직 로드 중 */ } await new Promise(r => setTimeout(r, 250)); }
@@ -492,12 +492,14 @@ function renderHome() {
   const o = syncOverview(scanRoles());
   const bkChip = !bk || bk.level === 'off' ? '' : bk.level === 'ok' ? chipHtml('ok', '백업 정상') : chipHtml('warn', bk.level === 'unknown' ? '백업 기록 없음' : '백업 확인 필요');
   document.getElementById('homeBand').innerHTML = `<b class="band-title ${o.cls}">${o.cls === 'ok' ? '● 오늘 상태 정상' : o.text}</b>`
+    + (settings.homeLayout === 'classic' ? '' : '<span data-files-pop class="band-click" title="파일 상태 보기·바꾸기">')
     + chipHtml(!lastScan ? 'off' : missReq.length ? 'err' : 'ok', `필수 파일 ${reqFound}/${reqRoles.length}`, lastScan && !missReq.length ? '최신' : '')
     + chipHtml(optFound ? 'ok' : 'off', `선택 파일 ${optFound}/${optRoles.length}`)
-    + (cross ? (cross.count ? chipHtml('warn', `교차검증 불일치 ${cross.count}건`) : chipHtml('ok', '교차검증 이상 없음')) : chipHtml('off', '교차검증 확인 전'))
+    + (settings.homeLayout === 'classic' ? '' : '</span>')
+    + (cross ? (cross.count ? chipHtml('warn', `교차검증 불일치 ${cross.count}건`, (() => { const d = crossTrend().delta; return d ? (d > 0 ? `▲${d}` : `▼${-d}`) : ''; })()) : chipHtml('ok', '교차검증 이상 없음')) : chipHtml('off', '교차검증 확인 전'))
     + (acting && acting.count ? chipHtml('err', `치료기록 오류 ${acting.count}건`) : acting ? chipHtml('ok', '치료기록 오류 없음') : chipHtml('off', '치료기록 QA 파일 없음'))
     + bkChip
-    + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span><button class="btn primary" id="homeScanBtn" data-sync-now>🔄 지금 업데이트</button>`;
+    + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>${settings.homeLayout === 'classic' ? '' : '<button class="btn" data-today-summary title="카톡에 붙여넣을 오늘 현황 글을 복사해요">📋 오늘 요약</button>'}<button class="btn primary" id="homeScanBtn" data-sync-now>🔄 지금 업데이트</button>`;
 
   // 2) 오늘 할 일(확인이 필요한 것만)
   const itda = (content) => !settings.itdaPush ? '' : `<button class="btn" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>`;
@@ -512,8 +514,9 @@ function renderHome() {
   if (acting && acting.count) todos.push(todoHtml('err', '📋', `치료기록 오류 ${acting.count}건`, '치료기록 QA 화면에서 오류 목록을 확인하세요', '<button class="btn green" data-goto="acting">열기 →</button>' + itda(`[치료기록 QA] 치료기록 오류 ${acting.count}건 발견 — 재활치료부 앱에서 확인`)));
   else if (!acting) todos.push(todoHtml('off', '📋', '치료기록 QA — 액팅 기록 파일을 올려 주세요', '담당자별 기록통계.xlsx를 올리면 오류를 바로 검사합니다.', '<button class="btn green" data-goto="acting">파일 올리기 →</button>'));
   if (bk && bk.level !== 'ok' && bk.level !== 'off') todos.push(todoHtml('warn', '💾', bk.level === 'unknown' ? '백업 기록 없음' : '백업 확인 필요', bk.detail || bk.title || '', '<button class="btn" data-goto="backup">백업 상태 보기 →</button>' + itda(`[백업] ${bk.title}`)));
-  if (homeGrandEvent) todos.push(todoHtml('teal', '📅', `다가오는 그랜드라운딩 · ${fmtDay(homeGrandEvent.date)} ${homeGrandEvent.rm || homeGrandEvent.title}${homeGrandEvent.wards ? ' ' + homeGrandEvent.wards.replace(',', '·') + '병동' : ''}`, '잇다 일정에서 가져왔어요. 누르면 회차·RM·요일이 맞춰진 채로 열립니다.', '<button class="btn primary" data-grand-apply>설정 적용하고 열기 →</button>'));
+  if (homeGrandEvent && settings.homeLayout !== 'workbench') todos.push(todoHtml('teal', '📅', `다가오는 그랜드라운딩 · ${fmtDay(homeGrandEvent.date)} ${homeGrandEvent.rm || homeGrandEvent.title}${homeGrandEvent.wards ? ' ' + homeGrandEvent.wards.replace(',', '·') + '병동' : ''}`, '잇다 일정에서 가져왔어요. 누르면 회차·RM·요일이 맞춰진 채로 열립니다.', '<button class="btn primary" data-grand-apply>설정 적용하고 열기 →</button>'));
   document.getElementById('homeTodo').innerHTML = todos.join('') || '<div class="muted" style="padding:10px 2px">오늘 확인할 항목이 없어요 ✅</div>';
+  if (settings.homeLayout === 'workbench') document.querySelectorAll('#homeTodo .todo').forEach((t, i) => t.insertAdjacentHTML('afterbegin', `<span class="k" title="숫자 ${i + 1} 키로 바로 실행">${i + 1}</span>`));
   wireItdaPushButtons();
 
   // 3) 파일 현황(문제 있는 것만)
@@ -544,6 +547,92 @@ function renderHome() {
   renderActivity();
   renderSyncPill();
   renderToolStrips();
+  if (settings.homeLayout === 'workbench') renderWorkbench(summaries, { o, missReq });
+}
+
+// ── 홈 작업대 ──────────────────────────────────────────────
+// 교차검증 7일 추세·어제 대비: 교차검증이 매일 마지막 결과를 저장해 둔 값을 읽기만 한다(없으면 표시 없음)
+function crossTrend() {
+  try {
+    const snaps = (JSON.parse(localStorage.getItem('rehab_cross_history_v1')) || {}).snaps || [];
+    const totals = snaps.map(s => Object.values(s.counts || {}).reduce((a, b) => a + b, 0));
+    const n = totals.length;
+    return { series: totals.slice(-7), delta: n >= 2 ? totals[n - 1] - totals[n - 2] : 0, hasPrev: n >= 2 };
+  } catch (e) { return { series: [], delta: 0, hasPrev: false }; }
+}
+const sparkSvg = (pts, color) => {
+  if (pts.length < 2) return '';
+  const w = 62, h = 20, max = Math.max(...pts), min = Math.min(...pts), rng = max - min || 1;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.map((v, i) => `${Math.round(i * w / (pts.length - 1))},${Math.round(h - 2 - (v - min) / rng * (h - 4))}`).join(' ')}"/></svg>`;
+};
+const handoverModifiedToday = () => {
+  try { const o = JSON.parse(localStorage.getItem('rehab_handover_cache_v1')), t = new Date().toDateString(); return o.records.filter(r => r.modified && new Date(r.modified).toDateString() === t).length; } catch (e) { return null; }
+};
+function renderWorkbench(sm, ctx) {
+  const cross = sm.cross, acting = sm.acting, rm = sm.rm, bk = backupStatus, ho = handoverCacheStats(), tr = crossTrend();
+  // 담당자별 확인 필요(수정 지시서 기준 건수, 이름을 누르면 그 담당자의 지시서)
+  const who = (cross && cross.byWho) || [], mx = who.length ? who[0].count : 1;
+  document.getElementById('wbWho').innerHTML = who.length
+    ? who.slice(0, 5).map(w => `<div class="wb-who" data-who-plan="${updEsc(w.name)}" title="${updEsc(w.name)} 수정 지시서 열기"><b>${updEsc(w.name)}</b><div class="b"><i style="width:${Math.max(8, Math.round(w.count / mx * 100))}%"></i></div><span>${w.count}</span></div>`).join('') + '<div class="muted" style="font-size:11px;margin-top:4px">이름을 누르면 그 담당자의 수정 지시서가 열려요</div>'
+    : `<div class="muted" style="padding:6px 2px;font-size:12px">${cross ? '지금은 확인할 담당자가 없어요 ✅' : '교차검증을 실행하면 담당자별로 보여드려요'}</div>`;
+  // 다가오는 일정(최대 3건) + 오늘의 흐름
+  document.getElementById('wbEvents').innerHTML = homeGrandEvents.length
+    ? homeGrandEvents.map((ev, i) => `<div class="wb-ev"><b>${fmtDay(ev.date)} ${updEsc(ev.rm || ev.title)}${ev.wards ? ' · ' + updEsc(ev.wards.replace(',', '·')) + '병동' : ''}</b><small>${updEsc(settings.grandTime)}시</small><button class="btn${i ? '' : ' primary'}" data-grand-apply="${i}" title="회차·RM·요일을 맞춰서 그랜드라운딩 열기">${i ? '적용' : '적용·열기'}</button></div>`).join('')
+    : `<div class="muted" style="padding:6px 2px;font-size:12px">${settings.itda ? '오늘 이후 그랜드라운딩 일정이 없어요' : '잇다 연동이 꺼져 있어요(설정 › 잇다 연동)'}</div>`;
+  const steps = [
+    ['파일 최신', ctx.o.cls === 'ok' && !ctx.missReq.length ? 'ok' : ctx.o.cls === 'busy' ? 'now' : 'bad', ctx.o.cls === 'ok' ? '모든 파일이 최신이에요' : ctx.o.text],
+    ['교차검증 실행', cross ? 'ok' : 'now', cross ? `실행됨 · 불일치 ${cross.count}건` : '아직 실행 전이에요'],
+    ['치료기록 QA', acting ? 'ok' : 'bad', acting ? `분석됨 · 오류 ${acting.count}건` : '액팅 기록 파일이 없어요'],
+    ['그랜드라운딩 준비', rm ? 'ok' : 'now', rm ? `환자 ${rm.count}명 준비됨` : '시간표를 불러오는 중이에요'],
+    ['백업 확인', !bk || bk.level === 'off' ? 'off' : bk.level === 'ok' ? 'ok' : 'now', bk ? (bk.title || '') : '확인 중'],
+  ];
+  const okN = steps.filter(s => s[1] === 'ok').length;
+  document.getElementById('wbFlow').innerHTML = '오늘 ' + steps.map((s, i) => `${i ? '<i class="ln"></i>' : ''}<span class="dot ${s[1] === 'ok' ? '' : s[1]}" title="${updEsc(s[0] + ' — ' + s[2])}">${s[1] === 'ok' ? '✓' : s[1] === 'bad' ? '!' : s[1] === 'off' ? '–' : i + 1}</span>`).join('') + `<span style="margin-left:6px">${okN}/${steps.length}</span>`;
+  // 도구 타일: 핵심 숫자 · 추세/증감 · 바로 하는 일
+  const dl = tr.hasPrev && tr.delta ? `<span class="${tr.delta > 0 ? 'up' : 'dn'}">${tr.delta > 0 ? '▲' : '▼'}${Math.abs(tr.delta)}</span>` : '';
+  const hoT = handoverModifiedToday();
+  const tile = (goto, ic, name, num, numCls, sub, act) => `<div class="wb-tile" data-goto-tile="${goto}"><div class="a"><span>${ic}</span><b>${name}</b><span class="n ${numCls}">${num}</span></div><div class="s">${sub}${act}</div></div>`;
+  document.getElementById('wbTiles').innerHTML =
+    tile('cross', '🔍', '교차검증', cross ? cross.count : '–', cross ? (cross.count ? 'r' : '') : 'off', cross ? `${sparkSvg(tr.series, '#d4606c')}${dl}` : '<span>확인 전</span>', '<a class="act" data-open-fixplan>수정 지시서 →</a>')
+    + tile('acting', '📋', '치료기록 QA', acting ? acting.count : '–', acting ? (acting.count ? 'r' : '') : 'off', acting ? `<span>오류 ${acting.count} · 주의 ${acting.warnCount || 0}</span>` : '<span>파일 없음</span>', `<a class="act">${acting ? '오류 확인 →' : '파일 올리기 →'}</a>`)
+    + tile('rm', '👤', '그랜드라운딩', rm ? rm.count : '–', rm ? '' : 'off', rm ? `<span>10F ${rm.floor10Count}명 · 준비됨</span>` : '<span>확인 전</span>', '<a class="act">열기 →</a>')
+    + tile('handover', '📝', '인수인계', ho ? ho.total : '–', ho ? '' : 'off', ho ? `<span class="${hoT ? 'dn' : ''}">${hoT != null ? `오늘 수정 ${hoT}` : '실시간'}</span>` : '<span>조회 전</span>', '<a class="act" data-new-patient>새 환자 →</a>');
+}
+// 오늘 요약(카톡에 붙여넣을 글)
+function todaySummaryText() {
+  const d = new Date(), wd = '일월화수목금토'[d.getDay()], lines = [`[${d.getMonth() + 1}/${d.getDate()}(${wd}) 재활치료부 현황]`];
+  const cross = readToolSummary('cross'), acting = readToolSummary('acting'), tr = crossTrend();
+  if (cross) {
+    const cats = cross.cats ? Object.keys(CROSS_CAT_LABEL).filter(k => cross.cats[k]).map(k => `${CROSS_CAT_LABEL[k]} ${cross.cats[k]}`).join(' · ') : '';
+    lines.push(`· 교차검증 불일치 ${cross.count}건${tr.hasPrev && tr.delta ? ` (어제 ${tr.delta > 0 ? '+' : ''}${tr.delta})` : ''}${cats ? ' — ' + cats : ''}`);
+  } else lines.push('· 교차검증: 아직 실행 전');
+  lines.push(acting ? `· 치료기록 QA: 오류 ${acting.count}건` : '· 치료기록 QA: 파일 대기 중');
+  const ev = homeGrandEvents[0]; if (ev) lines.push(`· 다음 그랜드라운딩: ${fmtDay(ev.date)} ${ev.rm || ev.title}${ev.wards ? ' ' + ev.wards.replace(',', '·') + '병동' : ''} ${settings.grandTime}시`);
+  const who = (cross && cross.byWho) || []; if (who.length) lines.push(`· 확인 필요 담당: ${who.slice(0, 3).map(w => `${w.name} ${w.count}`).join(' · ')}`);
+  if (backupStatus && !['ok', 'off'].includes(backupStatus.level)) lines.push('· 백업: 확인 필요');
+  return lines.join('\n');
+}
+async function copyText(text) {
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; } } catch (e) { /* 아래 방식으로 */ }
+  const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { /* 실패 */ } ta.remove(); return ok;
+}
+// "필수 파일" 칩 → 파일 상태 작은 창(큰 파일 현황 카드를 대신): 파일별 최신/오래됨/미선택, 직접 고르기·하나만 다시 읽기
+function openFilesPop(anchor) {
+  closeChipMenu();
+  const roles = fileRoles.filter(r => r.key !== 'handover'), rows = roles.map(r => {
+    const i = roleInfo(r.key), st = i.state, cls = st === 'latest' ? 'ok' : st === 'stale' ? 'stale' : st === 'error' ? 'err' : st === 'updating' ? 'stale' : 'off';
+    const label = st === 'missing' ? (r.required ? '없음' : '선택 안 함') : RehabSync.STATE_LABEL[st].replace(/^[^\s]+\s/, '');
+    const manual = (lastScan && lastScan.manualRoles || []).includes(r.key);
+    return { r, i, cls: st === 'missing' && r.required ? 'err' : cls, label, manual };
+  }).sort((a, b) => ({ err: 0, stale: 1, ok: 2, off: 3 }[a.cls] - { err: 0, stale: 1, ok: 2, off: 3 }[b.cls]));
+  const m = document.createElement('div'); m.className = 'chip-menu wide';
+  m.innerHTML = rows.map(x => `<div class="fp-row"><b title="${updEsc(x.r.label)}">${updEsc(CHIP_NAME[x.r.key] || x.r.label)}</b><span class="w">${x.i.entries.length ? fmtTime(x.i.modified) + (x.manual ? ' · 직접' : '') : '-'}</span><span class="fp-st ${x.cls}">${x.label}</span>`
+    + (x.i.entries.length ? `<button class="btn" data-chip-resync="${x.r.key}" title="이 파일만 다시 읽기">↻</button>` : '') + `<button class="btn" data-manual-pick="${x.r.key}" title="파일 직접 고르기">📂</button></div>`).join('')
+    + '<div class="muted" style="font-size:11px;margin-top:6px;padding:0 4px">전체 동기화는 🔄 · 자세한 내용은 데이터 준비 화면에서 볼 수 있어요</div>';
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect(), w = m.offsetWidth;
+  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+  chipMenu = m; chipMenu.dataset.for = 'files-pop';
 }
 
 let sysInfoRequestId = 0;
@@ -873,6 +962,17 @@ document.getElementById('addFolderBtn').addEventListener('click', async () => {
 document.getElementById('dataScanBtn').addEventListener('click', () => syncNow({ statusEl: document.getElementById('dataStatus') }));
 // "지금 업데이트"/"데이터 업데이트" 버튼은 화면을 다시 그릴 때마다 새로 생기므로 위임으로 한 번만 연결한다.
 document.addEventListener('click', async (e) => {
+  const fp = e.target.closest('[data-files-pop]');
+  if (fp) { chipMenu && chipMenu.dataset.for === 'files-pop' ? closeChipMenu() : openFilesPop(fp); return; }
+  const ts = e.target.closest('[data-today-summary]');
+  if (ts) { closeChipMenu(); const ok = await copyText(todaySummaryText()); showToast(ok ? '✔ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500); return; }
+  const wp = e.target.closest('[data-who-plan]');
+  if (wp) { showView('cross'); setTimeout(() => { try { document.querySelector('iframe[data-tool="cross"]').contentWindow.__openFixPlan(wp.dataset.whoPlan); } catch (err) { /* 교차검증 결과가 아직 없음 */ } }, 450); return; }
+  const np = e.target.closest('[data-new-patient]');
+  if (np) { e.stopPropagation(); showView('handover'); setTimeout(() => viewDoc('handover')?.getElementById('newPatientBtn')?.click(), 600); return; }
+  const wt = e.target.closest('[data-goto-tile]');
+  if (wt && !e.target.closest('a,button')) { showView(wt.dataset.gotoTile); return; }
+  if (wt && e.target.closest('a:not([data-open-fixplan]):not([data-new-patient])')) { showView(wt.dataset.gotoTile); return; }
   const chip = e.target.closest('[data-chip]');
   if (chip) { chipMenu && chipMenu.dataset.for === chip.dataset.chip + chip.dataset.chipTool ? closeChipMenu() : (openChipMenu(chip), chipMenu.dataset.for = chip.dataset.chip + chip.dataset.chipTool); return; }
   if (chipMenu) closeChipMenu(); // 메뉴 안 버튼은 아래 처리기가 이어서 실행한다(눌린 버튼 요소는 그대로 남아 있음)
@@ -881,7 +981,7 @@ document.addEventListener('click', async (e) => {
   const dv = e.target.closest('[data-dv]'); if (dv) { dataViewMode = dv.dataset.dv; renderDataView(); return; }
   if (e.target.closest('#dataViewDefault')) { setDataViewDefault(dataViewMode); return; }
   if (e.target.closest('[data-open-dc]')) { try { document.querySelector('iframe[data-tool="acting"]').contentWindow.__showDcStatus(); } catch (err) { /* 화면이 아직 로드 전 */ } return; }
-  if (e.target.closest('[data-grand-apply]')) { applyHomeGrandEvent(); return; }
+  const ga = e.target.closest('[data-grand-apply]'); if (ga) { applyHomeGrandEvent(+ga.dataset.grandApply || 0); return; }
   if (e.target.closest('[data-open-fixplan]')) { showView('cross'); setTimeout(() => viewDoc('cross')?.getElementById('btnFixPlan')?.click(), 300); return; }
   const ft = e.target.closest('[data-files-toggle]'); if (ft) { const k = ft.dataset.filesToggle; filesOpen[k] = !filesIsOpen(k); renderToolStrips(); return; }
   const pick = e.target.closest('[data-manual-pick]');
@@ -1007,7 +1107,7 @@ const GLOBAL_KEYS = [
 ];
 // run이 없는 항목은 그 화면이 스스로 처리하는 키(안내용)
 const VIEW_KEYS = {
-  home: [{ id: 'home.scan', keys: 'Ctrl+R', label: '파일 자동 불러오기', run: clickIn('home', 'homeScanBtn') }],
+  home: [{ id: 'home.scan', keys: 'Ctrl+R', label: '파일 자동 불러오기', run: clickIn('home', 'homeScanBtn') }, { keys: '1~9', label: '오늘 할 일 n번 바로 실행 (작업대 배치)' }],
   data: [{ id: 'data.scan', keys: 'Ctrl+R', label: '지금 업데이트', run: clickIn('data', 'dataScanBtn') }],
   rm: [{ id: 'rm.export', keys: 'Ctrl+E', label: '출력하기(Excel)', run: clickIn('rm', 'grandExportSelectedBtn') }],
   acting: [{ id: 'acting.find', keys: 'Ctrl+F', label: '환자·처방 검색', run: focusIn('acting', 'searchInput') }],
@@ -1055,6 +1155,11 @@ function onKeyDown(e) {
   if (e.key === 'Escape' && chipMenu) { closeChipMenu(); return; }
   if (e.key === 'Alt') { if (!e.repeat) { altCombo = false; clearTimeout(altHold); altHold = setTimeout(() => showAlt(true), 500); } return; }
   if (e.altKey) altCombo = true;
+  // 홈 작업대: 숫자 키 1~9 = 오늘 할 일 n번의 주 버튼 실행(입력칸에 글을 쓰는 중이면 무시)
+  if (settings.shortcuts && !e.ctrlKey && !e.metaKey && !e.altKey && /^[1-9]$/.test(e.key) && currentView() === 'home' && document.body.classList.contains('home-wb') && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '') && !(e.target && e.target.isContentEditable)) {
+    const t = document.querySelectorAll('#homeTodo .todo')[+e.key - 1];
+    if (t) { e.preventDefault(); (t.querySelector('.btn.primary') || t.querySelector('.btn'))?.click(); return; }
+  }
   if (e.key === 'Escape' && altOverlay) { hideAlt(); return; }
   if (!settings.shortcuts || !(e.ctrlKey || e.metaKey)) return;
   const hit = [...(VIEW_KEYS[currentView()] || []), ...GLOBAL_KEYS].find(x => x.run && matchKeys(e, effKeys(x)));
@@ -1085,7 +1190,7 @@ function pushSettingsToTool(iframe) {
 }
 const pushSettingsToTools = () => document.querySelectorAll('iframe[data-tool]').forEach(pushSettingsToTool);
 const applyZoom = () => { try { window.rehab.app.setZoom(RehabSettings.ZOOM[settings.fontSize]); } catch (e) { /* 개발용 화면 등 */ } };
-const applyHomeLayout = () => document.body.classList.toggle('home-compact', settings.homeLayout === 'compact');
+const applyHomeLayout = () => { document.body.classList.toggle('home-compact', settings.homeLayout !== 'classic'); document.body.classList.toggle('home-wb', settings.homeLayout === 'workbench'); renderHome(); };
 const applyColor = () => { document.documentElement.style.filter = settings.color === 'vivid' ? RehabSettings.VIVID_FILTER : ''; };
 function applySetting(key) {
   switch (key) {
@@ -1121,6 +1226,7 @@ function applySetting(key) {
     if (prev && prev !== cur) { const st = { status: 'updated', version: cur, from: prev }; onUpdaterStatus(st); showUpdateToast(st); }
   } catch (e) { /* 기억 못 해도 동작에는 문제 없음 */ }
   applyZoom(); applyColor(); applyHomeLayout();
+  { const memo = document.getElementById('wbMemo'); try { memo.value = localStorage.getItem('rehab_home_memo_v1') || ''; } catch (e) { /* 기억 못 해도 동작 */ } memo.addEventListener('input', () => { try { localStorage.setItem('rehab_home_memo_v1', memo.value); } catch (e) { /* 저장 실패해도 화면은 그대로 */ } }); }
   renderHome();
   loadHomeGrandEvent();
   // 시작 화면(설정): 홈 / 데이터 준비 / 마지막에 쓴 화면

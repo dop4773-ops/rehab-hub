@@ -1936,6 +1936,8 @@ function publishCrossSummary(s){
     problemTotal: s.countProblems+s.locProblems+s.therProblems+s.handoverProblems+s.evalProblems+s.roomProblems,
     cats: issues.reduce((m,i)=>{ m[i.category]=(m[i.category]||0)+1; return m; },{}), // 홈 "오늘 할 일"의 분류별 건수
     excludedCount: excludedIssues.length,
+    ranAt: Date.now(),
+    byWho: (()=>{ try{ const m=new Map(); for(const x of buildFixItems(issues)) for(const w of String(x.who||'').split(/\s*,\s*/).filter(Boolean)) m.set(w,(m.get(w)||0)+1); return [...m.entries()].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,'ko')); }catch(e){ return []; } })(), // 홈 "담당자별 확인 필요"(수정 지시서 기준 건수)
   };
   try{ setTimeout(()=>window.parent.__onToolSummary&&window.parent.__onToolSummary(),0); }catch(e){} // 셸이 홈·상단 띠를 바로 갱신하도록 알림
 }
@@ -3744,6 +3746,7 @@ function renderFixPlan(){
   }
   body.innerHTML=html;
 }
+window.__openFixPlan=(who)=>{ fixState.who=who||''; document.getElementById('btnFixPlan').click(); };
 document.getElementById('btnFixPlan').addEventListener('click',()=>{ if(!issues.length&&!window.__lastStats){ alert('먼저 검증을 실행해 주세요.'); return; } renderFixPlan(); document.getElementById('fixModal').classList.add('show'); });
 document.getElementById('fixClose').addEventListener('click',()=>document.getElementById('fixModal').classList.remove('show'));
 document.getElementById('fixModal').addEventListener('click',e=>{ if(e.target.id==='fixModal') e.currentTarget.classList.remove('show'); });

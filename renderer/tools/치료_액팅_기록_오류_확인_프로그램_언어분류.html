@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../fonts/pretendard.css">
   <!-- 인터넷 없이도 동작하도록 라이브러리를 앱 안(renderer/vendor)에 넣어 둔다 -->
   <script src="../vendor/xlsx.full.min.js"></script>
+<script src="../core/therapistview.js"></script>
   <script src="../vendor/jszip.min.js"></script>
   <style>
     :root {
@@ -344,6 +345,18 @@
 /* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
 @font-face{font-family:"Pretendard Variable";src:url("../fonts/PretendardVariable.woff2") format("woff2-variations"),url("../fonts/PretendardVariable.woff2") format("woff2");font-weight:45 920;font-style:normal;font-display:swap;}
 </style>
+<style>
+/* 치료사별 한눈에 + 탭 건수 배지 */
+.tabcnt{display:inline-block;border-radius:99px;padding:0 8px;font-size:11px;font-weight:800;background:#eef1f6;color:#707d92;margin-left:3px}.tabcnt.r{background:#fdeaec;color:#d4606c}.tabcnt.n{background:#eaf0ff;color:#4f6fb8}
+.thv-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:#707d92;margin:2px 0 8px}.thv-sp{flex:1}.thv-ok{color:#3f9a78;font-weight:800}.thv-warn{color:#b9780f;font-weight:800}
+.thv-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}.thv-bar select{margin-left:auto;border:1px solid var(--line);border-radius:9px;padding:5px 8px;font-size:12px}
+.thv-row{border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:#fff;overflow:hidden}.thv-row.open{border-color:#9dbceb}
+.thv-hd{display:flex;align-items:center;gap:8px;padding:9px 13px;cursor:pointer}.thv-hd b{font-size:14px;min-width:56px}.thv-hd .pill{font-size:11px}.pill.miss{background:#eaf0ff;color:#4f6fb8}
+.thv-bar2{width:150px;height:8px;background:#eef1f6;border-radius:99px;overflow:hidden;flex-shrink:0}.thv-bar2 i{display:block;height:100%;background:#8fc9ae}.thv-pc{font-size:11px;color:#707d92;width:74px}.thv-msg{font-size:11.5px;color:#3f9a78;font-weight:700}.thv-caret{color:#8a97ad;width:14px;text-align:center}
+.thv-bd{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #eef1f6;background:#fbfcff}.thv-bd>div{padding:9px 13px;font-size:12.5px;min-width:0}.thv-bd>div+div{border-left:1px solid #eef1f6}.thv-bd h4{margin:0 0 6px;font-size:12px;color:#5b72b4}
+.thv-it{display:flex;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px dashed #eef1f6}.thv-it:last-child{border-bottom:0}.thv-it b{width:44px;flex-shrink:0;color:#43546d}.thv-it a{font-weight:700;cursor:pointer;color:#2f4378;text-decoration:underline dotted}.thv-it span{flex:1;color:#3d4b60;min-width:0}.thv-it em{font-style:normal;font-size:10.5px;font-weight:800}.thv-it em.e{color:#d4606c}.thv-it em.w{color:#b9780f}.thv-it em.m{color:#4f6fb8}.thv-none{color:#9aa6ba;font-size:12px}
+.thv-foot{font-size:11.5px;color:#8a97ad;margin:8px 2px 0}
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -431,6 +444,7 @@
               <div class="order-scope-tabs" aria-label="보기 전환" id="viewTabs">
                 <button type="button" class="order-scope-tab active" data-view-tab="error">오류 확인</button>
                 <button type="button" class="order-scope-tab" data-view-tab="missing">미액팅 오더 확인</button>
+                <button type="button" class="order-scope-tab" data-view-tab="therapist" id="thvTabBtn">👥 치료사별 한눈에</button>
               </div>
               <div class="order-scope-tabs" aria-label="오더 구분" id="orderScopeTabs">
                 <button type="button" class="order-scope-tab active" data-order-scope="all">전체</button>
@@ -508,6 +522,18 @@
           <div class="footer-tip">※ 엑셀 원본 파일은 브라우저 안에서만 읽고 검사합니다. 서버로 업로드하지 않습니다.</div>
         </div>
 
+        <div class="card-bd" id="therapistView" style="display:none;">
+          <div class="thv-info" id="thvInfo"></div>
+          <div class="thv-bar">
+            <button type="button" class="order-scope-tab active" data-thv-f="all">전체</button>
+            <button type="button" class="order-scope-tab" data-thv-f="err">오류 있음</button>
+            <button type="button" class="order-scope-tab" data-thv-f="miss">미액팅 있음</button>
+            <select id="thvSort"><option value="busy">정렬: 확인 많은 순</option><option value="name">정렬: 이름순</option></select>
+            <button type="button" class="secondary" id="thvCopyAll" style="padding:6px 12px;font-size:12px;" title="화면에 보이는 치료사 전체의 글을 한꺼번에 복사">📋 보이는 치료사 전체 복사</button>
+          </div>
+          <div id="thvList"></div>
+          <p class="thv-foot">※ 숫자는 원래 두 탭(오류 확인 · 미액팅 오더 확인)의 목록과 같은 값을 치료사 이름으로 모아서 보여줘요. 계산은 다시 하지 않아요. 글에는 환자 이름 가운데 글자를 가리는 옵션이 있어요(설정 › 화면).</p>
+        </div>
         <div class="card-bd" id="missingView" style="display:none;">
           <div class="ms-top">
             <div class="upload-box" id="msDropZone" role="button" tabindex="0" aria-label="시간표 엑셀 업로드" style="min-height:110px;">
@@ -556,11 +582,11 @@
 
 
           <div class="ms-view-tabs">
-            <button type="button" class="ms-view-tab active" data-ms-view="list">목록형</button>
-            <button type="button" class="ms-view-tab" data-ms-view="preview">미리보기(시간표 색상)</button>
+            <button type="button" class="ms-view-tab active" data-ms-view="preview">미리보기(시간표 색상)</button>
+            <button type="button" class="ms-view-tab" data-ms-view="list">목록형</button>
           </div>
 
-          <div id="msListPane">
+          <div id="msListPane" style="display:none">
           <div class="toolbar">
             <div class="ms-group-tabs" id="msGroupTabs">
               <button type="button" class="order-scope-tab active" data-ms-group="patient">환자별</button>
@@ -592,7 +618,7 @@
           <div class="footer-tip">※ 오더-액팅 매칭은 시간이 아닌 환자명 기준 건수 비교입니다. 실제로 어떤 시간대 오더가 빠졌는지는 각 행의 '상세' 또는 "?" 표시에서 확인해 주세요.</div>
           </div>
 
-          <div id="msPreviewPane" style="display:none;">
+          <div id="msPreviewPane" style="display:block;">
             <div class="ms-group-tabs" id="msTeamTabs" style="margin-bottom:8px;"></div>
             <div class="legend-row">
               <span class="legend-chip"><span class="legend-swatch" style="background:#eef8f0;border:1px solid #c9e7cf;"></span>액팅 매칭 추정(정상)</span>
@@ -1498,6 +1524,7 @@ ${text}`,
       rowCount: dataRows.length,
     };
     try{ setTimeout(()=>window.parent.__onToolSummary&&window.parent.__onToolSummary(),0); }catch(e){} // 셸이 홈·상단 띠를 바로 갱신하도록 알림
+    try{ refreshTabBadges(); }catch(e){} // 탭 이름의 건수 배지
     updateSummary(dataRows.length, missing);
     applyFilters();
     $('reanalyzeBtn').disabled = false;
@@ -2439,6 +2466,14 @@ ${text}`,
   // 설정 > 오류 확인 기본 필터: 설정 값이 바뀐 때만 반영한다(그 사이 화면에서 직접 고른 필터는 건드리지 않음)
   let rhSevApplied = null;
   window.__onSettingsChanged = () => {
+    const st = window.__rhSettings || {};
+    const tb = $('thvTabBtn'); if(tb){ tb.style.display = st.qaTherapistTab === false ? 'none' : ''; if(st.qaTherapistTab === false && $('therapistView').style.display !== 'none') document.querySelector('#viewTabs [data-view-tab="error"]').click(); }
+    try{ refreshTabBadges(); }catch(e){}
+    if(!thvStartApplied){ // 설정 > 처음 보이는 탭(기본: 미액팅 미리보기) — 이 화면을 처음 열 때 한 번만 적용
+      thvStartApplied = true;
+      const first = ['error','therapist'].includes(st.qaStartTab) ? st.qaStartTab : 'missing';
+      if(first !== 'error') document.querySelector(`#viewTabs [data-view-tab="${first}"]`).click();
+    }
     const want = (window.__rhSettings || {}).actingSeverity === 'all' ? 'all' : '오류';
     if(want === rhSevApplied) return;
     rhSevApplied = want;
@@ -2901,6 +2936,7 @@ ${text}`,
     const totalActs = rows.reduce((s,r)=>s+r.actCount,0);
     const totalMissing = countable.reduce((s,r)=>s+Math.max(r.diff,0),0);
     const totalOver = countable.filter(r=>r.diff<0 && !r.hasEvalOrder).length;
+    try{ refreshTabBadges(); }catch(e){}
     $('msStatPatients').textContent = rows.length;
     $('msStatOrders').textContent = totalOrders;
     $('msStatActs').textContent = totalActs;
@@ -3236,17 +3272,116 @@ ${text}`,
       document.querySelectorAll('#viewTabs [data-view-tab]').forEach(x=>x.classList.remove('active'));
       btn.classList.add('active');
       const view = btn.dataset.viewTab;
-      const isError = view === 'error';
+      const isError = view === 'error', isTher = view === 'therapist', isMiss = view === 'missing';
       $('errorView').style.display = isError ? 'block' : 'none';
-      $('missingView').style.display = isError ? 'none' : 'block';
+      $('missingView').style.display = isMiss ? 'block' : 'none';
+      $('therapistView').style.display = isTher ? 'block' : 'none';
       $('orderScopeTabs').style.display = isError ? 'inline-flex' : 'none';
-      $('mainViewTitle').textContent = isError ? '2. 오류 확인 결과' : '2. 미액팅 오더 확인';
-      $('msCriteriaBtn').style.display = isError ? 'none' : 'inline-flex'; // 집계 기준은 ? 버튼으로(공간을 차지하지 않게)
-      if(!isError) msUpdateRunBtn();
+      $('mainViewTitle').textContent = isError ? '2. 오류 확인 결과' : isTher ? '2. 치료사별 한눈에' : '2. 미액팅 오더 확인';
+      $('msCriteriaBtn').style.display = isMiss ? 'inline-flex' : 'none'; // 집계 기준은 ? 버튼으로(공간을 차지하지 않게)
+      if(isMiss) msUpdateRunBtn();
+      if(isTher) thvRender();
     });
   });
 
   // 액팅 엑셀이 다시 분석될 때마다 analyze() 끝에서 msUpdateRunBtn/자동 시트 매칭을 함께 호출합니다.
+
+  // ==================== 치료사별 한눈에 (이미 계산된 결과를 치료사 이름으로 모아서 보여줌 — 계산·기존 탭은 그대로) ====================
+  const thvOpen = new Set(); let thvFilter = 'all', thvStartApplied = false;
+  const thvSettings = () => window.__rhSettings || {};
+  function thvMissingEntries(){
+    const out = [];
+    if(msState.sched && msState.slotFlagMap){
+      for(const e of (msState.sched.entries || [])){
+        const key = `${e.source}|${e.row}|${e.col}`;
+        if(msState.slotFlagMap[key]==='missing' && !msState.excludedSlots.has(key)) out.push({ therapist:e.therapist, name:e.name, type:e.type, timeSlot:e.timeSlot });
+      }
+    }
+    return out;
+  }
+  function thvMissingTotal(){ return (msState.result||[]).filter(r=>!r.dc).reduce((s,r)=>s+Math.max(r.diff,0),0); } // 미액팅 탭 요약의 "미액팅" 숫자와 같은 식
+  function refreshTabBadges(){
+    const on = thvSettings().qaTabCounts !== false;
+    const set = (v, label, n, cls) => { const b = document.querySelector(`#viewTabs [data-view-tab="${v}"]`); if(b) b.innerHTML = label + (on && n != null ? ` <span class="tabcnt ${cls}">${n}</span>` : ''); };
+    set('error', '오류 확인', (state.dataRows||[]).length ? state.issues.filter(i=>i.severity==='오류').length : null, 'r');
+    set('missing', '미액팅 오더 확인', msState.result ? thvMissingTotal() : null, 'n');
+    set('therapist', '👥 치료사별 한눈에', null, '');
+  }
+  function thvDateInfo(){
+    let d = null; try{ d = msPrimaryDate(); }catch(e){}
+    const sheet = msState.schedSheetName || '', m = /(\d{1,2})\.(\d{1,2})/.exec(sheet);
+    if(!msState.sched) return '<span class="thv-warn">미액팅은 시간표 파일을 올리면 같이 보여요</span>';
+    if(d && m){
+      const same = +d.slice(5,7)===+m[1] && +d.slice(8,10)===+m[2];
+      return same ? `대조: <b>${escapeHtml(sheet)}</b> <span class="thv-ok">✔ 오류 기록 날짜와 시간표 시트가 같아요</span>`
+                  : `대조: <b>${escapeHtml(sheet)}</b> <span class="thv-warn">⚠ 오류 기록 날짜(${+d.slice(5,7)}/${+d.slice(8,10)})와 시간표 시트가 달라요 — 미액팅은 시트 기준이에요</span>`;
+    }
+    return `대조: <b>${escapeHtml(sheet||'-')}</b>`;
+  }
+  function thvRows(){
+    const T = RehabCore.therapistView;
+    let rows = T.groupByTherapist({ issues: state.issues || [], missing: thvMissingEntries() });
+    if(thvFilter==='err') rows = rows.filter(r=>r.errors.length+r.warns.length>0);
+    else if(thvFilter==='miss') rows = rows.filter(r=>r.missing.length>0);
+    if($('thvSort').value==='name') rows = rows.slice().sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+    return rows;
+  }
+  function thvMessage(r){
+    return RehabCore.therapistView.buildMessage(r, { dateLabel: kakaoDateLabel(), mask: thvSettings().qaMaskNames !== false, simplify: msSimplifyOrderName });
+  }
+  async function thvCopy(text, msgEl){
+    let ok = false;
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); ok = true; } }catch(e){}
+    if(!ok){ const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try{ ok = document.execCommand('copy'); }catch(e){} ta.remove(); }
+    if(msgEl){ msgEl.textContent = ok ? '✔ 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '복사하지 못했어요'; setTimeout(()=>{ msgEl.textContent=''; }, 3000); }
+    return ok;
+  }
+  function thvRender(){
+    const all = RehabCore.therapistView.groupByTherapist({ issues: state.issues || [], missing: thvMissingEntries() });
+    const errN = all.reduce((s,r)=>s+r.errors.length,0), missN = all.reduce((s,r)=>s+r.missing.length,0);
+    // 숫자 검증: 묶은 합계가 원래 탭의 숫자와 같아야 한다(다르면 알려서 숨기지 않는다)
+    const srcErr = (state.issues||[]).filter(i=>i.severity==='오류').length, srcMiss = msState.sched ? thvMissingEntries().length : 0;
+    const check = (errN===srcErr && missN===srcMiss) ? '<span class="thv-ok">합계 확인 ✔</span>' : `<span class="thv-warn">⚠ 합계가 원래 탭과 달라요(오류 ${errN}/${srcErr}, 미액팅 ${missN}/${srcMiss})</span>`;
+    $('thvInfo').innerHTML = `${thvDateInfo()} <span class="thv-sp"></span> 오류 <b>${errN}</b> · 미액팅 <b>${missN}</b> · ${check}`;
+    document.querySelectorAll('#therapistView [data-thv-f]').forEach(b=>b.classList.toggle('active', b.dataset.thvF===thvFilter));
+    const rows = thvRows(), box = $('thvList');
+    if(!(state.dataRows||[]).length && !msState.sched){ box.innerHTML = '<div class="empty-state"><strong>액팅 기록 파일이나 시간표 파일을 올리면 치료사별로 모아서 보여드려요.</strong></div>'; return; }
+    if(!rows.length){ box.innerHTML = '<div class="empty-state"><strong>해당 조건의 치료사가 없어요.</strong></div>'; return; }
+    const ther = new Map((msState.therapistResult||[]).map(t=>[String(t.name).replace(/\s+/g,''), t]));
+    box.innerHTML = rows.map(r=>{
+      const open = thvOpen.has(r.name), t = ther.get(String(r.name).replace(/\s+/g,''));
+      const bar = t && t.orderCount ? `<span class="thv-bar2"><i style="width:${Math.min(100,Math.round(t.actCount/t.orderCount*100))}%"></i></span><span class="thv-pc">액팅 ${t.actCount}/${t.orderCount}</span>` : '<span class="thv-sp"></span>';
+      const e = r.errors.length, w = r.warns.length, m = r.missing.length;
+      const pills = `<span class="pill ${e?'err':'ok'}">오류 ${e}</span>${w?`<span class="pill warn">주의 ${w}</span>`:''}<span class="pill ${m?'miss':'ok'}">미액팅 ${m}</span>`;
+      const errItems = r.errors.concat(r.warns).map(x=>`<div class="thv-it"><b>${escapeHtml(String(x.time||'').split('~')[0].trim()||'-')}</b><a data-thv-jump="error" data-name="${msEscapeAttr(x.patientName||'')}">${escapeHtml(x.patientName||'환자명 미상')}</a><span>${escapeHtml(x.type)} · ${escapeHtml(msSimplifyOrderName(x.orderName))}</span><em class="${x.severity==='오류'?'e':'w'}">${escapeHtml(x.severity)}</em></div>`).join('') || '<div class="thv-none">없어요</div>';
+      const missItems = r.missing.map(x=>`<div class="thv-it"><b>${escapeHtml(x.timeSlot||'-')}</b><a data-thv-jump="missing" data-name="${msEscapeAttr(x.name||'')}">${escapeHtml(x.name||'')}</a><span>${escapeHtml(x.type||'')}</span><em class="m">미액팅</em></div>`).join('') || '<div class="thv-none">없어요</div>';
+      return `<div class="thv-row${open?' open':''}" data-thv="${msEscapeAttr(r.name)}"><div class="thv-hd" data-thv-toggle><b>${escapeHtml(r.name)}</b>${pills}<span class="thv-sp"></span>${bar}<span class="thv-msg"></span><button type="button" class="secondary" data-thv-copy style="padding:5px 11px;font-size:12px;">📋 메시지</button><span class="thv-caret">${open?'▾':'▸'}</span></div>`
+        + (open ? `<div class="thv-bd"><div><h4>치료기록 오류 ${e+w}건</h4>${errItems}</div><div><h4>미액팅 ${m}건</h4>${missItems}</div></div>` : '') + '</div>';
+    }).join('');
+  }
+  $('therapistView').addEventListener('click', e=>{
+    const copy = e.target.closest('[data-thv-copy]');
+    if(copy){
+      const row = copy.closest('.thv-row'), name = row.dataset.thv, r = thvRows().find(x=>x.name===name);
+      if(r) thvCopy(thvMessage(r), row.querySelector('.thv-msg')); return;
+    }
+    const jump = e.target.closest('[data-thv-jump]');
+    if(jump){ // 환자 이름 → 해당 탭에서 그 환자만 걸러서 열기
+      const name = jump.dataset.name;
+      document.querySelector(`#viewTabs [data-view-tab="${jump.dataset.thvJump}"]`).click();
+      if(jump.dataset.thvJump==='error'){ $('searchInput').value = name; applyFilters(); }
+      else { document.querySelector('.ms-view-tab[data-ms-view="list"]').click(); $('msSearchBox').value = name; msState.search = name; msRenderResult(); }
+      return;
+    }
+    const tg = e.target.closest('[data-thv-toggle]');
+    if(tg){ const n = tg.closest('.thv-row').dataset.thv; thvOpen.has(n) ? thvOpen.delete(n) : thvOpen.add(n); thvRender(); return; }
+    const f = e.target.closest('[data-thv-f]'); if(f){ thvFilter = f.dataset.thvF; thvRender(); }
+  });
+  $('thvSort').addEventListener('change', thvRender);
+  $('thvCopyAll').addEventListener('click', ()=>{
+    const rows = thvRows(); if(!rows.length) return;
+    thvCopy(rows.map(thvMessage).join('\n\n──────────\n\n'), null).then(ok=>{ $('thvCopyAll').textContent = ok ? '✔ 복사했어요' : '복사 실패'; setTimeout(()=>{ $('thvCopyAll').textContent = '📋 보이는 치료사 전체 복사'; }, 2500); });
+  });
 
   // ==================== 카톡 공유용 텍스트 생성 ====================
   function kakaoDateLabel(){

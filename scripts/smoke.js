@@ -29,6 +29,7 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     // 홈/데이터/설정/보고서
     for (const k of ['home', 'data', 'settings', 'report']) await step('화면 ' + k, async () => { await nav(k); return await ev(`document.querySelector('.view.active').dataset.view`); });
     await step('홈 새로고침/스캔 버튼', async () => { await nav('home'); await ev(`document.getElementById('homeScanBtn')?.click(); 1`); await sleep(1500); return await ev(`document.getElementById('homeTodo').innerText.slice(0,80)`); });
+    await step('홈: 작업대(타일·담당자·일정·흐름·요약)', async () => await ev(`(async()=>{ showView('home'); await new Promise(r=>setTimeout(r,500)); const q=s=>document.querySelectorAll(s).length; const txt=todaySummaryText(); if(!/재활치료부 현황/.test(txt)) throw new Error('요약 글 이상'); return {wb:document.body.classList.contains('home-wb'), tiles:q('.wb-tile'), who:q('.wb-who'), flow:q('#wbFlow .dot'), keys:q('#homeTodo .todo .k')}; })()`));
     await step('설정: 모든 탭·스위치·선택칸 순회 후 복구', async () => { await nav('settings'); return await ev(`(async()=>{ const bak=JSON.parse(JSON.stringify(settings)); let n=0; const wait=ms=>new Promise(r=>setTimeout(r,ms));
       for (const t of document.querySelectorAll('#stTabs button')) { t.click(); n++; await wait(80);
         for (const sw of t.ownerDocument.querySelectorAll('.st-page.on input[type=checkbox][data-set]')) { sw.click(); n++; sw.click(); }
@@ -63,6 +64,12 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';
     if (b64) await step('QA: 가짜 액팅 파일 분석', async () => { await ev(`(()=>{ const d=${W('acting')}.document; const bin=atob('${b64}'); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); const f=new File([u],'테스트_기록통계.xlsx',{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const dt=new DataTransfer(); dt.items.add(f); const inp=d.getElementById('fileInput'); inp.files=dt.files; inp.dispatchEvent(new Event('change',{bubbles:true})); return 1; })()`); await sleep(3500); return await ev(`JSON.stringify(${W('acting')}.__actingSummary||null)`); });
+    if (b64) await step('QA: 치료사별 한눈에(합계 일치·메시지·점프·설정 끄기)', async () => await ev(`(async()=>{ const w=${W('acting')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); d.querySelector('#viewTabs [data-view-tab=therapist]').click(); await sl(500);
+      const info=d.getElementById('thvInfo').textContent, rows=d.querySelectorAll('.thv-row').length; if(!/합계 확인/.test(info)) throw new Error('합계 불일치: '+info);
+      d.querySelector('.thv-hd').click(); await sl(200); let got=''; Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async t=>{got=t;}},configurable:true}); d.querySelector('[data-thv-copy]').click(); await sl(300);
+      if(!/선생님 확인 부탁드려요/.test(got)) throw new Error('메시지 모양이 이상해요'); const jump=d.querySelector('[data-thv-jump=error]'); if(jump){ jump.click(); await sl(300); }
+      d.querySelector('#viewTabs [data-view-tab=missing]').click(); await sl(300); const msPrev=d.querySelector('.ms-view-tab.active').dataset.msView;
+      d.querySelector('#viewTabs [data-view-tab=error]').click(); return {rows, msPrev, tabs:[...d.querySelectorAll('#viewTabs button')].map(b=>b.textContent.trim()).join('|')}; })()`));
     await step('QA: 필터·탭 버튼 순회', async () => await ev(`(async()=>{ const d=${W('acting')}.document; let c=0; for(const b of d.querySelectorAll('.seg button, .tab, [data-filter]')){ b.click(); c++; await new Promise(r=>setTimeout(r,80)); } for(const s of d.querySelectorAll('select')){ for(const o of [...s.options]){ s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); c++; } } return c; })()`));
     // 교차검증
     await nav('cross'); await sleep(8000);

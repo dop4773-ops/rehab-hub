@@ -439,3 +439,36 @@ body.home-compact .hcard .statbox:nth-child(n+2){display:none}
 body.home-compact .hcard .statbox .num{font-size:21px}body.home-compact .hcard .statbox .lbl{font-size:10.5px}
 body.home-compact .hcard>.btn{display:none}
 body.home-compact details.home-more{margin-top:10px}
+
+/* ── 홈 작업대(설정 > 화면 > 홈 화면 배치) — 컴팩트 규칙 위에 얹는다 ─────────────── */
+.wb-only{display:none}
+body.home-wb .wb-only{display:block}body.home-wb .wb-tiles{display:grid}
+body.home-wb .home-main{grid-template-columns:1.6fr 1fr 1fr !important;gap:10px;margin-top:10px}
+body.home-wb .home-main>.card.file-card{display:none}
+body.home-wb .home-cards{display:none}
+body.home-wb .home-main>.card{padding:11px 13px}body.home-wb .home-main>.card h2{font-size:13px;margin:0 0 7px}
+body.home-wb .todo .k{width:18px;height:18px;border-radius:5px;border:1px solid #d0d8e6;background:#fff;font-size:10.5px;font-weight:800;color:#707d92;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+body.home-wb .todo{padding:0 10px;min-height:40px;gap:9px}body.home-wb .todo .ic{font-size:16px}body.home-wb .todo .tx b{font-size:12.5px}body.home-wb .todo .tx .muted{font-size:11.5px}
+.wb-who{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px;cursor:pointer;border-radius:7px;padding:2px 4px}.wb-who:hover{background:#f4f7fd}.wb-who b{width:46px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-who .b{flex:1;height:8px;background:#eef1f6;border-radius:99px;overflow:hidden}.wb-who .b i{display:block;height:100%;background:#e5a0a8;border-radius:99px}.wb-who span{width:26px;text-align:right;font-weight:800;color:#d4606c}
+.wb-ev{display:flex;align-items:center;gap:8px;border:1px solid #cfe9e0;background:#f3faf8;border-radius:9px;padding:5px 10px;margin-bottom:5px;font-size:12px}.wb-ev b{flex:1;font-weight:700}.wb-ev small{color:var(--sub)}.wb-ev .btn{padding:3px 9px;font-size:11px}
+.wb-flow{display:flex;align-items:center;gap:5px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:11px;color:var(--sub)}
+.wb-flow .dot{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;background:#e6f4ee;color:#3f9a78;border:1.5px solid #9fd3bb}.wb-flow .dot.bad{background:#fdeaec;color:#d4606c;border-color:#efb4bb}.wb-flow .dot.now{background:#fff3dc;color:#b9780f;border-color:#f0cf8a}.wb-flow .dot.off{background:#f1f3f6;color:#9aa6ba;border-color:#dfe5ef}.wb-flow .ln{flex:0 0 12px;height:2px;background:#dfe5ef}
+.wb-tiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
+.wb-tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 12px;height:76px;display:flex;flex-direction:column;justify-content:center;gap:3px;cursor:pointer}.wb-tile:hover{border-color:#b9ccf3;background:#fafcff}
+.wb-tile .a{display:flex;align-items:center;gap:8px}.wb-tile .a b{font-size:13px;flex:1}.wb-tile .n{font-size:20px;font-weight:800;color:var(--navy)}.wb-tile .n.r{color:var(--red)}.wb-tile .n.o{color:var(--orange)}.wb-tile .n.off{color:#b4bccb}
+.wb-tile .s{font-size:11px;color:var(--sub);display:flex;align-items:center;gap:6px}.wb-tile .s .act{margin-left:auto;font-size:11px;font-weight:800;color:var(--navy);cursor:pointer}.wb-tile .up{color:var(--red);font-weight:800}.wb-tile .dn{color:var(--green);font-weight:800}
+.wb-memo{display:flex;align-items:center;gap:8px;padding:8px 14px;margin-top:10px}.wb-memo input{flex:1;border:0;outline:none;font-size:12.5px;background:none;color:var(--text)}
+.chip-menu.wide{min-width:440px}.fp-row{display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid #eef1f6;font-size:12px}.fp-row:last-of-type{border-bottom:0}.fp-row b{width:112px}.fp-row span.w{flex:1;color:var(--sub)}.fp-row .btn{padding:2px 8px;font-size:11px}
+.fp-st{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px}.fp-st.ok{background:#e6f4ee;color:#3f9a78}.fp-st.stale{background:#fff3dc;color:#b9780f}.fp-st.err{background:#fdeaec;color:#d4606c}.fp-st.off{background:#f1f3f6;color:#8a97ad}
+.toast.copy{top:auto;bottom:24px}
+body.home-wb .wb-memo{display:flex}
+body.home-wb .home-main{grid-template-columns:1.5fr .9fr 1.15fr !important}
+body.home-wb #wbWhoCard h2 .sub,body.home-wb #wbEventCard h2 .sub{display:none}
+.wb-ev b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.wb-ev{white-space:nowrap}
+.wb-flow{white-space:nowrap}.wb-memo input{min-width:0;width:100%}
+body.home-wb .home-main{grid-template-columns:1.4fr 1.05fr 1.05fr !important}
+body.home-wb .home-main>.card h2{white-space:nowrap}
+.wb-who .b{min-width:50px}
+body.home-wb .home-main{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr) !important}
+body.home-wb .home-main>.card{min-width:0}
