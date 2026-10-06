@@ -447,13 +447,11 @@ const GRAND_PRINT_PERIODS={
   all:{label:'전체',range:'08:30~16:30',slots:['08:30','09:05','09:40','10:15','10:50','11:25','13:00','13:35','14:10','14:45','15:20','15:55','16:30']}
 };
 const grandNotes = new Map();
-const GRAND_THERAPIST_STORE='miraeGrandRoundingTherapistsV2';
 const GRAND_NOTE_STORE='miraeGrandRoundingNotesV1';
 const GRAND_CHECK_STORE='miraeGrandRoundingChecksV1';
 const GRAND_BRIEF_STORE='miraeGrandRoundingBriefV2';
 function loadGrandStore(key){ try{return JSON.parse(localStorage.getItem(key)||'{}')||{};}catch(_){return {};} }
 function saveGrandStore(key,obj){ try{localStorage.setItem(key,JSON.stringify(obj));}catch(_){} }
-let grandTherapistStore=loadGrandStore(GRAND_THERAPIST_STORE);
 let grandNoteStore=loadGrandStore(GRAND_NOTE_STORE);
 let grandCheckStore=loadGrandStore(GRAND_CHECK_STORE);
 let grandBriefStore=loadGrandStore(GRAND_BRIEF_STORE);
@@ -461,7 +459,6 @@ let grandBriefStore=loadGrandStore(GRAND_BRIEF_STORE);
 function xmlEscape(s='') {
   return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 }
-function normalizeDayLabel(v){ const s=normalizeText(v).replace(/\s+/g,''); if(s==='토요일/공휴일'||s==='토요일공휴일') return '토요일/공휴일'; for(const d of DAY_ORDER.slice(0,5)) if(s===d) return d; return ''; }
 function normalizeRM(v){ const s=normalizeText(v).toUpperCase().replace(/\s+/g,''); const m=/^(?:RM)?(\d+)$/.exec(s); return m?`RM${parseInt(m[1],10)}`:(s?normalizeText(v):'미지정'); }
 function normalizePrimary(v,floor){ const s=normalizeText(v); if(/^3(?:\.0+)?$/.test(s)) return '3층 치료실'; if(/^10(?:\.0+)?$/.test(s)) return '10층 치료실'; return s || `${floor}층 치료실`; }
 function excelSerialToDate(v){ const n=Number(v); if(!Number.isFinite(n) || n<20000 || n>100000) return normalizeText(v); const ms=Date.UTC(1899,11,30)+Math.floor(n)*86400000; const d=new Date(ms); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`; }
@@ -472,41 +469,6 @@ function detectFloor(book){ const names=book.sheets.map(s=>s.name); if(names.inc
 function displayEntry(e){ const core=treatmentCore(e.treatment); if(core==='electric') return `전기치료(${e.floor}F)`; const raw=normalizeText(e.rawLocation)||inlineLocation(e.treatment); const name=cleanTreatmentName(e.treatment); return `${name}(${e.floor}F)${raw?`, ${raw}`:''}`; }
 function txClass(e){ if(!e) return ''; const tx=({exercise:'exercise',ot:'ot',swallow:'swallow',cog:'cog',electric:'electric',device:'device',pain:'pain',speech:'speech',manual:'manual'}[treatmentCore(e.treatment)]||'other'); return `tx-${tx}`; }
 
-function therapistKeyFromLabel(v){
-  const s=normalizeText(v).replace(/\s+/g,'').toUpperCase();
-  if(!s) return '';
-  if(/작업(?:주)?치료사|작업(?:주)?담당|OT치료사|OT담당|^OT$/.test(s)) return 'ot';
-  if(/운동(?:주)?치료사|물리(?:주)?치료사|운동(?:주)?담당|물리(?:주)?담당|PT치료사|PT담당|^PT$/.test(s)) return 'exercise';
-  if(/연하(?:주)?치료사|연하(?:주)?담당|SWALLOW.*담당/.test(s)) return 'swallow';
-  if(/인지(?:주)?치료사|인지(?:주)?담당|COG.*담당/.test(s)) return 'cog';
-  if(/언어(?:주)?치료사|언어(?:주)?담당|ST치료사|ST담당|^ST$/.test(s)) return 'speech';
-  if(/도수(?:주)?치료사|도수(?:주)?담당/.test(s)) return 'manual';
-  return '';
-}
-function therapistKeyFromLooseLabel(v){
-  const s=normalizeText(v).replace(/\s+/g,'').toUpperCase();
-  if(!s) return '';
-  if(/^(작업|작업치료|OT)$/.test(s)) return 'ot';
-  if(/^(운동|운동치료|물리|물리치료|PT)$/.test(s)) return 'exercise';
-  if(/^(연하|연하치료|SWALLOW)$/.test(s)) return 'swallow';
-  if(/^(인지|인지치료|COG|COGNITIVE)$/.test(s)) return 'cog';
-  if(/^(언어|언어치료|ST|SPEECH)$/.test(s)) return 'speech';
-  if(/^(도수|도수치료|MANUAL)$/.test(s)) return 'manual';
-  return '';
-}
-function isLikelyTherapistName(v, excludedNames=new Set()){
-  const s=normalizeText(v).replace(/\s+/g,'').replace(/^(?:OT|PT|ST)[:：\-]?/i,'');
-  if(!s || excludedNames.has(s)) return '';
-  if(!/^[가-힣]{2,4}$/.test(s)) return '';
-  if(/^(환자|성별|나이|병실|등록번호|주치의|주치료실|치료실|치료사|담당자|점심시간|월요일|화요일|수요일|목요일|금요일|토요일|공휴일|작업치료|운동치료|물리치료|연하치료|인지치료|언어치료)$/.test(s)) return '';
-  return s;
-}
-function mergeTherapistData(target,found){
-  if(!target||!found) return target;
-  for(const k of ['ot','exercise','swallow','cog','speech','manual']) if(!target[k] && found[k]) target[k]=found[k];
-  if(!target.combined && found.combined) target.combined=found.combined;
-  return target;
-}
 function isLikelyTherapistPersonName(v){
   const s=normalizeText(v).replace(/[()\[\]{}]/g,'').trim();
   if(!/^[가-힣]{2,4}$/.test(s)) return false;
@@ -520,146 +482,7 @@ function therapistNamesInText(v){
   return [...new Set(tokens.filter(isLikelyTherapistPersonName))];
 }
 function isUsableTherapistText(v){ return therapistNamesInText(v).length>0; }
-function therapistCategoryLabel(v){
-  const s=normalizeText(v).replace(/\s+/g,'');
-  if(/^(운동|물리|PT)(?:치료사|담당|주치료사)?[:：-]?$/.test(s)) return '운동';
-  if(/^(작업|OT)(?:치료사|담당|주치료사)?[:：-]?$/.test(s)) return '작업';
-  if(/^(도수)(?:치료사|담당|주치료사)?[:：-]?$/.test(s)) return '도수';
-  if(/^(연하)(?:치료사|담당|주치료사)?[:：-]?$/.test(s)) return '연하';
-  if(/^(인지)(?:치료사|담당|주치료사)?[:：-]?$/.test(s)) return '인지';
-  if(/^(언어|ST)(?:치료사|담당|주치료사)?[:：-]?$/.test(s)) return '언어';
-  return '';
-}
-function normalizePrimaryTherapistBlock(v){
-  const s=normalizeText(v); if(!s || !isUsableTherapistText(s)) return '';
-  // 원문 구조는 보존하되 구분기호만 읽기 쉽게 정리한다.
-  return s.replace(/\s*[|ㆍ·]\s*/g,' · ').replace(/\s{2,}/g,' ').trim();
-}
-function cleanTherapistValue(v){
-  let s=normalizeText(v).replace(/^[:：\-]\s*/,'').trim();
-  if(!s || s.length>60) return '';
-  const compact=s.replace(/\s+/g,'');
-  if(/^(작업|운동|물리|연하|인지|언어|치료|작업치료|운동치료|물리치료|연하치료|인지치료|언어치료|담당|주치료사|담당치료사|치료사|시간|요일|이름|병실|RM)$/i.test(compact)) return '';
-  if(/^\d+(?:\.\d+)?$/.test(s)) return '';
-  if(/(치료실|치료구역|OT테이블|테이블|매트|구역|기구|병동|병실|층$|시간표|월요일|화요일|수요일|목요일|금요일|토요일)/i.test(compact)) return '';
-  // '전기치료', '도수치료'처럼 치료명이 사람 이름으로 들어오는 오인식 차단
-  if(/(?:전기|도수|기구|통증|운동치료|작업치료|물리치료|연하치료|인지치료|언어치료|FES|ESWT)/i.test(compact)) return '';
-  return s;
-}
-function looksLikePrimaryTherapistLabel(v){ return /^(주\s*치료사|주\s*담당(?:\s*치료사)?|담당\s*치료사)$/i.test(normalizeText(v)); }
-function normalizeTherapistCombined(v){
-  const s=normalizeText(v);
-  if(!s || !isUsableTherapistText(s)) return '';
-  return s.replace(/\s*[|]\s*/g,' · ').replace(/\s*[·ㆍ]\s*/g,' · ').replace(/\s{2,}/g,' ').trim();
-}
-function nearbyTherapistCandidates(cells,rr,cc){
-  const out=[];
-  for(let k=1;k<=6;k++){
-    const v=getCell(cells,rr,cc+k), raw=normalizeText(v);
-    if(raw && (therapistKeyFromLabel(raw)||looksLikePrimaryTherapistLabel(raw)||/(?:주?치료사|치료사명|담당치료사|담당자|주담당)/.test(raw.replace(/\s+/g,'')))) break;
-    out.push(v);
-  }
-  if(!out.some(v=>cleanTherapistValue(v))){ out.push(getCell(cells,rr+1,cc),getCell(cells,rr+1,cc+1),getCell(cells,rr+1,cc+2)); }
-  return out;
-}
-function extractPrimaryTherapistBlock(cells,r,c,timeHeaderRow){
-  const endRow=Math.min((timeHeaderRow||r+10)+4,r+24), endCol=c+40;
-  for(let rr=r;rr<=endRow;rr++){
-    for(let cc=c;cc<=endCol;cc++){
-      const raw=normalizeText(getCell(cells,rr,cc)); if(!raw) continue;
-      const same=/^(?:주\s*치료사|주\s*담당(?:\s*치료사)?|담당\s*치료사)\s*[:：\-]?\s*(.+)$/i.exec(raw);
-      if(same){ const block=normalizePrimaryTherapistBlock(same[1]); if(block) return block; }
-      if(!looksLikePrimaryTherapistLabel(raw)) continue;
 
-      const parts=[];
-      // 1) 주치료사 제목 오른쪽의 '운동: 이름/이름', '작업: 이름/이름' 같은 실제 담당자 블록만 수집한다.
-      for(let k=1;k<=12;k++){
-        const v=normalizeText(getCell(cells,rr,cc+k)); if(!v) continue;
-        if(looksLikePrimaryTherapistLabel(v)) break;
-        const block=normalizePrimaryTherapistBlock(v);
-        const hasCategory=/(?:운동|작업|물리|도수|연하|인지|언어|OT|PT|ST)\s*[:：\-]/i.test(v);
-        if(block && hasCategory){ parts.push(block); continue; }
-        // 카테고리와 이름이 셀 두 개로 나뉜 구조 지원: '운동' | '이세윤/이해영'
-        const cat=therapistCategoryLabel(v);
-        if(cat){
-          const next=normalizeText(getCell(cells,rr,cc+k+1));
-          const names=therapistNamesInText(next);
-          if(names.length){ parts.push(`${cat}: ${names.join('/')}`); k++; }
-        }
-      }
-      // 2) 세로 배치 구조도 동일하게 '카테고리 + 실제 사람 이름' 조합만 인정한다.
-      for(let dr=1;dr<=5;dr++){
-        const v=normalizeText(getCell(cells,rr+dr,cc));
-        if(!v) continue;
-        const block=normalizePrimaryTherapistBlock(v);
-        const hasCategory=/(?:운동|작업|물리|도수|연하|인지|언어|OT|PT|ST)\s*[:：\-]/i.test(v);
-        if(block && hasCategory){ parts.push(block); continue; }
-        const cat=therapistCategoryLabel(v);
-        if(cat){
-          const right=normalizeText(getCell(cells,rr+dr,cc+1));
-          const names=therapistNamesInText(right);
-          if(names.length) parts.push(`${cat}: ${names.join('/')}`);
-        }
-      }
-      const unique=[...new Set(parts.filter(Boolean))];
-      if(unique.length) return unique.join(' · ');
-    }
-  }
-  return '';
-}
-
-function extractPrimaryTherapistHeaderSummary(cells,r,c,timeHeaderRow){
-  // 환자 카드의 기본정보 영역(시간표 시작 전)만 대상으로 주치료사를 읽는다.
-  // 실제 양식에서 '운동/작업/도수/연하/인지/언어' 라벨과 이름이 각각 다른 셀에 있어도 묶어 준다.
-  const labels=[['exercise','운동'],['ot','작업'],['manual','도수'],['swallow','연하'],['cog','인지'],['speech','언어']];
-  const byKey={exercise:[],ot:[],manual:[],swallow:[],cog:[],speech:[]}, generic=[];
-  const r1=r, r2=Math.max(r,Math.min((timeHeaderRow||r+10)-1,r+14)), c1=c, c2=c+21;
-  const add=(key,names)=>{ for(const n of names||[]) if(n && !byKey[key].includes(n)) byKey[key].push(n); };
-  const catKey=(v)=>therapistKeyFromLabel(v)||therapistKeyFromLooseLabel(v);
-  for(let rr=r1;rr<=r2;rr++){
-    for(let cc=c1;cc<=c2;cc++){
-      const raw=normalizeText(getCell(cells,rr,cc)); if(!raw) continue;
-      const compact=raw.replace(/\s+/g,'');
-      // 같은 셀: '운동: 홍길동/김철수', '작업치료사 김영희'
-      for(const [key,label] of labels){
-        const aliases={exercise:'운동|물리|PT',ot:'작업|OT',manual:'도수',swallow:'연하',cog:'인지',speech:'언어|ST'}[key]||label;
-        const re=new RegExp(`^(?:${aliases})(?:치료|치료사|담당|주치료사|주담당)?\\s*[:：\\-]?\\s*(.+)$`,'i');
-        const m=re.exec(raw);
-        if(m){ const names=therapistNamesInText(m[1]); if(names.length) add(key,names); }
-      }
-      const key=catKey(raw);
-      if(key){
-        // 라벨 오른쪽 여러 셀 / 바로 아래 셀에 이름이 배치된 구조
-        const cand=[];
-        for(let k=1;k<=5;k++){
-          const v=getCell(cells,rr,cc+k);
-          if(therapistKeyFromLabel(v)||therapistKeyFromLooseLabel(v)) break;
-          cand.push(v);
-        }
-        cand.push(getCell(cells,rr+1,cc),getCell(cells,rr+1,cc+1));
-        for(const v of cand){ const names=therapistNamesInText(v); if(names.length) add(key,names); }
-      }
-      if(looksLikePrimaryTherapistLabel(raw) || /^(?:주치료사|주담당|담당치료사|치료담당)$/.test(compact)){
-        // '주치료사' 표제 오른쪽/아래의 카테고리+이름 블록을 넓게 읽는다.
-        for(let dr=0;dr<=4;dr++) for(let dc=1;dc<=12;dc++){
-          const v=normalizeText(getCell(cells,rr+dr,cc+dc)); if(!v) continue;
-          const k=catKey(v);
-          if(k){
-            const n1=therapistNamesInText(getCell(cells,rr+dr,cc+dc+1));
-            const n2=therapistNamesInText(v);
-            add(k,n2.length?n2:n1);
-          }else{
-            const names=therapistNamesInText(v);
-            for(const n of names) if(!generic.includes(n)) generic.push(n);
-          }
-        }
-      }
-    }
-  }
-  const parts=labels.map(([key,label])=>byKey[key].length?`${label}: ${byKey[key].join('/')}`:'').filter(Boolean);
-  if(parts.length) return parts.join(' · ');
-  return generic.length?generic.join(' / '):'';
-}
 function extractStrictPrimaryTherapists(cells,r,c,timeHeaderRow){
   // 주치료사는 환자 카드의 '주치료사/담당치료사' 영역에서만 읽는다.
   // 치료 스케줄, 치료명, 주변 임의 셀은 절대 치료사 후보로 사용하지 않는다.
@@ -675,7 +498,6 @@ function extractStrictPrimaryTherapists(cells,r,c,timeHeaderRow){
     if(/^(언어|ST)(?:치료|치료사|담당|주치료사|주담당)?[:：-]?$/.test(x)) return 'speech';
     return '';
   };
-  const labelText={exercise:'운동',ot:'작업',manual:'도수',swallow:'연하',cog:'인지',speech:'언어'};
   const add=(key,names)=>{
     if(!key) return;
     const clean=(names||[]).filter(Boolean).filter(n=>isLikelyTherapistPersonName(n));
@@ -744,170 +566,8 @@ function extractStrictPrimaryTherapists(cells,r,c,timeHeaderRow){
   }
   return out;
 }
-function extractTherapists(cells,r,c,timeHeaderRow){
-  const out={ot:'',exercise:'',swallow:'',cog:'',speech:'',manual:'',combined:''};
-  const endRow=Math.min((timeHeaderRow||r+10)+24,r+42), endCol=c+60;
-  for(let rr=r;rr<=endRow;rr++){
-    for(let cc=c;cc<=endCol;cc++){
-      const raw=normalizeText(getCell(cells,rr,cc)); if(!raw) continue;
-      parseTherapistPairsInto(out,raw);
-      let gm=/^(주\s*치료사|주\s*담당(?:\s*치료사)?|담당\s*치료사)(?:\s*[:：\-]\s*|\s+)(.+)$/i.exec(raw);
-      if(gm && !out.combined){ out.combined=normalizeTherapistCombined(gm[2]); parseTherapistPairsInto(out,gm[2]); continue; }
-      if(looksLikePrimaryTherapistLabel(raw) && !out.combined){
-        const vals=nearbyTherapistCandidates(cells,rr,cc);
-        for(const v of vals){ const t=normalizeTherapistCombined(v); if(t){out.combined=t;break;} }
-      }
-      let key='', same='';
-      const m=/^(작업(?:주)?치료사|운동(?:주)?치료사|물리(?:주)?치료사|도수(?:주)?치료사|연하(?:주)?치료사|인지(?:주)?치료사|언어(?:주)?치료사|작업(?:주)?담당|운동(?:주)?담당|물리(?:주)?담당|도수(?:주)?담당|연하(?:주)?담당|인지(?:주)?담당|언어(?:주)?담당|OT담당|PT담당|ST담당)(?:\s*[:：\-]\s*|\s+)(.+)$/i.exec(raw);
-      if(m){ key=therapistKeyFromLabel(m[1]); same=cleanTherapistValue(m[2]); }
-      else key=therapistKeyFromLabel(raw) || (rr<timeHeaderRow ? therapistKeyFromLooseLabel(raw) : '');
-      if(!key || out[key]) continue;
-      if(same){ out[key]=same; continue; }
-      const candidates=nearbyTherapistCandidates(cells,rr,cc);
-      for(const v of candidates){ const name=cleanTherapistValue(v); if(name && !therapistKeyFromLabel(name) && !looksLikePrimaryTherapistLabel(name)){ out[key]=name; break; } }
-    }
-  }
-  return out;
-}
-function assignTherapist(out,key,name){
-  name=cleanTherapistValue(name); if(!key||!name) return;
-  if(/^[가-힣]{2,4}$/.test(name) && !isLikelyTherapistPersonName(name)) return;
-  if(!isUsableTherapistText(name)) return;
-  if(!out[key]) out[key]=name;
-}
-function parseTherapistPairsInto(out,text){
-  const s=normalizeText(text); if(!s) return;
-  const specs=[
-    ['ot',/(?:OT\s*[:：\-]?\s*|작업(?:치료)?\s*(?:(?:주)?치료사|담당)?\s*[:：\-]?\s*)([가-힣]{2,4})(?=$|[\s,\/·ㆍ|\)\]])/ig],
-    ['exercise',/(?:PT\s*[:：\-]?\s*|(?:운동|물리)(?:치료)?\s*(?:(?:주)?치료사|담당)?\s*[:：\-]?\s*)([가-힣]{2,4})(?=$|[\s,\/·ㆍ|\)\]])/ig],
-    ['swallow',/(?:연하(?:치료)?\s*(?:(?:주)?치료사|담당)?\s*[:：\-]?\s*)([가-힣]{2,4})(?=$|[\s,\/·ㆍ|\)\]])/ig],
-    ['cog',/(?:인지(?:치료)?\s*(?:(?:주)?치료사|담당)?\s*[:：\-]?\s*)([가-힣]{2,4})(?=$|[\s,\/·ㆍ|\)\]])/ig],
-    ['speech',/(?:ST\s*[:：\-]?\s*|언어(?:치료)?\s*(?:(?:주)?치료사|담당)?\s*[:：\-]?\s*)([가-힣]{2,4})(?=$|[\s,\/·ㆍ|\)\]])/ig],
-    ['manual',/(?:도수(?:치료)?\s*(?:(?:주)?치료사|담당)?\s*[:：\-]?\s*)([가-힣]{2,4})(?=$|[\s,\/·ㆍ|\)\]])/ig]
-  ];
-  for(const [key,re] of specs){ let mm; while((mm=re.exec(s))) assignTherapist(out,key,mm[1]); }
-}
-function inferTherapistFromTreatment(out,treatment){
-  const raw=normalizeText(treatment); if(!raw) return;
-  parseTherapistPairsInto(out,raw);
-  const core=treatmentCore(raw), key=core==='ot'?'ot':core==='exercise'?'exercise':core==='swallow'?'swallow':core==='cog'?'cog':core==='speech'?'speech':core==='manual'?'manual':'';
-  if(!key || out[key]) return;
-  let m=/(?:치료사|담당|주치료사)\s*[:：\-]?\s*([가-힣]{2,4})/.exec(raw);
-  if(!m){
-    // 치료명 뒤 괄호가 실제 사람 이름인 경우: 작업치료(홍길동), 운동치료[김영희]
-    const reMap={
-      ot:/(?:작업(?:치료)?)\s*[\(\[]\s*([가-힣]{2,4})\s*[\)\]]/,
-      exercise:/(?:운동(?:치료)?|물리(?:치료)?)\s*[\(\[]\s*([가-힣]{2,4})\s*[\)\]]/,
-      swallow:/(?:연하(?:치료)?)\s*[\(\[]\s*([가-힣]{2,4})\s*[\)\]]/,
-      cog:/(?:인지(?:치료)?)\s*[\(\[]\s*([가-힣]{2,4})\s*[\)\]]/,
-      speech:/(?:언어(?:치료)?)\s*[\(\[]\s*([가-힣]{2,4})\s*[\)\]]/,
-      manual:/(?:도수(?:치료)?)\s*[\(\[]\s*([가-힣]{2,4})\s*[\)\]]/
-    };
-    m=reMap[key]?.exec(raw)||null;
-  }
-  if(m) assignTherapist(out,key,m[1]);
-}
-function therapistHeaderColumns(cells,timeHeaderRow,c){
-  const cols=[];
-  for(let cc=c;cc<=c+60;cc++){
-    const raw=normalizeText(getCell(cells,timeHeaderRow,cc));
-    const h=raw.replace(/\s+/g,''); if(!h) continue;
-    const key=therapistKeyFromLabel(raw);
-    if(key || /(?:주?치료사|치료사명|담당치료사|담당자|주담당|담당$)/.test(h)) cols.push({col:cc,key});
-  }
-  return cols;
-}
-function inferTherapistFromScheduleRow(out,cells,rr,therapistCols,rowTreat){
-  if(!therapistCols.length) return;
-  const values=[];
-  for(const spec of therapistCols){
-    const name=cleanTherapistValue(getCell(cells,rr,spec.col)); if(!name) continue;
-    values.push({name,key:spec.key});
-    if(spec.key) assignTherapist(out,spec.key,name);
-    parseTherapistPairsInto(out,name);
-  }
-  if(!values.length) return;
-  const cores=[...new Set(Object.values(rowTreat).map(treatmentCore))];
-  const keys=cores.map(core=>core==='ot'?'ot':core==='exercise'?'exercise':core==='swallow'?'swallow':core==='cog'?'cog':core==='speech'?'speech':core==='manual'?'manual':'').filter(Boolean);
-  if(keys.length===1 && !out[keys[0]]) assignTherapist(out,keys[0],values[0].name);
-}
 
 
-function scanTherapistNeighborhood(cells,centerRow,centerCol,out,excludedNames){
-  const r1=Math.max(1,centerRow-8), r2=centerRow+16, c1=Math.max(1,centerCol-14), c2=centerCol+24;
-  const genericNames=[];
-  for(let rr=r1;rr<=r2;rr++){
-    for(let cc=c1;cc<=c2;cc++){
-      const raw=normalizeText(getCell(cells,rr,cc)); if(!raw) continue;
-      parseTherapistPairsInto(out,raw);
-      const compact=raw.replace(/\s+/g,'');
-      const genericLabel=looksLikePrimaryTherapistLabel(raw)||/^(?:주치료사|담당치료사|치료사명|치료담당|담당자|주담당)$/.test(compact);
-      if(genericLabel){
-        const candidates=[];
-        for(let k=1;k<=8;k++) candidates.push(getCell(cells,rr,cc+k));
-        for(let k=1;k<=4;k++){ candidates.push(getCell(cells,rr+k,cc)); candidates.push(getCell(cells,rr+k,cc+1)); }
-        for(const v of candidates){
-          const name=isLikelyTherapistPersonName(v,excludedNames);
-          if(name && !genericNames.includes(name)) genericNames.push(name);
-          parseTherapistPairsInto(out,v);
-        }
-      }
-      const key=therapistKeyFromLabel(raw)||therapistKeyFromLooseLabel(raw);
-      if(!key || out[key]) continue;
-      // 느슨한 '작업치료/운동치료' 라벨은 환자 정보영역 또는 환자명 인접부에서만 이름을 연결한다.
-      const candidates=[];
-      for(let k=1;k<=6;k++) candidates.push(getCell(cells,rr,cc+k));
-      for(let k=1;k<=3;k++){ candidates.push(getCell(cells,rr+k,cc)); candidates.push(getCell(cells,rr+k,cc+1)); }
-      for(let k=1;k<=2;k++) candidates.push(getCell(cells,rr,cc-k));
-      for(const v of candidates){
-        const name=isLikelyTherapistPersonName(v,excludedNames);
-        if(name){ out[key]=name; break; }
-      }
-    }
-  }
-  if(!out.combined && genericNames.length) out.combined=genericNames.join(' · ');
-}
-function inferTherapistFromColumnHeader(cells,row,col,out,excludedNames){
-  // 치료사 개인시간표형 시트: 환자 이름이 치료사 이름 아래 열에 있는 경우까지 지원
-  let workerName='', workerKey='';
-  for(let rr=Math.max(1,row-18);rr<row;rr++){
-    const same=isLikelyTherapistPersonName(getCell(cells,rr,col),excludedNames);
-    if(same) workerName=same;
-    const here=therapistKeyFromLabel(getCell(cells,rr,col))||therapistKeyFromLooseLabel(getCell(cells,rr,col));
-    if(here) workerKey=here;
-    for(let cc=Math.max(1,col-3);cc<=col+3;cc++){
-      const k=therapistKeyFromLabel(getCell(cells,rr,cc))||therapistKeyFromLooseLabel(getCell(cells,rr,cc));
-      if(k && !workerKey) workerKey=k;
-      const n=isLikelyTherapistPersonName(getCell(cells,rr,cc),excludedNames);
-      if(n && cc===col) workerName=n;
-    }
-  }
-  if(workerName && workerKey && !out[workerKey]) out[workerKey]=workerName;
-}
-async function enrichTherapistsFromWorkbook(book,cards){
-  if(!cards?.length) return cards;
-  const excludedNames=new Set(cards.map(p=>normalizeText(p.name).replace(/\s+/g,'')).filter(Boolean));
-  const byName=new Map(), byReg=new Map();
-  for(const p of cards){
-    const nk=normalizeText(p.name).replace(/\s+/g,''); if(nk){ if(!byName.has(nk)) byName.set(nk,[]); byName.get(nk).push(p); }
-    const rk=normalizeText(p.reg).replace(/\s+/g,''); if(rk){ if(!byReg.has(rk)) byReg.set(rk,[]); byReg.get(rk).push(p); }
-  }
-  for(const sh of book.sheets){
-    const cells=await getSheetCells(book,sh.name); if(!cells) continue;
-    for(const [ref,val] of cells.entries()){
-      const raw=normalizeText(val), compact=raw.replace(/\s+/g,''); if(!compact) continue;
-      let matched=byReg.get(compact)||byName.get(compact); if(!matched) continue;
-      const rc=splitRef(ref); if(!rc) continue;
-      for(const p of matched){
-        const found={ot:'',exercise:'',swallow:'',cog:'',speech:'',manual:'',combined:''};
-        scanTherapistNeighborhood(cells,rc.row,rc.col,found,excludedNames);
-        inferTherapistFromColumnHeader(cells,rc.row,rc.col,found,excludedNames);
-        mergeTherapistData(p.therapists,found);
-      }
-    }
-  }
-  return cards;
-}
 
 async function parsePatientsFromBook(book,floor){
   const plan=floor===3?[['입원','입원'],['7병동','7병동'],['외래','외래']]:[['입원','입원'],['외래','외래']]; const cards=[];
@@ -1582,7 +1242,6 @@ async function rebuildGrandPtTherapistMap(){
       const rc=splitRef(ref); if(rc) headers.push(rc);
     }
     headers.sort((a,b)=>a.row-b.row||a.col-b.col);
-    let floorAssignments=0;
     for(const header of headers){
       const therapistCols=[];
       for(let c=header.col+1;c<=header.col+65;c++){
@@ -1601,7 +1260,7 @@ async function rebuildGrandPtTherapistMap(){
           const floorMap=grandPtTherapistMaps[floor];
           if(!floorMap.has(key)) floorMap.set(key,[]);
           const arr=floorMap.get(key);
-          if(!arr.includes(tc.name)){ arr.push(tc.name); floorAssignments++; }
+          if(!arr.includes(tc.name)){ arr.push(tc.name); }
         }
       }
     }
@@ -1694,20 +1353,6 @@ function grandSummaryClean(v){
 function grandSummaryUnits(v){
   const raw=String(v||'').replace(/\r/g,'\n'); if(!raw.trim()) return [];
   return raw.split(/\n+|(?<=[.!?。])\s+|[;；]+/).map(grandSummaryClean).filter(x=>x.length>=4);
-}
-function grandSummaryUnique(items){
-  const out=[], norms=[];
-  for(const item of items){
-    const s=grandSummaryClean(item), n=s.toLowerCase().replace(/[^0-9a-z가-힣]+/g,''); if(!n) continue;
-    let dup=false; for(const old of norms){ if(n===old || (Math.min(n.length,old.length)>10&&(n.includes(old)||old.includes(n)))){dup=true;break;} }
-    if(!dup){out.push(s);norms.push(n);}
-  }
-  return out;
-}
-function grandSummaryShort(v,max=88){
-  // 회진 발표 요약은 글자 수를 기준으로 강제로 잘라 말줄임표를 붙이지 않는다.
-  // 1~2문장 요약의 핵심 문장은 원문 문장 끝까지 보존한다.
-  return grandSummaryClean(v);
 }
 const GRAND_SUMMARY_THEMES=[
   ['gait',/보행|gait|ambulation|walker|cane|계단|걷기|walking/i,'보행·이동'],
@@ -2026,8 +1671,6 @@ function grandHourSlots(hour){
 function grandHourEntries(p,day,hour){ return grandHourSlots(hour).map(time=>({time,entry:p.schedule[day]?.[time]})).filter(x=>!!x.entry); }
 function minutesOfTime(t){ const [h,m]=String(t||'00:00').split(':').map(Number); return (h||0)*60+(m||0); }
 function grandStartMinutes(hour){ return Number(hour||9)*60; }
-function grandFutureEntries(p,day,hour){ return grandActiveSlots(hour).filter(t=>t!==LUNCH_KEY).map(time=>({time,entry:p.schedule[day]?.[time]})).filter(x=>!!x.entry); }
-function grandNextFutureEntry(p,day,hour){ const list=grandFutureEntries(p,day,hour); return list.length?list[0]:null; }
 function shortTreatmentLocation(e){
   if(!e) return '';
   const raw=normalizeText(e.rawLocation)||inlineLocation(e.treatment);
@@ -2036,10 +1679,8 @@ function shortTreatmentLocation(e){
   // 시간대 셀은 치료명과 위치를 두 줄로 짧게 표시한다. 층 정보는 별도 치료위치 열에서 확인한다.
   return [name,loc&&loc!==name?loc:''].filter(Boolean).join('\n');
 }
-function grandPatientKey(p){ return `${p.reg||''}::${p.name}::${p.floor}::${p.category}::${p.room||''}`; }
 function grandIdentityKey(p){ return p.reg?`REG:${p.reg}`:`NAME:${p.name}|ROOM:${p.room||''}`; }
 function grandVisitKey(p){ const d=document.getElementById('grandDateInput')?.value||dateStamp(); return `${d}::${grandIdentityKey(p)}`; }
-function effectiveTherapist(p,k){ const saved=grandTherapistStore[grandIdentityKey(p)]?.[k]; return normalizeText(saved!==undefined?saved:(p.therapists?.[k]||'')); }
 const THERAPIST_SUMMARY_ORDER=[['exercise','운동'],['ot','작업'],['manual','도수'],['swallow','연하'],['cog','인지'],['speech','언어']];
 function autoTherapistSummary(p){
   // 실제 사람 이름이 하나라도 포함된 주치료사 데이터만 사용한다. 치료명 자체는 자동 폐기한다.
@@ -2050,19 +1691,6 @@ function autoTherapistSummary(p){
     return v && isUsableTherapistText(v)?`${label} ${v}`:'';
   }).filter(Boolean).join(' · ');
 }
-function therapistSummary(p){
-  const key=grandIdentityKey(p), saved=grandTherapistStore[key]?.combined;
-  if(saved!==undefined && normalizeText(saved)){
-    if(isUsableTherapistText(saved)) return normalizeText(saved);
-    // 구버전에서 자동 저장된 'OT 전기치료 · PT 전기치료 ...' 같은 오염값은 즉시 제거한다.
-    delete grandTherapistStore[key].combined;
-    saveGrandStore(GRAND_THERAPIST_STORE,grandTherapistStore);
-  }
-  const auto=autoTherapistSummary(p); if(auto) return auto;
-  return THERAPIST_SUMMARY_ORDER.map(([k,label])=>{const v=effectiveTherapist(p,k); return v&&isUsableTherapistText(v)?`${label} ${v}`:'';}).filter(Boolean).join(' · ');
-}
-function setTherapistOverride(pkey,k,value){ if(!grandTherapistStore[pkey]) grandTherapistStore[pkey]={}; grandTherapistStore[pkey][k]=String(value||''); saveGrandStore(GRAND_THERAPIST_STORE,grandTherapistStore); }
-function setTherapistCombined(pkey,value){ if(!grandTherapistStore[pkey]) grandTherapistStore[pkey]={}; const v=String(value||'').trim(); if(v) grandTherapistStore[pkey].combined=v; else delete grandTherapistStore[pkey].combined; saveGrandStore(GRAND_THERAPIST_STORE,grandTherapistStore); }
 function syncGrandInputsFromDom(){
   // 주치료사 자동표시값은 Export 시 수동 override로 다시 저장하지 않는다.
   // 사용자가 실제로 수정한 값은 아래 input 이벤트에서만 저장된다.
@@ -2118,18 +1746,6 @@ function routeInfoForTreatment(e){
   if(floor===10) return grand10RouteDetail(e);
   if(floor===3) return grand3RouteDetail(e);
   return {rank:390000,label:`${floor}F 치료구역`,floorLabel:`${floor}F`,section:'other'};
-}
-function grandRouteStops(routeKey){
-  const profile=grandRouteProfile(routeKey), stops=[
-    {rank:101000,floorLabel:'10F',label:'A구역',section:'f10'},{rank:102000,floorLabel:'10F',label:'B구역(하단)',section:'f10'},{rank:103000,floorLabel:'10F',label:'B구역(상단)',section:'f10'},{rank:104000,floorLabel:'10F',label:'D구역',section:'f10'},{rank:105000,floorLabel:'10F',label:'전동자전거 · 기립대',section:'f10'},{rank:106000,floorLabel:'10F',label:'워커메이트 · 평행봉',section:'f10'},{rank:107000,floorLabel:'10F',label:'전기치료',section:'f10'},{rank:108000,floorLabel:'10F',label:'트레드밀',section:'f10'},{rank:109000,floorLabel:'10F',label:'C구역(상단)',section:'f10'},{rank:110000,floorLabel:'10F',label:'C구역(하단)',section:'f10'},{rank:111000,floorLabel:'10F',label:'작업치료 테이블',section:'f10'},{rank:112000,floorLabel:'10F',label:'연하치료실',section:'f10'},{rank:113000,floorLabel:'10F',label:'언어치료실',section:'f10'},{rank:114000,floorLabel:'10F',label:'인지치료실',section:'f10'},{rank:115000,floorLabel:'10F',label:'도수치료실',section:'f10'},{rank:116000,floorLabel:'10F',label:'작업치료실 · 스테이션',section:'f10'},{rank:117000,floorLabel:'10F',label:'기구치료',section:'f10'}
-  ];
-  profile.wards.forEach((f,i)=>stops.push({rank:200000+i,floorLabel:`${f}F`,label:'병동',section:'ward',wardFloor:f}));
-  if(profile.include3F){
-    stops.push(
-      {rank:301000,floorLabel:'3F',label:'가구역',section:'f3'},{rank:302000,floorLabel:'3F',label:'나구역',section:'f3'},{rank:303000,floorLabel:'3F',label:'전기치료',section:'f3'},{rank:304000,floorLabel:'3F',label:'작업치료 테이블',section:'f3'},{rank:305000,floorLabel:'3F',label:'트레드밀',section:'f3'},{rank:306000,floorLabel:'3F',label:'기구치료실',section:'f3'},{rank:307000,floorLabel:'3F',label:'통증치료실',section:'f3'},{rank:308000,floorLabel:'3F',label:'도수치료실',section:'f3'},{rank:309000,floorLabel:'3F',label:'ADL',section:'f3'},{rank:310000,floorLabel:'3F',label:'연하치료실',section:'f3'},{rank:311000,floorLabel:'3F',label:'인지치료실',section:'f3'},{rank:312000,floorLabel:'3F',label:'언어치료실',section:'f3'},{rank:313000,floorLabel:'3F',label:'임상심리실',section:'f3'},{rank:314000,floorLabel:'3F',label:'기타 치료구역',section:'f3'}
-    );
-  }
-  return stops;
 }
 function grandFilterState(){ return {rm:document.getElementById('grandRmSelect').value,routeKey:document.getElementById('grandRouteSelect').value||'round1',ward:grandSelectedWard()}; }
 function grandFilteredPatients({ignoreRm=false,routeKey=null}={}){
@@ -2325,14 +1941,10 @@ function stylesXml(){
 function themeXml(){ return `<?xml version="1.0" encoding="utf-8"?><a:theme name="ChatGPT" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:themeElements><a:clrScheme name="ChatGPT"><a:dk1><a:sysClr val="windowText" lastClr="000000" /></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF" /></a:lt1><a:dk2><a:srgbClr val="0E2841" /></a:dk2><a:lt2><a:srgbClr val="E8E8E8" /></a:lt2><a:accent1><a:srgbClr val="156082" /></a:accent1><a:accent2><a:srgbClr val="E97132" /></a:accent2><a:accent3><a:srgbClr val="196B24" /></a:accent3><a:accent4><a:srgbClr val="0F9ED5" /></a:accent4><a:accent5><a:srgbClr val="A02B93" /></a:accent5><a:accent6><a:srgbClr val="4EA72E" /></a:accent6><a:hlink><a:srgbClr val="467886" /></a:hlink><a:folHlink><a:srgbClr val="96607D" /></a:folHlink></a:clrScheme><a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri Light" /><a:ea typeface="Calibri Light" /><a:cs typeface="Calibri Light" /></a:majorFont><a:minorFont><a:latin typeface="Calibri" /><a:ea typeface="Calibri" /><a:cs typeface="Calibri" /></a:minorFont></a:fontScheme><a:fmtScheme name="ChatGPT"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:gradFill><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="67000" /><a:lumMod val="110000" /><a:satMod val="105000" /></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:tint val="73000" /><a:lumMod val="105000" /><a:satMod val="103000" /></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="81000" /><a:lumMod val="105000" /><a:satMod val="109000" /></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0" /></a:gradFill><a:gradFill><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="94000" /><a:lumMod val="102000" /><a:satMod val="103000" /></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:shade val="100000" /><a:lumMod val="100000" /><a:satMod val="110000" /></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="78000" /><a:lumMod val="99000" /><a:satMod val="120000" /></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0" /></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:prstDash val="solid" /></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:prstDash val="solid" /></a:ln><a:ln w="25400"><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:prstDash val="solid" /></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst /></a:effectStyle><a:effectStyle><a:effectLst /></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="57150" dist="19050" dir="5400000"><a:srgbClr val="000000"><a:alpha val="63000" /></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr" /></a:solidFill><a:solidFill><a:schemeClr val="phClr"><a:tint val="95000" /><a:satMod val="170000" /></a:schemeClr></a:solidFill><a:gradFill><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="93000" /><a:shade val="98000" /><a:lumMod val="102000" /><a:satMod val="150000" /></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:tint val="98000" /><a:shade val="90000" /><a:lumMod val="103000" /><a:satMod val="130000" /></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="63000" /><a:satMod val="120000" /></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0" /></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>`; }
 function sanitizeSheetName(name,used){ let s=String(name).replace(/[\\\/?*\[\]:]/g,' ').trim().slice(0,31)||'Sheet'; let base=s,n=2; while(used.has(s)){ const suffix=` (${n++})`; s=base.slice(0,31-suffix.length)+suffix; } used.add(s); return s; }
 
-function grandHeaders(hour){ const tc=grandTherapistColumnDefs(),hc=grandHandoverColumnDefs(); return ['확인','병실','환자명','주 치료실','동선','치료시간','치료','치료위치',...tc.map(x=>x.label),...grandScheduleSlots(hour).map(grandTimeHeaderText),...hc.map(x=>x.label),'그랜드 라운딩 보고 내용']; }
 // Excel 출력에서는 화면용 '확인' 열을 제외한다.
 function grandExcelHeaders(hour,period=grandPrintPeriodKey()){
   const tc=grandTherapistColumnDefs(),hc=grandHandoverColumnDefs(),wardNote=grandClinicalWardNoteEnabled();
   return ['병실','환자명','주 치료실','동선','치료시간','치료','치료위치',...tc.map(x=>x.label),...grandPrintSlots(period).map(grandTimeHeaderText),...(wardNote?['특이사항']:[]),...hc.map(x=>x.label)];
-}
-function grandPrintRow(row,day,hour){
-  const p=row.p,a=row.anchor,tc=grandTherapistColumnDefs(),hc=grandHandoverColumnDefs(); return [grandCheckStore[grandVisitKey(p)]?'✓':'',p.room,p.name,p.primary,`${a.route.floorLabel} ${a.route.label}`,a.time,a.treatment,a.location,...tc.map(x=>grandTherapistColumnText(p,x.key)),...grandScheduleSlots(hour).map(t=>grandScheduleCellText(p,day,t)),...hc.map(x=>grandHandoverColumnText(p,x.key)),getGrandNote(p)];
 }
 function grandExcelPrintRow(row,day,hour,period=grandPrintPeriodKey()){
   const p=row.p,a=row.anchor,tc=grandTherapistColumnDefs(),hc=grandHandoverColumnDefs(),wardNote=grandClinicalWardNoteEnabled();
@@ -2389,16 +2001,6 @@ function buildGrandSheetXml(title,patients,day,hour,routeKey,period=grandPrintPe
   }
   const merges=[`A1:${lastCol}1`,`A2:${lastCol}2`], mergeXml=`<mergeCells count="${merges.length}">${merges.map(x=>`<mergeCell ref="${x}"/>`).join('')}</mergeCells>`;
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:${lastCol}${Math.max(r,3)}"/><sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData>${mergeXml}<printOptions horizontalCentered="1"/><pageMargins left="0.10" right="0.10" top="0.18" bottom="0.18" header="0.08" footer="0.08"/><pageSetup paperSize="9" orientation="portrait" pageOrder="downThenOver" fitToWidth="1" fitToHeight="1"/><headerFooter><oddFooter>&amp;L${xmlEscape(title)}&amp;C&amp;P / &amp;N&amp;R${xmlEscape(date)} ${xmlEscape(hour)}시 시작 · ${xmlEscape(periodInfo.label)}</oddFooter></headerFooter></worksheet>`;
-}
-function grandSplitPatientsForSheets(patients,day,hour,routeKey,maxParts=3){
-  const ordered=grandGroupedRows(patients,day,hour,routeKey).rows.map(x=>x.p);
-  const count=Math.min(maxParts,Math.max(1,ordered.length));
-  const groups=[]; let start=0;
-  for(let i=0;i<count;i++){
-    const remaining=ordered.length-start, partsLeft=count-i, size=Math.ceil(remaining/partsLeft);
-    groups.push(ordered.slice(start,start+size)); start+=size;
-  }
-  return groups.filter(x=>x.length);
 }
 function grandExpandSheetDefsForPrint(sheetDefs,day,hour,routeKey){
   // 재활치료부/진료부·병동 모두 RM 하나를 3개 시트로 분할하지 않는다.

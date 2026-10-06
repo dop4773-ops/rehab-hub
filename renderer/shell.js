@@ -90,7 +90,6 @@ const TOOLS = {
   },
 };
 // 홈 화면 "오늘 확인할 항목" 표시 순서(오류/불일치를 먼저 보여준다) — TOOLS 순서와는 별개로 관리.
-const ALERT_ORDER = ['acting', 'cross', 'rm'];
 
 let fileRoles = [];
 let lastScan = null; // {matched, matchedAll, unmatched, errors, folders, manualRoles}
@@ -387,7 +386,6 @@ function fmtTime(ms, withSeconds = false) {
   const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}${withSeconds ? ':' + pad2(d.getSeconds()) : ''}`;
   return d.toDateString() === new Date().toDateString() ? hm : `${pad2(d.getMonth() + 1)}.${pad2(d.getDate())} ${hm}`;
 }
-const STATE_CLASS = { latest: 'ok', stale: 'stale', updating: 'busy', missing: 'miss', error: 'err' };
 
 // 역할 하나의 표시용 정보: 찾은 파일들, 가장 최근 파일 수정 시각, 프로그램 반영 시각, 상태
 function roleInfo(role) {
@@ -730,7 +728,7 @@ function renderDataView() {
   } else if (dataViewMode === 'matrix') {
     const rows = MATRIX_ROWS.map(([title, c3, c10]) => {
       const col = (keys) => keys.map(k => roleDef(k)).filter(r => r && !hideRole(r));
-      const a = col(c3), b = col(c10), c = [];
+      const a = col(c3), b = col(c10);
       if (!a.length && !b.length) return '';
       const cell = (list) => list.length ? `<div class="mstack">${list.map(mcell).join('')}</div>` : '<div class="na">—</div>';
       return `<div class="mrw"><b>${title}</b></div>${cell(a)}${cell(b)}`;
@@ -927,12 +925,6 @@ for (const key of Object.keys(TOOLS)) {
 // ── 백업 상태(읽기 전용) ───────────────────────────────────
 // 백업은 PowerShell(OneDrive_Backup.ps1)이 하고, 여기서는 그 로그를 읽어 상태만 보여준다. 60초마다 가볍게 다시 읽는다.
 let backupStatus = null;
-const BK_LEVEL = { ok: 'green', warn: 'orange', err: 'red' };
-function backupAlertRow() {
-  const b = backupStatus; if (!b || b.level === 'off') return '';
-  return alertRow('백업 상태', b.level === 'unknown' ? '기록 없음' : b.level === 'ok' ? '정상' : '확인 필요', BK_LEVEL[b.level] || 'orange',
-    b.level === 'ok' ? null : `[백업] ${b.title}`);
-}
 const bkAgo = (ms, now) => { if (!ms) return '-'; const s = Math.max(0, Math.round((now - ms) / 1000)); return s < 90 ? `${s}초 전` : s < 5400 ? `${Math.round(s / 60)}분 전` : s < 172800 ? `${Math.round(s / 3600)}시간 전` : `${Math.round(s / 86400)}일 전`; };
 const bkTime = (ms) => { if (!ms) return '-'; const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 const bkEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

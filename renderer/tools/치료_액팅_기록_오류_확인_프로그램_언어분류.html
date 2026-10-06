@@ -1004,9 +1004,6 @@
     const code = firstOrderCode(name);
     return FIXED_15_MINUTE_CODES.some(c => n.startsWith(c) || code === c);
   }
-  function isMM15MinuteException(name){
-    return startsWithMM(name) && isFixed15MinuteOrder(name);
-  }
   function isRecoveryOrder(name){
     return normalizeText(name).replace(/\s+/g,'').includes('회복기재활');
   }
@@ -1134,9 +1131,6 @@
       return /^-+\s*\S/.test(s) || /^(Tilting\s*table|Tilting-table|Motomed|Standing\s*frame|Sliding\s*board|Walkmate|Treadmill|P-bar\s*walking|Stair\s*walking|Stall\s*bar)\s*-/.test(s);
     }).length;
   }
-  function countPnoteNonEmptyLines(v){
-    return pnoteLines(v).length;
-  }
   function pnoteCompact(v){
     return normalizePnoteText(v).toLowerCase().replace(/\s+/g, ' ');
   }
@@ -1171,7 +1165,6 @@
     if(!text) return [];
     const reasons = [];
     function add(msg){ if(msg && !reasons.includes(msg)) reasons.push(msg); }
-    function foundBasic(tokens){ return tokens.filter(t => hasBasicExamToken(text, t)); }
     function checkRule(label, requiredLabel, hasRequired, forbiddenLabels){
       if(!hasRequired) add(`${label}: 필수 문구 누락(${requiredLabel})`);
       const bad = forbiddenLabels.filter(item => item.test());
@@ -1209,7 +1202,6 @@
     const text = normalizePnoteText(treatmentValue);
     if(!text || !isPtPnTargetOrder(name)) return null;
     const entryCount = countPnoteEntries(text);
-    const nonEmptyLineCount = countPnoteNonEmptyLines(text);
     const reasons = [];
     function add(msg){ if(msg && !reasons.includes(msg)) reasons.push(msg); }
     function checkCount(expected, label){
@@ -3062,7 +3054,6 @@ ${text}`,
     // (표(table)는 내용에 따라 특정 칸이 넓어지는 문제가 있었는데, CSS Grid는 내용과 무관하게 1fr씩 정확히 균등 분배됩니다.)
     // colPx를 주면 열 폭을 그 값으로 고정하고(가로 스크롤), 줄 높이는 컨테이너 높이에 맞춰 나눠서 세로 스크롤이 생기지 않게 한다.
     function buildCssGridHtml(cols, colPx){
-      const totalRows = 1 + grid.timeRows.length;
       const colsCss = colPx ? `80px repeat(${cols.length},${colPx}px)` : `52px repeat(${cols.length},1fr)`; // 가로 스크롤 보기는 시간 열(08:30~09:00)이 잘리지 않게 넓힘
       let html = `<div class="schedule-grid" style="grid-template-columns:${colsCss};grid-template-rows:24px repeat(${grid.timeRows.length},minmax(0,1fr));height:100%;${colPx ? 'width:max-content;min-width:100%;' : ''}">`;
       html += `<div class="g-cell g-head">시간</div>`;

@@ -17,8 +17,19 @@ if (!gotLock) {
 } else {
   let mainWindow;
 
+  // 예상 못 한 오류가 나도 앱이 오류 창을 띄우며 멈추지 않게 기록만 남긴다(기록은 설정 › 데이터 폴더 열기에서 볼 수 있다). 파일이 커지면 처음부터 다시 쓴다.
+  const logError = (kind, err) => {
+    try {
+      const fs = require('fs'), file = path.join(app.getPath('userData'), 'error.log');
+      let big = false; try { big = fs.statSync(file).size > 200 * 1024; } catch (e) { /* 아직 없음 */ }
+      (big ? fs.writeFileSync : fs.appendFileSync)(file, `[${new Date().toISOString()}] ${kind}: ${err && err.stack || err}\n`);
+    } catch (e) { /* 기록을 못 남겨도 앱은 계속 */ }
+  };
+  process.on('uncaughtException', (err) => logError('uncaughtException', err));
+  process.on('unhandledRejection', (err) => logError('unhandledRejection', err));
+
   app.on('second-instance', () => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
@@ -44,6 +55,11 @@ if (!gotLock) {
     // 외부 주소는 업데이트 설정의 "열기" 버튼처럼 정해진 경로(shell.openExternal)로만 연다.
     mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     mainWindow.webContents.on('will-navigate', (event, url) => { if (!url.startsWith('app://rehab-shell/')) event.preventDefault(); });
+    // 화면 프로세스가 죽거나 처음 불러오기에 실패하면(메모리 부족·백신 간섭 등) 흰 화면으로 두지 않고 다시 불러온다 — 10초 안에 반복되면 멈춘다.
+    let lastReload = 0;
+    const reloadOnce = (why) => { const now = Date.now(); if (now - lastReload < 10000 || mainWindow.isDestroyed()) return; lastReload = now; logError('reload', why); mainWindow.loadURL(shellUrl('/index.html')); };
+    mainWindow.webContents.on('render-process-gone', (e, d) => reloadOnce('render-process-gone ' + d.reason));
+    mainWindow.webContents.on('did-fail-load', (e, code, desc, url, isMainFrame) => { if (isMainFrame && code !== -3) reloadOnce('did-fail-load ' + code + ' ' + desc); }); // -3 = 사용자가 중단
     mainWindow.loadURL(shellUrl('/index.html'));
     // mainWindow.webContents.openDevTools(); // 개발 중 디버깅용
   }
