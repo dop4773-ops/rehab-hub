@@ -29,7 +29,12 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     // 홈/데이터/설정/보고서
     for (const k of ['home', 'data', 'settings', 'report']) await step('화면 ' + k, async () => { await nav(k); return await ev(`document.querySelector('.view.active').dataset.view`); });
     await step('홈 새로고침/스캔 버튼', async () => { await nav('home'); await ev(`document.getElementById('homeScanBtn')?.click(); 1`); await sleep(1500); return await ev(`document.getElementById('homeTodo').innerText.slice(0,80)`); });
-    await step('동기화 주기 변경 후 복구', async () => { await nav('settings'); await ev(`document.querySelector('input[name=syncMode][value="10"]').click(); 1`); const s = await ev(`localStorage.getItem('rehab_sync_mode')`); await ev(`document.querySelector('input[name=syncMode][value="launch"]').click(); 1`); return s; });
+    await step('설정: 모든 탭·스위치·선택칸 순회 후 복구', async () => { await nav('settings'); return await ev(`(async()=>{ const bak=JSON.parse(JSON.stringify(settings)); let n=0; const wait=ms=>new Promise(r=>setTimeout(r,ms));
+      for (const t of document.querySelectorAll('#stTabs button')) { t.click(); n++; await wait(80);
+        for (const sw of t.ownerDocument.querySelectorAll('.st-page.on input[type=checkbox][data-set]')) { sw.click(); n++; sw.click(); }
+        for (const b of document.querySelectorAll('.st-page.on .st-seg [data-v]')) { b.click(); n++; }
+        for (const s of document.querySelectorAll('.st-page.on select[data-set]')) for (const o of s.options) { s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); n++; } }
+      const mid = settings.syncMode; replaceSettings(bak); document.querySelector('#stTabs [data-tab=data]').click(); return { n, restored: JSON.stringify(settings)===JSON.stringify(bak), mid }; })()`); });
     // 그랜드라운딩
     await nav('rm'); await sleep(6000);
     await step('그랜드: 환자 로드·RM 선택·요일/시간 변경', async () => await ev(`(async()=>{ const w=${W('rm')}, d=w.document; const n=w.__testHooks.allPatients().length; const sel=d.getElementById('grandRmSelect'); const out=[]; for(const o of [...sel.options].slice(0,6)){ sel.value=o.value; sel.dispatchEvent(new Event('change',{bubbles:true})); await new Promise(r=>setTimeout(r,150)); out.push(d.querySelectorAll('table tbody tr').length); } return {n,rows:out}; })()`));

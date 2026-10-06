@@ -305,9 +305,9 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
     </div>
     <div id="grandRoundView" class="grand-shell">
       <div class="grand-controls">
-        <div class="grand-itda">
+        <div class="grand-itda" id="grandItdaBox">
           <button id="grandItdaBtn" class="btn" type="button">📅 잇다 일정 불러오기</button>
-          <span class="grand-itda-msg" id="grandItdaMsg">잇다의 "그랜드라운딩" 일정(오늘 이후)을 불러와 눌러서 회차·RM·요일을 한 번에 맞춥니다. 시각은 09시로 맞춰져요.</span>
+          <span class="grand-itda-msg" id="grandItdaMsg">잇다의 "그랜드라운딩" 일정(오늘 이후)을 불러와 눌러서 회차·RM·요일을 한 번에 맞춥니다. 시각은 설정의 시작 시각(기본 09시)으로 맞춰져요.</span>
           <div class="grand-itda-list" id="grandItdaList"></div>
         </div>
         <div class="grand-controls-priority">
@@ -2532,13 +2532,14 @@ dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')})
 document.getElementById('grandRouteSelect').addEventListener('change',()=>{updateGrandWardOptions();renderGrandTable();}); ['grandTimeInput','grandRmSelect','grandWardSelect'].forEach(id=>document.getElementById(id).addEventListener('change',renderGrandTable)); document.getElementById('grandDaySelect').addEventListener('change',async()=>{if(grandOtBook) await rebuildGrandOtTherapistMap();renderGrandTable();}); document.getElementById('grandPrintPeriodSelect').addEventListener('change',()=>{updateGrandExportButtonLabels();renderGrandTable();});
 // ── 잇다 "그랜드라운딩" 일정 불러오기(읽기 전용). 칩을 누르면 회차·회진일(요일)·시각(09시)·RM을 한 번에 맞춘다 ──
 let grandItdaPendingRm=null;
+const grandItdaHour=()=>(window.__rhSettings&&window.__rhSettings.grandTime)||'09'; // 설정 > 그랜드라운딩 시작 시각
 function grandItdaApply(ev,chip){
   const $=id=>document.getElementById(id), fire=el=>el.dispatchEvent(new Event('change'));
   if(ev.route){ $('grandRouteSelect').value=ev.route; fire($('grandRouteSelect')); }
   $('grandWardSelect').value='ALL'; fire($('grandWardSelect'));
   $('grandDateInput').value=ev.date; fire($('grandDateInput'));
-  $('grandTimeInput').value='09'; fire($('grandTimeInput'));
-  const msg=$('grandItdaMsg'); msg.className='grand-itda-msg'; grandItdaPendingRm=null; let text=`${ev.date} · ${ev.rm||'RM 미인식'}${ev.wards?` · ${ev.wards.replace(',','·')}병동`:''} · 09시로 맞췄어요.`;
+  const hh=grandItdaHour(); $('grandTimeInput').value=hh; fire($('grandTimeInput'));
+  const msg=$('grandItdaMsg'); msg.className='grand-itda-msg'; grandItdaPendingRm=null; let text=`${ev.date} · ${ev.rm||'RM 미인식'}${ev.wards?` · ${ev.wards.replace(',','·')}병동`:''} · ${hh}시로 맞췄어요.`;
   if(ev.rm){ const sel=$('grandRmSelect'); if([...sel.options].some(o=>o.value===ev.rm)){ sel.value=ev.rm; fire(sel); } else { grandItdaPendingRm=ev.rm; msg.className='grand-itda-msg warn'; text+=` ${ev.rm}은(는) 지금 불러온 시간표에 없어요 — 시간표를 올리면 자동으로 선택돼요.`; } }
   else { msg.className='grand-itda-msg warn'; text+=` 제목에서 RM을 읽지 못했어요(${ev.title}) — RM은 직접 골라 주세요.`; }
   msg.textContent=text; document.querySelectorAll('#grandItdaList .grand-itda-chip').forEach(c=>c.classList.toggle('on',c===chip));
@@ -2552,12 +2553,21 @@ async function grandItdaLoad(){
   if(!r.ok){ msg.className='grand-itda-msg warn'; msg.textContent=r.message||'불러오지 못했어요.'; return; }
   if(!r.events.length){ msg.textContent='오늘 이후의 "그랜드라운딩" 일정이 없어요.'; return; }
   msg.textContent=`오늘 이후 그랜드라운딩 일정 ${r.events.length}건 — 눌러서 적용하세요.`;
-  list.innerHTML=r.events.map((e,i)=>{ const wd=new Date(e.date+'T00:00:00').toLocaleDateString('ko-KR',{weekday:'short'}); return `<button type="button" class="grand-itda-chip" data-i="${i}">${xmlEscape(e.date.slice(5).replace('-','/'))}(${wd}) ${xmlEscape(e.rm||e.title)}${e.wards?`<small>${xmlEscape(e.wards.replace(',','·'))}병동 · 09시</small>`:'<small>09시</small>'}</button>`; }).join('');
+  list.innerHTML=r.events.map((e,i)=>{ const wd=new Date(e.date+'T00:00:00').toLocaleDateString('ko-KR',{weekday:'short'}); return `<button type="button" class="grand-itda-chip" data-i="${i}">${xmlEscape(e.date.slice(5).replace('-','/'))}(${wd}) ${xmlEscape(e.rm||e.title)}${e.wards?`<small>${xmlEscape(e.wards.replace(',','·'))}병동 · ${grandItdaHour()}시</small>`:`<small>${grandItdaHour()}시</small>`}</button>`; }).join('');
   list.onclick=ev=>{ const b=ev.target.closest('.grand-itda-chip'); if(b) grandItdaApply(r.events[+b.dataset.i],b); };
 }
 document.getElementById('grandItdaBtn').addEventListener('click',grandItdaLoad);
 // 2. 분석 결과는 기본으로 접어 둔다(RM별 인원은 머리글 오른쪽에 그대로 보임)
-document.getElementById('statsToggle').addEventListener('click',()=>{ const b=document.getElementById('statsBody'), open=b.style.display==='none'; b.style.display=open?'':'none'; document.getElementById('statsToggle').textContent=open?'접기 ▴':'펼치기 ▾'; });
+const grandSetStats=open=>{ document.getElementById('statsBody').style.display=open?'':'none'; document.getElementById('statsToggle').textContent=open?'접기 ▴':'펼치기 ▾'; };
+document.getElementById('statsToggle').addEventListener('click',()=>grandSetStats(document.getElementById('statsBody').style.display==='none'));
+// 설정(홈 앱의 설정 화면)에서 정한 기본값 — 값이 바뀐 때만 반영해서 화면에서 직접 바꾼 상태는 건드리지 않는다
+let rhApplied={};
+window.__onSettingsChanged=()=>{
+  const s=window.__rhSettings||{}, once=(k,fn)=>{ if(rhApplied[k]!==s[k]){ rhApplied[k]=s[k]; fn(s[k]); } };
+  once('grandStats',v=>grandSetStats(v==='open'));
+  once('grandTime',v=>{ const t=document.getElementById('grandTimeInput'); if(v&&t.value!==v){ t.value=v; t.dispatchEvent(new Event('change')); } });
+  document.getElementById('grandItdaBox').style.display=s.itda===false?'none':''; // 잇다 연동을 끄면 불러오기 영역을 감춘다
+};
 document.getElementById('grandArchiveSaveBtn').addEventListener('click',grandArchiveSave);
 grandArchiveWireBatchBar();
 grandDateInput.addEventListener('change',async()=>{ const d=grandDateToDay(grandDateInput.value); if(d) grandDaySel.value=d; if(grandOtBook) await rebuildGrandOtTherapistMap(); if(grandPtBooks[10]||grandPtBooks[3]) await rebuildGrandPtTherapistMap(); renderGrandTable(); });

@@ -37,6 +37,17 @@ async function chooseFolder(win, label) {
 
 function listFolders() { return loadFolders(); }
 
+// 설정 파일을 가져올 때: 대화상자 없이 경로로 등록한다. 폴더가 없거나 이미 등록돼 있으면 null.
+function addFolderPath(dirPath, label) {
+  try { if (!fs.statSync(dirPath).isDirectory()) return null; } catch (e) { return null; }
+  const folders = loadFolders();
+  if (folders.some(f => f.dirPath === dirPath)) return null;
+  const entry = { id: `${Date.now()}${folders.length}`, label: label || path.basename(dirPath), dirPath };
+  folders.push(entry);
+  saveFolders(folders);
+  return entry;
+}
+
 function removeFolder(id) {
   saveFolders(loadFolders().filter(f => f.id !== id));
 }
@@ -88,4 +99,4 @@ function openFolder(dirPath) {
   if (dirPath) shell.openPath(dirPath);
 }
 
-module.exports = { FILE_ROLES, guessFileRole, chooseFolder, listFolders, removeFolder, scanAll, readFileBuffer, openFolder, chooseManualFile, clearManualFile };
+module.exports = { FILE_ROLES, guessFileRole, chooseFolder, listFolders, addFolderPath, removeFolder, scanAll, readFileBuffer, openFolder, chooseManualFile, clearManualFile };

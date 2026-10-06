@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;font-family:"Pretendard Variable","Apple SD Gothic Neo",sans-serif;background:#f3f6fb;color:#1b2434;font-size:13.5px}
+.app{display:flex;height:900px}
+.side{width:176px;background:#fff;border-right:1px solid #e3e8f0;padding:12px 10px;flex-shrink:0}
+.logo{font-weight:800;color:#5b72b4;font-size:15px;padding:4px 8px 14px}
+.ni{padding:9px 10px;border-radius:9px;color:#43546d;font-weight:600;margin-bottom:2px}.ni.on{background:#e9eefb;color:#5b72b4;font-weight:800}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.top{height:46px;background:linear-gradient(90deg,#7b8fd0,#8aa7e6);color:#fff;display:flex;align-items:center;padding:0 18px;font-weight:800}
+.body{flex:1;padding:18px 22px;overflow:hidden}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:14px}.head h1{font-size:19px;margin:0}
+.search{margin-left:auto;width:260px;border:1px solid #e3e8f0;background:#fff;border-radius:10px;padding:8px 12px;color:#9aa6ba}
+.wrap{display:flex;gap:18px;align-items:flex-start}
+.tabs{width:170px;flex-shrink:0;display:flex;flex-direction:column;gap:3px}
+.tab{padding:10px 12px;border-radius:10px;color:#43546d;font-weight:700;display:flex;gap:8px}.tab.on{background:#fff;color:#5b72b4;border:1px solid #cfdbf5;box-shadow:0 1px 3px #5b72b410}
+.panel{flex:1;background:#fff;border:1px solid #e3e8f0;border-radius:14px;padding:6px 20px;min-width:0}
+.sec{font-size:11.5px;font-weight:800;color:#8a97ad;letter-spacing:.04em;padding:16px 0 4px}
+.row{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid #eef1f6}.row:last-child{border-bottom:0}
+.row .t{flex:1}.row .t b{display:block;font-size:13.5px}.row .t span{color:#707d92;font-size:12px}
+.q{display:inline-flex;width:15px;height:15px;border-radius:50%;background:#e9eefb;color:#5b72b4;font-size:10px;font-weight:800;align-items:center;justify-content:center;margin-left:5px}
+.sel{border:1px solid #d6deec;background:#fff;border-radius:9px;padding:7px 12px;min-width:150px;font-weight:600;display:flex;justify-content:space-between;color:#2d3a50}.sel:after{content:"▾";color:#8a97ad;margin-left:10px}
+.sw{width:38px;height:22px;border-radius:99px;background:#d9e0ee;position:relative;flex-shrink:0}.sw:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.on{background:#6f94e3}.sw.on:after{left:19px}
+.seg{display:flex;border:1px solid #d6deec;border-radius:9px;overflow:hidden}.seg i{font-style:normal;padding:7px 14px;font-weight:700;color:#707d92;background:#fff}.seg i.on{background:#e9eefb;color:#5b72b4}
+.btn{border:1px solid #d6deec;background:#fff;border-radius:9px;padding:7px 14px;font-weight:700;color:#43546d}.btn.p{background:#6f94e3;border-color:#6f94e3;color:#fff}
+.fold{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e3e8f0;border-radius:10px;margin:6px 0;background:#fafcff}
+.fold code{flex:1;color:#43546d;font-size:12.5px}.pill{font-size:11px;font-weight:800;padding:2px 9px;border-radius:99px}.ok{background:#e6f4ee;color:#3f9a78}.warn{background:#fdf1dc;color:#b9801f}
+.kbd{display:inline-block;border:1px solid #d6deec;border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:700;background:#fff;margin-right:3px}
+.cap{position:absolute;right:24px;bottom:14px;color:#8a97ad;font-size:12px}
+</style><div class="app"><div class="side"><div class="logo">재활치료부 허브</div><div class="ni">🏠 홈</div><div class="ni">📂 데이터 준비</div><div class="ni">🗣 그랜드라운딩</div><div class="ni">✅ 액팅 오류 확인</div><div class="ni">🔍 교차검증</div><div class="ni">📋 인수인계</div><div class="ni">📊 보고서</div><div class="ni">💾 백업</div><div class="ni on">⚙️ 설정</div></div><div class="main"><div class="top">설정</div><div class="body"><div class="head"><h1>설정</h1><div class="search">🔍 설정 검색</div></div><div class="wrap"><div class="tabs"><div class="tab on">🗂 데이터·동기화</div><div class="tab">🖥 화면</div><div class="tab">⌨ 단축키</div><div class="tab">🔗 잇다 연동</div><div class="tab">🧰 관리·백업</div><div class="tab">ℹ️ 업데이트·정보</div></div><div class="panel"><div class="sec">폴더 연결</div><div class="fold">📁<code>G:\재활치료부\시간표</code><span class="pill ok">연결됨</span><button class="btn">변경</button><button class="btn">✕</button></div><div class="fold">📁<code>G:\재활치료부\현황판</code><span class="pill ok">연결됨</span><button class="btn">변경</button><button class="btn">✕</button></div><div style="padding:6px 0 4px"><button class="btn p">+ 폴더 추가</button></div><div class="sec">자동 동기화</div><div class="row"><div class="t"><b>실제로 다시 읽는 시점<i class=q>?</i></b><span>파일 변경은 항상 감지해서 "업데이트 필요"로 표시합니다</span></div><div class="sel">앱 실행 시</div></div><div class="row"><div class="t"><b>변경 감지 간격</b><span>병원 PC가 느리면 늘리세요</span></div><div class="sel">30초</div></div><div class="row"><div class="t"><b>업데이트 필요 알림</b><span>파일이 바뀌면 상단에 작은 알림을 띄웁니다</span></div><div class="sw on"></div></div><div class="sec">데이터 준비 화면</div><div class="row"><div class="t"><b>기본 보기</b><span>목록형 / 보드형</span></div><div class="seg"><i class="">목록형</i><i class="on">보드형</i></div></div><div class="row"><div class="t"><b>확인 필요 파일을 맨 위로</b><span></span></div><div class="sw on"></div></div><div class="row"><div class="t"><b>선택 안 한 파일 숨기기</b><span></span></div><div class="sw"></div></div></div></div></div></div></div>

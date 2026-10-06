@@ -1,12 +1,13 @@
 // preload.js — renderer(HTML/JS)에서는 window.rehab.* 로만 메인 프로세스 기능에 접근 가능.
 // ipcRenderer, fs, require 등은 절대 노출하지 않는다.
 'use strict';
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('rehab', {
   folders: {
     choose: (label) => ipcRenderer.invoke('folders:choose', label),
     list: () => ipcRenderer.invoke('folders:list'),
+    addPath: (dirPath, label) => ipcRenderer.invoke('folders:addPath', dirPath, label),
     remove: (id) => ipcRenderer.invoke('folders:remove', id),
     scanAll: () => ipcRenderer.invoke('folders:scanAll'),
     fileRoles: () => ipcRenderer.invoke('folders:fileRoles'),
@@ -29,8 +30,13 @@ contextBridge.exposeInMainWorld('rehab', {
   },
   itda: {
     installed: () => ipcRenderer.invoke('itda:installed'),
-    grandEvents: () => ipcRenderer.invoke('itda:grandEvents'),
+    grandEvents: (category) => ipcRenderer.invoke('itda:grandEvents', category),
     pushInboxItem: (content) => ipcRenderer.invoke('itda:pushInboxItem', content),
+  },
+  app: {
+    dataDir: () => ipcRenderer.invoke('app:dataDir'),
+    openDataDir: () => ipcRenderer.invoke('app:openDataDir'),
+    setZoom: (factor) => webFrame.setZoomFactor(factor), // 설정 > 글자 크기 — 도구 화면(iframe)까지 같이 커지고 작아진다
   },
   updater: {
     getVersion: () => ipcRenderer.invoke('updater:getVersion'),

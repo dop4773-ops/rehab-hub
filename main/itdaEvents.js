@@ -16,7 +16,7 @@ function parseGrandTitle(title, location) {
 }
 
 // today: 'YYYY-MM-DD'(이 날짜 포함, 이전 일정은 가져오지 않음)
-function readGrandEvents(dbPath, today, limit = 40) {
+function readGrandEvents(dbPath, today, limit = 40, category = CATEGORY) {
   if (!fs.existsSync(dbPath)) return { ok: false, message: '잇다가 설치되어 있지 않거나 아직 한 번도 실행되지 않았습니다.' };
   const Database = require('better-sqlite3');
   let db;
@@ -26,7 +26,7 @@ function readGrandEvents(dbPath, today, limit = 40) {
     const rows = db.prepare(`SELECT e.id, e.title, e.location, substr(e.start_at,1,10) AS date
       FROM events e JOIN categories c ON c.id = e.category_id
       WHERE c.name = ? AND e.deleted_at IS NULL AND substr(e.start_at,1,10) >= ?
-      ORDER BY e.start_at LIMIT ?`).all(CATEGORY, today, limit);
+      ORDER BY e.start_at LIMIT ?`).all(String(category || CATEGORY), today, limit);
     return { ok: true, events: rows.map(r => ({ id: r.id, title: r.title, date: r.date, ...parseGrandTitle(r.title, r.location) })) };
   } catch (err) {
     return { ok: false, message: `잇다 일정을 읽지 못했습니다: ${err.message}` };

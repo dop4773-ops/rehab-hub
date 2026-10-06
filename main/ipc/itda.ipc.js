@@ -5,7 +5,7 @@ const bridge = require('../itdaBridge');
 
 function registerItdaIpc() {
   ipcMain.handle('itda:installed', () => bridge.itdaInstalled());
-  ipcMain.handle('itda:grandEvents', () => bridge.grandEvents());
+  ipcMain.handle('itda:grandEvents', (event, category) => bridge.grandEvents(category));
   ipcMain.handle('itda:pushInboxItem', (event, content) => bridge.pushInboxItem(content));
 }
 

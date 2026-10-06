@@ -105,12 +105,22 @@ const updatingRoles = new Set();
 const roleErrors = new Map(); // role -> 오류 메시지
 let lastSyncAt = 0;
 let syncing = false;
-const SYNC_MODE_KEY = 'rehab_sync_mode';
-const SYNC_CHECK_MS = 30 * 1000; // 파일 목록·수정시각만 보는 가벼운 확인 주기
+// 설정 값은 settings-core.js(저장·검증)로 한 곳에서 관리한다. 바꿀 때는 setSetting()만 쓴다.
+const settings = RehabSettings.load(localStorage);
+const settingListeners = []; // (key) => void — 설정 화면이 값이 바뀔 때 자기 표시를 고치려고 등록한다
+function setSetting(key, value) {
+  settings[key] = RehabSettings.normalize({ ...settings, [key]: value })[key];
+  RehabSettings.save(localStorage, settings);
+  applySetting(key);
+}
+function replaceSettings(next) {
+  Object.assign(settings, RehabSettings.normalize(next));
+  RehabSettings.save(localStorage, settings);
+  Object.keys(settings).forEach(applySetting);
+}
 const SYNC_RETRY_MAX = 3; // 읽기에 실패한 파일은 몇 초 뒤 자동으로 다시 시도(클라우드 폴더는 첫 읽기가 일시적으로 실패하기도 함)
 let syncRetries = 0;
-let syncMode = 'launch';
-try { const saved = localStorage.getItem(SYNC_MODE_KEY); if (RehabSync.isValidMode(saved)) syncMode = saved; } catch (e) { /* 저장소를 못 써도 기본값으로 동작 */ }
+let syncMode = settings.syncMode;
 
 function roleStateOf(role) {
   return RehabSync.roleState({
@@ -265,9 +275,28 @@ async function syncTick() {
   try { await refreshScan(); } catch (e) { return; }
   const pending = fileRoles.some(r => r.key !== 'handover' && ['stale', 'error'].includes(roleStateOf(r.key)));
   if (pending && RehabSync.isSyncDue({ mode: syncMode, now: Date.now(), lastSyncAt })) await syncNow({ skipScan: true });
-  else renderAll();
+  else { renderAll(); notifyStale(); }
 }
-setInterval(syncTick, SYNC_CHECK_MS);
+let syncTickTimer = null;
+function scheduleSyncTick() { // 설정 > 변경 감지 간격(기본 30초)
+  clearTimeout(syncTickTimer);
+  syncTickTimer = setTimeout(async () => { try { await syncTick(); } finally { scheduleSyncTick(); } }, settings.checkSec * 1000);
+}
+scheduleSyncTick();
+
+// 파일이 바뀌었는데 아직 반영 전이면 화면 위에 작은 알림을 한 번 띄운다(같은 변경으로는 다시 안 띄움)
+const toastEl = document.getElementById('toast');
+let toastTimer = null, notifiedStaleSig = '';
+function showToast(html, ms = 9000) { toastEl.innerHTML = html; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms); }
+function notifyStale() {
+  if (!settings.notifyStale || !lastScan) return;
+  const stale = fileRoles.filter(r => r.key !== 'handover' && roleStateOf(r.key) === 'stale');
+  const sig = stale.map(r => r.key + ':' + RehabSync.roleSig(lastScan, r.key)).join('|');
+  if (!stale.length) { notifiedStaleSig = ''; return; }
+  if (sig === notifiedStaleSig) return;
+  notifiedStaleSig = sig;
+  showToast(`📄 파일이 바뀌었어요 · 업데이트 필요 ${stale.length}개 <button class="btn primary" data-sync-now>지금 업데이트</button>`);
+}
 
 // 도구 분석은 비동기로 끝나므로, 갱신 직후 몇 번에 나눠 홈/상태 표시를 다시 그린다.
 function scheduleRefresh() { [1000, 3000, 7000].forEach(ms => setTimeout(renderAll, ms)); }
@@ -306,7 +335,8 @@ function ensureToolLoaded(key) {
     iframe.addEventListener('load', async () => {
       iframe.contentWindow.__schedulesApi = SCHEDULES_BRIDGE;
       applyFilesCollapse(key);
-      iframe.contentWindow.__itdaApi = { grandEvents: () => window.rehab.itda.grandEvents() }; // 그랜드라운딩 일정 불러오기(읽기 전용)
+      iframe.contentWindow.__itdaApi = { grandEvents: () => window.rehab.itda.grandEvents(settings.itdaCategory) }; // 그랜드라운딩 일정 불러오기(읽기 전용)
+      pushSettingsToTool(iframe);
       // 도구 쪽에서 "브리지가 막 연결됐다"는 걸 알아야 하는 화면(그랜드라운딩의 일정 보관함 목록 등)을 위한
       // 선택적 훅 — 함수를 정의해둔 도구만 반응하고, 없으면 그냥 넘어간다.
       iframe.contentWindow.__onSchedulesApiReady?.();
@@ -319,7 +349,9 @@ function ensureToolLoaded(key) {
   }
 }
 
+const LASTVIEW_KEY = 'rehab_last_view_v1';
 function showView(key) {
+  try { localStorage.setItem(LASTVIEW_KEY, key); } catch (e) { /* 기억 못 해도 동작에는 문제 없음 */ }
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.dataset.view === key));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.nav === key));
   ensureToolLoaded(key);
@@ -336,10 +368,14 @@ document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', 
 const SIDEBAR_KEY = 'rehab_sidebar_collapsed_v1';
 const sidebarEl = document.getElementById('sidebar'), sidebarBtn = document.getElementById('sidebarToggle');
 const setSidebar = (collapsed) => { sidebarEl.classList.toggle('collapsed', collapsed); sidebarBtn.textContent = collapsed ? '»' : '«'; };
-try { setSidebar(localStorage.getItem(SIDEBAR_KEY) === '1'); } catch (e) { /* 저장소를 못 써도 펼친 상태로 동작 */ }
+const sidebarStart = () => { // 설정 > 사이드바: 펼침/접힘으로 고정하거나 마지막에 접고 펼친 상태를 기억
+  if (settings.sidebar !== 'last') return settings.sidebar === 'closed';
+  try { return localStorage.getItem(SIDEBAR_KEY) === '1'; } catch (e) { return false; }
+};
+setSidebar(sidebarStart());
 sidebarBtn.addEventListener('click', () => {
   const c = !sidebarEl.classList.contains('collapsed'); setSidebar(c);
-  try { localStorage.setItem(SIDEBAR_KEY, c ? '1' : '0'); } catch (e) { /* 저장 실패해도 이번 실행엔 적용됨 */ }
+  if (settings.sidebar === 'last') try { localStorage.setItem(SIDEBAR_KEY, c ? '1' : '0'); } catch (e) { /* 저장 실패해도 이번 실행엔 적용됨 */ }
 });
 document.querySelectorAll('[data-goto]').forEach(el => el.addEventListener('click', () => showView(el.dataset.goto)));
 
@@ -389,7 +425,7 @@ function readToolSummary(key) {
 // content가 있으면 "잇다로 보내기" 버튼을 같이 붙인다 — 자동으로 보내지 않고, 사용자가 누를 때만
 // 잇다의 Inbox에 한 줄 들어간다(잇다 Inbox 철학과 동일: 자동 분류 없음, 단순 저장).
 function alertRow(label, badgeText, badgeClass, content) {
-  const btn = content ? `<button class="btn" style="padding:3px 8px;font-size:11px;margin-left:6px" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>` : '';
+  const btn = content && settings.itdaPush ? `<button class="btn" style="padding:3px 8px;font-size:11px;margin-left:6px" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>` : '';
   return `<div class="row ${badgeClass}"><span class="lbl"><span class="dot ${badgeClass}"></span>${label}</span><span><span class="badge ${badgeClass}">${badgeText}</span>${btn}</span></div>`;
 }
 
@@ -408,9 +444,10 @@ function wireItdaPushButtons() {
 let homeGrandEvent = null, homeGrandAt = 0, homeMissOptOpen = false;
 document.addEventListener('toggle', (e) => { if (e.target.id === 'homeMissOpt') homeMissOptOpen = e.target.open; }, true);
 async function loadHomeGrandEvent() { // 잇다의 다가오는 그랜드라운딩 일정 한 건(읽기 전용). 잇다가 없으면 조용히 넘어간다.
+  if (!settings.itda) { homeGrandEvent = null; return; }
   if (Date.now() - homeGrandAt < 60 * 1000) return;
   homeGrandAt = Date.now();
-  try { const r = await window.rehab.itda.grandEvents(); homeGrandEvent = r && r.ok && r.events.length ? r.events[0] : null; } catch (e) { homeGrandEvent = null; }
+  try { const r = await window.rehab.itda.grandEvents(settings.itdaCategory); homeGrandEvent = r && r.ok && r.events.length ? r.events[0] : null; } catch (e) { homeGrandEvent = null; }
   renderHome();
 }
 async function applyHomeGrandEvent() {
@@ -463,7 +500,7 @@ function renderHome() {
     + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span><button class="btn primary" id="homeScanBtn" data-sync-now>🔄 지금 업데이트</button>`;
 
   // 2) 오늘 할 일(확인이 필요한 것만)
-  const itda = (content) => `<button class="btn" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>`;
+  const itda = (content) => !settings.itdaPush ? '' : `<button class="btn" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>`;
   const todos = [];
   if (missReq.length) todos.push(todoHtml('err', '📦', `필수 파일 ${missReq.length}개를 못 찾았어요`, missReq.map(r => r.label).join(' · '), missReq.map(r => `<button class="btn primary" data-manual-pick="${r.key}" title="${updEsc(r.label)} — 파일을 직접 골라서 불러오기">📂 ${CHIP_NAME[r.key] || r.label}</button>`).join('') + '<button class="btn" data-goto="data">데이터 준비 →</button>'));
   if (errRoles.length) todos.push(todoHtml('err', '⚠️', `읽기 오류 ${errRoles.length}개`, errRoles.map(r => r.label).join(' · '), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
@@ -531,13 +568,8 @@ async function renderSysInfo(matched, localFileRoles) {
 
 // 데이터 준비 화면: 목록형(필수/선택/실시간 묶음) 또는 보드형(최신 / 확인 필요 / 선택 안 함 열)으로 보여준다.
 // 기본 보기는 이 PC에 저장(설정 > 화면 기본값, 또는 위의 "기본으로" 버튼)하고, 화면 위 버튼으로 언제든 바꿔 볼 수 있다.
-const DATAVIEW_KEY = 'rehab_data_view_v1';
-const dvLoad = () => { try { return localStorage.getItem(DATAVIEW_KEY) === 'board' ? 'board' : 'list'; } catch (e) { return 'list'; } };
-let dataViewDefault = dvLoad(), dataViewMode = dataViewDefault;
-function setDataViewDefault(mode) {
-  dataViewDefault = mode;
-  try { localStorage.setItem(DATAVIEW_KEY, mode); } catch (e) { /* 저장 실패해도 이번 실행엔 적용됨 */ }
-}
+let dataViewDefault = settings.dataView, dataViewMode = dataViewDefault;
+const setDataViewDefault = (mode) => setSetting('dataView', mode);
 function renderDataView() {
   const box = document.getElementById('dataFileList');
   const banner = document.getElementById('dataBanner');
@@ -564,8 +596,11 @@ function renderDataView() {
       + `<div class="bf2"><span class="muted fn" title="${updEsc(d.names)}">${updEsc(d.names)}${d.i.error ? `<span class="errtxt"> · ${updEsc(d.i.error)}</span>` : ''}</span><span class="bw">${d.when}</span></div></div>`;
   };
   const roles = fileRoles.filter(r => r.key !== 'handover');
-  const req = roles.filter(r => r.required), opt = roles.filter(r => !r.required);
-  const optHave = opt.filter(r => matched[r.key] || roleInfo(r.key).entries.length), optMiss = opt.filter(r => !optHave.includes(r));
+  // 설정 > 확인 필요 파일을 맨 위로: 읽기 오류 → 업데이트 필요 → 업데이트 중 → 없는 필수 → 나머지(같은 등급은 원래 순서)
+  const attn = (r) => { const st = roleStateOf(r.key); return st === 'error' ? 0 : st === 'stale' ? 1 : st === 'updating' ? 2 : (st === 'missing' && r.required) ? 3 : 4; };
+  const order = (list) => settings.dataStaleFirst ? [...list].sort((a, b) => attn(a) - attn(b)) : list;
+  const req = order(roles.filter(r => r.required)), opt = roles.filter(r => !r.required);
+  const optHave = order(opt.filter(r => matched[r.key] || roleInfo(r.key).entries.length)), optMiss = opt.filter(r => !optHave.includes(r));
   const ho = handoverCacheStats();
   const hasHo = fileRoles.some(r => r.key === 'handover');
   if (dataViewMode === 'board') {
@@ -574,12 +609,12 @@ function renderDataView() {
     const none = optMiss.filter(r => !need.includes(r));
     const col = (title, cls, list, extra = '') => `<div class="bcol ${cls}"><div class="bh"><b>${title}</b><span class="chip ${cls === 'ok' ? 'ok' : cls === 'warn' ? 'warn' : 'off'}">${list.length + (extra ? 1 : 0)}</span></div>${list.map(boardCard).join('')}${extra}${(list.length || extra) ? '' : '<div class="muted bempty">없음</div>'}</div>`;
     const hoCard = hasHo ? `<div class="bcard live"><div class="bt"><b>🌐 OT 인수인계</b><span class="rt"><span class="chip ok"><i></i>연동됨</span></span></div><div class="bf2"><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="bw">실시간</span></div></div>` : '';
-    box.innerHTML = `<div class="board">${col('✅ 최신', 'ok', fresh, hoCard)}${col('⚠ 확인 필요', 'warn', need)}${col('⬜ 선택 안 함', 'off', none)}</div>`;
+    box.innerHTML = `<div class="board${settings.dataHideUnused ? ' two' : ''}">${col('✅ 최신', 'ok', fresh, hoCard)}${col('⚠ 확인 필요', 'warn', need)}${settings.dataHideUnused ? '' : col('⬜ 선택 안 함', 'off', none)}</div>`;
   } else {
     const hoRow = hasHo ? `<div class="frow live"><b>🌐 OT 인수인계</b><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="wh">실시간</span><span class="chip ok"><i></i>연동됨</span><span class="ac"></span></div>` : '';
     box.innerHTML = `<div class="grp"><b>필수 파일</b><span class="muted">${req.length}개 · 모두 있어야 검증이 정확해요</span></div>${req.map(fileRow).join('')}`
       + `<div class="grp"><b>선택 파일</b><span class="muted">있으면 더 많이 검증해요</span></div>${optHave.map(fileRow).join('')}`
-      + (optMiss.length ? `<details class="miss-opt wide"><summary>파일 없음 ${optMiss.length}개 <small>펼치기</small></summary>${optMiss.map(fileRow).join('')}</details>` : '')
+      + (optMiss.length && !settings.dataHideUnused ? `<details class="miss-opt wide"><summary>파일 없음 ${optMiss.length}개 <small>펼치기</small></summary>${optMiss.map(fileRow).join('')}</details>` : '')
       + (hoRow ? `<div class="grp"><b>실시간 연동</b></div>${hoRow}` : '');
   }
 
@@ -649,6 +684,7 @@ const filesOpen = {}; // 사용자가 직접 펼침/접음을 정한 도구(없�
 const primaryRolesOf = (key) => TOOLS[key].primaryRoles || toolRoles(key).filter(r => (roleDef(r) || {}).required);
 // 자동 판단: 꼭 필요한 파일이 없거나 읽기 오류가 있고, 도구에도 직접 올린 분석 결과가 없으면 펼쳐서 바로 넣을 수 있게 한다
 const filesIsOpen = (key) => (key in filesOpen) ? filesOpen[key]
+  : settings.filesArea === 'open' ? true
   : primaryRolesOf(key).some(r => ['missing', 'error'].includes(roleStateOf(r))) && !readToolSummary(key);
 function applyFilesCollapse(key) {
   const doc = viewDoc(key); if (!doc || !doc.body || !FILES_CSS[key]) return;
@@ -788,20 +824,16 @@ function wireBackupView() {
 }
 setInterval(() => refreshBackup(), 60 * 1000);
 
-function renderSettingsDefaults() {
-  document.querySelectorAll('input[name=dataViewDefault]').forEach(r => { r.checked = r.value === dataViewDefault; });
-}
-document.querySelectorAll('input[name=dataViewDefault]').forEach(r => r.addEventListener('change', () => { setDataViewDefault(r.value); dataViewMode = r.value; renderDataView(); }));
 async function renderSettingsView() {
-  renderSettingsDefaults();
   const folders = await window.rehab.folders.list();
   document.getElementById('folderList').innerHTML = folders.length
-    ? folders.map(f => `<div class="folder-row"><span style="flex:1">📁 ${f.label} <span class="muted">${f.dirPath}</span></span><button class="btn" data-remove="${f.id}">제거</button></div>`).join('')
-    : '<p class="muted">등록된 폴더가 없습니다. "폴더 추가"를 눌러 시간표·현황 파일이 있는 폴더를 선택해 주세요.</p>';
+    ? folders.map(f => `<div class="st-fold">📁 <b>${updEsc(f.label)}</b><code>${updEsc(f.dirPath)}</code><button class="btn" data-remove="${f.id}">제거</button></div>`).join('')
+    : '<p class="st-note">등록된 폴더가 없습니다. "폴더 추가"를 눌러 시간표·현황 파일이 있는 폴더를 선택해 주세요.</p>';
   document.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', async () => {
     await window.rehab.folders.remove(b.dataset.remove);
     renderSettingsView();
   }));
+  if (window.__renderSettingsUi) window.__renderSettingsUi();
 }
 
 document.getElementById('addFolderBtn').addEventListener('click', async () => {
@@ -811,9 +843,9 @@ document.getElementById('addFolderBtn').addEventListener('click', async () => {
 document.getElementById('dataScanBtn').addEventListener('click', () => syncNow({ statusEl: document.getElementById('dataStatus') }));
 // "지금 업데이트"/"데이터 업데이트" 버튼은 화면을 다시 그릴 때마다 새로 생기므로 위임으로 한 번만 연결한다.
 document.addEventListener('click', async (e) => {
-  if (e.target.closest('[data-sync-now]')) { syncNow(); return; }
+  if (e.target.closest('[data-sync-now]')) { toastEl.classList.remove('show'); syncNow(); return; }
   const dv = e.target.closest('[data-dv]'); if (dv) { dataViewMode = dv.dataset.dv; renderDataView(); return; }
-  if (e.target.closest('#dataViewDefault')) { setDataViewDefault(dataViewMode); renderDataView(); renderSettingsDefaults(); return; }
+  if (e.target.closest('#dataViewDefault')) { setDataViewDefault(dataViewMode); return; }
   if (e.target.closest('[data-open-dc]')) { try { document.querySelector('iframe[data-tool="acting"]').contentWindow.__showDcStatus(); } catch (err) { /* 화면이 아직 로드 전 */ } return; }
   if (e.target.closest('[data-grand-apply]')) { applyHomeGrandEvent(); return; }
   if (e.target.closest('[data-open-fixplan]')) { showView('cross'); setTimeout(() => viewDoc('cross')?.getElementById('btnFixPlan')?.click(), 300); return; }
@@ -830,16 +862,6 @@ document.addEventListener('click', async (e) => {
 document.getElementById('syncPill').addEventListener('click', () => {
   const o = syncOverview(scanRoles());
   if (o.cls === 'stale' || o.cls === 'err') syncNow(); else showView('data');
-});
-document.querySelectorAll('input[name="syncMode"]').forEach(radio => {
-  radio.checked = radio.value === syncMode;
-  radio.addEventListener('change', () => {
-    if (!radio.checked) return;
-    syncMode = radio.value;
-    try { localStorage.setItem(SYNC_MODE_KEY, syncMode); } catch (e) { /* 저장 실패해도 이번 실행엔 적용됨 */ }
-    logActivity('설정', `데이터 동기화: ${radio.parentElement.textContent.trim()}`);
-    renderAll();
-  });
 });
 document.getElementById('topbarSettingsBtn').addEventListener('click', () => showView('settings'));
 
@@ -910,36 +932,41 @@ const viewDoc = (v) => (['home', 'data', 'report', 'settings', 'backup'].include
 const clickIn = (v, id) => () => viewDoc(v)?.getElementById(id)?.click();
 const focusIn = (v, id) => () => { const el = viewDoc(v)?.getElementById(id); if (el) { el.focus(); el.select && el.select(); } };
 const GLOBAL_KEYS = [
-  ...NAV_ORDER.map((v, i) => ({ keys: `Ctrl+${i + 1}`, label: `${document.querySelector(`.nav-item[data-nav=${v}] .nl`).textContent.trim()} 화면으로 이동`, run: () => showView(v) })),
-  { keys: 'Ctrl+\\', label: '사이드바 접기/펼치기', run: () => sidebarBtn.click() },
+  ...NAV_ORDER.map((v, i) => ({ id: `nav:${v}`, keys: `Ctrl+${i + 1}`, label: `${document.querySelector(`.nav-item[data-nav=${v}] .nl`).textContent.trim()} 화면으로 이동`, run: () => showView(v) })),
+  { id: 'sidebar', keys: 'Ctrl+\\', label: '사이드바 접기/펼치기', run: () => sidebarBtn.click() },
 ];
 // run이 없는 항목은 그 화면이 스스로 처리하는 키(안내용)
 const VIEW_KEYS = {
-  home: [{ keys: 'Ctrl+R', label: '파일 자동 불러오기', run: clickIn('home', 'homeScanBtn') }],
-  data: [{ keys: 'Ctrl+R', label: '지금 업데이트', run: clickIn('data', 'dataScanBtn') }],
-  rm: [{ keys: 'Ctrl+E', label: '출력하기(Excel)', run: clickIn('rm', 'grandExportSelectedBtn') }],
-  acting: [{ keys: 'Ctrl+F', label: '환자·처방 검색', run: focusIn('acting', 'searchInput') }],
+  home: [{ id: 'home.scan', keys: 'Ctrl+R', label: '파일 자동 불러오기', run: clickIn('home', 'homeScanBtn') }],
+  data: [{ id: 'data.scan', keys: 'Ctrl+R', label: '지금 업데이트', run: clickIn('data', 'dataScanBtn') }],
+  rm: [{ id: 'rm.export', keys: 'Ctrl+E', label: '출력하기(Excel)', run: clickIn('rm', 'grandExportSelectedBtn') }],
+  acting: [{ id: 'acting.find', keys: 'Ctrl+F', label: '환자·처방 검색', run: focusIn('acting', 'searchInput') }],
   cross: [
-    { keys: 'Ctrl+F', label: '검색', run: focusIn('cross', 'searchInput') },
-    { keys: 'Ctrl+Enter', label: '교차검증 실행 / 다시 검증', run: () => { const d = viewDoc('cross'); (d.getElementById('btnRerun')?.offsetParent ? d.getElementById('btnRerun') : d.getElementById('btnRun'))?.click(); } },
-    { keys: 'Ctrl+Shift+F', label: '수정 지시서', run: clickIn('cross', 'btnFixPlan') },
-    { keys: 'Ctrl+E', label: '결과 Excel 저장', run: clickIn('cross', 'btnExcel') },
-    { keys: 'Ctrl+P', label: '인쇄', run: clickIn('cross', 'btnPrint') },
+    { id: 'cross.find', keys: 'Ctrl+F', label: '검색', run: focusIn('cross', 'searchInput') },
+    { id: 'cross.run', keys: 'Ctrl+Enter', label: '교차검증 실행 / 다시 검증', run: () => { const d = viewDoc('cross'); (d.getElementById('btnRerun')?.offsetParent ? d.getElementById('btnRerun') : d.getElementById('btnRun'))?.click(); } },
+    { id: 'cross.fix', keys: 'Ctrl+Shift+F', label: '수정 지시서', run: clickIn('cross', 'btnFixPlan') },
+    { id: 'cross.excel', keys: 'Ctrl+E', label: '결과 Excel 저장', run: clickIn('cross', 'btnExcel') },
+    { id: 'cross.print', keys: 'Ctrl+P', label: '인쇄', run: clickIn('cross', 'btnPrint') },
   ],
   handover: [
-    { keys: 'Ctrl+F', label: '이름 검색', run: focusIn('handover', 'searchName') },
+    { id: 'handover.find', keys: 'Ctrl+F', label: '이름 검색', run: focusIn('handover', 'searchName') },
     { keys: 'F2', label: '이름 검색 (같은 기능)' },
-    { keys: 'Ctrl+R', label: '지금 새로고침', run: clickIn('handover', 'reloadBtn') },
-    { keys: 'Ctrl+N', label: '새 환자 추가', run: clickIn('handover', 'newPatientBtn') },
+    { id: 'handover.reload', keys: 'Ctrl+R', label: '지금 새로고침', run: clickIn('handover', 'reloadBtn') },
+    { id: 'handover.new', keys: 'Ctrl+N', label: '새 환자 추가', run: clickIn('handover', 'newPatientBtn') },
     { keys: 'Esc', label: '창 닫기 / 선택 해제' },
   ],
-  backup: [{ keys: 'Ctrl+R', label: '백업 상태 새로고침', run: () => refreshBackup() }],
+  backup: [{ id: 'backup.reload', keys: 'Ctrl+R', label: '백업 상태 새로고침', run: () => refreshBackup() }],
 };
 const matchKeys = (e, keys) => {
   const parts = keys.split('+'), key = parts.pop();
   if ((e.ctrlKey || e.metaKey) !== parts.includes('Ctrl') || e.shiftKey !== parts.includes('Shift') || e.altKey) return false;
   return (e.key.length === 1 ? e.key.toLowerCase() : e.key) === (key.length === 1 ? key.toLowerCase() : key);
 };
+const effKeys = (x) => settings.keymap[x.id] || x.keys; // 설정 > 단축키에서 바꾼 키가 있으면 그것
+// 설정 화면이 목록을 그리고 충돌을 검사할 때 쓰는 전체 단축키(공통 + 화면별)
+const keyItems = () => [...GLOBAL_KEYS.map(x => ({ ...x, scope: 'global' })),
+  ...Object.entries(VIEW_KEYS).flatMap(([v, l]) => l.map((x, i) => ({ ...x, id: x.id || `${v}.fixed${i}`, scope: v })))];
+let keyRecording = false; // 설정 화면에서 새 단축키를 받는 중이면 다른 단축키가 반응하지 않게 한다
 const keyLabel = (k) => (/Mac/i.test(navigator.platform) ? k.replace('Ctrl', '⌘') : k);
 
 let altOverlay = null, altHold = null, altHeld = false, altCombo = false, altLastUp = 0;
@@ -948,17 +975,18 @@ function showAlt(byHold) {
   if (altOverlay) return;
   altHeld = byHold;
   const view = currentView(), vname = document.querySelector(`.nav-item[data-nav=${view}] .nl`)?.textContent.trim() || '';
-  const rows = (list) => list.map(x => `<div class="alt-row"><span>${updEsc(x.label)}</span><kbd>${updEsc(keyLabel(x.keys))}</kbd></div>`).join('');
+  const rows = (list) => list.map(x => `<div class="alt-row"><span>${updEsc(x.label)}</span><kbd>${updEsc(keyLabel(effKeys(x)))}</kbd></div>`).join('');
   altOverlay = document.createElement('div'); altOverlay.className = 'alt-overlay';
   altOverlay.innerHTML = `<div class="alt-card"><h3>단축키</h3>${rows(GLOBAL_KEYS)}${(VIEW_KEYS[view] || []).length ? `<div class="alt-sub">지금 화면 · ${updEsc(vname)}</div>${rows(VIEW_KEYS[view])}` : ''}<p class="alt-hint">Alt를 떼거나 Esc를 누르면 닫혀요</p></div>`;
   document.body.appendChild(altOverlay);
 }
 function onKeyDown(e) {
+  if (keyRecording) return;
   if (e.key === 'Alt') { if (!e.repeat) { altCombo = false; clearTimeout(altHold); altHold = setTimeout(() => showAlt(true), 500); } return; }
   if (e.altKey) altCombo = true;
   if (e.key === 'Escape' && altOverlay) { hideAlt(); return; }
-  if (!(e.ctrlKey || e.metaKey)) return;
-  const hit = [...(VIEW_KEYS[currentView()] || []), ...GLOBAL_KEYS].find(x => x.run && matchKeys(e, x.keys));
+  if (!settings.shortcuts || !(e.ctrlKey || e.metaKey)) return;
+  const hit = [...(VIEW_KEYS[currentView()] || []), ...GLOBAL_KEYS].find(x => x.run && matchKeys(e, effKeys(x)));
   if (hit) { e.preventDefault(); hit.run(); }
 }
 function onKeyUp(e) {
@@ -978,6 +1006,33 @@ document.querySelectorAll('iframe[data-tool]').forEach(f => f.addEventListener('
 let toolSummaryTimer = null;
 window.__onToolSummary = () => { clearTimeout(toolSummaryTimer); toolSummaryTimer = setTimeout(renderHome, 200); };
 
+// ── 설정 적용 ──────────────────────────────────────────────
+// 도구(iframe)는 settings 객체를 그대로 받고(window.__rhSettings), 바뀔 때마다 __onSettingsChanged()가 불린다.
+// 각 도구는 자기 기본값(오류 확인 필터, 분석 결과 접힘, 시작 시각, 잇다 불러오기 영역)만 이 훅에서 반영한다.
+function pushSettingsToTool(iframe) {
+  try { iframe.contentWindow.__rhSettings = settings; iframe.contentWindow.__onSettingsChanged?.(); } catch (e) { /* 아직 로드 전이거나 훅이 없는 도구 */ }
+}
+const pushSettingsToTools = () => document.querySelectorAll('iframe[data-tool]').forEach(pushSettingsToTool);
+const applyZoom = () => { try { window.rehab.app.setZoom(RehabSettings.ZOOM[settings.fontSize]); } catch (e) { /* 개발용 화면 등 */ } };
+const applyColor = () => { document.documentElement.style.filter = settings.color === 'vivid' ? RehabSettings.VIVID_FILTER : ''; };
+function applySetting(key) {
+  switch (key) {
+    case 'syncMode': syncMode = settings.syncMode; renderAll(); break;
+    case 'checkSec': scheduleSyncTick(); break;
+    case 'dataView': dataViewDefault = dataViewMode = settings.dataView; renderDataView(); break;
+    case 'dataStaleFirst': case 'dataHideUnused': renderDataView(); break;
+    case 'sidebar': setSidebar(sidebarStart()); break;
+    case 'fontSize': applyZoom(); break;
+    case 'color': applyColor(); break;
+    case 'filesArea': Object.keys(filesOpen).forEach(k => delete filesOpen[k]); renderToolStrips(); break;
+    case 'itda': case 'itdaCategory': homeGrandAt = 0; homeGrandEvent = null; loadHomeGrandEvent(); renderHome(); pushSettingsToTools(); break;
+    case 'itdaPush': renderHome(); break;
+    case 'actingSeverity': case 'grandStats': case 'grandTime': pushSettingsToTools(); break;
+    default: break; // startView·notifyStale·shortcuts·keymap은 쓰는 쪽이 설정 값을 그때그때 읽는다
+  }
+  settingListeners.forEach(fn => fn(key));
+}
+
 // ── 초기화 ─────────────────────────────────────────────────
 (async function init() {
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
@@ -986,8 +1041,13 @@ window.__onToolSummary = () => { clearTimeout(toolSummaryTimer); toolSummaryTime
   document.getElementById('updaterRepoUrl').textContent = (await window.rehab.updater.getInfo()).repoUrl || '-';
   updaterMode = await window.rehab.updater.getMode();
   document.getElementById('updaterAutoToggle').checked = updaterMode === 'auto';
+  applyZoom(); applyColor();
   renderHome();
   loadHomeGrandEvent();
+  // 시작 화면(설정): 홈 / 데이터 준비 / 마지막에 쓴 화면
+  let startView = settings.startView;
+  if (startView === 'last') { try { startView = localStorage.getItem(LASTVIEW_KEY); } catch (e) { startView = null; } }
+  if (startView && startView !== 'home' && NAV_ORDER.includes(startView)) showView(startView);
   // 교차검증 화면을 아직 한 번도 안 열었어도, 화면 밖에서 미리 로드해둬야 "자동 불러오기"가
   // 그 도구까지 채워줄 수 있다(loadedTools에 들어있는 도구만 동기화 때 갱신 대상이 됨).
   ensureToolLoaded('cross');

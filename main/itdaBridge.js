@@ -24,9 +24,9 @@ function pushInboxItem(content) {
 }
 
 // 잇다 일정 중 "그랜드라운딩" 카테고리(오늘 포함, 이후만) — 읽기 전용
-function grandEvents() {
+function grandEvents(category) {
   const d = new Date(), today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return readGrandEvents(itdaDbPath(), today);
+  return readGrandEvents(itdaDbPath(), today, 40, category);
 }
 
 module.exports = { itdaDbPath, itdaInstalled, pushInboxItem, grandEvents };

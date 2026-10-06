@@ -2436,6 +2436,14 @@ ${text}`,
   $('msCriteriaModal').addEventListener('click', e => { if(e.target === $('msCriteriaModal')) $('msCriteriaModal').style.display = 'none'; });
   document.addEventListener('keydown', e => { if(e.key==='Escape' && $('msCriteriaModal').style.display!=='none') $('msCriteriaModal').style.display = 'none'; });
   window.__showDcStatus = () => { msRenderDcStatus(); $('dcModal').style.display = 'flex'; };
+  // 설정 > 오류 확인 기본 필터: 설정 값이 바뀐 때만 반영한다(그 사이 화면에서 직접 고른 필터는 건드리지 않음)
+  let rhSevApplied = null;
+  window.__onSettingsChanged = () => {
+    const want = (window.__rhSettings || {}).actingSeverity === 'all' ? 'all' : '오류';
+    if(want === rhSevApplied) return;
+    rhSevApplied = want;
+    const el = $('severityFilter'); if(el.value !== want){ el.value = want; el.dispatchEvent(new Event('change')); }
+  };
   $('dcModalClose').addEventListener('click', () => { $('dcModal').style.display = 'none'; });
   $('dcModal').addEventListener('click', e => { if(e.target === $('dcModal')) $('dcModal').style.display = 'none'; });
   document.addEventListener('keydown', e => { if(e.key==='Escape' && $('dcModal').style.display!=='none') $('dcModal').style.display = 'none'; });

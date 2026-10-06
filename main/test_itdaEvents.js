@@ -39,6 +39,10 @@ assert.deepStrictEqual(r.events.map(e => [e.date, e.rm, e.route]), [['2026-10-05
 // 읽기 전용 확인: 같은 DB에 쓰기 시도가 막혀야 한다
 const ro = new Database(dbPath, { readonly: true }); assert.throws(() => ro.prepare("INSERT INTO categories VALUES (9,'x')").run()); ro.close();
 assert.strictEqual(readGrandEvents(path.join(dir, '없음.db'), '2026-10-05').ok, false);
+// 설정에서 카테고리 이름을 바꾼 경우: 그 이름의 일정만 가져온다(두 번째 카테고리 이름은 위 데이터에서 확인)
+const cat2 = new Database(dbPath, { readonly: true }).prepare('SELECT name FROM categories WHERE id=2').get().name;
+assert.deepStrictEqual(readGrandEvents(dbPath, '2026-10-05', 40, cat2).events.map(e => e.rm), ['RM1'], '카테고리 이름 지정');
+assert.deepStrictEqual(readGrandEvents(dbPath, '2026-10-05', 40, '없는 카테고리').events, []);
 console.log('OK ② 오늘 이후 그랜드라운딩 일정만 읽기 전용으로 조회');
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('ALL PASS');

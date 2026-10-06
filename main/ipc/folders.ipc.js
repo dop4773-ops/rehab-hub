@@ -9,6 +9,7 @@ function registerFoldersIpc() {
     return store.chooseFolder(win, label);
   });
   ipcMain.handle('folders:list', () => store.listFolders());
+  ipcMain.handle('folders:addPath', (event, dirPath, label) => store.addFolderPath(dirPath, label));
   ipcMain.handle('folders:remove', (event, id) => { store.removeFolder(id); return store.listFolders(); });
   ipcMain.handle('folders:scanAll', () => store.scanAll());
   ipcMain.handle('folders:fileRoles', () => store.FILE_ROLES);
