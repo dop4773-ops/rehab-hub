@@ -16,7 +16,7 @@
   const HOURS = ['08', '09', '10', '11', '13', '14', '15', '16'];
   const ENUMS = {
     syncMode: ['launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
-    dataView: ['list', 'board'], startView: ['last', 'home', 'data'], homeLayout: ['workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
+    dataView: ['list', 'matrix', 'board'], startView: ['last', 'home', 'data'], homeLayout: ['workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
     fontSize: ['small', 'normal', 'large'], color: ['pastel', 'vivid'], filesArea: ['collapsed', 'open'],
     actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS,
   };

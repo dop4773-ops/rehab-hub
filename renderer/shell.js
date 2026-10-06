@@ -676,7 +676,7 @@ function renderDataView() {
   };
   const fileRow = (r) => {
     const d = detail(r);
-    return `<div class="frow ${d.cls}"><b>${r.label}${d.manual ? ' <span class="muted man">직접 선택</span>' : ''}</b><span class="muted fn" title="${updEsc(d.names)}">${updEsc(d.names)}${d.i.error ? `<span class="errtxt"> · ${updEsc(d.i.error)}</span>` : ''}</span><span class="wh">${d.when}</span>`
+    return `<div class="frow ${d.cls}"><b>${r.label}${d.manual ? ' <span class="muted man">직접 선택</span>' : ''}</b><span class="muted fn" title="${updEsc(d.names)}">${updEsc(d.names)}${d.i.error ? `<span class="errtxt"> · ${updEsc(d.i.error)}</span>` : ''}</span>${ageBar(d)}<span class="wh">${d.when}</span>`
       + `<span class="chip ${d.cls}"><i></i>${d.label}</span><span class="ac">${d.btns}</span></div>`;
   };
   const boardCard = (r) => {
@@ -685,6 +685,34 @@ function renderDataView() {
       + `<div class="bf2"><span class="muted fn" title="${updEsc(d.names)}">${updEsc(d.names)}${d.i.error ? `<span class="errtxt"> · ${updEsc(d.i.error)}</span>` : ''}</span><span class="bw">${d.when}</span></div></div>`;
   };
   const roles = fileRoles.filter(r => r.key !== 'handover');
+  // 파일이 얼마나 최근 것인지(오늘 100% → 하루마다 12%씩 줄어 최소 8%) — 막대 길이만 달라지고, 색은 상태(최신/확인 필요)를 따른다
+  function ageBar(d) {
+    if (!d.i.entries.length) return '<span class="age off"></span>';
+    const days = Math.max(0, Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(d.i.modified).setHours(0, 0, 0, 0)) / 864e5));
+    return `<span class="age ${d.cls}" title="${days ? days + '일 전 파일' : '오늘 파일'}"><i style="width:${Math.max(8, 100 - days * 12)}%"></i></span>`;
+  }
+  // 층별 표: 층(3F·10F)과 종류로 파일을 배치한다. 이 목록에 없는 파일은 "공통" 칸에 모은다.
+  const MATRIX_ROWS = [['환자전체시간표', ['card3'], ['card10']], ['물리치료시간표', ['pt3'], ['pt10']], ['매트 · 테이블', ['mt3'], ['mat10', 'table10']]];
+  const hideRole = (r) => settings.dataHideUnused && !r.required && !roleInfo(r.key).entries.length;
+  const mcell = (r) => {
+    const d = detail(r), rs = d.i.entries.length ? `<button class="btn" data-chip-resync="${r.key}" title="이 파일만 다시 읽기">↻</button>` : '';
+    return `<div class="mcell ${d.cls}"><span class="st">${d.label}</span><b title="${updEsc(r.label)}">${r.label}${r.required ? '<span class="req">필수</span>' : ''}${d.manual ? ' <span class="muted man">직접</span>' : ''}</b>`
+      + `<em title="${updEsc(d.names)}">${d.when}</em>${d.i.error ? `<em class="errtxt">${updEsc(d.i.error)}</em>` : ''}<div class="ac">${rs}${d.btns}</div></div>`;
+  };
+  // 기능별 준비 상태: 각 화면이 꼭 쓰는 파일(TOOLS의 primaryRoles)이 모두 최신인지
+  function featureCards() {
+    if (!lastScan) return [];
+    const out = Object.keys(TOOLS).map(k => {
+      const ps = primaryRolesOf(k).filter(r => roleDef(r)); if (!ps.length) return null;
+      const sts = ps.map(r => [r, roleStateOf(r)]), has = (st) => sts.some(x => x[1] === st);
+      const reqMiss = sts.filter(x => x[1] === 'missing' && roleDef(x[0]).required);
+      const cls = has('error') ? 'err' : reqMiss.length ? 'err' : has('stale') || has('updating') ? 'warn' : has('missing') ? 'off' : 'ok';
+      const text = has('error') ? '읽기 오류' : reqMiss.length ? `파일 ${reqMiss.length}개 없음` : has('updating') ? '업데이트 중' : has('stale') ? '업데이트 필요' : has('missing') ? '파일 필요' : '준비됨';
+      return { label: TOOLS[k].label, sub: ps.map(r => CHIP_NAME[r] || roleDef(r).label).join(' · '), cls, text };
+    }).filter(Boolean);
+    return out;
+  }
+  const featureHtml = (list) => list.map(f => `<div class="fcard ${f.cls}"><i>${f.cls === 'ok' ? '✔ ' : f.cls === 'off' ? '' : '⚠ '}${f.text}</i><b>${f.label}</b><small title="${updEsc(f.sub)}">${updEsc(f.sub)}</small></div>`).join('');
   // 설정 > 확인 필요 파일을 맨 위로: 읽기 오류 → 업데이트 필요 → 업데이트 중 → 없는 필수 → 나머지(같은 등급은 원래 순서)
   const attn = (r) => { const st = roleStateOf(r.key); return st === 'error' ? 0 : st === 'stale' ? 1 : st === 'updating' ? 2 : (st === 'missing' && r.required) ? 3 : 4; };
   const order = (list) => settings.dataStaleFirst ? [...list].sort((a, b) => attn(a) - attn(b)) : list;
@@ -699,12 +727,29 @@ function renderDataView() {
     const col = (title, cls, list, extra = '') => `<div class="bcol ${cls}"><div class="bh"><b>${title}</b><span class="chip ${cls === 'ok' ? 'ok' : cls === 'warn' ? 'warn' : 'off'}">${list.length + (extra ? 1 : 0)}</span></div>${list.map(boardCard).join('')}${extra}${(list.length || extra) ? '' : '<div class="muted bempty">없음</div>'}</div>`;
     const hoCard = hasHo ? `<div class="bcard live"><div class="bt"><b>🌐 OT 인수인계</b><span class="rt"><span class="chip ok"><i></i>연동됨</span></span></div><div class="bf2"><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="bw">실시간</span></div></div>` : '';
     box.innerHTML = `<div class="board${settings.dataHideUnused ? ' two' : ''}">${col('✅ 최신', 'ok', fresh, hoCard)}${col('⚠ 확인 필요', 'warn', need)}${settings.dataHideUnused ? '' : col('⬜ 선택 안 함', 'off', none)}</div>`;
+  } else if (dataViewMode === 'matrix') {
+    const rows = MATRIX_ROWS.map(([title, c3, c10]) => {
+      const col = (keys) => keys.map(k => roleDef(k)).filter(r => r && !hideRole(r));
+      const a = col(c3), b = col(c10), c = [];
+      if (!a.length && !b.length) return '';
+      const cell = (list) => list.length ? `<div class="mstack">${list.map(mcell).join('')}</div>` : '<div class="na">—</div>';
+      return `<div class="mrw"><b>${title}</b></div>${cell(a)}${cell(b)}`;
+    }).join('');
+    const inRows = new Set(MATRIX_ROWS.flatMap(x => x[1].concat(x[2])));
+    const common = roles.filter(r => !inRows.has(r.key) && !hideRole(r));
+    const hoCell = hasHo ? `<div class="mcell live"><span class="st">연동됨</span><b>🌐 OT 인수인계</b><em>구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''} · 실시간</em></div>` : '';
+    box.innerHTML = `<div class="feat-strip">${featureHtml(featureCards())}</div>`
+      + `<div class="mgrid"><span></span><div class="mhd">3F</div><div class="mhd">10F</div>${rows}</div>`
+      + `<div class="grp"><b>공통</b><span class="muted">층 구분 없는 파일</span></div><div class="mcommon">${common.map(mcell).join('')}${hoCell}</div>`;
   } else {
     const hoRow = hasHo ? `<div class="frow live"><b>🌐 OT 인수인계</b><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="wh">실시간</span><span class="chip ok"><i></i>연동됨</span><span class="ac"></span></div>` : '';
-    box.innerHTML = `<div class="grp"><b>필수 파일</b><span class="muted">${req.length}개 · 모두 있어야 검증이 정확해요</span></div>${req.map(fileRow).join('')}`
+    const acts = activityLog.slice(0, 4).map(a => `<div class="it act"><span>${a.time.toTimeString().slice(0, 5)} · ${updEsc(a.feature)}</span><b${a.ok ? '' : ' class="bad"'} title="${updEsc(a.detail)}">${updEsc(a.detail)}</b></div>`).join('');
+    const side = `<div class="dv-side"><div class="panel"><div class="lab">기능별 준비 상태</div>${featureCards().map(f => `<div class="it"><span>${f.label}</span><b class="${f.cls}">${f.cls === 'ok' ? '✔ ' : f.cls === 'off' ? '' : '⚠ '}${f.text}</b></div>`).join('')}${hasHo ? `<div class="it"><span>OT 인수인계(실시간)</span><b class="ok">✔ ${ho ? ho.total + '명' : '연동'}</b></div>` : ''}</div>`
+      + (acts ? `<div class="panel"><div class="lab">최근 활동</div>${acts}</div>` : '') + '</div>';
+    box.innerHTML = `<div class="dv-cols"><div class="dv-main"><div class="grp"><b>필수 파일</b><span class="muted">${req.length}개 · 모두 있어야 검증이 정확해요</span></div>${req.map(fileRow).join('')}`
       + `<div class="grp"><b>선택 파일</b><span class="muted">있으면 더 많이 검증해요</span></div>${optHave.map(fileRow).join('')}`
       + (optMiss.length && !settings.dataHideUnused ? `<details class="miss-opt wide"><summary>파일 없음 ${optMiss.length}개 <small>펼치기</small></summary>${optMiss.map(fileRow).join('')}</details>` : '')
-      + (hoRow ? `<div class="grp"><b>실시간 연동</b></div>${hoRow}` : '');
+      + (hoRow ? `<div class="grp"><b>실시간 연동</b></div>${hoRow}` : '') + `</div>${side}</div>`;
   }
 
   // 보기 전환·기본값 표시
@@ -726,7 +771,10 @@ function renderDataView() {
     const min = RehabSync.MODE_MINUTES[syncMode];
     banner.innerHTML = `<div class="sync-banner"><b>⚠ 새로운 데이터 발견</b> · ` + stale.map(r => { const i = roleInfo(r.key); return `${r.label} — 파일 ${fmtTime(i.modified)} (마지막 반영 ${i.reflectedAt ? fmtTime(i.reflectedAt) : '없음'})`; }).join(' / ')
       + ` &nbsp;${min ? `자동 동기화(${min}분 주기)가 켜져 있어 곧 반영됩니다. ` : ''}<button class="btn primary" data-sync-now>지금 업데이트</button></div>`;
-  } else banner.innerHTML = '';
+  } else {
+    const bad = lastScan ? roles.filter(r => roleStateOf(r.key) === 'error' || (roleStateOf(r.key) === 'missing' && r.required)) : [];
+    banner.innerHTML = bad.length ? `<div class="sync-banner err"><b>⚠ 확인이 필요한 파일 ${bad.length}개</b> · ${bad.map(r => `${r.label} — ${roleStateOf(r.key) === 'error' ? '읽기 오류' : '못 찾음'}`).join(' / ')} &nbsp;${bad.map(r => `<button class="btn" data-manual-pick="${r.key}" title="${updEsc(r.label)} — 파일을 직접 골라서 불러오기">📂 ${CHIP_NAME[r.key] || r.label}</button>`).join(' ')}</div>` : '';
+  }
 
   document.getElementById('dataStatus').textContent = lastScan
     ? `${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) + ' · ' : ''}폴더 ${lastScan.folders.length}개`

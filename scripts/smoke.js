@@ -27,6 +27,13 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     const nav = async k => { await ev(`document.querySelector('[data-nav=${k}]').click(); 1`); await sleep(1500); };
     const step = async (name, fn) => { try { const r = await fn(); console.log('✓', name, r === undefined ? '' : JSON.stringify(r).slice(0, 220)); } catch (e) { add('STEP-FAIL', name + ': ' + e.message); console.log('✕', name, e.message); } };
     // 홈/데이터/설정/보고서
+    await step('데이터 준비: 목록형·층별 표·보드형 전환(파일 수 일치)·기본 보기', async () => { await nav('data'); return await ev(`(async()=>{ const d=document, sl=ms=>new Promise(r=>setTimeout(r,ms)), box=d.getElementById('dataFileList'), out={};
+      d.querySelector('[data-dv=list]').click(); await sl(200); out.list=box.querySelectorAll('.frow:not(.live)').length; out.side=box.querySelectorAll('.dv-side .it').length; out.bars=box.querySelectorAll('.frow .age').length;
+      d.querySelector('[data-dv=matrix]').click(); await sl(200); out.matrix=box.querySelectorAll('.mcell:not(.live)').length; out.feat=box.querySelectorAll('.fcard').length;
+      d.querySelector('[data-dv=board]').click(); await sl(200); out.board=box.querySelectorAll('.bcard:not(.live)').length;
+      if(!out.list||out.list!==out.matrix||out.list!==out.board) throw new Error('보기마다 파일 수가 달라요: '+JSON.stringify(out));
+      d.querySelector('[data-dv=matrix]').click(); await sl(100); const def=d.getElementById('dataViewDefault'); def.click(); await sl(200); out.def=def.textContent;
+      d.querySelector('[data-dv=list]').click(); await sl(100); d.getElementById('dataViewDefault').click(); await sl(200); out.def2=d.getElementById('dataViewDefault').textContent; return out; })()`); });
     for (const k of ['home', 'data', 'settings', 'report']) await step('화면 ' + k, async () => { await nav(k); return await ev(`document.querySelector('.view.active').dataset.view`); });
     await step('홈 새로고침/스캔 버튼', async () => { await nav('home'); await ev(`document.getElementById('homeScanBtn')?.click(); 1`); await sleep(1500); return await ev(`document.getElementById('homeTodo').innerText.slice(0,80)`); });
     await step('홈: 작업대(타일·담당자·일정·흐름·요약)', async () => await ev(`(async()=>{ showView('home'); await new Promise(r=>setTimeout(r,500)); const q=s=>document.querySelectorAll(s).length; const txt=todaySummaryText(); if(!/재활치료부 현황/.test(txt)) throw new Error('요약 글 이상'); return {wb:document.body.classList.contains('home-wb'), tiles:q('.wb-tile'), who:q('.wb-who'), flow:q('#wbFlow .dot'), keys:q('#homeTodo .todo .k')}; })()`));
