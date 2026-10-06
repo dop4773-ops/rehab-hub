@@ -4,6 +4,7 @@
 'use strict';
 (function (root) {
 const UNKNOWN = '담당자 미상';
+const PART_OF = { OT: 'OT', PT: 'PT', '언어/심리': 'ST' };
 const norm = (s) => String(s == null ? '' : s).replace(/\s+/g, '').trim();
 
 // 환자 이름 가운데 글자 가리기: 전영옥 → 전○○, 김도 → 김○ (첫 글자만 남김)
@@ -14,13 +15,21 @@ function maskName(name) {
 
 // issues: 오류확인 목록 [{therapist, patientName, time, orderName, type, severity}]
 // missing: 미액팅 칸 목록 [{therapist, name(환자), type(치료 종류), timeSlot}]
-// 반환: [{name, errors[], warns[], missing[]}] — 확인할 게 많은 치료사 먼저(오류+미액팅 내림차순, 같으면 이름순). 치료사가 없으면 "담당자 미상"으로 모은다.
-function groupByTherapist({ issues = [], missing = [] }) {
+// acts: (선택) 액팅 기록 전체 [{therapist, group('OT'|'PT'|'언어/심리')}] — 치료사의 파트(OT/PT/ST)를 가장 많이 한 오더 종류로 정한다.
+//   기록이 없으면 오류 항목의 오더 종류 → 그것도 없고 미액팅만 있으면 OT(미액팅 시간표는 작업치료실 것) → 그 외 '기타'.
+// 반환: [{name, part, errors[], warns[], missing[]}] — 확인할 게 많은 치료사 먼저(오류+미액팅 내림차순, 같으면 이름순). 치료사가 없으면 "담당자 미상"으로 모은다.
+function groupByTherapist({ issues = [], missing = [], acts = [] }) {
   const map = new Map(), get = (raw) => { const k = norm(raw) || UNKNOWN; if (!map.has(k)) map.set(k, { name: k === UNKNOWN ? UNKNOWN : String(raw).trim(), errors: [], warns: [], missing: [] }); return map.get(k); };
   for (const i of issues) (i.severity === '오류' ? get(i.therapist).errors : get(i.therapist).warns).push(i);
   for (const m of missing) get(m.therapist).missing.push(m);
   const timeKey = (x) => String(x.time || x.timeSlot || '99:99');
   for (const r of map.values()) { r.errors.sort((a, b) => timeKey(a).localeCompare(timeKey(b))); r.warns.sort((a, b) => timeKey(a).localeCompare(timeKey(b))); r.missing.sort((a, b) => timeKey(a).localeCompare(timeKey(b))); }
+  const cnt = new Map(), vote = (raw, g) => { const k = norm(raw), p = PART_OF[g]; if (!k || !p) return; const c = cnt.get(k) || {}; c[p] = (c[p] || 0) + 1; cnt.set(k, c); };
+  for (const a of acts) vote(a.therapist, a.group);
+  const issueVotes = new Map(); // 액팅 기록이 없을 때만 쓰는 보조 표
+  for (const i of issues) { const k = norm(i.therapist), p = PART_OF[i.orderGroup]; if (k && p) { const c = issueVotes.get(k) || {}; c[p] = (c[p] || 0) + 1; issueVotes.set(k, c); } }
+  const top = (c) => c && Object.keys(c).sort((a, b) => c[b] - c[a])[0];
+  for (const [k, r] of map) r.part = top(cnt.get(k)) || top(issueVotes.get(k)) || (r.missing.length ? 'OT' : '기타');
   return [...map.values()].sort((a, b) => (b.errors.length + b.missing.length) - (a.errors.length + a.missing.length) || a.name.localeCompare(b.name, 'ko'));
 }
 

@@ -349,6 +349,7 @@
 /* 치료사별 한눈에 + 탭 건수 배지 */
 .tabcnt{display:inline-block;border-radius:99px;padding:0 8px;font-size:11px;font-weight:800;background:#eef1f6;color:#707d92;margin-left:3px}.tabcnt.r{background:#fdeaec;color:#d4606c}.tabcnt.n{background:#eaf0ff;color:#4f6fb8}
 .thv-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:#707d92;margin:2px 0 8px}.thv-sp{flex:1}.thv-ok{color:#3f9a78;font-weight:800}.thv-warn{color:#b9780f;font-weight:800}
+.thv-parts{display:inline-flex;gap:6px;margin-right:6px;padding-right:10px;border-right:1px solid var(--line)}.thv-part{font-size:11px;font-weight:700;color:var(--muted,#64748b);background:#eef2f7;border-radius:6px;padding:1px 7px}
 .thv-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}.thv-bar select{margin-left:auto;border:1px solid var(--line);border-radius:9px;padding:5px 8px;font-size:12px}
 .thv-row{border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:#fff;overflow:hidden}.thv-row.open{border-color:#9dbceb}
 .thv-hd{display:flex;align-items:center;gap:8px;padding:9px 13px;cursor:pointer}.thv-hd b{font-size:14px;min-width:56px}.thv-hd .pill{font-size:11px}.pill.miss{background:#eaf0ff;color:#4f6fb8}
@@ -442,8 +443,8 @@
             <div class="result-title-left">
               <h2 id="mainViewTitle">2. 오류 확인 결과</h2>
               <div class="order-scope-tabs" aria-label="보기 전환" id="viewTabs">
-                <button type="button" class="order-scope-tab active" data-view-tab="error">오류 확인</button>
                 <button type="button" class="order-scope-tab" data-view-tab="missing">미액팅 오더 확인</button>
+                <button type="button" class="order-scope-tab active" data-view-tab="error">오류 확인</button>
                 <button type="button" class="order-scope-tab" data-view-tab="therapist" id="thvTabBtn">👥 치료사별 한눈에</button>
               </div>
               <div class="order-scope-tabs" aria-label="오더 구분" id="orderScopeTabs">
@@ -525,6 +526,7 @@
         <div class="card-bd" id="therapistView" style="display:none;">
           <div class="thv-info" id="thvInfo"></div>
           <div class="thv-bar">
+            <span class="thv-parts" id="thvParts"></span>
             <button type="button" class="order-scope-tab active" data-thv-f="all">전체</button>
             <button type="button" class="order-scope-tab" data-thv-f="err">오류 있음</button>
             <button type="button" class="order-scope-tab" data-thv-f="miss">미액팅 있음</button>
@@ -3287,7 +3289,7 @@ ${text}`,
   // 액팅 엑셀이 다시 분석될 때마다 analyze() 끝에서 msUpdateRunBtn/자동 시트 매칭을 함께 호출합니다.
 
   // ==================== 치료사별 한눈에 (이미 계산된 결과를 치료사 이름으로 모아서 보여줌 — 계산·기존 탭은 그대로) ====================
-  const thvOpen = new Set(); let thvFilter = 'all', thvStartApplied = false;
+  const thvOpen = new Set(); let thvFilter = 'all', thvPart = 'all', thvStartApplied = false;
   const thvSettings = () => window.__rhSettings || {};
   function thvMissingEntries(){
     const out = [];
@@ -3318,9 +3320,11 @@ ${text}`,
     }
     return `대조: <b>${escapeHtml(sheet||'-')}</b>`;
   }
+  const thvActs = () => (state.dataRows||[]).map(it=>({ therapist: normalizeText(getCell(it.row,'therapist')), group: it.orderGroup }));
+  const thvGroup = () => RehabCore.therapistView.groupByTherapist({ issues: state.issues || [], missing: thvMissingEntries(), acts: thvActs() });
   function thvRows(){
-    const T = RehabCore.therapistView;
-    let rows = T.groupByTherapist({ issues: state.issues || [], missing: thvMissingEntries() });
+    let rows = thvGroup();
+    if(thvPart!=='all') rows = rows.filter(r=>r.part===thvPart);
     if(thvFilter==='err') rows = rows.filter(r=>r.errors.length+r.warns.length>0);
     else if(thvFilter==='miss') rows = rows.filter(r=>r.missing.length>0);
     if($('thvSort').value==='name') rows = rows.slice().sort((a,b)=>a.name.localeCompare(b.name,'ko'));
@@ -3337,7 +3341,9 @@ ${text}`,
     return ok;
   }
   function thvRender(){
-    const all = RehabCore.therapistView.groupByTherapist({ issues: state.issues || [], missing: thvMissingEntries() });
+    const all = thvGroup();
+    const pc = p => all.filter(r=>p==='all'||r.part===p).length;
+    $('thvParts').innerHTML = [['all','전체'],['OT','OT'],['PT','PT'],['ST','언어/심리'],['기타','기타']].filter(([p])=>p==='all'||p===thvPart||pc(p)).map(([p,l])=>`<button type="button" class="order-scope-tab${thvPart===p?' active':''}" data-thv-p="${p}">${l} <span class="tabcnt">${pc(p)}</span></button>`).join('');
     const errN = all.reduce((s,r)=>s+r.errors.length,0), missN = all.reduce((s,r)=>s+r.missing.length,0);
     // 숫자 검증: 묶은 합계가 원래 탭의 숫자와 같아야 한다(다르면 알려서 숨기지 않는다)
     const srcErr = (state.issues||[]).filter(i=>i.severity==='오류').length, srcMiss = msState.sched ? thvMissingEntries().length : 0;
@@ -3355,7 +3361,7 @@ ${text}`,
       const pills = `<span class="pill ${e?'err':'ok'}">오류 ${e}</span>${w?`<span class="pill warn">주의 ${w}</span>`:''}<span class="pill ${m?'miss':'ok'}">미액팅 ${m}</span>`;
       const errItems = r.errors.concat(r.warns).map(x=>`<div class="thv-it"><b>${escapeHtml(String(x.time||'').split('~')[0].trim()||'-')}</b><a data-thv-jump="error" data-name="${msEscapeAttr(x.patientName||'')}">${escapeHtml(x.patientName||'환자명 미상')}</a><span>${escapeHtml(x.type)} · ${escapeHtml(msSimplifyOrderName(x.orderName))}</span><em class="${x.severity==='오류'?'e':'w'}">${escapeHtml(x.severity)}</em></div>`).join('') || '<div class="thv-none">없어요</div>';
       const missItems = r.missing.map(x=>`<div class="thv-it"><b>${escapeHtml(x.timeSlot||'-')}</b><a data-thv-jump="missing" data-name="${msEscapeAttr(x.name||'')}">${escapeHtml(x.name||'')}</a><span>${escapeHtml(x.type||'')}</span><em class="m">미액팅</em></div>`).join('') || '<div class="thv-none">없어요</div>';
-      return `<div class="thv-row${open?' open':''}" data-thv="${msEscapeAttr(r.name)}"><div class="thv-hd" data-thv-toggle><b>${escapeHtml(r.name)}</b>${pills}<span class="thv-sp"></span>${bar}<span class="thv-msg"></span><button type="button" class="secondary" data-thv-copy style="padding:5px 11px;font-size:12px;">📋 메시지</button><span class="thv-caret">${open?'▾':'▸'}</span></div>`
+      return `<div class="thv-row${open?' open':''}" data-thv="${msEscapeAttr(r.name)}"><div class="thv-hd" data-thv-toggle><b>${escapeHtml(r.name)}</b><span class="thv-part">${r.part==='ST'?'언어/심리':r.part}</span>${pills}<span class="thv-sp"></span>${bar}<span class="thv-msg"></span><button type="button" class="secondary" data-thv-copy style="padding:5px 11px;font-size:12px;">📋 메시지</button><span class="thv-caret">${open?'▾':'▸'}</span></div>`
         + (open ? `<div class="thv-bd"><div><h4>치료기록 오류 ${e+w}건</h4>${errItems}</div><div><h4>미액팅 ${m}건</h4>${missItems}</div></div>` : '') + '</div>';
     }).join('');
   }
@@ -3375,6 +3381,7 @@ ${text}`,
     }
     const tg = e.target.closest('[data-thv-toggle]');
     if(tg){ const n = tg.closest('.thv-row').dataset.thv; thvOpen.has(n) ? thvOpen.delete(n) : thvOpen.add(n); thvRender(); return; }
+    const pb = e.target.closest('[data-thv-p]'); if(pb){ thvPart = pb.dataset.thvP; thvRender(); return; }
     const f = e.target.closest('[data-thv-f]'); if(f){ thvFilter = f.dataset.thvF; thvRender(); }
   });
   $('thvSort').addEventListener('change', thvRender);

@@ -34,4 +34,12 @@ assert.ok(msg.includes('<미액팅오류>\n배민지-류○○ 연하(08:40)\n�
 assert.ok(!msg.includes('*치료시간 수정'), '항목 없는 묶음은 뺀다'); assert.ok(msg.endsWith('✅ 꼭!!당일에 수정하시고 수정했다고 올려주세요.'));
 assert.ok(T.buildMessage(rows[0], { dateLabel: '10/3', mask: false }).includes('배민지-전영옥'), '가리기를 끄면 실제 이름');
 const none = T.buildMessage({ name: '박란영', errors: [], warns: [], missing: [] }, { dateLabel: '10/3' }); assert.ok(none.includes('확인할 항목이 없어요'));
+// ④ 파트(OT/PT/ST): 액팅 기록의 다수 오더 종류 → 없으면 오류 항목 → 미액팅만 있으면 OT → 기타
+const parts = T.groupByTherapist({ issues, missing, acts: [
+  { therapist: '배민지', group: 'OT' }, { therapist: '배민지', group: 'OT' }, { therapist: '배민지', group: 'PT' },
+  { therapist: '김민영', group: '언어/심리' }, { therapist: '정유정', group: 'OT' }] });
+const pOf = (n) => parts.find(r => r.name === n).part;
+assert.strictEqual(pOf('배민지'), 'OT'); assert.strictEqual(pOf('김민영'), 'ST'); assert.strictEqual(pOf('정유정'), 'OT'); assert.strictEqual(pOf(T.UNKNOWN), '기타');
+const fb = T.groupByTherapist({ issues: [{ therapist: '한PT', orderGroup: 'PT', severity: '오류', time: '09:00' }], missing: [{ therapist: '류OT', name: 'a', timeSlot: '09:00' }] });
+assert.strictEqual(fb.find(r => r.name === '한PT').part, 'PT'); assert.strictEqual(fb.find(r => r.name === '류OT').part, 'OT');
 console.log('therapistview: OK');
