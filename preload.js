@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('rehab', {
     setMode: (mode) => ipcRenderer.invoke('updater:setMode', mode),
     checkNow: () => ipcRenderer.invoke('updater:checkNow'),
     quitAndInstall: () => ipcRenderer.invoke('updater:quitAndInstall'),
+    postpone: () => ipcRenderer.invoke('updater:postpone'),
+    openLog: () => ipcRenderer.invoke('updater:openLog'),
     getInfo: () => ipcRenderer.invoke('updater:getInfo'),
     getLog: () => ipcRenderer.invoke('updater:getLog'),
     releases: () => ipcRenderer.invoke('updater:releases'),

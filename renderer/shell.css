@@ -405,3 +405,18 @@ details.home-more>summary small{color:var(--blue);margin-left:6px;font-weight:60
 .chip-menu .cm-file{padding:2px 6px;font-size:12px;color:#43546d;word-break:break-all}.chip-menu .cm-file.none{color:var(--muted)}
 .chip-menu button{border:0;background:none;text-align:left;padding:8px 8px;border-radius:8px;font-size:12.5px;font-weight:700;color:#2f4378;cursor:pointer}.chip-menu button:hover{background:#eef2fb}
 .chip-menu .cm-file+button,.chip-menu .cm-file:last-of-type{margin-bottom:0}
+
+/* ── 업데이트·정보(연차관리 앱과 같은 모양) ─────────────────── */
+.upd-card{padding:6px 0 14px}.upd-h{font-size:15px;font-weight:800;color:#2b3550;margin:10px 0 8px}
+.update-version{font-size:13px;color:var(--sub);margin-bottom:4px}.update-version b{color:var(--text);font-size:15px;margin-left:6px}
+.action-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid var(--border)}
+.upd-card .update-version+div>.action-row:first-child{border-top:0}
+.action-row b{display:block;font-size:13.5px;margin-bottom:3px}.action-row span.desc{display:block;font-size:12px;color:var(--sub);line-height:1.5}
+label.action-row{cursor:pointer}label.action-row input{flex-shrink:0;accent-color:var(--blue);width:16px;height:16px}
+.badge-gray{display:inline-block;background:#eef1f6;color:#707d92;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:99px;margin-left:6px;vertical-align:1px}
+.update-status{font-size:12.5px;color:var(--sub)}.update-status.error{color:var(--red)}
+.update-progress{height:6px;background:#eef1f6;border-radius:99px;overflow:hidden;margin-top:8px}.update-progress>div{height:100%;background:var(--blue);width:0;transition:width .2s}
+.release-notes{white-space:pre-wrap;font-size:12.5px;line-height:1.6;color:var(--text);background:#f4f7fd;border-radius:10px;padding:12px 14px;margin-top:12px;max-height:220px;overflow-y:auto}
+.settings-desc{font-size:12.5px;color:var(--sub);margin:12px 0 0;line-height:1.55}
+.update-toast{position:fixed;right:20px;bottom:20px;z-index:8500;width:330px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 36px rgba(70,90,150,.2);padding:14px 16px;font-size:13px}
+.update-toast b{display:block;margin-bottom:4px}.update-toast .ut-msg{color:var(--sub);font-size:12.5px;line-height:1.5}.update-toast .ut-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}

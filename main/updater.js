@@ -28,6 +28,7 @@ function initUpdater(app, ipcMain, getMainWindow) {
   let info = null; try { info = repoInfoOf(require('../package.json')); } catch (e) { /* 정보 없음 */ }
   ipcMain.handle('updater:getInfo', () => ({ version: app.getVersion(), mode: loadMode(app), repoUrl: info && info.url, releasesUrl: info && info.releasesUrl }));
   ipcMain.handle('updater:getLog', () => readEntries(logFile));
+  ipcMain.handle('updater:openLog', () => (fs.existsSync(logFile) ? require('electron').shell.openPath(logFile) : '아직 기록이 없어요.')); // 문제가 있을 때 확인용 기록 파일(성공하면 빈 문자열, 실패하면 이유)
   // GitHub 릴리즈 목록(공개 저장소 — 로그인 없이 조회). 렌더러가 아니라 메인에서 가져온다(화면 보안 정책으로 외부 통신을 막아 두었기 때문).
   let relCache = { at: 0, list: null };
   ipcMain.handle('updater:releases', async () => {
@@ -61,6 +62,7 @@ function initUpdater(app, ipcMain, getMainWindow) {
       message: '개발 모드에서는 업데이트 확인을 지원하지 않습니다. 패키징된 빌드(설치 후)에서만 동작합니다.',
     }; });
     ipcMain.handle('updater:quitAndInstall', () => ({ status: 'dev-mode' }));
+    ipcMain.handle('updater:postpone', () => ({ status: 'dev-mode' }));
     return;
   }
 
@@ -80,10 +82,14 @@ function initUpdater(app, ipcMain, getMainWindow) {
   }
 
   autoUpdater.on('checking-for-update', () => { log('check', { source: nextSource }); sendStatus('checking'); });
-  autoUpdater.on('update-available', (u) => { log('available', { version: u.version }); sendStatus('available', { version: u.version }); });
+  autoUpdater.on('update-available', (u) => {
+    log('available', { version: u.version });
+    const notes = Array.isArray(u.releaseNotes) ? u.releaseNotes.map(n => `v${n.version}\n${n.note || ''}`).join('\n\n') : (u.releaseNotes || '');
+    sendStatus('available', { version: u.version, releaseNotes: notes, auto: getMode() === 'auto' });
+  });
   autoUpdater.on('update-not-available', () => { log('not-available', { version: app.getVersion() }); sendStatus('not-available'); });
   autoUpdater.on('error', (err) => { log('error', { message: err?.message || '알 수 없는 오류' }); sendStatus('error', { message: err?.message || '알 수 없는 오류가 발생했습니다.' }); });
-  autoUpdater.on('download-progress', (p) => sendStatus('downloading', { percent: Math.round(p.percent) }));
+  autoUpdater.on('download-progress', (p) => sendStatus('downloading', { percent: Math.round(p.percent), auto: getMode() === 'auto' }));
 
   let installTriggered = false;
   // 자동 모드: 다운로드가 끝나는 즉시 사람 개입 없이 조용히 설치하고 재시작한다.
@@ -102,13 +108,26 @@ function initUpdater(app, ipcMain, getMainWindow) {
     });
   }
 
+  // 자동 모드: 받자마자 끄지 않고 10초 안내(입력 중이면 "나중에" → 프로그램을 끌 때 설치) — 연차관리 앱과 같은 방식
+  const AUTO_INSTALL_DELAY_SEC = 10;
+  let pendingTimer = null, downloadedVersion = null;
   autoUpdater.on('update-downloaded', (u) => {
     log('downloaded', { version: u.version });
-    sendStatus('downloaded', { version: u.version });
-    if (getMode() === 'auto') performSilentInstall();
+    downloadedVersion = u.version;
+    if (getMode() === 'auto') {
+      sendStatus('auto-install-pending', { version: u.version, seconds: AUTO_INSTALL_DELAY_SEC });
+      pendingTimer = setTimeout(performSilentInstall, AUTO_INSTALL_DELAY_SEC * 1000);
+    } else sendStatus('downloaded', { version: u.version });
+  });
+  ipcMain.handle('updater:postpone', () => {
+    clearTimeout(pendingTimer);
+    log('install', { source: '자동 설치 미룸(종료 시 설치)' });
+    sendStatus('downloaded', { version: downloadedVersion, postponed: true });
+    return { status: 'ok' };
   });
 
   ipcMain.handle('updater:checkNow', async () => {
+    if (downloadedVersion) { sendStatus('downloaded', { version: downloadedVersion }); return { status: 'downloaded' }; } // 이미 받아 둔 게 있으면 다시 받지 않는다
     try {
       nextSource = '수동'; await autoUpdater.checkForUpdates(); nextSource = '자동';
       return { status: 'checked' };

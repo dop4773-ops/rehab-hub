@@ -902,31 +902,62 @@ document.getElementById('topbarSettingsBtn').addEventListener('click', () => sho
 
 // ── 업데이트(GitHub Releases) ─────────────────────────────
 let updaterMode = 'manual';
-function updaterStatusText(s) {
-  switch (s.status) {
-    case 'dev-mode': return s.message;
-    case 'checking': return '업데이트 확인 중…';
-    case 'available': return `새 버전 ${s.version} 다운로드 중…`;
-    case 'not-available': return '최신 버전을 사용 중입니다.';
-    case 'downloading': return `다운로드 중… ${s.percent ?? 0}%`;
-    case 'downloaded': return updaterMode === 'auto'
-      ? `새 버전 ${s.version} 다운로드 완료 — 곧 자동으로 재시작해 설치합니다.`
-      : `새 버전 ${s.version} 설치 준비 완료 — "지금 재시작하고 설치"를 눌러주세요.`;
-    case 'error': return `업데이트 확인 실패: ${s.message}`;
-    default: return '';
-  }
+// 설정 > 업데이트·정보 화면과 오른쪽 아래 안내(토스트)는 연차관리 앱과 같은 모양·흐름으로 맞췄다
+function setUpdateStatus(text, isError) {
+  const el = document.getElementById('updaterStatus');
+  el.textContent = text; el.classList.toggle('error', !!isError);
 }
-window.rehab.updater.onStatus(s => {
-  document.getElementById('updaterStatus').textContent = updaterStatusText(s);
-  // 자동 모드에서는 어차피 알아서 재시작되므로 수동 설치 버튼을 보여줄 필요가 없다.
-  document.getElementById('updaterInstallBtn').style.display = (s.status === 'downloaded' && updaterMode !== 'auto') ? 'inline-block' : 'none';
-});
+function onUpdaterStatus(s) {
+  const progress = document.getElementById('updProgress'), installBtn = document.getElementById('updaterInstallBtn'), notes = document.getElementById('updNotes');
+  progress.style.display = s.status === 'downloading' ? '' : 'none';
+  installBtn.style.display = s.status === 'downloaded' ? '' : 'none';
+  if (s.status === 'checking') setUpdateStatus('업데이트를 확인하는 중...');
+  else if (s.status === 'not-available') setUpdateStatus('최신 버전을 사용하고 있습니다. ✅');
+  else if (s.status === 'available') {
+    setUpdateStatus(`새 버전 v${s.version}을 받는 중입니다...`);
+    if (s.releaseNotes) { notes.style.display = ''; notes.textContent = String(s.releaseNotes).replace(/<[^>]+>/g, ''); }
+  }
+  else if (s.status === 'downloading') { setUpdateStatus(`새 버전을 받는 중... ${s.percent ?? 0}%`); progress.firstElementChild.style.width = (s.percent ?? 0) + '%'; }
+  else if (s.status === 'downloaded') setUpdateStatus(`v${s.version} 준비 완료. ` + (s.postponed ? '프로그램을 끌 때 자동으로 설치됩니다. 지금 하려면 「재시작하여 설치」를 누르세요.' : '「재시작하여 설치」를 누르면 설치합니다. (그냥 두면 프로그램을 끌 때 설치)'));
+  else if (s.status === 'auto-install-pending') setUpdateStatus(`v${s.version} 준비 완료. 잠시 후 자동으로 다시 시작합니다.`);
+  else if (s.status === 'updated') setUpdateStatus(`v${s.version}(으)로 업데이트되었습니다. ✅`);
+  else if (s.status === 'dev-mode') setUpdateStatus(s.message);
+  else if (s.status === 'error') setUpdateStatus('업데이트 확인 실패: ' + s.message, true);
+}
+// 오른쪽 아래 안내: 자동 설치 카운트다운 / 받는 중 / 설치 준비 완료 / 업데이트 완료
+let updateToastTimer = null;
+function showUpdateToast(s) {
+  let el = document.getElementById('update-toast');
+  const close = () => { clearInterval(updateToastTimer); clearTimeout(updateToastTimer); if (el) el.remove(); };
+  const ensure = () => { if (!el) { el = document.createElement('div'); el.id = 'update-toast'; el.className = 'update-toast'; document.body.appendChild(el); } return el; };
+  if (s.status === 'auto-install-pending') {
+    let left = s.seconds || 10;
+    ensure().innerHTML = `<b>🔄 새 버전 v${updEsc(s.version)} 준비 완료</b><div class="ut-msg"><span id="ut-left">${left}</span>초 후 자동으로 다시 시작해서 설치합니다.</div>`
+      + '<div class="ut-actions"><button class="btn" id="ut-later">나중에 (끌 때 설치)</button><button class="btn primary" id="ut-now">지금 재시작</button></div>';
+    clearInterval(updateToastTimer);
+    updateToastTimer = setInterval(() => { left--; const n = document.getElementById('ut-left'); if (n) n.textContent = Math.max(left, 0); if (left <= 0) clearInterval(updateToastTimer); }, 1000);
+    document.getElementById('ut-later').addEventListener('click', () => { close(); window.rehab.updater.postpone(); });
+    document.getElementById('ut-now').addEventListener('click', () => window.rehab.updater.quitAndInstall());
+  } else if (s.status === 'downloading' && s.auto) {
+    ensure().innerHTML = `<b>🔄 새 버전을 받는 중… ${s.percent ?? 0}%</b><div class="update-progress"><div style="width:${s.percent ?? 0}%"></div></div>`;
+  } else if (s.status === 'downloaded' && !s.postponed && currentView() !== 'settings') {
+    ensure().innerHTML = `<b>🔄 새 버전 v${updEsc(s.version)} 준비 완료</b><div class="ut-msg">재시작하면 설치됩니다. (그냥 두면 프로그램을 끌 때 설치)</div>`
+      + '<div class="ut-actions"><button class="btn" id="ut-close">닫기</button><button class="btn primary" id="ut-now">재시작하여 설치</button></div>';
+    document.getElementById('ut-close').addEventListener('click', close);
+    document.getElementById('ut-now').addEventListener('click', () => window.rehab.updater.quitAndInstall());
+  } else if (s.status === 'updated') {
+    ensure().innerHTML = `<b>✅ v${updEsc(s.version)}(으)로 업데이트되었습니다</b><div class="ut-msg">이전 버전: v${updEsc(s.from)} · 바뀐 내용은 설정 &gt; 업데이트·정보 &gt; 「업데이트 로그」에서 볼 수 있어요.</div>`;
+    clearInterval(updateToastTimer); updateToastTimer = setTimeout(close, 8000);
+  } else if (s.status === 'error' && s.auto !== false && el) close(); // 자동 진행 중 실패하면 안내를 정리(자세한 내용은 기록 파일)
+}
+window.rehab.updater.onStatus(s => { onUpdaterStatus(s); showUpdateToast(s); });
 document.getElementById('updaterCheckBtn').addEventListener('click', async () => {
-  document.getElementById('updaterStatus').textContent = '확인 중…';
+  setUpdateStatus('업데이트를 확인하는 중...');
   const r = await window.rehab.updater.checkNow();
-  if (r.status === 'dev-mode' || r.status === 'error') document.getElementById('updaterStatus').textContent = r.message || updaterStatusText(r);
+  if (r.status === 'dev-mode' || r.status === 'error') setUpdateStatus(r.message || '업데이트 확인에 실패했습니다.', r.status === 'error');
 });
 document.getElementById('updaterInstallBtn').addEventListener('click', () => window.rehab.updater.quitAndInstall());
+document.getElementById('updaterOpenLogBtn').addEventListener('click', async () => { const r = await window.rehab.updater.openLog(); if (r) setUpdateStatus(r); });
 document.getElementById('updaterRepoBtn').addEventListener('click', () => window.rehab.updater.openUrl('repo'));
 
 // 업데이트 로그 창: ① GitHub 릴리즈 이력(버전별 변경 내용) ② 이 PC에서 있었던 확인·다운로드·설치·오류 기록
@@ -954,9 +985,9 @@ document.getElementById('updaterLogBtn').addEventListener('click', () => { docum
 document.getElementById('updLogClose').addEventListener('click', () => document.getElementById('updLogModal').classList.remove('show'));
 document.getElementById('updLogModal').addEventListener('click', (e) => { if (e.target.id === 'updLogModal') e.currentTarget.classList.remove('show'); });
 document.querySelector('.upd-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) renderUpdLog(b.dataset.t); });
-document.getElementById('updaterAutoToggle').addEventListener('change', async (e) => {
-  updaterMode = await window.rehab.updater.setMode(e.target.checked ? 'auto' : 'manual');
-});
+document.querySelectorAll('input[name=updMode]').forEach(r => r.addEventListener('change', async () => {
+  if (r.checked) updaterMode = await window.rehab.updater.setMode(r.value);
+}));
 
 // ── 단축키 ─────────────────────────────────────────────────
 // Ctrl(맥은 ⌘)+키. 도구 화면은 iframe이라 키 이벤트가 셸까지 안 올라오므로, 로드될 때마다 같은 처리기를 달아 준다.
@@ -1076,7 +1107,13 @@ function applySetting(key) {
   document.getElementById('updaterVersion').textContent = await window.rehab.updater.getVersion();
   document.getElementById('updaterRepoUrl').textContent = (await window.rehab.updater.getInfo()).repoUrl || '-';
   updaterMode = await window.rehab.updater.getMode();
-  document.getElementById('updaterAutoToggle').checked = updaterMode === 'auto';
+  document.querySelectorAll('input[name=updMode]').forEach(r => { r.checked = r.value === updaterMode; });
+  // 업데이트 직후 첫 실행이면 "v으로 업데이트되었습니다" 안내(이전 버전은 이 PC에 기억해 둔 값)
+  try {
+    const cur = await window.rehab.updater.getVersion(), prev = localStorage.getItem('rehab_last_version_v1');
+    localStorage.setItem('rehab_last_version_v1', cur);
+    if (prev && prev !== cur) { const st = { status: 'updated', version: cur, from: prev }; onUpdaterStatus(st); showUpdateToast(st); }
+  } catch (e) { /* 기억 못 해도 동작에는 문제 없음 */ }
   applyZoom(); applyColor();
   renderHome();
   loadHomeGrandEvent();

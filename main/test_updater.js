@@ -34,6 +34,7 @@ initUpdater(fakeApp, fakeIpcMain, () => null);
   // ④ 개발 모드에서는 checkNow/quitAndInstall이 dev-mode 응답
   assert.strictEqual((await handlers.get('updater:checkNow')()).status, 'dev-mode');
   assert.strictEqual((await handlers.get('updater:quitAndInstall')()).status, 'dev-mode');
+  assert.strictEqual((await handlers.get('updater:postpone')()).status, 'dev-mode');
   console.log('OK ④ 개발 모드(패키징 안 됨)에서는 checkNow/quitAndInstall이 안전하게 dev-mode 응답');
 
   // ⑤ 저장소 주소 정보와 업데이트 기록(위 ④에서 "지금 확인"을 눌렀으니 기록이 한 줄 남아 있어야 함)
