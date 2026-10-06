@@ -435,6 +435,12 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .detailpanel{position:relative !important;top:auto !important}
 .detailpanel .dhead{padding-right:38px}
 .header{margin-bottom:8px}.app{padding-top:10px;padding-bottom:12px}
+.cardsec{margin-top:16px}.cardhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}.cardhead b{font-size:13.5px}.cardhead small{color:var(--muted);font-weight:600}
+.cardhead .legend{margin-left:auto;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:5px}.cardhead .lg{width:14px;height:14px;border-radius:4px;background:#fff0b8;border:2px solid #e0a800;display:inline-block}
+.cv-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;padding:4px}.cv-none{font-size:12.5px;color:var(--muted);padding:10px 2px}
+table.cv-xl{border-collapse:collapse;table-layout:fixed;font-family:"Malgun Gothic","맑은 고딕","Pretendard Variable",sans-serif;color:#000}table.cv-xl td{padding:0 2px;overflow:hidden}
+table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:inset 0 0 0 100px rgba(255,214,0,.35)}
+.detailpanel .dnav{position:sticky;bottom:-18px;background:#fff;padding:12px 0 6px;margin-bottom:-6px;z-index:2}
 .ctxmenu{position:fixed;z-index:300;min-width:190px;background:#fff;border:1px solid #cfdbf5;border-radius:11px;box-shadow:0 8px 26px rgba(70,90,150,.22);padding:5px;display:flex;flex-direction:column}
 .ctxmenu button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:7px;font-size:12.5px;font-weight:700;color:#2f4378;cursor:pointer}.ctxmenu button:hover{background:#eef2fb}
 .ctxmenu .who{font-size:11px;color:var(--muted);padding:4px 10px 3px;font-weight:700}
@@ -746,6 +752,13 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
     <div id="exclListBody"></div>
   </div>
 </div>
+<div class="modal-overlay" id="cardModal">
+  <div class="modal-box wide" style="max-width:1240px">
+    <button class="modal-close" id="cardModalClose">✕</button>
+    <h3 id="cardModalTitle"></h3>
+    <div id="cardModalBody" style="overflow:auto"></div>
+  </div>
+</div>
 <div id="printReport"></div>
 
 <div class="dropOverlay" id="dropOverlay">
@@ -768,6 +781,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 <script src="../core/normalize.js"></script>
 <script src="../core/treatment.js"></script>
 <script src="../core/cards.js"></script>
+<script src="../core/cardview.js"></script>
 <script src="../core/parsers_weekday.js"></script>
 <script src="../core/parsers_saturday.js"></script>
 <script src="../core/parsers_status.js"></script>
@@ -966,6 +980,7 @@ const state = { statusBook:null, card10Book:null, card3Book:null, mat10Book:null
 let handoverLiveFetchPromise=null; // 검증 실행 전 이 fetch가 끝나길 기다려서, 타이밍에 따라 인수인계 인식이 됐다 안 됐다 하는 걸 막는다
 let currentChange='all', hideAck=false, histState=null;
 const BUMPS=new WeakMap(); // 불일치 → 그 불일치가 올린 문제 건수(제외할 때 되돌리는 데 씀)
+let cardFinder=null; // (이름, 층) → 전체시간표 카드(머리 위치 포함)
 let allDetected=[], excludedIssues=[], exclMap={}, exclRunBase=null; // 제외 기능: 찾아낸 전체 / 제외된 것 / 제외 기록 / 대시보드 원래 숫자
 let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentRSource='all', currentView='type', currentPage=1;
 let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
@@ -1260,6 +1275,7 @@ async function runAllVerifications(){
   if(state.card10Book){ cardsByFloor[10]=await parsePatientCards(state.card10Book, 10); cardsByFloor[10].forEach(c=>{ if(!cardIndex[10].has(normKey(c.name))) cardIndex[10].set(normKey(c.name), c); }); }
   if(state.card3Book){ cardsByFloor[3]=await parsePatientCards(state.card3Book, 3); cardsByFloor[3].forEach(c=>{ if(!cardIndex[3].has(normKey(c.name))) cardIndex[3].set(normKey(c.name), c); }); }
   function findCard(name, floor){ return (floor && cardIndex[floor] && cardIndex[floor].get(normKey(name))) || cardIndex[10].get(normKey(name)) || cardIndex[3].get(normKey(name)) || null; }
+  cardFinder=findCard; // 상세 패널의 "전체시간표 카드(엑셀 그대로)"가 같은 카드를 찾는 데 쓴다
   let scheduleFloorByName=new Map(); // 평일시간표(원본)의 "팀 구분"(1·2팀=10F, 3팀=3F)에서 얻은 환자별 층 정보 — 카드 파일이 없어도 층을 판정할 수 있게 하는 보조 자료
   function floorOfPatient(name, fallbackFloor){
     if(cardIndex[10].has(normKey(name))) return 10;
@@ -3424,6 +3440,7 @@ function renderDetail(){
     </div>
     <div class="dsub">${issue.floor?issue.floor+'F · ':''}${esc(issue.line)}</div>
     ${bodyHtml}
+    <div class="cardsec" id="cardSec"></div>
     <div class="dnav">
       <button class="btn sm" id="dPrev">← 이전 문제</button>
       <button class="btn sm" id="dExcl" title="이 불일치를 결과에서 빼고 사유를 남깁니다(제외한 항목에서 되돌릴 수 있어요)">🚫 제외…</button>
@@ -3437,7 +3454,71 @@ function renderDetail(){
   document.getElementById('dAck').addEventListener('click', ()=> toggleAck(issue));
   document.getElementById('dExcl').addEventListener('click', ()=> openExclModal(issue));
   document.getElementById('dNext').addEventListener('click', ()=> stepDetail(1));
+  renderCardSection(issue);
 }
+
+/* ======================================================================
+   전체시간표 카드를 엑셀 원본 그대로 보여주기 (core/cardview.js — 원본 파일은 읽기만 한다)
+   ====================================================================== */
+let cardSecToken=0, cardShown=null;
+function cardHighlights(issue, card, cells, c0, height){
+  const hl=new Set(), d=issue.detail||{}, ref=(r,c)=>numToCol(c)+r, end=card.headRow+height-1, blk={row:card.headRow,col:c0};
+  const field=String(issue.field||d.field||'').toLowerCase();
+  const KIND={sot:'ot',rdt:'swallow',erdt:'swallow_electric',ccrt:'cog',lang:'speech'};
+  if(issue.category==='count' && KIND[field]){
+    const hdr=findTimeHeader(cells,blk,end); if(hdr){
+      const dayCols=cardDayCols(cells,blk,hdr.row,hdr.hasLocCol);
+      for(const row of cardRows(cells,blk,hdr,dayCols,end)) for(const day of Object.keys(dayCols)){ const t=row.texts[day]||''; if(t && hasTreatment(KIND[field],t)) hl.add(ref(row.row,dayCols[day])); }
+    }
+  } else if(issue.category==='location'){
+    const t=issue.time||d.time; if(t) for(const e of card.entries) if(e.time===t){ hl.add(ref(e.row,c0)); if(e.locRef) hl.add(e.locRef); }
+  } else if(issue.category==='room'){
+    hl.add(d.kind==='room_rm' ? ref(card.headRow+5,c0) : ref(card.headRow+1,c0+6)); // 주치의 / 병실 칸
+  } else if(issue.category==='handover' && d.kind==='handover_doctor'){
+    hl.add(ref(card.headRow+5,c0));
+  } else if(issue.category==='therapist' || (issue.category==='handover' && ['handover_therapist','handover_excess','handover_notype'].includes(d.kind))){
+    // 카드 윗부분의 "작업치료 / 연하치료 / 인지치료 … 담당 치료사" 줄(이름 칸 포함)을 칠한다
+    const labOf=(t)=>/SOT|작업/i.test(t)?'작업치료':/RDT|연하/i.test(t)?'연하치료':/CCRT|인지/i.test(t)?'인지치료':'';
+    const labs=new Set(d.kind==='handover_notype' ? (d.items||[]).map(x=>labOf(String(x.label||''))) : [labOf(String(d.type||d.field||issue.field||''))]); labs.delete('');
+    for(let r=card.headRow;r<=card.headRow+12;r++) for(let c=c0;c<=c0+24;c++) if(labs.has(normalizeText(getCell(cells,r,c)))){ hl.add(ref(r,c)); hl.add(ref(r,c+2)); }
+  }
+  return hl;
+}
+function fitCardZoom(){
+  const wrap=document.getElementById('cvWrap'), z=document.getElementById('cvZoom'); if(!wrap||!z||!cardShown) return;
+  z.style.zoom=Math.min(1,(wrap.clientWidth-10)/cardShown.width);
+}
+async function renderCardSection(issue){
+  const box=document.getElementById('cardSec'); if(!box) return; const my=++cardSecToken; cardShown=null;
+  const card=cardFinder && cardFinder(String(issue.patient||'').replace(/\s*\(외래\)\s*$/,'').trim(), issue.floor); // 이름 뒤 "(외래)" 표시는 떼고 찾는다
+  const head=(extra='')=>`<div class="cardhead"><b>📇 ${card?card.floor+'F ':''}환자 전체시간표 카드</b>${extra}</div>`;
+  if(!card){ box.innerHTML=head()+'<div class="cv-none">전체시간표(원본)에서 이 환자의 카드를 찾지 못했어요.</div>'; return; }
+  box.innerHTML=head()+'<div class="cv-none">카드를 불러오는 중…</div>';
+  try{
+    const book=card.floor===3?state.card3Book:state.card10Book;
+    const cells=await getSheetCells(book,card.sheet), view=await RehabCore.getSheetView(book,card.sheet);
+    if(my!==cardSecToken) return;
+    const c0=card.headCol, nextTop=findCardBlocks(cells).filter(b=>b.col===c0&&b.row>card.headRow).map(b=>b.row)[0];
+    const height=Math.min(nextTop?nextTop-card.headRow:26,40), hl=cardHighlights(issue,card,cells,c0,height);
+    const out=RehabCore.renderRegion(view,cells,{r0:card.headRow,c0,rows:height,cols:23,hl});
+    cardShown={html:out.html,width:out.width,title:`${card.floor}F ${card.name} 카드 (${card.sheet} 시트)`};
+    box.innerHTML=head(` <small>(엑셀 원본 그대로 · ${esc(card.sheet)} 시트)</small>${hl.size?'<span class="legend"><i class="lg"></i>이 불일치와 관련된 칸</span>':''}<button class="btn sm" id="cardBig">⤢ 크게 보기</button>`)
+      +`<div class="cv-wrap" id="cvWrap"><div class="cv-zoom" id="cvZoom">${out.html}</div></div>`
+      +(hl.size?'':`<div class="cv-none" style="margin-top:6px">${issue.category==='location'&&issue.time?`카드에서 <b>${esc(issue.time)}</b> 시간의 치료위치(${esc((issue.detail||{}).loc||'')}) 기록을 찾지 못했어요.`:'이 항목은 카드 안에서 칠할 칸이 없어 카드만 보여드려요.'}</div>`);
+    fitCardZoom();
+    const first=box.querySelector('td.cv-hl'); if(first && first.scrollIntoView) { /* 카드 안에서 첫 강조 칸은 그대로 두고 화면은 움직이지 않는다 */ }
+  }catch(e){ console.error(e); box.innerHTML=head()+`<div class="cv-none">카드를 그리지 못했어요: ${esc(e.message||String(e))}</div>`; }
+}
+window.addEventListener('resize',fitCardZoom);
+document.getElementById('detailPanel').addEventListener('click',e=>{
+  if(!e.target.closest('#cardBig')||!cardShown) return;
+  document.getElementById('cardModalTitle').textContent='📇 '+cardShown.title;
+  document.getElementById('cardModalBody').innerHTML=cardShown.html; document.getElementById('cardModal').classList.add('show');
+});
+const closeCardModal=()=>document.getElementById('cardModal').classList.remove('show');
+document.getElementById('cardModalClose').addEventListener('click',closeCardModal);
+document.getElementById('cardModal').addEventListener('click',e=>{ if(e.target.id==='cardModal') closeCardModal(); });
+
 function stepDetail(dir){
   if(!filteredIssues.length) return;
   let idx=filteredIssues.findIndex(i=>i.id===selectedIssueId);
