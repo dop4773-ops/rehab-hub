@@ -677,8 +677,7 @@ const FILES_CSS = {
     + 'body.rh-collapsed section.panel:has(.upload-grid)>.panel-head{display:none!important}body.rh-collapsed section.panel:has(.upload-grid)>.panel-body{padding:8px 18px!important}body.rh-collapsed #statusLine{margin:0!important}'
     + 'body.rh-collapsed .grand-ot-upload>:not(#grandHandoverStatus):not(#grandHandoverMatchSummary):not(#grandHandoverRefreshBtn){display:none!important}',
   acting: 'body.rh-collapsed #dropZone,body.rh-collapsed #msDropZone,body.rh-collapsed #dcDropZone,body.rh-collapsed #dcFolderPickBtn,body.rh-collapsed label[for=dcFileInput]{display:none!important}',
-  cross: 'body.rh-collapsed #prepPanel:not(:has(.prep-badge.err)){display:none!important}body.rh-collapsed .toprow{grid-template-columns:1fr 260px!important}'
-    + '@media(max-width:1400px){body.rh-collapsed .toprow{grid-template-columns:1fr!important}}',
+  cross: 'body.rh-collapsed #prepPanel:not(:has(.prep-badge.err)){display:none!important}body.rh-collapsed .toprow{grid-template-columns:1fr!important}',
 };
 const filesOpen = {}; // 사용자가 직접 펼침/접음을 정한 도구(없으면 자동 판단)
 const primaryRolesOf = (key) => TOOLS[key].primaryRoles || toolRoles(key).filter(r => (roleDef(r) || {}).required);
