@@ -57,6 +57,7 @@ assert.ok(out.html.includes('>08:30<') && out.html.includes('>2026.01.15<'), '�
 assert.ok(/data-ref="C1" class="cv-hl"/.test(out.html) && !/data-ref="C2" class="cv-hl"/.test(out.html), '강조는 지정한 칸만');
 assert.ok(out.html.includes('height:40px'), '행 높이 30pt → 40px'); // 30*1.333
 assert.strictEqual(out.width, 47 + 47 + 75); // 6*7+5, 6*7+5, 10*7+5
+assert.strictEqual(out.height, 40 + 22); // 30pt→40px, 기본 16.5pt→22px
 const hm = C.renderRegion(view, cells, { r0: 1, c0: 1, rows: 2, cols: 3, hl: new Set(['B1']) }); // 병합 칸 안쪽 칸을 지정해도 그 칸이 강조
 assert.ok(/data-ref="A1" class="cv-hl"/.test(hm.html), '병합 칸 강조');
 console.log('OK ⑤ 구역 그리기·병합·강조');

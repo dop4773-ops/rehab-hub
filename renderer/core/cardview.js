@@ -139,12 +139,13 @@ function renderRegion(view, cells, opts) {
   const { r0, c0, rows, cols } = opts, hl = opts.hl || new Set(), st = view.styles;
   const { styleOf, rowHt } = parseRegion(regionXml(view.xml, view.idx, r0, r0 + rows - 1));
   const colPx = (c) => Math.round((view.cols.widths.get(c) || view.defColW) * 7 + 5);
-  let width = 0; const out = ['<table class="cv-xl"><colgroup>'];
+  let width = 0, height = 0; const out = ['<table class="cv-xl"><colgroup>'];
   for (let c = c0; c < c0 + cols; c++) { const w = colPx(c); width += w; out.push(`<col style="width:${w}px">`); }
   out.push('</colgroup>');
   const skip = new Set();
   for (let r = r0; r < r0 + rows; r++) {
-    out.push(`<tr style="height:${Math.round((rowHt.get(r) || view.defRowPt) * 1.333)}px">`);
+    const rowPx = Math.round((rowHt.get(r) || view.defRowPt) * 1.333); height += rowPx;
+    out.push(`<tr style="height:${rowPx}px">`);
     for (let c = c0; c < c0 + cols; c++) {
       if (skip.has(`${r}:${c}`)) continue;
       const ref = numToCol(c) + r, sIdx = styleOf.has(ref) ? styleOf.get(ref) : (view.cols.styles.get(c) || 0), xf = st.xfs[sIdx] || st.xfs[0] || { font: 0, fill: 0, border: 0, numFmt: 0 };
@@ -160,7 +161,7 @@ function renderRegion(view, cells, opts) {
     out.push('</tr>');
   }
   out.push('</table>');
-  return { html: out.join(''), width };
+  return { html: out.join(''), width, height };
 }
 
 const api = { parseTheme, tintHex, colorOf, parseStyleTables, indexRows, regionXml, parseMerges, parseCols, parseRegion, fmtValue, getSheetView, renderRegion };
