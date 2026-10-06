@@ -7,7 +7,7 @@
   const DEFAULTS = {
     syncMode: 'launch', checkSec: 30, notifyStale: true,
     dataView: 'list', dataStaleFirst: true, dataHideUnused: false,
-    startView: 'last', sidebar: 'last', fontSize: 'normal', color: 'pastel', filesArea: 'collapsed',
+    startView: 'last', homeLayout: 'compact', sidebar: 'last', fontSize: 'normal', color: 'pastel', filesArea: 'collapsed',
     actingSeverity: 'error', grandStats: 'collapsed', grandTime: '09',
     shortcuts: true, keymap: {},
     itda: true, itdaPush: true, itdaCategory: '그랜드라운딩',
@@ -15,7 +15,7 @@
   const HOURS = ['08', '09', '10', '11', '13', '14', '15', '16'];
   const ENUMS = {
     syncMode: ['launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
-    dataView: ['list', 'board'], startView: ['last', 'home', 'data'], sidebar: ['last', 'open', 'closed'],
+    dataView: ['list', 'board'], startView: ['last', 'home', 'data'], homeLayout: ['compact', 'classic'], sidebar: ['last', 'open', 'closed'],
     fontSize: ['small', 'normal', 'large'], color: ['pastel', 'vivid'], filesArea: ['collapsed', 'open'],
     actingSeverity: ['error', 'all'], grandStats: ['collapsed', 'open'], grandTime: HOURS,
   };

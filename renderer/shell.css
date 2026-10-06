@@ -420,3 +420,22 @@ label.action-row{cursor:pointer}label.action-row input{flex-shrink:0;accent-colo
 .settings-desc{font-size:12.5px;color:var(--sub);margin:12px 0 0;line-height:1.55}
 .update-toast{position:fixed;right:20px;bottom:20px;z-index:8500;width:330px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 36px rgba(70,90,150,.2);padding:14px 16px;font-size:13px}
 .update-toast b{display:block;margin-bottom:4px}.update-toast .ut-msg{color:var(--sub);font-size:12.5px;line-height:1.5}.update-toast .ut-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}
+
+/* ── 홈 컴팩트 배치(설정 > 화면 > 홈 화면 배치) ───────────────── */
+body.home-compact .home-main{grid-template-columns:1fr !important}
+body.home-compact .home-main>.card:nth-child(2){display:none}
+body.home-compact .quick-bar{display:none}
+body.home-compact .todo{padding:0 14px;min-height:50px}
+body.home-compact .todo .tx{display:flex;align-items:baseline;gap:10px;white-space:nowrap;overflow:hidden}
+body.home-compact .todo .tx b{flex-shrink:0}body.home-compact .todo .tx .muted{margin-top:0;overflow:hidden;text-overflow:ellipsis}
+body.home-compact .todo-list{gap:7px}
+body.home-compact .home-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+body.home-compact .hcard{display:flex;align-items:center;gap:12px;height:74px;padding:0 16px;cursor:pointer;margin:0}
+body.home-compact .hcard:hover{border-color:#b9ccf3;background:#fafcff}
+body.home-compact .hcard .hc-head{flex-direction:column;align-items:flex-start;gap:3px;flex:1;min-width:0}
+body.home-compact .hcard .hc-head b{font-size:13.5px}
+body.home-compact .hcard .statbox-row{margin:0;gap:0;flex-shrink:0}
+body.home-compact .hcard .statbox:nth-child(n+2){display:none}
+body.home-compact .hcard .statbox .num{font-size:21px}body.home-compact .hcard .statbox .lbl{font-size:10.5px}
+body.home-compact .hcard>.btn{display:none}
+body.home-compact details.home-more{margin-top:10px}

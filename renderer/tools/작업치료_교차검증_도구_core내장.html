@@ -435,6 +435,9 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .detailpanel{position:relative !important;top:auto !important}
 .detailpanel .dhead{padding-right:38px}
 .header{margin-bottom:8px}.app{padding-top:10px;padding-bottom:12px}
+.dhead{flex-wrap:wrap;gap:8px}.dhead .dname{font-size:22px !important}
+.dhead .dchip{font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;background:#eef2fb;color:#4f62a6}.dhead .dchip.g{background:#f1f3f6;color:#707d92}
+.dhead .dtag{margin-left:0 !important}.dhead .hbadge{margin-left:0}
 .cardsec{margin-top:16px}.cardhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}.cardhead b{font-size:13.5px}.cardhead small{color:var(--muted);font-weight:600}
 .cardhead .legend{margin-left:auto;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:5px}.cardhead .lg{width:14px;height:14px;border-radius:4px;background:#fff0b8;border:2px solid #e0a800;display:inline-block}
 .cv-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;padding:4px}.cv-none{font-size:12.5px;color:var(--muted);padding:10px 2px}
@@ -926,7 +929,7 @@ async function parsePatientCards(book, floor){
             if(loc) entries.push({time, loc, days, row:row.row, locRef:numToCol(blk.col+2)+row.row});
           }
         }
-        results.push({name, room, reg, floor, doctor, sheet:sh.name, headRow:start, headCol:blk.col, therapists, entries, langCount, langOccurrences, satEntries, erdtWeekdayEntries, cogWeekdayEntries, sotWeekdayEntries, rdtWeekdayEntries, isOutpatient});
+        results.push({name, room, reg, floor, doctor, gender:head.gender, age:head.age, sheet:sh.name, headRow:start, headCol:blk.col, therapists, entries, langCount, langOccurrences, satEntries, erdtWeekdayEntries, cogWeekdayEntries, sotWeekdayEntries, rdtWeekdayEntries, isOutpatient});
       }
     }
   }
@@ -3121,6 +3124,18 @@ function dayTimelineHtml(dayEntries, highlightTime, title){
   const chips = sorted.map(e=>`<div class="tl-chip${e.time===highlightTime?' hl':''}"><span class="tl-time">${esc(e.time)}</span><span class="tl-loc">${esc(e.loc)}</span></div>`).join('');
   return `<div class="occ-title">${esc(title)}</div><div class="timeline-row">${chips}</div>`;
 }
+// 상세 머리줄: 이름 옆에 층·병실·성별/나이·주치의(RM)를 한 줄로(예전엔 제목 옆 칩·설명줄 앞·표 안에 흩어져 있었다)
+function headChipsHtml(issue){
+  const card=cardFinder && cardFinder(String(issue.patient||'').replace(/\s*\(외래\)\s*$/,'').trim(), issue.floor);
+  const fl=issue.floor || (card&&card.floor), room=issue.room || (card&&card.room);
+  const ga=card ? [card.gender, card.age?`${card.age}세`:''].filter(Boolean).join(' · ') : '';
+  const chips=[fl?`${fl}F`:'', room?(/^\d+$/.test(String(room).trim())?`${esc(room)}호`:esc(room)):'', ga?esc(ga):'', card&&card.doctor?esc(card.doctor):''].filter(Boolean);
+  return chips.map((c,i)=>`<span class="dchip${i>=2?' g':''}">${c}</span>`).join('');
+}
+// 머리줄과 겹치는 표 행(환자·병실·층)은 지운다
+function trimDupRows(root){
+  root.querySelectorAll('.kv-table').forEach(t=>{ t.querySelectorAll('tr').forEach(tr=>{ const k=(tr.firstElementChild||{}).textContent; if(['환자','병실','층'].includes((k||'').trim())) tr.remove(); }); if(!t.querySelector('tr')) t.remove(); });
+}
 function renderDetail(){
   const panel=document.getElementById('detailPanel');
   const issue=issues.find(i=>i.id===selectedIssueId);
@@ -3450,10 +3465,10 @@ function renderDetail(){
     <button class="dclose" id="dCloseBtn">✕</button>
     <div class="dhead">
       <span class="dname">${esc(issue.patient)}</span>
-      <span class="droom">${esc(issue.room||'')}</span>
-      <span class="dtag ${headTagCls}">${headTagText}</span>
+      ${headChipsHtml(issue)}
+      <span class="dtag ${headTagCls}">${headTagText}</span>${histBadgesHtml(issue)}
     </div>
-    <div class="dsub">${issue.floor?issue.floor+'F · ':''}${esc(issue.line)}</div>
+    <div class="dsub">${esc(issue.line)}</div>
     ${bodyHtml}
     <div class="cardsec" id="cardSec"></div>
     <div class="dnav">
@@ -3469,7 +3484,7 @@ function renderDetail(){
   document.getElementById('dAck').addEventListener('click', ()=> toggleAck(issue));
   document.getElementById('dExcl').addEventListener('click', ()=> openExclModal(issue));
   document.getElementById('dNext').addEventListener('click', ()=> stepDetail(1));
-  polishVerdicts(panel);
+  polishVerdicts(panel); trimDupRows(panel);
   renderCardSection(issue);
 }
 

@@ -893,6 +893,11 @@ document.addEventListener('click', async (e) => {
   const clear = e.target.closest('[data-manual-clear]');
   if (clear) { await window.rehab.folders.clearManual(clear.dataset.manualClear); logActivity('데이터 준비', `직접 선택 해제: ${roleDef(clear.dataset.manualClear).label}`); syncNow(); }
 });
+// 컴팩트 홈: 도구 타일 어디를 눌러도 열린다(타일 안의 열기 버튼은 숨김)
+document.addEventListener('click', (e) => {
+  if (!document.body.classList.contains('home-compact')) return;
+  const c = e.target.closest('.hcard'); if (c && !e.target.closest('button')) c.querySelector('button[data-goto]')?.click();
+});
 document.getElementById('syncPill').addEventListener('click', () => {
   const o = syncOverview(scanRoles());
   if (o.cls === 'stale' || o.cls === 'err') syncNow(); else showView('data');
@@ -1080,6 +1085,7 @@ function pushSettingsToTool(iframe) {
 }
 const pushSettingsToTools = () => document.querySelectorAll('iframe[data-tool]').forEach(pushSettingsToTool);
 const applyZoom = () => { try { window.rehab.app.setZoom(RehabSettings.ZOOM[settings.fontSize]); } catch (e) { /* 개발용 화면 등 */ } };
+const applyHomeLayout = () => document.body.classList.toggle('home-compact', settings.homeLayout === 'compact');
 const applyColor = () => { document.documentElement.style.filter = settings.color === 'vivid' ? RehabSettings.VIVID_FILTER : ''; };
 function applySetting(key) {
   switch (key) {
@@ -1090,6 +1096,7 @@ function applySetting(key) {
     case 'sidebar': setSidebar(sidebarStart()); break;
     case 'fontSize': applyZoom(); break;
     case 'color': applyColor(); break;
+    case 'homeLayout': applyHomeLayout(); break;
     case 'filesArea': Object.keys(filesOpen).forEach(k => delete filesOpen[k]); renderToolStrips(); break;
     case 'itda': case 'itdaCategory': homeGrandAt = 0; homeGrandEvent = null; loadHomeGrandEvent(); renderHome(); pushSettingsToTools(); break;
     case 'itdaPush': renderHome(); break;
@@ -1113,7 +1120,7 @@ function applySetting(key) {
     localStorage.setItem('rehab_last_version_v1', cur);
     if (prev && prev !== cur) { const st = { status: 'updated', version: cur, from: prev }; onUpdaterStatus(st); showUpdateToast(st); }
   } catch (e) { /* 기억 못 해도 동작에는 문제 없음 */ }
-  applyZoom(); applyColor();
+  applyZoom(); applyColor(); applyHomeLayout();
   renderHome();
   loadHomeGrandEvent();
   // 시작 화면(설정): 홈 / 데이터 준비 / 마지막에 쓴 화면
