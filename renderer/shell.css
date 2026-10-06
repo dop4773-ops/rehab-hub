@@ -400,3 +400,8 @@ details.home-more>summary small{color:var(--blue);margin-left:6px;font-weight:60
 .toast{position:fixed;top:58px;left:50%;transform:translate(-50%,-14px);background:#fff;border:1px solid #cfdbf5;box-shadow:0 6px 24px rgba(70,90,150,.2);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:600;color:#2b3550;display:flex;gap:12px;align-items:center;opacity:0;pointer-events:none;transition:.2s;z-index:9000}
 .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .board.two{grid-template-columns:repeat(2,1fr)}@media (max-width:1100px){.board.two{grid-template-columns:1fr}}
+.chip-menu{position:fixed;z-index:8000;min-width:250px;max-width:340px;background:#fff;border:1px solid #cfdbf5;border-radius:12px;box-shadow:0 8px 28px rgba(70,90,150,.22);padding:8px;display:flex;flex-direction:column;gap:2px}
+.chip-menu .cm-h{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:4px 6px 2px;font-size:13px}.chip-menu .cm-h span{font-size:11px;color:var(--sub);font-weight:600}
+.chip-menu .cm-file{padding:2px 6px;font-size:12px;color:#43546d;word-break:break-all}.chip-menu .cm-file.none{color:var(--muted)}
+.chip-menu button{border:0;background:none;text-align:left;padding:8px 8px;border-radius:8px;font-size:12.5px;font-weight:700;color:#2f4378;cursor:pointer}.chip-menu button:hover{background:#eef2fb}
+.chip-menu .cm-file+button,.chip-menu .cm-file:last-of-type{margin-bottom:0}

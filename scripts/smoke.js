@@ -110,6 +110,11 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     await step('교차검증: 이력 모달/확인함', async () => await ev(`(async()=>{ const d=${W('cross')}.document; d.getElementById('histOpen').click(); await new Promise(r=>setTimeout(r,200)); const t=d.getElementById('histModalBody').innerText; d.getElementById('histClose').click(); return {len:t.length,bad:/undefined|NaN|\\[object/.test(t)}; })()`));
     await step('교차검증: CSV/복사 버튼', async () => await ev(`(()=>{ const w=${W('cross')}; return w.summaryText().length; })()`));
     await step('교차검증: 검색', async () => await ev(`(async()=>{ const d=${W('cross')}.document; const s=d.getElementById('searchInput'); for(const q of ['501','가','zz','']){ s.value=q; s.dispatchEvent(new Event('input')); await new Promise(r=>setTimeout(r,80)); } return 1; })()`));
+    await step('교차검증: 제외(사유)·제외 해제·유지', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); await w.handleRun(); const n0=w.__testHooks.issues().length, p0=d.getElementById('numProblem').textContent;
+      w.openExclModal(w.__testHooks.issues()[0]); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);
+      const n1=w.__testHooks.issues().length, p1=d.getElementById('numProblem').textContent; await w.handleRun(); const n2=w.__testHooks.issues().length;
+      d.getElementById('exclBtn').click(); d.querySelector('[data-restore]').click(); await sl(300); d.getElementById('exclListClose').click();
+      const n3=w.__testHooks.issues().length; localStorage.removeItem('rehab_cross_exclude_v1'); if(!(n1===n0-1 && n2===n0-1 && n3===n0 && Number(p1)===Number(p0)-1)) throw new Error('제외 결과가 맞지 않음 '+[n0,n1,n2,n3,p0,p1]); return [n0,n1,n2,n3,p0,p1]; })()`));
     // 인수인계/백업
     await nav('handover'); await sleep(7000);
     // 원래 쓰던 인수인계 프로그램 그대로라 쓰기 버튼(삭제·퇴원·수정)이 있다 — 점검에서는 조회성 동작(검색·정렬·칩·상세·휴지통 목록 열기)만 누른다.

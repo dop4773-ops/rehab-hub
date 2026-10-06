@@ -700,8 +700,39 @@ function fileChip(role, key) {
   const manual = (lastScan && lastScan.manualRoles || []).includes(role);
   const when = dcLocal ? `직접 올림 · ${dcLocal.ok}/${dcLocal.total}팀` : manualLoaded ? '직접 올림' : st === 'missing' ? (def.required ? '없음' : '미선택') : (i.modified ? fmtTime(i.modified) : '') + (manual ? ' · 직접' : '');
   const tip = [def.label, i.entries.length ? '파일: ' + i.entries.map(e => e.name).join(', ') : '파일 없음', i.modified ? '파일 수정: ' + fmtTime(i.modified) : '', i.reflectedAt ? '프로그램 반영: ' + fmtTime(i.reflectedAt) : '', RehabSync.STATE_LABEL[st], i.error || ''].filter(Boolean).join('\n');
-  const dcClick = key === 'acting' && role === 'dailyStats'; // 누르면 팀별 인식 현황 팝업
-  return `<span class="fchip ${cls}${dcClick ? ' click' : ''}"${dcClick ? ' data-open-dc' : ''} title="${updEsc(tip + (dcClick ? '\n클릭: 팀별 인식 현황 보기' : ''))}"><i></i>${CHIP_NAME[role] || def.label || role}<small>${updEsc(when)}</small>${dcClick ? '<small>▸</small>' : ''}</span>`;
+  // 칩을 누르면 그 파일을 바꾸거나(직접 선택) 자동 인식으로 되돌리는 작은 메뉴가 뜬다
+  return `<span class="fchip ${cls} click" data-chip="${role}" data-chip-tool="${key}" title="${updEsc(tip + '\n클릭: 파일 변경')}"><i></i>${CHIP_NAME[role] || def.label || role}<small>${updEsc(when)}</small><small>▾</small></span>`;
+}
+// 파일 하나만 다시 읽어 도구 화면에 반영한다(바뀐 게 없어도 다시 읽음 — 전체 동기화와 달리 이 파일만)
+async function resyncRole(role) {
+  if (syncing) return;
+  syncing = true;
+  const label = (roleDef(role) || {}).label || role;
+  try {
+    await refreshScan();
+    const ok = await applyRoles([role]);
+    logActivity('데이터 동기화', ok.length ? `${label} 다시 불러옴` : `${label} 읽기 오류`, ok.length > 0);
+    showToast(ok.length ? `✅ ${updEsc(label)} 다시 불러왔어요` : `⚠ ${updEsc(label)}을(를) 읽지 못했어요`, 3500);
+  } catch (e) { showToast(`⚠ 다시 불러오지 못했어요: ${updEsc(e.message)}`, 5000); }
+  finally { syncing = false; renderAll(); }
+}
+let chipMenu = null;
+const closeChipMenu = () => { if (chipMenu) { chipMenu.remove(); chipMenu = null; } };
+function openChipMenu(chipEl) {
+  closeChipMenu();
+  const role = chipEl.dataset.chip, key = chipEl.dataset.chipTool, def = roleDef(role) || {}, i = roleInfo(role);
+  const manual = (lastScan && lastScan.manualRoles || []).includes(role);
+  const files = i.entries.length ? i.entries.map(e => `<div class="cm-file" title="${updEsc(e.path || e.name)}">${updEsc(e.name)}</div>`).join('') : '<div class="cm-file none">지금 연결된 파일이 없어요</div>';
+  const m = document.createElement('div'); m.className = 'chip-menu';
+  m.innerHTML = `<div class="cm-h"><b>${updEsc(def.label || CHIP_NAME[role] || role)}</b><span>${manual ? '직접 선택한 파일' : '폴더에서 자동 인식'}</span></div>${files}`
+    + (i.entries.length ? `<button type="button" data-chip-resync="${role}">🔄 이 파일만 다시 불러오기</button>` : '')
+    + `<button type="button" data-manual-pick="${role}">📂 파일 변경…</button>`
+    + (manual ? `<button type="button" data-manual-clear="${role}">↩ 직접 선택 해제 (자동 인식으로)</button>` : '')
+    + (key === 'acting' && role === 'dailyStats' ? '<button type="button" data-open-dc>📊 팀별 인식 현황 보기</button>' : '');
+  document.body.appendChild(m);
+  const r = chipEl.getBoundingClientRect(), w = m.offsetWidth;
+  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+  chipMenu = m;
 }
 const fmtDateTime = (ms) => { const d = new Date(ms); return `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
 function renderToolStrips() {
@@ -843,6 +874,10 @@ document.getElementById('addFolderBtn').addEventListener('click', async () => {
 document.getElementById('dataScanBtn').addEventListener('click', () => syncNow({ statusEl: document.getElementById('dataStatus') }));
 // "지금 업데이트"/"데이터 업데이트" 버튼은 화면을 다시 그릴 때마다 새로 생기므로 위임으로 한 번만 연결한다.
 document.addEventListener('click', async (e) => {
+  const chip = e.target.closest('[data-chip]');
+  if (chip) { chipMenu && chipMenu.dataset.for === chip.dataset.chip + chip.dataset.chipTool ? closeChipMenu() : (openChipMenu(chip), chipMenu.dataset.for = chip.dataset.chip + chip.dataset.chipTool); return; }
+  if (chipMenu) closeChipMenu(); // 메뉴 안 버튼은 아래 처리기가 이어서 실행한다(눌린 버튼 요소는 그대로 남아 있음)
+  const rs = e.target.closest('[data-chip-resync]'); if (rs) { resyncRole(rs.dataset.chipResync); return; }
   if (e.target.closest('[data-sync-now]')) { toastEl.classList.remove('show'); syncNow(); return; }
   const dv = e.target.closest('[data-dv]'); if (dv) { dataViewMode = dv.dataset.dv; renderDataView(); return; }
   if (e.target.closest('#dataViewDefault')) { setDataViewDefault(dataViewMode); return; }
@@ -982,6 +1017,7 @@ function showAlt(byHold) {
 }
 function onKeyDown(e) {
   if (keyRecording) return;
+  if (e.key === 'Escape' && chipMenu) { closeChipMenu(); return; }
   if (e.key === 'Alt') { if (!e.repeat) { altCombo = false; clearTimeout(altHold); altHold = setTimeout(() => showAlt(true), 500); } return; }
   if (e.altKey) altCombo = true;
   if (e.key === 'Escape' && altOverlay) { hideAlt(); return; }
