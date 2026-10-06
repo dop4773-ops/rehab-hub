@@ -441,6 +441,8 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 table.cv-xl{border-collapse:collapse;table-layout:fixed;font-family:"Malgun Gothic","맑은 고딕","Pretendard Variable",sans-serif;color:#000}table.cv-xl td{padding:0 2px;overflow:hidden}
 table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:inset 0 0 0 100px rgba(255,214,0,.35)}
 .detailpanel .dnav{position:sticky;bottom:-18px;background:#fff;padding:12px 0 6px;margin-bottom:-6px;z-index:2}
+.tl-chip.clickable{cursor:pointer}.tl-chip.clickable:hover{border-color:var(--blue);background:#eef4ff}
+.cv-note{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#7a5a12;background:#fff8e6;border-radius:9px;padding:7px 11px;margin-bottom:8px}.cv-note .lg{width:14px;height:14px;border-radius:4px;background:#fff0b8;border:2px solid #e0a800;display:inline-block;flex-shrink:0}
 .ctxmenu{position:fixed;z-index:300;min-width:190px;background:#fff;border:1px solid #cfdbf5;border-radius:11px;box-shadow:0 8px 26px rgba(70,90,150,.22);padding:5px;display:flex;flex-direction:column}
 .ctxmenu button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:7px;font-size:12.5px;font-weight:700;color:#2f4378;cursor:pointer}.ctxmenu button:hover{background:#eef2fb}
 .ctxmenu .who{font-size:11px;color:var(--muted);padding:4px 10px 3px;font-weight:700}
@@ -2633,7 +2635,7 @@ function renderSaturdayPreview(wrap, tabsHtml){
     html += `</tbody></table></div>`;
     if(cardOnlyList.length){
       html += `<div class="occ-title">전체시간표(원본)엔 토요일 일정이 있는데 이번 토요일&공휴일 시간표엔 없는 환자 (참고용 · ${cardOnlyList.length}명)</div>
-      <div class="timeline-row">${cardOnlyList.map(c=>`<div class="tl-chip"><span class="tl-time">${esc(c.name)}</span><span class="tl-loc">${esc(c.room||'')}</span></div>`).join('')}</div>`;
+      <div class="timeline-row">${cardOnlyList.map((c,i)=>`<div class="tl-chip clickable" data-ci="${i}" title="클릭하면 전체시간표 카드를 팝업으로 봅니다"><span class="tl-time">${esc(c.name)}</span><span class="tl-loc">${esc(c.room||'')}</span></div>`).join('')}</div>`;
     }
   }
   wrap.innerHTML = html;
@@ -2642,6 +2644,7 @@ function renderSaturdayPreview(wrap, tabsHtml){
     const c = lastSatPreview.cellMap.get(td.dataset.t+'|'+td.dataset.th);
     if(c) showSaturdayCellDetail(c);
   }));
+  wrap.querySelectorAll('.tl-chip[data-ci]').forEach(el=>el.addEventListener('click', ()=>{ const c=cardOnlyList[+el.dataset.ci]; if(c) openCardPopup(c, satCardHighlights(c), '전체시간표(원본)의 토요일/공휴일 칸에 적힌 치료는 노란 칸이에요 — 이번 토요일&공휴일 시간표에는 없는 환자예요'); }));
 }
 function showSaturdayCellDetail(c){
   const isWeekday = c.context==='weekday';
@@ -3488,6 +3491,32 @@ function fitCardZoom(){
   const wrap=document.getElementById('cvWrap'), z=document.getElementById('cvZoom'); if(!wrap||!z||!cardShown) return;
   z.style.zoom=Math.min(1,(wrap.clientWidth-10)/cardShown.width);
 }
+// 카드 한 장을 엑셀 원본 모양으로 그릴 준비(상세 패널과 팝업 공용). hlFn(cells,c0,height) → 칠할 칸 Set
+async function cardRenderData(card, hlFn){
+  const book=card.floor===3?state.card3Book:state.card10Book;
+  const cells=await getSheetCells(book,card.sheet), view=await RehabCore.getSheetView(book,card.sheet);
+  const c0=card.headCol, nextTop=findCardBlocks(cells).filter(b=>b.col===c0&&b.row>card.headRow).map(b=>b.row)[0];
+  const height=Math.min(nextTop?nextTop-card.headRow:26,40), hl=hlFn?hlFn(cells,c0,height):new Set();
+  const out=RehabCore.renderRegion(view,cells,{r0:card.headRow,c0,rows:height,cols:23,hl});
+  return {html:out.html,width:out.width,hl,title:`${card.floor}F ${card.name} 카드 (${card.sheet} 시트)`};
+}
+// 토요일&공휴일 칸 중 토요일 시간표에서 확인하는 치료(작업·연하·인지·연하전기)가 적힌 칸
+const satCardHighlights=(card)=>(cells,c0,height)=>{
+  const hl=new Set(), blk={row:card.headRow,col:c0}, end=card.headRow+height-1, hdr=findTimeHeader(cells,blk,end); if(!hdr) return hl;
+  const dayCols=cardDayCols(cells,blk,hdr.row,hdr.hasLocCol), col=dayCols['토요일/공휴일']; if(!col) return hl;
+  for(const row of cardRows(cells,blk,hdr,dayCols,end)) if(/작업치료|연하치료|인지치료|연하전기/.test(row.texts['토요일/공휴일']||'')) hl.add(numToCol(col)+row.row);
+  return hl;
+};
+// 어디서든 카드를 팝업으로 보여준다(미리보기의 참고용 명단 등)
+async function openCardPopup(card, hlFn, note){
+  const title=document.getElementById('cardModalTitle'), body=document.getElementById('cardModalBody');
+  title.textContent=`📇 ${card.floor}F ${card.name} · 전체시간표 카드`; body.innerHTML='<div class="cv-none">카드를 불러오는 중…</div>';
+  document.getElementById('cardModal').classList.add('show');
+  try{
+    const d=await cardRenderData(card,hlFn);
+    body.innerHTML=(note||d.hl.size?`<div class="cv-note">${d.hl.size?'<i class="lg"></i>':''}${note||'노란 칸이 관련된 칸이에요'}</div>`:'')+d.html;
+  }catch(e){ console.error(e); body.innerHTML=`<div class="cv-none">카드를 그리지 못했어요: ${esc(e.message||String(e))}</div>`; }
+}
 async function renderCardSection(issue){
   const box=document.getElementById('cardSec'); if(!box) return; const my=++cardSecToken; cardShown=null;
   const card=cardFinder && cardFinder(String(issue.patient||'').replace(/\s*\(외래\)\s*$/,'').trim(), issue.floor); // 이름 뒤 "(외래)" 표시는 떼고 찾는다
@@ -3495,13 +3524,10 @@ async function renderCardSection(issue){
   if(!card){ box.innerHTML=head()+'<div class="cv-none">전체시간표(원본)에서 이 환자의 카드를 찾지 못했어요.</div>'; return; }
   box.innerHTML=head()+'<div class="cv-none">카드를 불러오는 중…</div>';
   try{
-    const book=card.floor===3?state.card3Book:state.card10Book;
-    const cells=await getSheetCells(book,card.sheet), view=await RehabCore.getSheetView(book,card.sheet);
+    const d=await cardRenderData(card,(cells,c0,height)=>cardHighlights(issue,card,cells,c0,height));
     if(my!==cardSecToken) return;
-    const c0=card.headCol, nextTop=findCardBlocks(cells).filter(b=>b.col===c0&&b.row>card.headRow).map(b=>b.row)[0];
-    const height=Math.min(nextTop?nextTop-card.headRow:26,40), hl=cardHighlights(issue,card,cells,c0,height);
-    const out=RehabCore.renderRegion(view,cells,{r0:card.headRow,c0,rows:height,cols:23,hl});
-    cardShown={html:out.html,width:out.width,title:`${card.floor}F ${card.name} 카드 (${card.sheet} 시트)`};
+    const out={html:d.html,width:d.width}, hl=d.hl;
+    cardShown={html:d.html,width:d.width,title:d.title};
     box.innerHTML=head(` <small>(엑셀 원본 그대로 · ${esc(card.sheet)} 시트)</small>${hl.size?'<span class="legend"><i class="lg"></i>이 불일치와 관련된 칸</span>':''}<button class="btn sm" id="cardBig">⤢ 크게 보기</button>`)
       +`<div class="cv-wrap" id="cvWrap"><div class="cv-zoom" id="cvZoom">${out.html}</div></div>`
       +(hl.size?'':`<div class="cv-none" style="margin-top:6px">${issue.category==='location'&&issue.time?`카드에서 <b>${esc(issue.time)}</b> 시간의 치료위치(${esc((issue.detail||{}).loc||'')}) 기록을 찾지 못했어요.`:'이 항목은 카드 안에서 칠할 칸이 없어 카드만 보여드려요.'}</div>`);
