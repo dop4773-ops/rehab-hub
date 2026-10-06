@@ -4,6 +4,10 @@
 (function (root) {
 if (typeof require === 'function' && typeof module !== 'undefined') { require('./xlsx-reader.js'); require('./normalize.js'); }
 const { normalizeText, getCell, splitRef, getSheetCells, normKey, normDoctor } = root.RehabCore;
+// 치료종류 글자 → sot/rdt/ccrt. ERDT(연하전기)는 교차검증 대상이 아니라 비워 둔다(안 그러면 "RDT"가 들어 있어 RDT로 잘못 잡힘).
+function handoverType(raw){
+  return /(?<!E)RDT/i.test(raw) ? 'rdt' : /CCRT/i.test(raw) ? 'ccrt' : /SOT/i.test(raw) ? 'sot' : '';
+}
 async function parseHandoverSheet(book){
   const sh = book.sheets.find(s=>/인수인계/.test(s.name)) || book.sheets[0];
   if(!sh) return [];
@@ -25,7 +29,7 @@ async function parseHandoverSheet(book){
     const therapist=therCol?normalizeText(getCell(cells,r,therCol)):'';
     const doctor=doctorCol?normDoctor(getCell(cells,r,doctorCol)):'';
     const typeRaw=typeCol?normalizeText(getCell(cells,r,typeCol)):'';
-    const type = /RDT/i.test(typeRaw) ? 'rdt' : /CCRT/i.test(typeRaw) ? 'ccrt' : /SOT/i.test(typeRaw) ? 'sot' : '';
+    const type = handoverType(typeRaw);
     list.push({name, therapist, doctor, type, row:r});
   }
   return list;
@@ -37,7 +41,7 @@ function handoverListFromLiveRecords(records){
     const therapist=normalizeText(r.therapist||'');
     const doctor=normDoctor(r.doctor||'');
     const typeRaw=normalizeText(r.type||'');
-    const type = /RDT/i.test(typeRaw) ? 'rdt' : /CCRT/i.test(typeRaw) ? 'ccrt' : /SOT/i.test(typeRaw) ? 'sot' : '';
+    const type = handoverType(typeRaw);
     list.push({name, therapist, doctor, type, row:0});
   }
   return list;
@@ -52,7 +56,7 @@ function buildHandoverIndex(list){
   return map;
 }
 
-const api = { parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex };
+const api = { handoverType, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex };
 root.RehabCore = Object.assign(root.RehabCore || {}, api);
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
