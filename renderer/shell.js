@@ -374,7 +374,6 @@ sidebarBtn.addEventListener('click', () => {
   const c = !sidebarEl.classList.contains('collapsed'); setSidebar(c);
   if (settings.sidebar === 'last') try { localStorage.setItem(SIDEBAR_KEY, c ? '1' : '0'); } catch (e) { /* 저장 실패해도 이번 실행엔 적용됨 */ }
 });
-document.querySelectorAll('[data-goto]').forEach(el => el.addEventListener('click', () => showView(el.dataset.goto)));
 
 // ── 렌더링 ─────────────────────────────────────────────────
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -612,6 +611,15 @@ function renderWorkbench(sm, ctx) {
   ];
   const okN = steps.filter(s => s[1] === 'ok').length;
   document.getElementById('wbFlow').innerHTML = '오늘 ' + steps.map((s, i) => `${i ? '<i class="ln"></i>' : ''}<span class="dot ${s[1] === 'ok' ? '' : s[1]}" title="${updEsc(s[0] + ' — ' + s[2])}">${s[1] === 'ok' ? '✓' : s[1] === 'bad' ? '!' : s[1] === 'off' ? '–' : i + 1}</span>`).join('') + `<span style="margin-left:6px">${okN}/${steps.length}</span>`;
+  // 퇴근 전 체크 한 줄: 아직 남은 것(오래된 파일·교차검증 불일치·QA 오류·낡은 인수인계·백업)을 눌러서 바로 갈 수 있게 모아 보여 준다
+  { const left = [], hf = handoverFreshness();
+    if (ctx.o.cls !== 'ok' || ctx.missReq.length) left.push(['data', '파일 업데이트']);
+    if (cross && cross.count) left.push(['cross', `교차검증 ${cross.count}건${cross.carry && cross.carry.hot ? ` (3일↑ ${cross.carry.hot})` : ''}`]);
+    if (!acting) left.push(['acting', 'QA 파일 올리기']); else if (acting.count) left.push(['acting', `QA 오류 ${acting.count}건`]);
+    if (hf.cls !== 'ok') left.push(['ho', `인수인계 ${hf.at ? hf.age : '못 가져옴'}`]);
+    if (bk && bk.level !== 'ok' && bk.level !== 'off') left.push(['backup', '백업 확인']);
+    document.getElementById('wbEnd').innerHTML = `<b class="${left.length ? 'warn' : 'ok'}">${new Date().getHours() >= 15 ? '퇴근 전' : '오늘'} ${left.length ? `남은 것 ${left.length}` : '✅ 모두 확인했어요'}</b>`
+      + left.map(([k, t]) => k === 'ho' ? `<button class="wb-endchip" data-ho-refresh title="누르면 지금 다시 가져와요">${updEsc(t)}</button>` : `<button class="wb-endchip" data-goto="${k}">${updEsc(t)}</button>`).join(''); }
   // 도구 타일: 핵심 숫자 · 추세/증감 · 바로 하는 일
   const dl = tr.hasPrev && tr.delta ? `<span class="${tr.delta > 0 ? 'up' : 'dn'}">${tr.delta > 0 ? '▲' : '▼'}${Math.abs(tr.delta)}</span>` : '';
   const hoT = handoverModifiedToday();
@@ -1043,6 +1051,7 @@ document.addEventListener('click', async (e) => {
   const chip = e.target.closest('[data-chip]');
   if (chip) { chipMenu && chipMenu.dataset.for === chip.dataset.chip + chip.dataset.chipTool ? closeChipMenu() : (openChipMenu(chip), chipMenu.dataset.for = chip.dataset.chip + chip.dataset.chipTool); return; }
   if (chipMenu) closeChipMenu(); // 메뉴 안 버튼은 아래 처리기가 이어서 실행한다(눌린 버튼 요소는 그대로 남아 있음)
+  const gt = e.target.closest('[data-goto]'); if (gt) { showView(gt.dataset.goto); return; } // 화면 이동 버튼(홈이 다시 그려져도 동작하도록 위임으로 처리)
   const rs = e.target.closest('[data-chip-resync]'); if (rs) { resyncRole(rs.dataset.chipResync); return; }
   if (e.target.closest('[data-ho-refresh]')) { refreshHandoverNow(); return; }
   if (e.target.closest('[data-sync-now]')) { toastEl.classList.remove('show'); syncNow(); return; }

@@ -152,6 +152,11 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         d.getElementById('histOpen')?.click(); await new Promise(r=>setTimeout(r,300)); const txt=d.getElementById('histModalBody').textContent; d.getElementById('histClose').click();
         if(!withWho||!/담당자별 반복/.test(txt)) throw new Error('담당자 기록이 이상해요: '+JSON.stringify({withWho,total:vs.length,hasSec:/담당자별 반복/.test(txt)}));
         return {withWho,total:vs.length}; } finally { if(keep==null) localStorage.removeItem(KEY); else localStorage.setItem(KEY,keep); await w.handleRun(); } })()`));
+    await step('홈: 퇴근 전 체크 한 줄(남은 것 칩이 눌러서 이동)', async () => await ev(`(async()=>{ document.querySelector('[data-nav=home]').click(); await new Promise(r=>setTimeout(r,300)); renderHome(); const e=document.getElementById('wbEnd'), chips=[...e.querySelectorAll('.wb-endchip')];
+      if(!/남은 것 \\d+|모두 확인/.test(e.textContent)) throw new Error('퇴근 전 체크 문구가 이상해요: '+e.textContent); const n=+(e.textContent.match(/남은 것 (\\d+)/)||[0,0])[1]; if(n!==chips.length) throw new Error('남은 개수와 칩 수가 달라요: '+n+'/'+chips.length);
+      const go=chips.find(c=>c.dataset.goto); let moved=null; if(go){ go.click(); await new Promise(r=>setTimeout(r,300)); moved=document.querySelector('.view.active').dataset.view===go.dataset.goto; document.querySelector('[data-nav=home]').click(); if(!moved) throw new Error('칩을 눌러도 화면이 안 바뀌어요'); }
+      renderHome(); const tb=document.querySelector('#homeTodo [data-goto]'); let todoMoved=null; if(tb){ tb.click(); await new Promise(r=>setTimeout(r,300)); todoMoved=document.querySelector('.view.active').dataset.view===tb.dataset.goto; document.querySelector('[data-nav=home]').click(); if(!todoMoved) throw new Error('오늘 할 일의 이동 버튼이 안 먹어요: '+tb.dataset.goto); }
+      return {text:e.textContent.slice(0,80), chips:chips.length, moved, todoMoved}; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';

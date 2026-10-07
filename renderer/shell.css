@@ -522,3 +522,7 @@ table.cv-xl{border-collapse:collapse;table-layout:fixed;font-family:"Malgun Goth
 .ps-cardwrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff;padding:4px;cursor:zoom-in}.ps-cardnone{font-size:12px;color:#8a97ad;padding:6px 2px}
 .ps-big{position:fixed;inset:0;z-index:9100;background:rgba(40,52,84,.55);display:flex;align-items:center;justify-content:center;padding:3vh 3vw}.ps-bigbox{background:#fff;border-radius:14px;padding:14px 16px;max-width:96vw;max-height:94vh;overflow:hidden;box-shadow:0 20px 50px rgba(30,45,90,.4)}.ps-bigbox h3{margin:0 0 8px;font-size:14px;display:flex;gap:10px;align-items:center}.ps-bigbox h3 kbd{font-size:11px;font-weight:600;color:#8a97ad;border:1px solid var(--border);border-radius:6px;padding:1px 6px;margin-left:auto}
 .ps-acts{margin:10px 0 2px}
+
+.wb-end{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:6px;font-size:11px;color:var(--sub)}.wb-end b{font-weight:800}.wb-end b.ok{color:var(--green)}.wb-end b.warn{color:var(--orange)}
+.wb-endchip{border:1px solid #efd9ad;background:#fffaf0;color:#8a5a0a;border-radius:999px;padding:1px 9px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.wb-endchip:hover{background:#fff3dc}
+body:not(.home-wb) .wb-end{display:none}
