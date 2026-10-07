@@ -40,7 +40,7 @@
 
   let ov = null, results = [], sel = 0, input = null;
   const isOpen = () => !!ov;
-  function close() { if (!ov) return; ov.remove(); ov = null; window.__psOpen = false; }
+  function close() { closeBig(); if (!ov) return; ov.remove(); ov = null; window.__psOpen = false; }
   // 화면이 아직 처음 열리는 중일 수 있어서(도구는 처음 열 때 불러옴) 필요한 칸이 생길 때까지 잠깐 기다렸다가 실행한다
   const whenReady = (key, probe, fn) => { let n = 0; const t = setInterval(() => { const d = viewDoc(key); if (d && probe(d)) { clearInterval(t); fn(d); } else if (++n > 30) clearInterval(t); }, 150); };
   const setSearch = (d, id, v) => { const el = d.getElementById(id); if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } };
@@ -78,9 +78,36 @@
     const qaLines = d.qa ? (`${d.qa.errors.length ? `<div class="ps-li"><span class="ps-cat bad">오류 ${d.qa.errors.length}</span> ${esc(d.qa.errors.slice(0, 3).map(x => x.type).join(' · '))}</div>` : ''}${d.qa.missing.length ? `<div class="ps-li"><span class="ps-cat warn">미액팅 ${d.qa.missing.length}</span> ${esc(d.qa.missing.slice(0, 3).map(x => `${x.timeSlot || ''} ${x.type || ''}`.trim()).join(' · '))}</div>` : ''}${!d.qa.errors.length && !d.qa.missing.length ? '<div class="ps-li ps-ok">✔ 치료기록 확인할 것 없음</div>' : ''}`) : '<div class="ps-li muted">치료기록 QA 화면을 한 번 열어 파일을 올리면 여기에 보여요</div>';
     body.innerHTML = `<div class="ps-list">${results.map((r, i) => `<button type="button" class="ps-row${i === sel ? ' on' : ''}" data-ps-i="${i}"><b>${esc(r.name)}</b><span>${esc([r.room ? r.room + '호' : '', r.floor ? r.floor + 'F' : '', r.category, r.rm].filter(Boolean).join(' · '))}</span></button>`).join('')}</div>`
       + `<div class="ps-detail"><div class="ps-name">${esc(p.name)}<small>${esc([p.room ? p.room + '호' : '', p.floor ? p.floor + 'F' : '', p.category, p.rm ? '주치의 ' + p.rm : ''].filter(Boolean).join(' · '))}</small></div>${kinds ? `<div class="ps-kinds">담당 치료사 · ${esc(kinds)}</div>` : ''}`
+      + `<div class="ps-acts"><button class="btn primary" data-ps-go="${d.cross.length ? 'cross' : 'grand'}">${d.cross.length ? '교차검증에서 보기' : '그랜드라운딩에서 보기'} ↵</button>${d.cross.length ? '<button class="btn" data-ps-go="grand">그랜드라운딩</button>' : ''}<button class="btn" data-ps-go="handover">인수인계</button>${d.qa && d.qa.errors.length ? '<button class="btn" data-ps-go="qaerr">QA 오류</button>' : ''}${d.qa && d.qa.missing.length ? '<button class="btn" data-ps-go="qamiss">미액팅</button>' : ''}</div>`
       + `<div class="ps-sec">인수인계 <small>${d.ho.length}건</small></div>${hoLines}<div class="ps-sec">교차검증 <small>${d.cross.length}건</small></div>${crossLines}<div class="ps-sec">치료기록 QA</div>${qaLines}`
-      + `<div class="ps-acts"><button class="btn primary" data-ps-go="${d.cross.length ? 'cross' : 'grand'}">${d.cross.length ? '교차검증에서 보기' : '그랜드라운딩에서 보기'} ↵</button>${d.cross.length ? '<button class="btn" data-ps-go="grand">그랜드라운딩</button>' : ''}<button class="btn" data-ps-go="handover">인수인계</button>${d.qa && d.qa.errors.length ? '<button class="btn" data-ps-go="qaerr">QA 오류</button>' : ''}${d.qa && d.qa.missing.length ? '<button class="btn" data-ps-go="qamiss">미액팅</button>' : ''}</div></div>`;
+      + `<div class="ps-cardsec" id="psCard"></div></div>`;
+    fillCard(p);
   }
+  // 전체시간표 카드(엑셀 원본 그대로) — 교차검증 화면이 이미 불러 둔 시간표에서 그려서 상세 아래에 넣는다. 클릭하면 크게 본다.
+  let cardToken = 0, cardNow = null;
+  async function fillCard(p) {
+    const my = ++cardToken, box = ov && ov.querySelector('#psCard'); if (!box) return; cardNow = null;
+    const api = toolFn('cross', '__cardApi');
+    if (!api) { box.innerHTML = '<div class="ps-cardhead">전체시간표 카드</div><div class="ps-cardnone">교차검증 화면이 준비되면 카드가 보여요.</div>'; return; }
+    box.innerHTML = '<div class="ps-cardhead">전체시간표 카드</div><div class="ps-cardnone">불러오는 중…</div>';
+    const d = await api(p.name, p.floor);
+    if (my !== cardToken || !ov || !ov.querySelector('#psCard')) return;
+    if (!d) { box.innerHTML = '<div class="ps-cardhead">전체시간표 카드</div><div class="ps-cardnone">전체시간표에서 이 환자의 카드를 찾지 못했어요(외래·퇴원·시간표 미연결일 수 있어요).</div>'; return; }
+    cardNow = d;
+    box.innerHTML = `<div class="ps-cardhead">📇 ${esc(d.floor)}F 전체시간표 카드 <span class="muted" style="font-weight:600">· ${esc(d.sheet)} 시트</span><button type="button" class="btn" data-ps-big>⤢ 크게</button></div><div class="ps-cardwrap" data-ps-big><div class="ps-cardzoom">${d.html}</div></div>`;
+    const wrap = box.querySelector('.ps-cardwrap'), z = box.querySelector('.ps-cardzoom'); z.style.zoom = Math.min(1, (wrap.clientWidth - 10) / d.width);
+  }
+  function openBig() {
+    if (!cardNow || document.querySelector('.ps-big')) return;
+    const b = document.createElement('div'); b.className = 'ps-big'; window.__psBig = true;
+    b.innerHTML = `<div class="ps-bigbox"><h3>📇 ${esc(cardNow.title)}<kbd>Esc / 바깥을 누르면 닫기</kbd></h3><div class="ps-bigzoom">${cardNow.html}</div></div>`;
+    document.body.appendChild(b);
+    const box = b.querySelector('.ps-bigbox'), z = b.querySelector('.ps-bigzoom'), head = b.querySelector('h3');
+    z.style.zoom = Math.max(0.3, Math.min(1.4, (window.innerWidth * 0.94 - 60) / cardNow.width, (window.innerHeight * 0.94 - head.offsetHeight - 60) / cardNow.height));
+    b.addEventListener('mousedown', (e) => { if (!box.contains(e.target)) closeBig(); });
+  }
+  function closeBig() { document.querySelector('.ps-big')?.remove(); window.__psBig = false; }
+  window.__psCloseBig = closeBig;
   function open() {
     if (ov) { input.focus(); input.select(); return; }
     ov = document.createElement('div'); ov.className = 'ps-overlay'; window.__psOpen = true;
@@ -95,6 +122,7 @@
     ov.addEventListener('click', (e) => {
       const r = e.target.closest('[data-ps-i]'); if (r) { sel = +r.dataset.psI; render(); input.focus(); return; }
       const c = e.target.closest('[data-ps-q]'); if (c) { input.value = c.dataset.psQ; results = search(input.value); sel = 0; render(); input.focus(); return; }
+      if (e.target.closest('[data-ps-big]')) { openBig(); return; }
       const g = e.target.closest('[data-ps-go]'); if (g && results[sel]) go(g.dataset.psGo, results[sel]);
     });
   }

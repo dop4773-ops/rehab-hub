@@ -3898,6 +3898,8 @@ document.getElementById('histModal').addEventListener('click',e=>{ if(e.target.i
 handoverLiveFetchPromise=fetchHandoverLive(); // 페이지를 열면 곧바로 실시간 인수인계를 가져온다(가져오기 전용, 아무것도 전송하지 않음)
 // 검증 스크립트(scripts/golden.js)가 화면 데이터를 읽는 통로(CSP가 eval을 막음). 읽기 전용.
 // 환자 빠른 검색(Ctrl+K)이 읽는 이슈 목록 — 읽기 전용
+// 환자 빠른 검색(Ctrl+K)이 쓰는 전체시간표 카드(엑셀 원본 그대로, 읽기 전용) — 없으면 null
+window.__cardApi=async(name,floor)=>{ try{ const card=cardFinder&&cardFinder(String(name||'').replace(/\s*\(외래\)\s*$/,'').trim(), floor?+floor:null); if(!card) return null; const d=await cardRenderData(card,null); return {html:d.html,width:d.width,height:d.height,title:d.title,sheet:card.sheet,floor:card.floor}; }catch(e){ return null; } };
 window.__issuesApi=()=>issues.map(i=>({patient:i.patient,room:i.room,category:i.category,title:i.title,line:i.line}));
 window.__testHooks={ issues:()=>issues, state:()=>state, statusSheet:()=>(window.__statusSheetName||'') };
 </script>

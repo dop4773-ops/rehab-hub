@@ -1249,6 +1249,7 @@ function showAlt(byHold) {
 }
 function onKeyDown(e) {
   if (keyRecording) return;
+  if (e.key === 'Escape' && window.__psBig) { window.__psCloseBig(); return; } // 카드 크게 보기가 열려 있으면 그것만 먼저 닫는다
   if (e.key === 'Escape' && window.__psOpen) { window.__psClose(); return; } // 환자 빠른 검색이 열려 있으면 Esc는 그것만 닫는다
   if (e.key === 'Escape' && chipMenu) { closeChipMenu(); return; }
   if (e.key === 'Alt') { if (!e.repeat) { altCombo = false; clearTimeout(altHold); altHold = setTimeout(() => showAlt(true), 500); } return; }

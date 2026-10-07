@@ -515,3 +515,10 @@ body.home-wb .home-main>.card{min-width:0}
 .ps-sec{margin:12px 0 4px;font-size:11px;font-weight:800;color:#8a97ad}.ps-sec small{font-weight:600}.ps-li{padding:3px 0;line-height:1.45}.ps-li.ps-ok{color:var(--green)}.ps-cat{display:inline-block;font-size:10.5px;font-weight:800;border-radius:99px;padding:1px 8px;margin-right:4px;background:#eaf0ff;color:#4f6fb8}.ps-cat.bad{background:#fdeaec;color:#d4606c}.ps-cat.warn{background:#fff3dc;color:#b9780f}
 .ps-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}.ps-foot{padding:8px 16px;border-top:1px solid var(--border);font-size:11px;color:#8a97ad}
 @media (max-width:760px){.ps-body{grid-template-columns:1fr}.ps-list{border-right:0;border-bottom:1px solid var(--border)}}
+
+/* 환자 빠른 검색 안의 전체시간표 카드(엑셀 원본 모양 — 교차검증 화면과 같은 표 서식) */
+table.cv-xl{border-collapse:collapse;table-layout:fixed;font-family:"Malgun Gothic","맑은 고딕","Pretendard Variable",sans-serif;color:#000}table.cv-xl td{padding:0 2px;overflow:hidden}
+.ps-cardsec{margin-top:6px}.ps-cardhead{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;color:#8a97ad;margin:12px 0 4px}.ps-cardhead .btn{padding:2px 9px;font-size:11px;margin-left:auto}
+.ps-cardwrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff;padding:4px;cursor:zoom-in}.ps-cardnone{font-size:12px;color:#8a97ad;padding:6px 2px}
+.ps-big{position:fixed;inset:0;z-index:9100;background:rgba(40,52,84,.55);display:flex;align-items:center;justify-content:center;padding:3vh 3vw}.ps-bigbox{background:#fff;border-radius:14px;padding:14px 16px;max-width:96vw;max-height:94vh;overflow:hidden;box-shadow:0 20px 50px rgba(30,45,90,.4)}.ps-bigbox h3{margin:0 0 8px;font-size:14px;display:flex;gap:10px;align-items:center}.ps-bigbox h3 kbd{font-size:11px;font-weight:600;color:#8a97ad;border:1px solid var(--border);border-radius:6px;padding:1px 6px;margin-left:auto}
+.ps-acts{margin:10px 0 2px}
