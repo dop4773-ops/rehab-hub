@@ -91,12 +91,38 @@ function initUpdater(app, ipcMain, getMainWindow) {
   autoUpdater.on('error', (err) => { log('error', { message: err?.message || '알 수 없는 오류' }); sendStatus('error', { message: err?.message || '알 수 없는 오류가 발생했습니다.' }); });
   autoUpdater.on('download-progress', (p) => sendStatus('downloading', { percent: Math.round(p.percent), auto: getMode() === 'auto' }));
 
+  // ── 설치 전 작업 보호 ─────────────────────────────────────────
+  // 화면(렌더러)에 메시지를 보내고 답을 기다린다(답이 없으면 시간이 지난 뒤 fallback으로 계속 — 업데이트가 멈추지 않게).
+  function askRenderer(channel, replyChannel, fallback, ms = 1500) {
+    return new Promise((resolve) => {
+      const win = getMainWindow(); if (!win || win.isDestroyed()) return resolve(fallback);
+      const timer = setTimeout(() => { ipcMain.removeAllListeners(replyChannel); resolve(fallback); }, ms);
+      ipcMain.removeAllListeners(replyChannel);
+      ipcMain.once(replyChannel, (e, payload) => { clearTimeout(timer); resolve(payload === undefined ? fallback : payload); });
+      win.webContents.send(channel);
+    });
+  }
+  const askUnsaved = async () => { const r = await askRenderer('app:check-unsaved', 'app:unsaved', []); return Array.isArray(r) ? r : []; }; // 저장 안 된 작업 목록(글)
+  // 설치(=앱 종료) 직전: 화면이 하던 화면을 저장하게 하고, 브라우저 저장소(설정·작업 기록)가 디스크에 완전히 기록되게 한다
+  async function prepareForInstall() {
+    await askRenderer('app:prepare-quit', 'app:prepared', null);
+    try { const { session } = require('electron'); if (session && session.defaultSession) await session.defaultSession.flushStorageData(); } catch (e) { /* 저장소 비우기를 못 해도 설치는 계속 */ }
+  }
+
   let installTriggered = false;
   // 자동 모드: 다운로드가 끝나는 즉시 사람 개입 없이 조용히 설치하고 재시작한다.
-  function performSilentInstall() {
+  async function performSilentInstall() {
     if (installTriggered) return;
+    // 작업 중인 내용(직접 올린 파일·열려 있는 수정 창 등)이 있으면 지금 끄지 않고, 프로그램을 끌 때 설치되게 미룬다
+    const busy = await askUnsaved();
+    if (busy.length) {
+      log('install', { source: '자동 설치 미룸(작업 중)', message: busy.join(' / ') });
+      sendStatus('downloaded', { version: downloadedVersion, postponed: true, busy });
+      return;
+    }
     installTriggered = true;
     log('install', { source: '자동' });
+    await prepareForInstall();
     setImmediate(() => {
       try { autoUpdater.quitAndInstall(true, true); }
       catch (e) {
@@ -136,8 +162,9 @@ function initUpdater(app, ipcMain, getMainWindow) {
     }
   });
 
-  ipcMain.handle('updater:quitAndInstall', () => {
+  ipcMain.handle('updater:quitAndInstall', async () => {
     log('install', { source: '수동' });
+    await prepareForInstall(); // 화면이 하던 작업을 저장하게 한 뒤 설치(사용자가 직접 누른 것이라 저장 안 된 작업이 있어도 막지 않는다 — 화면에서 먼저 경고함)
     autoUpdater.quitAndInstall(true, true); // 조용히 설치(설치 마법사 창 없이)하고 끝나면 자동 재실행 — 자동 모드와 같은 방식
     return { status: 'ok' };
   });

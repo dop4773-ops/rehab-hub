@@ -3001,6 +3001,18 @@ if (document.fonts && document.fonts.ready) {
 
 loadFromCache();
 loadData(false);
+
+// 업데이트·재시작 뒤 "하던 화면"으로 돌아가기 위한 화면 상태(검색어·주의/수정 필터·치료 종류·정렬). 목록이 불러와지기 전에는 false → 셸이 다시 시도한다.
+window.__getWorkState = () => ({ q: document.getElementById('searchName').value, warn: (document.querySelector('#warnChipRow .chip.active') || { dataset: {} }).dataset.warn || 'all', type: (document.querySelector('#typeChipRow .chip.active') || { dataset: {} }).dataset.type || 'all', sort: document.getElementById('sortOrder').value });
+window.__setWorkState = (st) => { try {
+  if (!st || !(typeof allRecords !== 'undefined' && allRecords.length)) return false;
+  const warnEl = document.querySelector(`#warnChipRow .chip[data-warn="${st.warn}"]`), typeEl = document.querySelector(`#typeChipRow .chip[data-type="${st.type}"]`);
+  if (warnEl && st.warn !== 'all') setWarnFilter(st.warn, warnEl); if (typeEl && st.type !== 'all') setTypeFilter(st.type, typeEl);
+  const so = document.getElementById('sortOrder'); if (st.sort && so.value !== st.sort) { so.value = st.sort; so.dispatchEvent(new Event('change')); }
+  const q = document.getElementById('searchName'); if (st.q) { q.value = st.q; q.dispatchEvent(new Event('input')); }
+  return true; } catch (e) { return false; } };
+// 저장 안 된 작업(열려 있는 수정·추가 창)이 있으면 알려 준다 — 자동 업데이트가 이 창을 닫아 버리지 않게 셸이 설치를 미룬다.
+window.__unsavedWork = () => (document.getElementById('editModal') && document.getElementById('editModal').classList.contains('open') ? '인수인계 수정·추가 창이 열려 있어요' : null);
 </script>
 
 </body>

@@ -8,6 +8,7 @@
   <!-- 인터넷 없이도 동작하도록 라이브러리를 앱 안(renderer/vendor)에 넣어 둔다 -->
   <script src="../vendor/xlsx.full.min.js"></script>
 <script src="../core/therapistview.js"></script>
+<script src="../core/workstate.js"></script>
   <script src="../vendor/jszip.min.js"></script>
   <style>
     :root {
@@ -1866,6 +1867,22 @@ ${text}`,
   // ==================== 미액팅 오더 확인 (병합 기능) ====================
   const WEEKDAY_CHARS = ['일','월','화','수','목','금','토'];
   const msState = { schedFiles:{}, schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[], dcResults:{}, dcFileObjs:{}, dcReparsing:false };
+  // 제외한 미액팅 칸은 앱을 다시 켜거나 업데이트해도 남도록 저장한다. 같은 시트·날짜의 같은 칸에 같은 환자·시간이 있을 때만 되살린다(시간표가 바뀌었으면 버림).
+  const QA_EXCL_KEY = 'rehab_qa_excl_slots_v1';
+  const qaExclScope = () => `${msState.schedSheetName||''}|${msState.sched && msState.sched.sheetDate ? msYmd(msState.sched.sheetDate) : ''}`;
+  const qaExclLoad = () => { try{ return JSON.parse(localStorage.getItem(QA_EXCL_KEY)) || {}; }catch(e){ return {}; } };
+  function qaExclSave(){
+    try{
+      const all = qaExclLoad(), scope = qaExclScope(), keys = msState.excludedSlots, ents = (msState.sched && msState.sched.entries) || [];
+      const list = ents.filter(e => keys.has(`${e.source}|${e.row}|${e.col}`)).map(e => ({ key:`${e.source}|${e.row}|${e.col}`, name:e.name, timeSlot:e.timeSlot, therapist:e.therapist }));
+      delete all[scope]; if(list.length) all[scope] = list;
+      const names = Object.keys(all); while(names.length > 10) delete all[names.shift()]; // 오래된 날짜부터 덜어낸다
+      localStorage.setItem(QA_EXCL_KEY, JSON.stringify(all));
+    }catch(e){ /* 저장이 안 돼도 이번 화면에는 적용됨 */ }
+  }
+  function qaExclRestore(){
+    try{ const saved = qaExclLoad()[qaExclScope()]; if(!saved) return; for(const k of RehabCore.workState.keepMatchingSlots(saved, (msState.sched && msState.sched.entries) || [])) msState.excludedSlots.add(k); }catch(e){ /* 복원 못 해도 동작에는 문제 없음 */ }
+  }
 
   function msNormText(v){ if(v==null) return ''; return String(v).replace(/\u3000/g,' ').replace(/\r\n?/g,'\n').trim(); }
   const MS_MINI_TITLE_RE = /^(ERDT|CCRT|BETTER|COMCOG)$/i;
@@ -2663,6 +2680,7 @@ ${text}`,
     const sheetRows = XLSX.utils.sheet_to_json(msState.schedWB.Sheets[sheetName], { header:1, defval:null, raw:true });
     const sched = msParseScheduleSheet(sheetRows);
     msState.sched = sched;
+    qaExclRestore();
 
     const targetDate = msPrimaryDate();
     if(sched.sheetDate && targetDate){
@@ -3241,6 +3259,7 @@ ${text}`,
       const key = toggleBtn.getAttribute('data-popover-toggle-exclude');
       if(msState.excludedSlots.has(key)) msState.excludedSlots.delete(key);
       else msState.excludedSlots.add(key);
+      qaExclSave();
       $('msInfoPopover').style.display = 'none';
       msRenderPreview();
       return;
@@ -3294,6 +3313,20 @@ ${text}`,
     }
     return out;
   }
+  // 업데이트·재시작 뒤 "하던 화면"으로 돌아가기 위한 화면 상태(탭·오더 구분·검색어·심각도·미액팅 보기·치료사별 필터). 데이터가 준비되기 전에는 false → 셸이 다시 시도한다.
+  window.__testHooks = { msState, qaExclSave, qaExclRestore }; // 점검 스크립트가 "제외한 미액팅 칸 저장·복원"을 확인하는 통로
+  window.__getWorkState = () => ({ view:(document.querySelector('#viewTabs .active')||{dataset:{}}).dataset.viewTab||'missing', scope:(document.querySelector('#orderScopeTabs .active')||{dataset:{}}).dataset.orderScope||'all', q:$('searchInput').value, sev:$('severityFilter').value, ms:(document.querySelector('.ms-view-tab.active')||{dataset:{}}).dataset.msView||'', mq:$('msSearchBox').value, thvPart, thvFilter });
+  window.__setWorkState = (st) => { try{
+    if(!st || !((state.dataRows||[]).length || msState.sched)) return false;
+    const click = (sel) => { const b = document.querySelector(sel); if(b) b.click(); };
+    if(st.scope && st.scope!=='all') click(`#orderScopeTabs [data-order-scope="${st.scope}"]`);
+    if(st.sev && $('severityFilter').value!==st.sev){ $('severityFilter').value = st.sev; $('severityFilter').dispatchEvent(new Event('change')); }
+    if(st.q){ $('searchInput').value = st.q; $('searchInput').dispatchEvent(new Event('input')); }
+    if(st.mq){ $('msSearchBox').value = st.mq; $('msSearchBox').dispatchEvent(new Event('input')); }
+    if(st.ms) click(`.ms-view-tab[data-ms-view="${st.ms}"]`);
+    thvPart = st.thvPart || 'all'; thvFilter = st.thvFilter || 'all';
+    if(st.view) click(`#viewTabs [data-view-tab="${st.view}"]`);
+    return true; }catch(e){ return false; } };
   // 환자 빠른 검색(Ctrl+K)이 읽는 결과 — 읽기 전용
   window.__qaApi = { errors: () => (state.issues||[]).filter(i=>i.severity==='오류').map(i=>({patientName:i.patientName,type:i.type,therapist:i.therapist})), missing: () => thvMissingEntries().map(x=>({name:x.name,type:x.type,timeSlot:x.timeSlot})) };
   function thvMissingTotal(){ return (msState.result||[]).filter(r=>!r.dc).reduce((s,r)=>s+Math.max(r.diff,0),0); } // 미액팅 탭 요약의 "미액팅" 숫자와 같은 식

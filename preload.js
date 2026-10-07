@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('rehab', {
   app: {
     dataDir: () => ipcRenderer.invoke('app:dataDir'),
     openDataDir: () => ipcRenderer.invoke('app:openDataDir'),
+    flags: () => ipcRenderer.invoke('app:flags'),
+    // 업데이트 설치 직전에 메인이 부르는 신호 — 하던 화면을 저장하게 하고(onPrepareQuit), 저장 안 된 작업이 있는지 묻는다(onCheckUnsaved)
+    onPrepareQuit: (cb) => ipcRenderer.on('app:prepare-quit', async () => { try { await cb(); } finally { ipcRenderer.send('app:prepared'); } }),
+    onCheckUnsaved: (cb) => ipcRenderer.on('app:check-unsaved', async () => { let r = []; try { r = await cb(); } catch (e) { /* 모르면 없는 것으로 */ } ipcRenderer.send('app:unsaved', r); }),
     setZoom: (factor) => webFrame.setZoomFactor(factor), // 설정 > 글자 크기 — 도구 화면(iframe)까지 같이 커지고 작아진다
   },
   updater: {

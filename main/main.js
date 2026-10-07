@@ -75,6 +75,7 @@ if (!gotLock) {
     registerSchedulesIpc();
     registerBackupIpc();
     registerExportIpc(() => mainWindow);
+    ipcMain.handle('app:flags', () => ({ noResume: !!process.env.REHAB_NO_RESUME })); // 점검 스크립트는 "하던 화면 복원"을 끈다
     ipcMain.handle('app:dataDir', () => app.getPath('userData'));
     ipcMain.handle('app:openDataDir', () => shell.openPath(app.getPath('userData')));
     createWindow();

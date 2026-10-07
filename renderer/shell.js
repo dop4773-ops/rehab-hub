@@ -1107,6 +1107,8 @@ function onUpdaterStatus(s) {
   else if (s.status === 'error') setUpdateStatus('업데이트 확인 실패: ' + s.message, true);
 }
 // 오른쪽 아래 안내: 자동 설치 카운트다운 / 받는 중 / 설치 준비 완료 / 업데이트 완료
+// 지금 설치 — 다시 켜면 사라지는 작업(직접 올린 파일 등)이 있으면 먼저 경고한다(work-resume.js)
+const installNow = () => (window.__guardInstall ? window.__guardInstall(() => window.rehab.updater.quitAndInstall()) : window.rehab.updater.quitAndInstall());
 let updateToastTimer = null;
 function showUpdateToast(s) {
   let el = document.getElementById('update-toast');
@@ -1119,14 +1121,19 @@ function showUpdateToast(s) {
     clearInterval(updateToastTimer);
     updateToastTimer = setInterval(() => { left--; const n = document.getElementById('ut-left'); if (n) n.textContent = Math.max(left, 0); if (left <= 0) clearInterval(updateToastTimer); }, 1000);
     document.getElementById('ut-later').addEventListener('click', () => { close(); window.rehab.updater.postpone(); });
-    document.getElementById('ut-now').addEventListener('click', () => window.rehab.updater.quitAndInstall());
+    document.getElementById('ut-now').addEventListener('click', () => installNow());
+  } else if (s.status === 'downloaded' && s.busy && s.busy.length) { // 작업 중이라 자동 설치를 미뤘을 때
+    ensure().innerHTML = `<b>🔄 새 버전 v${updEsc(s.version)} 준비됨 — 설치를 미뤘어요</b><div class="ut-msg">${s.busy.map(x => '· ' + updEsc(x)).join('<br>')}<br>작업이 끝난 뒤 프로그램을 끄면 그때 설치돼요.</div>`
+      + '<div class="ut-actions"><button class="btn" id="ut-close">닫기</button><button class="btn" id="ut-now">지금 설치</button></div>';
+    document.getElementById('ut-close').addEventListener('click', close);
+    document.getElementById('ut-now').addEventListener('click', () => installNow());
   } else if (s.status === 'downloading' && s.auto) {
     ensure().innerHTML = `<b>🔄 새 버전을 받는 중… ${s.percent ?? 0}%</b><div class="update-progress"><div style="width:${s.percent ?? 0}%"></div></div>`;
   } else if (s.status === 'downloaded' && !s.postponed && currentView() !== 'settings') {
     ensure().innerHTML = `<b>🔄 새 버전 v${updEsc(s.version)} 준비 완료</b><div class="ut-msg">재시작하면 설치됩니다. (그냥 두면 프로그램을 끌 때 설치)</div>`
       + '<div class="ut-actions"><button class="btn" id="ut-close">닫기</button><button class="btn primary" id="ut-now">재시작하여 설치</button></div>';
     document.getElementById('ut-close').addEventListener('click', close);
-    document.getElementById('ut-now').addEventListener('click', () => window.rehab.updater.quitAndInstall());
+    document.getElementById('ut-now').addEventListener('click', () => installNow());
   } else if (s.status === 'updated') {
     ensure().innerHTML = `<b>✅ v${updEsc(s.version)}(으)로 업데이트되었습니다</b><div class="ut-msg">이전 버전: v${updEsc(s.from)} · 바뀐 내용은 설정 &gt; 업데이트·정보 &gt; 「업데이트 로그」에서 볼 수 있어요.</div>`;
     clearInterval(updateToastTimer); updateToastTimer = setTimeout(close, 8000);
@@ -1165,7 +1172,7 @@ document.getElementById('updaterCheckBtn').addEventListener('click', async () =>
   const r = await window.rehab.updater.checkNow();
   if (r.status === 'dev-mode' || r.status === 'error') setUpdateStatus(r.message || '업데이트 확인에 실패했습니다.', r.status === 'error');
 });
-document.getElementById('updaterInstallBtn').addEventListener('click', () => window.rehab.updater.quitAndInstall());
+document.getElementById('updaterInstallBtn').addEventListener('click', () => installNow());
 document.getElementById('updaterOpenLogBtn').addEventListener('click', async () => { const r = await window.rehab.updater.openLog(); if (r) setUpdateStatus(r); });
 document.getElementById('updaterRepoBtn').addEventListener('click', () => window.rehab.updater.openUrl('repo'));
 

@@ -8,7 +8,7 @@ const R = require('../renderer/core/xlsx-reader.js'); const sleep = ms => new Pr
 const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 260); if (!msgs.includes(k)) msgs.push(k); };
 (async () => {
   const exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rehab-smoke-export-'));
-  const mainLog = []; const app = spawn(process.execPath, [path.join(__dirname, '..', 'node_modules', 'electron', 'cli.js'), '.', `--remote-debugging-port=${PORT}`, '--remote-allow-origins=*', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'], { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, REHAB_EXPORT_DIR: exportDir } }); // 내보내기 파일은 임시 폴더로(다운로드 폴더를 어지럽히지 않게)
+  const mainLog = []; const app = spawn(process.execPath, [path.join(__dirname, '..', 'node_modules', 'electron', 'cli.js'), '.', `--remote-debugging-port=${PORT}`, '--remote-allow-origins=*', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'], { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, REHAB_EXPORT_DIR: exportDir, REHAB_NO_RESUME: '1' } }); // 내보내기 파일은 임시 폴더로(다운로드 폴더를 어지럽히지 않게)
   app.stdout.on('data', d => mainLog.push(String(d))); app.stderr.on('data', d => mainLog.push(String(d)));
   try {
     let url; for (let i = 0; i < 60 && !url; i++) { try { const l = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json(); const p = l.find(t => t.type === 'page' && /rehab-shell/.test(t.url)); if (p) url = p.webSocketDebuggerUrl; } catch (e) {} if (!url) await sleep(500); }
@@ -130,6 +130,31 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       d.querySelector('#viewTabs [data-view-tab=missing]').click(); await sl(300); const msPrev=d.querySelector('.ms-view-tab.active').dataset.msView;
       d.querySelector('#viewTabs [data-view-tab=error]').click(); return {rows, parts:partBtns.map(b=>b.textContent.trim()).join('/'), msPrev, tabs:[...d.querySelectorAll('#viewTabs button')].map(b=>b.textContent.trim()).join('|')}; })()`));
     await step('QA: 필터·탭 버튼 순회', async () => await ev(`(async()=>{ const d=${W('acting')}.document; let c=0; for(const b of d.querySelectorAll('.seg button, .tab, [data-filter]')){ b.click(); c++; await new Promise(r=>setTimeout(r,80)); } for(const s of d.querySelectorAll('select')){ for(const o of [...s.options]){ s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); c++; } } return c; })()`));
+    await step('작업 보존: 하던 화면·필터 저장→복원, 수정 지시서 완료 표시·제외한 미액팅 칸 저장, 저장 안 된 작업 감지', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), out={}, wr=window.__workResume, c=${W('cross')}, cd=c.document;
+      // ① 교차검증 필터 상태 저장→초기화→복원
+      document.querySelector('[data-nav=cross]').click(); await sl(300); await c.handleRun(); await sl(300);
+      const q=cd.getElementById('searchInput'); q.value='가'; q.dispatchEvent(new Event('input')); cd.querySelector('.floor-row2[data-floor="10"]')?.click(); await sl(200);
+      const snap=wr.snapshot({clean:true,resume:true}); out.view=snap.view; out.crossState=snap.tools.cross;
+      q.value=''; q.dispatchEvent(new Event('input')); cd.querySelector('.floor-row2[data-floor="all"]')?.click(); await sl(200);
+      await wr.restore(snap,'update'); await sl(300); out.restoredQ=cd.getElementById('searchInput').value; out.restoredFloor=cd.querySelector('.floor-row2.active')?.dataset.floor;
+      if(out.restoredQ!=='가'||out.restoredFloor!=='10') throw new Error('필터가 복원되지 않았어요: '+JSON.stringify(out));
+      q.value=''; q.dispatchEvent(new Event('input')); cd.querySelector('.floor-row2[data-floor="all"]')?.click();
+      // ② 업데이트 복귀 표식은 10분 안에서만 유효
+      out.fresh=RehabCore.workState.resumeFresh({view:'cross',t:Date.now()-60000})&&!RehabCore.workState.resumeFresh({view:'cross',t:Date.now()-11*60000});
+      // ③ 수정 지시서 완료 표시가 저장소에 남는다
+      const DK='rehab_fix_done_v1', keepDone=localStorage.getItem(DK); cd.getElementById('btnFixPlan').click(); await sl(500);
+      const box=cd.querySelector('#fixBody input[data-k]'); if(box){ box.click(); await sl(200); out.doneSaved=JSON.parse(localStorage.getItem(DK)||'[]').length>=1; box.click(); await sl(100); }
+      if(keepDone==null) localStorage.removeItem(DK); else localStorage.setItem(DK,keepDone); cd.getElementById('fixCancel')?.click?.();
+      // ④ 제외한 미액팅 칸: 저장 → 지우고 → 복원, 내용이 바뀐 칸은 복원하지 않는다
+      const a=${W('acting')}, h=a.__testHooks, ms=h.msState, EK='rehab_qa_excl_slots_v1', keepEx=localStorage.getItem(EK), k0={sched:ms.sched,sheet:ms.schedSheetName,ex:new Set(ms.excludedSlots)};
+      try{ ms.schedSheetName='10.7(수)'; ms.sched={sheetDate:new Date(2026,9,7),entries:[{source:'메인표',row:5,col:3,name:'테스트환자',timeSlot:'09:05',therapist:'A'}]}; ms.excludedSlots=new Set(['메인표|5|3']); h.qaExclSave();
+        ms.excludedSlots=new Set(); h.qaExclRestore(); out.exclRestored=ms.excludedSlots.has('메인표|5|3');
+        ms.excludedSlots=new Set(); ms.sched.entries[0].name='다른환자'; h.qaExclRestore(); out.exclSkipped=!ms.excludedSlots.has('메인표|5|3');
+        if(!out.exclRestored||!out.exclSkipped) throw new Error('제외 칸 저장/복원이 이상해요: '+JSON.stringify(out)); }
+      finally{ ms.sched=k0.sched; ms.schedSheetName=k0.sheet; ms.excludedSlots=k0.ex; if(keepEx==null) localStorage.removeItem(EK); else localStorage.setItem(EK,keepEx); }
+      // ⑤ 직접 올린 파일(사용자가 끌어다 놓음)이 있으면 저장 안 된 작업으로 보인다
+      const before=wr.unsavedWork().length; const dz=a.document.body; const ev3=new Event('drop',{bubbles:true}); out.syntheticNotCounted=wr.unsavedWork().length===before;
+      document.querySelector('[data-nav=home]').click(); return out; })()`));
     // 교차검증
     await nav('cross'); await sleep(8000);
     await step('교차검증: 실행', async () => await ev(`(async()=>{ const w=${W('cross')}; await w.runAllVerifications(); return w.__testHooks.issues().length; })()`));

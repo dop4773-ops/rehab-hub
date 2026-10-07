@@ -44,7 +44,7 @@ const toolWin = (tool) => `document.querySelector('iframe[data-tool="${tool}"]')
 async function waitFor(ev, expr, ms) { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (await ev(expr)) return true; } catch (e) { /* 아직 준비 전 */ } await sleep(500); } return false; }
 
 async function capture() {
-  const app = spawn(process.execPath, [path.join(__dirname, '..', 'node_modules', 'electron', 'cli.js'), '.', `--remote-debugging-port=${PORT}`, '--remote-allow-origins=*'], { cwd: path.join(__dirname, '..'), stdio: 'ignore' });
+  const app = spawn(process.execPath, [path.join(__dirname, '..', 'node_modules', 'electron', 'cli.js'), '.', `--remote-debugging-port=${PORT}`, '--remote-allow-origins=*'], { cwd: path.join(__dirname, '..'), stdio: 'ignore', env: { ...process.env, REHAB_NO_RESUME: '1' } });
   try {
     const c = cdp(await connect()); const { ev } = c; const out = {};
     await sleep(4000);
