@@ -2,6 +2,7 @@
 // 설정 기본값·검증, 예전 저장값 옮겨오기, 단축키 충돌 판정, 설정 파일 내보내기/가져오기를 확인한다.
 'use strict';
 const assert = require('assert');
+const fs = require('fs'), path = require('path');
 const S = require('../renderer/settings-core');
 
 const mem = (o = {}) => ({ getItem: (k) => (k in o ? o[k] : null), setItem: (k, v) => { o[k] = v; } });
@@ -45,4 +46,23 @@ assert.ok(back.ok); assert.strictEqual(back.settings.fontSize, 'large'); assert.
 assert.strictEqual(S.parseImport('이건 설정이 아님').ok, false);
 assert.strictEqual(S.parseImport('{"app":"other","settings":{}}').ok, false);
 
+// ⑥ 규칙(코드·이름·병동): 정리 규칙, 잘못된 값은 기본값, 그리고 화면 도구에 적어 둔 기본 목록과 같은지(어긋나면 기본값 되돌리기가 틀려짐)
+{
+  const R = S.RULE_DEFAULTS;
+  assert.deepStrictEqual(S.cleanRuleList('otCodes', 'a1, b2\nc3;a1'), ['A1', 'B2', 'C3']);
+  assert.deepStrictEqual(S.cleanRuleList('round1Wards', '9, 8, x, 99'), [9, 8]);
+  assert.deepStrictEqual(S.normalize({ rules: { stCodes: [] } }).rules.stCodes, R.stCodes);          // 비면 기본값
+  assert.deepStrictEqual(S.normalize({ rules: { erdtTherapists: [] } }).rules.erdtTherapists, []);    // 명단은 비워도 됨
+  assert.deepStrictEqual(S.normalize({ rules: { round2Wards: ['x'] } }).rules.round2Wards, R.round2Wards);
+  const read = (f) => fs.readFileSync(path.join(__dirname, '../renderer/tools', f), 'utf8');
+  const arr = (src, re) => { const m = re.exec(src); assert(m, `기본 목록을 못 찾음: ${re}`); return [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]); };
+  const qa = read('치료_액팅_기록_오류_확인_프로그램_언어분류.html');
+  assert.deepStrictEqual(arr(qa, /const DEFAULT_OT_CODES = \[([^\]]*)\]/), R.otCodes);
+  assert.deepStrictEqual(arr(qa, /const DEFAULT_ST_CODES = \[([^\]]*)\]/), R.stCodes);
+  assert.deepStrictEqual(arr(qa, /const FIXED_15_MINUTE_CODES = \[([^\]]*)\]/), R.fixed15Codes);
+  assert.deepStrictEqual(arr(qa, /ruleList\('erdtTherapists', \[([^\]]*)\]/), R.erdtTherapists);
+  const grand = read('그랜드라운딩_통합.html');
+  assert(/r\.round1Wards\.length\?r\.round1Wards:\[9,8\]/.test(grand) && /r\.round2Wards\.length\?r\.round2Wards:\[7,5\]/.test(grand), '그랜드라운딩 병동 기본값이 RULE_DEFAULTS와 달라요');
+  assert.deepStrictEqual(R.round1Wards, [9, 8]); assert.deepStrictEqual(R.round2Wards, [7, 5]);
+}
 console.log('settings: OK');

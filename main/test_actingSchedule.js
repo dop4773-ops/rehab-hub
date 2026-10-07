@@ -8,7 +8,7 @@ const vm = require('vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../renderer/tools/치료_액팅_기록_오류_확인_프로그램_언어분류.html'), 'utf8');
 const cut = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert(i >= 0 && j > i, `marker 없음: ${a}`); return html.slice(i, j); };
-const ctx = { console }; vm.createContext(ctx);
+const ctx = { console, ruleList: (k, dflt) => dflt }; vm.createContext(ctx); // 설정 > 규칙이 없는 상태(기본 목록)로 확인
 vm.runInContext([
   cut('function excelDateToJSDate', 'function pad2'), 'function pad2(n){ return String(n).padStart(2,"0"); }',
   'const WEEKDAY_CHARS = ["일","월","화","수","목","금","토"];',

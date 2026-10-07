@@ -14,6 +14,24 @@
     exportToast: true, exportToastAuto: '30', exportToastCloseOnOpen: true,
     qaTherapistTab: true, qaTabCounts: true, qaMaskNames: true, qaStartTab: 'missing',
   };
+  // 병원 사정에 따라 바뀌는 규칙(사람 이름·오더 코드·회차별 병동). 화면 도구의 기본값과 같아야 하며(test_settings가 확인), 설정 > 규칙에서 바꾼다.
+  const RULE_DEFAULTS = {
+    erdtTherapists: ['이승규', '김봉선', '김기범', '성지현'],
+    otCodes: ['51020', 'E6642', 'EX780', 'EY772', 'EY773', 'F6216', 'F6221', 'IM008', 'IM009001', 'IM113001', 'IM141001', 'MM113', 'MX141', 'MZ008', 'MZ009'],
+    stCodes: ['IM006001', 'MZ006', '51010', 'NZ010'],
+    fixed15Codes: ['MM101', 'MM060', 'MX031', 'SZ084001'],
+    round1Wards: [9, 8], round2Wards: [7, 5],
+  };
+  const RULE_NUMS = ['round1Wards', 'round2Wards'], RULE_ALLOW_EMPTY = ['erdtTherapists'];
+  // 입력(문자열 "a, b\nc" 또는 배열) → 정리된 배열. 코드는 대문자로, 병동은 1~30 사이 숫자만, 중복은 뺀다.
+  function cleanRuleList(key, v) {
+    const raw = Array.isArray(v) ? v : String(v == null ? '' : v).split(/[,\n;、]+/);
+    const items = raw.map(x => String(x).trim()).filter(Boolean);
+    const out = RULE_NUMS.includes(key) ? items.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 30)
+      : key === 'erdtTherapists' ? items : items.map(x => x.toUpperCase());
+    return [...new Set(out)];
+  }
+  DEFAULTS.rules = JSON.parse(JSON.stringify(RULE_DEFAULTS));
   const HOURS = ['08', '09', '10', '11', '13', '14', '15', '16'];
   const ENUMS = {
     syncMode: ['launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
@@ -56,6 +74,10 @@
     }
     for (const k of BOOLS) if (typeof r[k] === 'boolean') s[k] = r[k];
     if (typeof r.itdaCategory === 'string' && r.itdaCategory.trim()) s.itdaCategory = r.itdaCategory.trim().slice(0, 40);
+    if (r.rules && typeof r.rules === 'object') for (const k of Object.keys(RULE_DEFAULTS)) {
+      if (!Array.isArray(r.rules[k])) continue; const v = cleanRuleList(k, r.rules[k]);
+      if (v.length || RULE_ALLOW_EMPTY.includes(k)) s.rules[k] = v;
+    }
     if (r.keymap && typeof r.keymap === 'object') for (const [id, v] of Object.entries(r.keymap)) { const n = normKeys(v); if (n && n.includes('Ctrl')) s.keymap[id] = n; }
     return s;
   }
@@ -78,6 +100,6 @@
     return { ok: true, settings: normalize(o.settings), folders };
   }
 
-  root.RehabSettings = { KEY, DEFAULTS, ENUMS, ZOOM, VIVID_FILTER, normalize, load, save, normKeys, keysFromEvent, findConflict, RESERVED, exportJson, parseImport };
+  root.RehabSettings = { KEY, DEFAULTS, RULE_DEFAULTS, cleanRuleList, ENUMS, ZOOM, VIVID_FILTER, normalize, load, save, normKeys, keysFromEvent, findConflict, RESERVED, exportJson, parseImport };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.RehabSettings;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1258,6 +1258,14 @@ const pushSettingsToTools = () => document.querySelectorAll('iframe[data-tool]')
 const applyZoom = () => { try { window.rehab.app.setZoom(RehabSettings.ZOOM[settings.fontSize]); } catch (e) { /* 개발용 화면 등 */ } };
 const applyHomeLayout = () => { document.body.classList.toggle('home-compact', settings.homeLayout !== 'classic'); document.body.classList.toggle('home-wb', settings.homeLayout === 'workbench'); renderHome(); };
 const applyColor = () => { document.documentElement.style.filter = settings.color === 'vivid' ? RehabSettings.VIVID_FILTER : ''; };
+// 설정 > 규칙을 바꾸면, 그 규칙으로 검사하는 파일(액팅 기록·미액팅 시간표)을 다시 도구에 넣어 바로 다시 검사한다.
+let rulesTimer = null;
+async function reapplyForRules() {
+  if (syncing || !lastScan) return;
+  const roles = ['acting', 'dailySchedule', 'satSchedule', 'dailyStats'].filter(r => roleInfo(r).entries.length);
+  if (!roles.length) return;
+  await applyRoles(roles); renderAll(); showToast('✅ 바뀐 규칙으로 다시 검사했어요', 3000);
+}
 function applySetting(key) {
   switch (key) {
     case 'syncMode': syncMode = settings.syncMode; renderAll(); break;
@@ -1272,6 +1280,7 @@ function applySetting(key) {
     case 'itda': case 'itdaCategory': homeGrandAt = 0; homeGrandEvent = null; loadHomeGrandEvent(); renderHome(); pushSettingsToTools(); break;
     case 'itdaPush': renderHome(); break;
     case 'actingSeverity': case 'grandStats': case 'grandTime': pushSettingsToTools(); break;
+    case 'rules': pushSettingsToTools(); clearTimeout(rulesTimer); rulesTimer = setTimeout(reapplyForRules, 900); break; // 설정 > 규칙
     default: break; // notifyStale·shortcuts·keymap은 쓰는 쪽이 설정 값을 그때그때 읽는다
   }
   settingListeners.forEach(fn => fn(key));

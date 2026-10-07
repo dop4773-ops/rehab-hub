@@ -100,6 +100,20 @@ function stRenderBackupText() { const b = backupStatus; stq('#stBackupText').tex
 async function stRenderDataDir() { try { stq('#stDataDir').textContent = await window.rehab.app.dataDir(); } catch (e) { /* 표시만 못 함 */ } }
 stq('#stOpenDataDir').addEventListener('click', () => window.rehab.app.openDataDir());
 
+// 규칙(코드·이름·병동 목록): 칸에 쉼표/줄바꿈으로 적고, 바꾸면 정리해서 저장한다(비어 있거나 잘못된 값은 기본값으로 돌아감).
+const stRuleText = (k) => (settings.rules[k] || []).join(', ');
+function stRefreshRules() { stAll('[data-rule]').forEach(el => { if (document.activeElement !== el) el.value = stRuleText(el.dataset.rule); }); }
+stPanel.addEventListener('change', (e) => {
+  const el = e.target.closest('[data-rule]'); if (!el) return;
+  const k = el.dataset.rule, list = RehabSettings.cleanRuleList(k, el.value), empty = !list.length && k !== 'erdtTherapists';
+  setSetting('rules', { ...settings.rules, [k]: empty ? RehabSettings.RULE_DEFAULTS[k] : list });
+  el.value = stRuleText(k); stq('#stRuleMsg').textContent = empty ? '비어 있어서 기본 목록으로 되돌렸어요.' : '저장했어요. 바로 적용됩니다.';
+});
+stPanel.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rule-reset]'); if (!b) return;
+  setSetting('rules', { ...settings.rules, [b.dataset.ruleReset]: [...RehabSettings.RULE_DEFAULTS[b.dataset.ruleReset]] }); stRefreshRules(); stq('#stRuleMsg').textContent = '기본 목록으로 되돌렸어요.';
+});
+
 // 파일 저장 위치(내보내기 파일이 저장되는 폴더)
 async function stRenderExportDir(r) {
   try { const s = r || await window.rehab.exportFiles.getDir(); stq('#stExportDir').textContent = s.dir + (s.custom ? '' : '  (기본 · 다운로드 폴더)'); stq('#stExportReset').disabled = !s.custom; } catch (e) { /* 표시만 못 함 */ }
@@ -132,5 +146,5 @@ stq('#stReset').addEventListener('click', () => {
   stStopRec(); replaceSettings({}); stMsg('설정을 기본값으로 되돌렸어요.'); logActivity('설정', '기본값으로 되돌림');
 });
 
-settingListeners.push(() => { stRefreshControls(); stRenderKeys(); });
-window.__renderSettingsUi = () => { stRefreshControls(); stRenderKeys(); stShowTab(stTab); stSearch(stq('#stSearch').value); };
+settingListeners.push(() => { stRefreshControls(); stRefreshRules(); stRenderKeys(); });
+window.__renderSettingsUi = () => { stRefreshControls(); stRefreshRules(); stRenderKeys(); stShowTab(stTab); stSearch(stq('#stSearch').value); };

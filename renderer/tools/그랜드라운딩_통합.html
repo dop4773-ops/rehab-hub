@@ -1654,11 +1654,19 @@ function updateGrandExportButtonLabels(){
   one.textContent=rm==='ALL'?`출력하기 · 전체 RM · ${info.label}`:`출력하기 · ${rm} · ${info.label}`;
 }
 
-const GRAND_ROUTE_PROFILES={
-  'round1':{roundLabel:'1회차',targetLabel:'8·9병동',label:'1회차 · 10F → 9병동 → 8병동',wards:[9,8],targetWards:[8,9],include3F:false},
-  'round2':{roundLabel:'2회차',targetLabel:'5·7병동',label:'2회차 · 10F → 7병동 → 5병동 → 3F',wards:[7,5],targetWards:[5,7],include3F:true}
-};
-function grandRouteProfile(key){ return GRAND_ROUTE_PROFILES[key]||GRAND_ROUTE_PROFILES['round1']; }
+// 회차별 병동(방문 순서)은 설정 > 규칙에서 바꾼다. 기본: 1회차 10F → 9 → 8병동, 2회차 10F → 7 → 5병동 → 3F (settings-core.js RULE_DEFAULTS와 같아야 함)
+function grandBuildRouteProfiles(){
+  const r=(window.__rhSettings&&window.__rhSettings.rules)||{};
+  const mk=(roundLabel,wards,include3F)=>{ const t=[...wards].sort((a,b)=>a-b); return {roundLabel,targetLabel:`${t.join('·')}병동`,label:`${roundLabel} · 10F → ${wards.map(w=>`${w}병동`).join(' → ')}${include3F?' → 3F':''}`,wards,targetWards:t,include3F}; };
+  return {round1:mk('1회차',Array.isArray(r.round1Wards)&&r.round1Wards.length?r.round1Wards:[9,8],false), round2:mk('2회차',Array.isArray(r.round2Wards)&&r.round2Wards.length?r.round2Wards:[7,5],true)};
+}
+let grandRouteCache={key:'',profiles:null};
+function grandRouteProfiles(){ const r=(window.__rhSettings&&window.__rhSettings.rules)||{}, k=JSON.stringify([r.round1Wards,r.round2Wards]); if(grandRouteCache.key!==k||!grandRouteCache.profiles) grandRouteCache={key:k,profiles:grandBuildRouteProfiles()}; return grandRouteCache.profiles; }
+function grandRouteProfile(key){ const p=grandRouteProfiles(); return p[key]||p.round1; }
+// 잇다 일정의 병동 짝("8,9")에 맞는 회차 — 병동 설정이 바뀌어도 맞게 찾는다
+function grandRouteForWards(wards){ if(!wards) return null; const w=String(wards).split(',').map(Number).filter(Boolean).sort((a,b)=>a-b).join(','); const p=grandRouteProfiles(); return Object.keys(p).find(k=>p[k].targetWards.join(',')===w)||null; }
+// 회차 선택 칸의 글자도 같은 설정을 따른다
+function grandRefreshRouteOptions(){ const el=document.getElementById('grandRouteSelect'); if(!el) return; const p=grandRouteProfiles(); [...el.options].forEach(o=>{ const pr=p[o.value]; if(pr) o.textContent=`${pr.roundLabel} · ${pr.targetLabel}`; }); }
 function updateGrandWardOptions(){
   const el=document.getElementById('grandWardSelect'); if(!el) return;
   const profile=grandRouteProfile(document.getElementById('grandRouteSelect')?.value||'round1'), prev=el.value||'ALL';
@@ -2218,7 +2226,8 @@ async function grandItdaLoad(){
   let r; try{ r=await api.grandEvents(); }catch(e){ r={ok:false,message:e.message}; }
   if(!r.ok){ msg.className='grand-itda-msg warn'; msg.textContent=r.message||'불러오지 못했어요.'; return; }
   if(!r.events.length){ msg.textContent='오늘 이후의 "그랜드라운딩" 일정이 없어요.'; return; }
-  grandItdaEvents=r.events;
+  grandItdaEvents=r.events.map(e=>({...e,route:grandRouteForWards(e.wards)||e.route}));
+  r.events=grandItdaEvents;
   msg.textContent=`오늘 이후 그랜드라운딩 일정 ${r.events.length}건 — 이름을 누르면 그 일정으로 맞추고, 체크한 일정은 한 번에 보관함에 등록해요.`;
   list.innerHTML=r.events.map((e,i)=>{ const wd=new Date(e.date+'T00:00:00').toLocaleDateString('ko-KR',{weekday:'short'}); return `<span class="grand-itda-item" data-i="${i}"><input type="checkbox" class="grand-itda-ck" aria-label="보관함에 등록할 일정 선택"><button type="button" class="grand-itda-chip">${xmlEscape(e.date.slice(5).replace('-','/'))}(${wd}) ${xmlEscape(e.rm||e.title)}${e.wards?`<small>${xmlEscape(e.wards.replace(',','·'))}병동</small>`:''}<small class="grand-itda-saved">📚 보관됨</small></button></span>`; }).join('');
   bar.hidden=false; grandItdaUpdateBar(); grandItdaMarkSaved();
@@ -2241,6 +2250,7 @@ window.__onSettingsChanged=()=>{
   once('grandStats',v=>grandSetStats(v==='open'));
   once('grandTime',v=>{ const t=document.getElementById('grandTimeInput'); if(v&&t.value!==v){ t.value=v; t.dispatchEvent(new Event('change')); } });
   document.getElementById('grandItdaBox').style.display=s.itda===false?'none':''; // 잇다 연동을 끄면 불러오기 영역을 감춘다
+  { const rk=JSON.stringify([(s.rules||{}).round1Wards,(s.rules||{}).round2Wards]); if(rhApplied.__wards!==rk){ const first=rhApplied.__wards===undefined; rhApplied.__wards=rk; grandRefreshRouteOptions(); if(!first){ updateGrandWardOptions(); if(allPatients.length) renderGrandTable(); } } } // 설정 > 규칙의 회차별 병동
 };
 document.getElementById('grandArchiveSaveBtn').addEventListener('click',grandArchiveSave);
 grandArchiveWireBatchBar();

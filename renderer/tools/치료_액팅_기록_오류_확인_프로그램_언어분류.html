@@ -707,6 +707,8 @@
   const NON_EXCLUSIVE_EXAM_CODES = ['MMYYY', 'MMYY'];
   const DEFAULT_PAIN_CODES = 'MM010, MM011, MM070, MM080, MM015, MM020, MX121';
   const FIXED_15_MINUTE_CODES = ['MM101', 'MM060', 'MX031', 'SZ084001'];
+  // 설정 > 규칙에서 바꾼 목록이 있으면 그것을, 없으면(앱 밖에서 열었을 때 등) 아래 기본 목록을 쓴다 — 기본값은 settings-core.js의 RULE_DEFAULTS와 같아야 한다
+  const ruleList = (k, dflt) => { const v = ((window.__rhSettings || {}).rules || {})[k]; return Array.isArray(v) ? v : dflt; };
   const DEFAULT_OT_CODES = ['51020', 'E6642', 'EX780', 'EY772', 'EY773', 'F6216', 'F6221', 'IM008', 'IM009001', 'IM113001', 'IM141001', 'MM113', 'MX141', 'MZ008', 'MZ009'];
   // 언어/심리(ST) 오더 — 도구가 OT/PT만 구분해 PT로 분류되던 것을 별도 그룹으로 분리(2026-09-19). 코드에 없는 새 오더도 이름으로 잡는다.
   const DEFAULT_ST_CODES = ['IM006001', 'MZ006', '51010', 'NZ010'];
@@ -1002,7 +1004,7 @@
   function isFixed15MinuteOrder(name){
     const n = compactCodeText(name);
     const code = firstOrderCode(name);
-    return FIXED_15_MINUTE_CODES.some(c => n.startsWith(c) || code === c);
+    return ruleList('fixed15Codes', FIXED_15_MINUTE_CODES).some(c => n.startsWith(c) || code === c);
   }
   function isRecoveryOrder(name){
     return normalizeText(name).replace(/\s+/g,'').includes('회복기재활');
@@ -1297,7 +1299,7 @@ ${text}`,
   }
   function classifyOrderGroupFromName(name){
     const normalized = normalizeText(name).toUpperCase();
-    if(DEFAULT_ST_CODES.some(code => orderCodeMatches(name, code)) || normalized.includes('언어치료') || /심리적\s*재활/.test(normalized)) return 'ST';
+    if(ruleList('stCodes', DEFAULT_ST_CODES).some(code => orderCodeMatches(name, code)) || normalized.includes('언어치료') || /심리적\s*재활/.test(normalized)) return 'ST';
     // 통증치료 계열은 치료사와 관계없이 PT로 우선 분류합니다.
     // 기존 compact.includes('OT') 보조 판정은 IONTOPHORESIS 등 영문 표기에서 OT가 포함될 때 오분류될 수 있어 제거했습니다.
     if(parseCodeList(DEFAULT_PAIN_CODES).some(code => orderCodeMatches(name, code))) return 'PT';
@@ -1305,7 +1307,7 @@ ${text}`,
     // E6641 FMA처럼 같은 코드가 OT/PT 양쪽에서 쓰이는 경우, 처방명칭 끝의 -OT / -PT 토큰을 우선 반영합니다.
     if(hasExplicitPtToken(name)) return 'PT';
     if(hasExplicitOtToken(name)) return 'OT';
-    if(DEFAULT_OT_CODES.some(code => orderCodeMatches(name, code))) return 'OT';
+    if(ruleList('otCodes', DEFAULT_OT_CODES).some(code => orderCodeMatches(name, code))) return 'OT';
     // "수부 집중재활프로그램"처럼 손(수부) 중심 재활 프로그램은 작업치료실에서 SM/ST/SB로 잡는 오더인데
     // 코드 목록에 없어 기본값(PT)으로 잘못 분류되고 있어 별도로 인식합니다.
     if(normalized.includes('수부') && (normalized.includes('집중재활') || normalized.includes('재활프로그램'))) return 'OT';
@@ -1974,7 +1976,7 @@ ${text}`,
     }
 
     const entries = [];
-    const ERDT_E_THERAPISTS = ['이승규','김봉선','김기범','성지현'];
+    const ERDT_E_THERAPISTS = ruleList('erdtTherapists', ['이승규','김봉선','김기범','성지현']);
     const unexpectedE = [];
     function parseMainCell(val, therapistName){
       const s = msNormText(val);
@@ -2074,7 +2076,7 @@ ${text}`,
     const grid = { mainHeaderRow, therapistRow, therapistCols, timeRows, teams, markers };
     if(unexpectedE.length){
       const sample = unexpectedE.slice(0,6).map(u=>`${u.therapist} 담당 ${u.name}`).join(', ');
-      warnings.push(`이승규/김봉선/김기범/성지현 외 치료사 칸에서 단독 "E" 표시가 ${unexpectedE.length}건 발견되어 집계에서 제외했습니다 (${sample}${unexpectedE.length>6?' 등':''}).`);
+      warnings.push(`${ERDT_E_THERAPISTS.join('/')||'지정된 치료사'} 외 치료사 칸에서 단독 "E" 표시가 ${unexpectedE.length}건 발견되어 집계에서 제외했습니다 (${sample}${unexpectedE.length>6?' 등':''}).`);
     }
 
     // 미니표 구역: 각 구역이 자기 머리글 줄(headerRow)과 데이터 시작 줄(dataStart)을 가집니다.

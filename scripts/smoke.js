@@ -91,6 +91,14 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       const cardOnly=all.filter(p=>p.category==='외래'&&!sa[p.name.replace(/[\\s·ㆍ\\-().,]/g,'').toUpperCase()]).filter(p=>!h.isOutpatient(p.name)&&all.filter(q=>q.name===p.name).every(q=>q.category==='외래'));
       if(bad.length||cardOnly.length) throw new Error('외래 판별이 이상해요: '+JSON.stringify({bad:bad.slice(0,3),cardOnly:cardOnly.slice(0,3).map(p=>p.name)}));
       return {status:Object.values(sa).filter(v=>v==='외래').length, cardOutpatients:all.filter(p=>p.category==='외래').length}; })()`));
+    await step('설정 › 규칙: 회차별 병동·코드 목록 바꾸면 도구에 반영, 기본값 복구', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); const g=${W('rm')}.document, keep=JSON.stringify(settings.rules), out={};
+      try{ setSetting('rules',{...settings.rules, round1Wards:[8], otCodes:[...settings.rules.otCodes,'ZZ999'], erdtTherapists:['테스트']}); await sl(1500);
+        out.opt=g.querySelector('#grandRouteSelect option[value=round1]').textContent; out.tool=${W('acting')}.__rhSettings.rules.otCodes.slice(-1)[0];
+        if(!/1회차 · 8병동/.test(out.opt)||out.tool!=='ZZ999') throw new Error('규칙이 도구에 안 들어갔어요: '+JSON.stringify(out));
+        document.querySelector('[data-rule-reset=round1Wards]').click(); await sl(300); out.back=g.querySelector('#grandRouteSelect option[value=round1]').textContent;
+        if(!/1회차 · 8·9병동/.test(out.back)) throw new Error('기본값 복구가 안 됐어요: '+out.back);
+      } finally { setSetting('rules', JSON.parse(keep)); await sl(1200); }
+      out.restored=JSON.stringify(settings.rules)===keep; return out; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';
