@@ -138,7 +138,7 @@ function initUpdater(app, ipcMain, getMainWindow) {
 
   ipcMain.handle('updater:quitAndInstall', () => {
     log('install', { source: '수동' });
-    autoUpdater.quitAndInstall(false, true); // 설치 후 자동 재실행
+    autoUpdater.quitAndInstall(true, true); // 조용히 설치(설치 마법사 창 없이)하고 끝나면 자동 재실행 — 자동 모드와 같은 방식
     return { status: 'ok' };
   });
 

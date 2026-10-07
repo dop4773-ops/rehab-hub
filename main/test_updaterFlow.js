@@ -40,6 +40,7 @@ const tick = () => new Promise((r) => setImmediate(r));
     c.fire(15000); await tick(); assert.deepStrictEqual(c.calls, ['check'], '수동 모드도 시작할 때 한 번은 확인해요');
     assert.ok(c.sent.includes('downloaded') && !c.sent.includes('auto-install-pending'), '받으면 안내만 해요');
     c.fire(10000); c.fire(30000); await tick(); assert.ok(!c.calls.some(x => x.startsWith('install')), '수동 모드는 저절로 설치하면 안 돼요');
+    await c.handlers['updater:quitAndInstall'](); assert.ok(c.calls.includes('install(silent=true,run=true)'), '설치 버튼은 설치 창 없이 조용히 설치하고 다시 실행해야 해요');
   });
   console.log('updaterFlow: OK');
 })().catch((e) => { console.error(e); process.exit(1); });
