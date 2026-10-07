@@ -1094,24 +1094,29 @@ function showUpdateToast(s) {
 }
 window.rehab.updater.onStatus(s => { onUpdaterStatus(s); showUpdateToast(s); });
 // ── 파일 저장 안내: 내보낸 파일이 저장되면 오른쪽 아래에 "열기 / 폴더 보기"를 잠깐 보여준다(화면 이동 없음) ──
-let exportToastTimer = null, exportToastCount = 0;
+let exportToastTimer = null, exportToastCount = 0, closeExportToast = null; // closeExportToast: 안내가 떠 있을 때만 있고, Esc 키가 이걸 닫는다
 function showExportToast(info, failed) {
+  if (!failed && settings.exportToast === false) return;
   let el = document.getElementById('export-toast');
-  const close = () => { clearTimeout(exportToastTimer); exportToastCount = 0; if (el) el.remove(); };
+  const close = () => { clearTimeout(exportToastTimer); exportToastCount = 0; closeExportToast = null; if (el) el.remove(); };
+  const afterOpen = () => { if (settings.exportToastCloseOnOpen !== false) close(); };
+  const autoMs = failed ? 10000 : Number(settings.exportToastAuto || 30) * 1000; // 0 = 직접 닫을 때까지
   if (!el) { el = document.createElement('div'); el.id = 'export-toast'; el.className = 'update-toast export-toast'; document.body.appendChild(el); }
   else if (failed) exportToastCount = 0;
   if (failed) {
-    el.innerHTML = `<b>⚠ 파일을 저장하지 못했어요</b><div class="ut-msg">${updEsc(info.name)} — 설정 &gt; 데이터·동기화 &gt; 파일 저장 위치를 확인해 주세요.</div><div class="ut-actions"><button class="btn" id="ex-close">닫기</button></div>`;
+    el.innerHTML = `<b>⚠ 파일을 저장하지 못했어요</b><div class="ut-msg">${updEsc(info.name)} — 설정 &gt; 파일 저장 &gt; 저장 위치를 확인해 주세요.</div><div class="ut-actions"><button class="btn" id="ex-close">닫기</button></div>`;
   } else {
     exportToastCount++;
     el.innerHTML = `<b>✅ 저장했어요${exportToastCount > 1 ? ` · ${exportToastCount}개` : ''}</b><div class="ut-msg" title="${updEsc(info.path)}">${updEsc(info.name)}<br><span class="muted">${updEsc(info.dir)}</span></div>`
-      + '<div class="ut-actions"><button class="btn" id="ex-close">닫기</button><button class="btn" id="ex-folder">📂 폴더 보기</button><button class="btn primary" id="ex-open">📄 열기</button></div>';
-    el.querySelector('#ex-folder').addEventListener('click', () => { window.rehab.exportFiles.showInFolder(info.path); close(); });
-    el.querySelector('#ex-open').addEventListener('click', () => { window.rehab.exportFiles.openFile(info.path); close(); });
+      + '<div class="ut-actions"><button class="btn" id="ex-close" title="Esc">닫기</button><button class="btn" id="ex-folder">📂 폴더 보기</button><button class="btn primary" id="ex-open">📄 열기</button></div>';
+    el.querySelector('#ex-folder').addEventListener('click', () => { window.rehab.exportFiles.showInFolder(info.path); afterOpen(); });
+    el.querySelector('#ex-open').addEventListener('click', () => { window.rehab.exportFiles.openFile(info.path); afterOpen(); });
   }
   el.querySelector('#ex-close').addEventListener('click', close);
-  clearTimeout(exportToastTimer); exportToastTimer = setTimeout(close, failed ? 10000 : 14000);
-  el.onmouseenter = () => clearTimeout(exportToastTimer); el.onmouseleave = () => { clearTimeout(exportToastTimer); exportToastTimer = setTimeout(close, 5000); };
+  closeExportToast = close;
+  const arm = (ms) => { clearTimeout(exportToastTimer); if (ms > 0) exportToastTimer = setTimeout(close, ms); };
+  arm(autoMs);
+  el.onmouseenter = () => clearTimeout(exportToastTimer); el.onmouseleave = () => arm(autoMs > 0 ? 5000 : 0);
 }
 window.rehab.exportFiles.onSaved((info) => showExportToast(info, false));
 window.rehab.exportFiles.onFailed((info) => showExportToast(info, true));
@@ -1221,6 +1226,7 @@ function onKeyDown(e) {
     if (t) { e.preventDefault(); (t.querySelector('.btn.primary') || t.querySelector('.btn'))?.click(); return; }
   }
   if (e.key === 'Escape' && altOverlay) { hideAlt(); return; }
+  if (e.key === 'Escape' && closeExportToast) { closeExportToast(); return; } // 저장 안내는 Esc로도 닫힌다
   if (!settings.shortcuts || !(e.ctrlKey || e.metaKey)) return;
   const hit = [...(VIEW_KEYS[currentView()] || []), ...GLOBAL_KEYS].find(x => x.run && matchKeys(e, effKeys(x)));
   if (hit) { e.preventDefault(); hit.run(); }

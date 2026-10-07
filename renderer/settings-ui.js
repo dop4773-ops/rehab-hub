@@ -8,7 +8,7 @@ function stShowTab(tab) {
   stTab = tab;
   stAll('#stTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   stAll('.st-page').forEach(p => p.classList.toggle('on', p.dataset.page === tab));
-  if (tab === 'data') stRenderExportDir();
+  if (tab === 'save') stRenderExportDir();
   if (tab === 'itda') stRenderItdaStatus();
   if (tab === 'admin') stRenderBackupText();
   if (tab === 'about') stRenderDataDir();

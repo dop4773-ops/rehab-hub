@@ -90,7 +90,11 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       const r = await ev(`(async()=>{ const w=${W('cross')}, sl=ms=>new Promise(r=>setTimeout(r,ms)); document.getElementById('export-toast')?.remove(); w.document.getElementById('btnExcel').click(); for(let i=0;i<50&&!document.getElementById('export-toast');i++) await sl(100); const t=document.getElementById('export-toast'); return t?{head:t.querySelector('b').textContent, btns:[...t.querySelectorAll('button')].map(b=>b.textContent.trim()), msg:t.querySelector('.ut-msg').textContent}:null; })()`);
       if (!r) throw new Error('저장 알림이 안 떴어요'); const files = fs.readdirSync(exportDir); if (files.length <= before) throw new Error('파일이 저장되지 않았어요');
       const bad = await ev(`(async()=>[await window.rehab.exportFiles.openFile('/etc/hosts'), await window.rehab.exportFiles.showInFolder('/etc/hosts')])()`); if (bad[0] !== 'not-saved-by-app' || bad[1] !== false) throw new Error('앱이 저장하지 않은 경로까지 열려요: ' + JSON.stringify(bad));
-      return { files: files.length, ...r }; });
+      const esc = await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(100); const closedByEsc=!document.getElementById('export-toast');
+        setSetting('exportToast',false); const w=${W('cross')}; w.document.getElementById('btnExcel').click(); await sl(2500); const hidden=!document.getElementById('export-toast'); setSetting('exportToast',true);
+        w.document.getElementById('btnExcel').click(); for(let i=0;i<50&&!document.getElementById('export-toast');i++) await sl(100); const back=!!document.getElementById('export-toast'); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); return {closedByEsc,hidden,back}; })()`);
+      if (!esc.closedByEsc || !esc.hidden || !esc.back) throw new Error('저장 안내 Esc/끄기 동작이 이상해요: ' + JSON.stringify(esc));
+      return { files: files.length, esc, ...r }; });
     await step('교차검증: 칸 주소가 실제 원본 칸을 가리키는지(읽기만)', async () => {
       // 화면에서는 "이슈별 칸 주소와 그 칸의 실제 값"만 모아 오고, 맞는지는 여기(Node)에서 판정한다
       const items = await ev(`(async()=>{ const w=${W('cross')}, R=w.RehabCore, N=R.normalizeText, hk=w.__testHooks, st=hk.state();

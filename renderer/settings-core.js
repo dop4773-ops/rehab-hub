@@ -11,6 +11,7 @@
     actingSeverity: 'error', grandStats: 'collapsed', grandTime: '09',
     shortcuts: true, keymap: {},
     itda: true, itdaPush: true, itdaCategory: '그랜드라운딩',
+    exportToast: true, exportToastAuto: '30', exportToastCloseOnOpen: true,
     qaTherapistTab: true, qaTabCounts: true, qaMaskNames: true, qaStartTab: 'missing',
   };
   const HOURS = ['08', '09', '10', '11', '13', '14', '15', '16'];
@@ -18,9 +19,9 @@
     syncMode: ['launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
     dataView: ['list', 'matrix', 'board'], homeLayout: ['workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
     fontSize: ['small', 'normal', 'large'], color: ['pastel', 'vivid'], filesArea: ['collapsed', 'open'],
-    actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS,
+    actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS, exportToastAuto: ['10', '30', '60', '0'],
   };
-  const BOOLS = ['notifyStale', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames'];
+  const BOOLS = ['notifyStale', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen'];
   const ZOOM = { small: 0.92, normal: 1, large: 1.12 };
   const VIVID_FILTER = 'saturate(1.45)'; // "선명" 색감 — 파스텔 색을 그대로 두고 채도만 올린다
 
