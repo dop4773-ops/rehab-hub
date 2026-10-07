@@ -801,7 +801,7 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
 <script src="../core/therapistview.js"></script>
 <script src="../core/issuehistory.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, fixItemsToWhoMessages, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, pruneAck, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, fixItemsToWhoMessages, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, summarizeByWho, pruneAck, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
@@ -3807,7 +3807,9 @@ const histSave=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); return t
 const CAT_KO={count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인',room:'PTA 대조'};
 function trackHistory(){
   const sources={statusBook:!!state.statusBook, cards:!!(state.card10Book&&state.card3Book), grids:!!(state.mat10Book&&state.table10Book&&state.mt3Book), handover:!!(state.handoverBook||state.handoverLiveOk), ptaBook:!!state.ptaBook};
-  const snap=makeSnapshot(issues,sources), hist=histLoad(HIST_KEY,{v:1,snaps:[]}), cmp=compareIssueHistory(hist,snap);
+  // 담당자별 반복 요약을 위해 불일치마다 고치거나 작성해야 할 사람(수정 지시서의 "담당")을 함께 남긴다 — 이슈 객체는 바꾸지 않는다
+  const whoMemo=new Map(); const whoOf=(i)=>{ if(!whoMemo.has(i)){ let w=[]; try{ w=[...new Set(buildFixItems([i]).flatMap(x=>String(x.who||'').split(/\s*,\s*/).filter(Boolean)))]; }catch(e){ /* 담당 모름 */ } whoMemo.set(i,w); } return whoMemo.get(i); };
+  const snap=makeSnapshot(issues,sources,Date.now(),whoOf), hist=histLoad(HIST_KEY,{v:1,snaps:[]}), cmp=compareIssueHistory(hist,snap);
   const ack=pruneAck(histLoad(ACK_KEY,{}),snap);
   for(const [k,i] of keyIssues(issues)) i.hist={key:k,isNew:cmp.isNew.has(k),streak:cmp.streak.get(k)||1,changed:cmp.changed.has(k),acked:!!ack[k]};
   let next=addSnapshot(hist,snap); while(!histSave(HIST_KEY,next)&&next.snaps.length>7) next={v:1,snaps:next.snaps.slice(1)}; // 저장 공간이 모자라면 오래된 날부터 덜어낸다
@@ -3897,6 +3899,9 @@ function openHistModal(){
     const nw=issues.filter(i=>i.hist&&i.hist.isNew); h+=`<div class="fix-grp">🆕 새로 생긴 것 <small>${nw.length}건 — 목록에서 "새로 생김" 버튼으로도 볼 수 있어요</small></div>`;
     h+=nw.slice(0,30).map(i=>`<div class="res-item"><b>${esc(i.patient)}</b>${i.floor?i.floor+'F ':''}${esc(i.room?i.room+'호 ':'')}· ${esc(CAT_KO[i.category]||i.category)} · ${esc(i.title)}</div>`).join('')+(nw.length>30?`<div style="color:var(--muted);font-size:12px">…외 ${nw.length-30}건</div>`:'');
   } else h+='<p class="fix-note">오늘이 첫 기록이라 비교할 이전 결과가 없어요. 검증을 실행한 날마다 마지막 결과가 저장돼요(최대 90일).</p>';
+  const wsum=summarizeByWho(hist,{days:30}).slice(0,10);
+  h+=`<div class="fix-grp">👥 담당자별 반복 <small>최근 30일 · 담당을 알 수 있는 불일치만 · 같은 불일치가 서로 다른 3일 이상 나오면 "반복"이에요</small></div>`;
+  h+=wsum.length?`<table class="hist-table"><thead><tr><th>담당</th><th>불일치(서로 다른 건)</th><th>반복</th><th>나온 날</th><th>주요 분류</th></tr></thead><tbody>${wsum.map(w=>`<tr><td><b>${esc(w.who)}</b></td><td>${w.issues}</td><td>${w.repeated?`<b style="color:var(--red)">${w.repeated}</b>`:'0'}</td><td>${w.days}일</td><td>${Object.entries(w.cats).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([c,n])=>`${esc(CAT_KO[c]||c)} ${n}`).join(' · ')}</td></tr>`).join('')}</tbody></table>`:'<p class="fix-note">담당자별 기록은 이 버전부터 쌓이기 시작해요. 며칠 검증을 실행하면 여기에 나타납니다.</p>';
   const snaps=hist.snaps.slice(-14).reverse(), cols=ISSUE_HISTORY_CATS;
   h+=`<div class="fix-grp">📅 일별 불일치 수 <small>최근 ${snaps.length}일(그 날 마지막 검증 기준)</small></div><table class="hist-table"><thead><tr><th>날짜</th><th>전체</th>${cols.map(c=>`<th>${CAT_KO[c]}</th>`).join('')}</tr></thead><tbody>${snaps.map(sn=>`<tr><td>${sn.day.slice(5).replace('-','/')}</td><td><b>${Object.values(sn.counts).reduce((a,b)=>a+b,0)}</b></td>${cols.map(c=>`<td>${sn.cats.includes(c)?(sn.counts[c]||0):'<span style="color:#b3bccb">-</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="fix-note" style="margin-top:6px">"-"는 그 날 그 분류를 검사할 파일이 없어서 검사하지 않았다는 뜻이에요.</p>`;
   document.getElementById('histModalBody').innerHTML=h; document.getElementById('histModal').classList.add('show');

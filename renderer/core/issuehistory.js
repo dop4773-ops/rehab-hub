@@ -32,9 +32,10 @@ function keyIssues(issues) {
 // sources: {statusBook:bool, cards:bool, grids:bool, handover:bool, ptaBook:bool}
 function evaluatedCats(sources) { return CATS.filter(c => CAT_SOURCES[c].every(s => sources[s])); }
 
-function makeSnapshot(issues, sources, now = Date.now()) {
+// whoOf(issue)가 있으면 그 불일치를 고치거나 작성해야 할 사람들(배열)을 7번째 칸에 함께 남긴다 — "담당자별 반복" 요약용(비교 로직은 이 칸을 쓰지 않는다)
+function makeSnapshot(issues, sources, now = Date.now(), whoOf = null) {
   const keys = {}, counts = {};
-  for (const [k, i] of keyIssues(issues)) { keys[k] = [i.category, i.title || '', i.patient || '', i.room || '', i.floor || '', i.line || '']; counts[i.category] = (counts[i.category] || 0) + 1; }
+  for (const [k, i] of keyIssues(issues)) { keys[k] = [i.category, i.title || '', i.patient || '', i.room || '', i.floor || '', i.line || '', (whoOf && whoOf(i)) || []]; counts[i.category] = (counts[i.category] || 0) + 1; }
   return { day: dayOf(now), t: now, cats: evaluatedCats(sources), counts, keys };
 }
 // 같은 날짜 스냅샷은 마지막 것으로 바꿔 끼우고, 오래된 것은 maxDays개만 남긴다
@@ -67,13 +68,29 @@ function compare(history, snap) {
   }
   return res;
 }
+// 최근 N일(오늘 포함) 스냅샷에서 담당자별로: 서로 다른 불일치 수, 이틀 이상 이어서가 아니라 "서로 다른 3일 이상 나온" 반복 수, 분류별 수.
+// 담당자 칸이 없는 옛 스냅샷은 건너뛴다. 반환: [{who, issues, repeated, days, cats}] — 반복 많은 순.
+function summarizeByWho(history, { days = 30, today = dayOf(Date.now()) } = {}) {
+  const snaps = ((history && history.snaps) || []).filter(s => dayDiff(s.day, today) < days && s.day <= today);
+  const by = new Map();
+  for (const s of snaps) for (const [k, v] of Object.entries(s.keys)) {
+    for (const w of (Array.isArray(v[6]) ? v[6] : [])) {
+      if (!by.has(w)) by.set(w, new Map()); const m = by.get(w); if (!m.has(k)) m.set(k, { cat: v[0], days: new Set() }); m.get(k).days.add(s.day);
+    }
+  }
+  return [...by.entries()].map(([who, m]) => {
+    const cats = {}, allDays = new Set(); let repeated = 0;
+    for (const x of m.values()) { cats[x.cat] = (cats[x.cat] || 0) + 1; if (x.days.size >= 3) repeated++; x.days.forEach(d => allDays.add(d)); }
+    return { who, issues: m.size, repeated, days: allDays.size, cats };
+  }).sort((a, b) => b.repeated - a.repeated || b.issues - a.issues || a.who.localeCompare(b.who, 'ko'));
+}
 // 확인함 표시는 그 불일치가 해결되면(검사한 분류에서 사라지면) 자동으로 지운다
 function pruneAck(ack, snap) {
   const out = {};
   for (const [k, v] of Object.entries(ack || {})) { const cat = k.split('|')[0]; if (!snap.cats.includes(cat) || snap.keys[k]) out[k] = v; }
   return out;
 }
-const api = { issueKey, keyIssues, evaluatedCats, makeSnapshot, addSnapshot, compareIssueHistory: compare, pruneAck, ISSUE_HISTORY_CATS: CATS };
+const api = { issueKey, keyIssues, evaluatedCats, makeSnapshot, addSnapshot, compareIssueHistory: compare, summarizeByWho, pruneAck, ISSUE_HISTORY_CATS: CATS };
 root.RehabCore = Object.assign(root.RehabCore || {}, api);
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

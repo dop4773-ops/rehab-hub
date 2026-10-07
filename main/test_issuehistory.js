@@ -56,4 +56,23 @@ const pr = H.pruneAck(ack, H.makeSnapshot([], { ...ALL, ptaBook: false }, at(4))
 let big = null; for (let d = 1; d <= 120; d++) big = H.addSnapshot(big, { day: `2026-${String(1 + Math.floor((d - 1) / 28)).padStart(2, '0')}-${String(1 + (d - 1) % 28).padStart(2, '0')}`, t: d, cats: [], counts: {}, keys: {} }, 90);
 assert.strictEqual(big.snaps.length, 90);
 console.log('OK ⑤ 확인함 정리·보관 일수');
+// ⑦ 담당자별 반복 요약: 7번째 칸(담당)을 남기고, 서로 다른 3일 이상 나온 불일치를 반복으로 센다. 담당 칸이 없는 옛 스냅샷은 무시한다
+{
+  const H = require('../renderer/core/issuehistory.js');
+  const I = (patient, title, cat = 'count') => ({ category: cat, title, patient, room: '1', floor: 3, line: 'x', detail: {} });
+  const whoOf = (i) => (i.patient === '가' ? ['김A', '이B'] : i.patient === '나' ? ['김A'] : []);
+  const srcs = { statusBook: true, cards: true, grids: true, handover: true, ptaBook: true };
+  const day = (n) => Date.parse('2026-10-10T12:00:00') - n * 86400000;
+  let hist = { v: 1, snaps: [] };
+  hist = H.addSnapshot(hist, { ...H.makeSnapshot([I('가', '문제1'), I('나', '문제2')], srcs, day(3), whoOf) });
+  hist = H.addSnapshot(hist, H.makeSnapshot([I('가', '문제1'), I('나', '문제2'), I('다', '문제3')], srcs, day(2), whoOf));
+  hist = H.addSnapshot(hist, H.makeSnapshot([I('가', '문제1'), I('다', '문제3')], srcs, day(1), whoOf));
+  hist = H.addSnapshot(hist, H.makeSnapshot([I('가', '문제1')], srcs, day(0), null)); // 담당 정보 없이 만든 스냅샷도 섞여 있어도 안 깨짐
+  const r = H.summarizeByWho(hist, { days: 30, today: '2026-10-10' });
+  const A = r.find(x => x.who === '김A'), B = r.find(x => x.who === '이B');
+  assert.strictEqual(A.issues, 2); assert.strictEqual(A.repeated, 1, '문제1은 3일, 문제2는 2일 → 반복 1건'); assert.strictEqual(A.days, 3); assert.strictEqual(B.issues, 1); assert.strictEqual(B.repeated, 1);
+  assert.strictEqual(r.length, 2, '담당이 없는 불일치(다)는 세지 않아요'); assert.strictEqual(r[0].who, '김A'); // 반복·건수 같으면 이름순
+  assert.deepStrictEqual(H.summarizeByWho(hist, { days: 2, today: '2026-10-10' }).find(x => x.who === '김A').issues, 1, '기간 밖(3일 전)은 빼요');
+  assert.strictEqual(H.summarizeByWho({ v: 1, snaps: [] }, {}).length, 0);
+}
 console.log('ALL PASS');

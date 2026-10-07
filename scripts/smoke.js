@@ -147,6 +147,11 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     await step('교차검증: 수정 지시서 › 담당자별 메시지 복사', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); await w.handleRun(); let got=''; Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async t=>{ got=t; }},configurable:true});
       d.getElementById('btnFixPlan').click(); await sl(500); d.getElementById('fixCopyWho').click(); await sl(300); d.getElementById('fixCancel')?.click?.();
       if(!/<.+ 선생님 확인 부탁드려요>/.test(got)) throw new Error('담당자별 글이 안 만들어졌어요: '+got.slice(0,80)); const n=(got.match(/선생님 확인 부탁드려요/g)||[]).length; return {people:n, head:got.split('\\n').slice(0,3).join(' | ').slice(0,100)}; })()`));
+    await step('교차검증: 이력에 담당자가 같이 남고 이력 창에 「담당자별 반복」이 나옴', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, KEY='rehab_cross_history_v1', keep=localStorage.getItem(KEY); await w.handleRun(); await new Promise(r=>setTimeout(r,500));
+      try{ const h=JSON.parse(localStorage.getItem(KEY)), last=h.snaps[h.snaps.length-1], vs=Object.values(last.keys), withWho=vs.filter(v=>Array.isArray(v[6])&&v[6].length).length;
+        d.getElementById('histOpen')?.click(); await new Promise(r=>setTimeout(r,300)); const txt=d.getElementById('histModalBody').textContent; d.getElementById('histClose').click();
+        if(!withWho||!/담당자별 반복/.test(txt)) throw new Error('담당자 기록이 이상해요: '+JSON.stringify({withWho,total:vs.length,hasSec:/담당자별 반복/.test(txt)}));
+        return {withWho,total:vs.length}; } finally { if(keep==null) localStorage.removeItem(KEY); else localStorage.setItem(KEY,keep); await w.handleRun(); } })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';
