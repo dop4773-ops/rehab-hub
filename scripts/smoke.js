@@ -122,6 +122,17 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})); await sl(150); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(100); out.escClosed=!document.querySelector('.ps-overlay');
       if(!out.closed||!out.escClosed) throw new Error('닫기 동작이 이상해요: '+JSON.stringify(out));
       document.querySelector('[data-nav=home]').click(); return out; })()`));
+    await step('이월: 어제 스냅샷을 심고 다시 검증 → 홈에 "어제부터 계속된 불일치"·오늘 요약·계속된 것만 보기', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), w=${W('cross')}, KEY='rehab_cross_history_v1', raw=localStorage.getItem(KEY), out={};
+      try{ const R=w.RehabCore, is=w.__testHooks.issues(), all={statusBook:true,cards:true,grids:true,handover:true,ptaBook:true};
+        const old=R.makeSnapshot(is,all,Date.now()-2*864e5); const keys=Object.keys(old.keys); for(const k of keys.slice(0,Math.ceil(keys.length/2))) delete old.keys[k]; // 일부는 2일 전에도 있었던 것으로
+        localStorage.setItem(KEY,JSON.stringify({v:1,snaps:[old]})); await w.handleRun(); await sl(600);
+        out.carry=w.__crossSummary.carry; if(!out.carry||!out.carry.count) throw new Error('이월 요약이 비었어요: '+JSON.stringify(out.carry));
+        renderHome(); await sl(200); const t=[...document.querySelectorAll('#homeTodo .todo')].map(x=>x.textContent).find(x=>/어제부터 계속된/.test(x)); out.todo=(t||'').slice(0,60); if(!t) throw new Error('홈에 이월 항목이 없어요');
+        out.summary=/어제부터 계속된 불일치/.test(todaySummaryText());
+        document.querySelector('[data-open-carry]').click(); await sl(800); out.view=document.querySelector('.view.active').dataset.view; out.cont=w.document.querySelector('#changeSeg button.active')?.textContent.trim().slice(0,6);
+        if(out.view!=='cross'||!/계속/.test(out.cont||'')||!out.summary) throw new Error('이동/요약이 이상해요: '+JSON.stringify(out));
+      } finally { if(raw==null) localStorage.removeItem(KEY); else localStorage.setItem(KEY,raw); try{ await w.handleRun(); }catch(e){} document.querySelector('[data-nav=home]').click(); }
+      return out; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';

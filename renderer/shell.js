@@ -531,6 +531,10 @@ function renderHome() {
     const cats = cross.cats ? Object.keys(CROSS_CAT_LABEL).filter(k => cross.cats[k]).map(k => `${CROSS_CAT_LABEL[k]} ${cross.cats[k]}`).join(' · ') : '';
     todos.push(todoHtml('warn', '🔍', `교차검증 불일치 ${cross.count}건`, cats || '자세한 내용은 교차검증 화면에서 확인하세요', `<button class="btn" data-open-fixplan>🛠 수정 지시서</button><button class="btn purple" data-goto="cross">열기 →</button>` + itda(`[교차검증] 불일치 ${cross.count}건 발견 — 재활치료부 앱에서 확인`)));
   }
+  if (cross && cross.carry && cross.carry.count) { // 어제 이전부터 계속되는 불일치 — 오래 둘수록 눈에 띄게(3일 이상이 있으면 빨강)
+    const c = cross.carry;
+    todos.push(todoHtml(c.hot ? 'err' : 'warn', '📌', `어제부터 계속된 불일치 ${c.count}건`, `${c.hot ? `3일 이상 ${c.hot}건 · ` : ''}가장 오래된 건 ${c.maxDays}일째 — 아직 안 고쳐진 것부터 확인하세요`, '<button class="btn purple" data-open-carry>계속된 것만 보기 →</button>'));
+  }
   if (acting && acting.count) todos.push(todoHtml('err', '📋', `치료기록 오류 ${acting.count}건`, '치료기록 QA 화면에서 오류 목록을 확인하세요', '<button class="btn green" data-goto="acting">열기 →</button>' + itda(`[치료기록 QA] 치료기록 오류 ${acting.count}건 발견 — 재활치료부 앱에서 확인`)));
   else if (!acting) todos.push(todoHtml('off', '📋', '치료기록 QA — 액팅 기록 파일을 올려 주세요', '담당자별 기록통계.xlsx를 올리면 오류를 바로 검사합니다.', '<button class="btn green" data-goto="acting">파일 올리기 →</button>'));
   if (bk && bk.level !== 'ok' && bk.level !== 'off') todos.push(todoHtml('warn', '💾', bk.level === 'unknown' ? '백업 기록 없음' : '백업 확인 필요', bk.detail || bk.title || '', '<button class="btn" data-goto="backup">백업 상태 보기 →</button>' + itda(`[백업] ${bk.title}`)));
@@ -626,6 +630,7 @@ function todaySummaryText() {
     const cats = cross.cats ? Object.keys(CROSS_CAT_LABEL).filter(k => cross.cats[k]).map(k => `${CROSS_CAT_LABEL[k]} ${cross.cats[k]}`).join(' · ') : '';
     lines.push(`· 교차검증 불일치 ${cross.count}건${tr.hasPrev && tr.delta ? ` (어제 ${tr.delta > 0 ? '+' : ''}${tr.delta})` : ''}${cats ? ' — ' + cats : ''}`);
   } else lines.push('· 교차검증: 아직 실행 전');
+  if (cross && cross.carry && cross.carry.count) lines.push(`· 어제부터 계속된 불일치 ${cross.carry.count}건${cross.carry.hot ? ` (3일 이상 ${cross.carry.hot}건)` : ''}`);
   lines.push(acting ? `· 치료기록 QA: 오류 ${acting.count}건` : '· 치료기록 QA: 파일 대기 중');
   const ev = homeGrandEvents[0]; if (ev) lines.push(`· 다음 그랜드라운딩: ${fmtDay(ev.date)} ${ev.rm || ev.title}${ev.wards ? ' ' + ev.wards.replace(',', '·') + '병동' : ''} ${settings.grandTime}시`);
   const who = (cross && cross.byWho) || []; if (who.length) lines.push(`· 확인 필요 담당: ${who.slice(0, 3).map(w => `${w.name} ${w.count}`).join(' · ')}`);
@@ -1045,6 +1050,7 @@ document.addEventListener('click', async (e) => {
   if (e.target.closest('#dataViewDefault')) { setDataViewDefault(dataViewMode); return; }
   if (e.target.closest('[data-open-dc]')) { try { document.querySelector('iframe[data-tool="acting"]').contentWindow.__showDcStatus(); } catch (err) { /* 화면이 아직 로드 전 */ } return; }
   const ga = e.target.closest('[data-grand-apply]'); if (ga) { applyHomeGrandEvent(+ga.dataset.grandApply || 0); return; }
+  if (e.target.closest('[data-open-carry]')) { showView('cross'); setTimeout(() => viewDoc('cross')?.querySelector('#changeSeg [data-c="cont"]')?.click(), 250); return; }
   if (e.target.closest('[data-open-fixplan]')) { showView('cross'); setTimeout(() => viewDoc('cross')?.getElementById('btnFixPlan')?.click(), 300); return; }
   const ft = e.target.closest('[data-files-toggle]'); if (ft) { const k = ft.dataset.filesToggle; filesOpen[k] = !filesIsOpen(k); renderToolStrips(); return; }
   const pick = e.target.closest('[data-manual-pick]');
