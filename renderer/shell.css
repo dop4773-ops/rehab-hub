@@ -526,3 +526,12 @@ table.cv-xl{border-collapse:collapse;table-layout:fixed;font-family:"Malgun Goth
 .wb-end{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:6px;font-size:11px;color:var(--sub)}.wb-end b{font-weight:800}.wb-end b.ok{color:var(--green)}.wb-end b.warn{color:var(--orange)}
 .wb-endchip{border:1px solid #efd9ad;background:#fffaf0;color:#8a5a0a;border-radius:999px;padding:1px 9px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.wb-endchip:hover{background:#fff3dc}
 body:not(.home-wb) .wb-end{display:none}
+
+/* 규칙 탭 안전장치 */
+#stTabs button[hidden]{display:none}
+.st-rbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 6px}.st-rstate{font-size:12px;font-weight:800;border-radius:99px;padding:3px 11px;background:#eef1f6;color:#5d6a80}.st-rstate.open{background:#fff3dc;color:#b9780f}.st-rsum{font-size:12px;color:var(--sub);flex:1}.st-rsum.chg{color:#8a5a0a;font-weight:700}
+.st-rask{border:1px solid #cdd8ee;background:#f7faff;border-radius:12px;padding:12px 14px;margin:8px 0;font-size:12.5px;line-height:1.55}.st-rbtns{display:flex;gap:6px;margin-top:10px;justify-content:flex-end}.st-pin{border:1px solid var(--border);border-radius:8px;padding:5px 9px;font:inherit;margin-left:6px}
+.st-rdiff{margin:6px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.st-rdiff .add{color:#2f7a5d;background:#e6f4ee;border-radius:6px;padding:0 7px}.st-rdiff .del{color:#b94a57;background:#fbe0e3;border-radius:6px;padding:0 7px;text-decoration:line-through}.st-rwarn{margin-top:8px;color:#8a5a0a;background:#fff8e6;border-radius:9px;padding:8px 10px}
+.st-rtools{border:1px dashed var(--border);border-radius:12px;padding:10px 14px;margin:6px 0 10px}.st-rtitle{font-size:11px;font-weight:800;color:#8a97ad;margin:8px 0 4px}.st-rtitle small{font-weight:600}.st-rrow{display:flex;gap:6px;flex-wrap:wrap}.st-rslot{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}.st-rslot>b{min-width:92px}.st-rslot>span{flex:1;color:var(--sub)}.st-rhist{max-height:240px;overflow:auto;margin-top:6px}
+.st-rsave{display:flex;align-items:center;gap:8px;position:sticky;bottom:0;background:#fff;padding:10px 0;border-top:1px solid var(--border);margin-top:8px}
+.st-ta[readonly]{background:#f6f8fc;color:#5d6a80;cursor:not-allowed}.st-ta.changed{outline:2px solid #f0c36c;background:#fffdf5}

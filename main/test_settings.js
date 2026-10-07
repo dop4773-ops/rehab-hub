@@ -65,4 +65,20 @@ assert.strictEqual(S.parseImport('{"app":"other","settings":{}}').ok, false);
   assert(/r\.round1Wards\.length\?r\.round1Wards:\[9,8\]/.test(grand) && /r\.round2Wards\.length\?r\.round2Wards:\[7,5\]/.test(grand), '그랜드라운딩 병동 기본값이 RULE_DEFAULTS와 달라요');
   assert.deepStrictEqual(R.round1Wards, [9, 8]); assert.deepStrictEqual(R.round2Wards, [7, 5]);
 }
+// ⑦ 규칙 안전장치: 차이 계산·정리·이력 최대 10·번호 칸 1~3·비밀번호 표식·기본 숨김
+{
+  const R = S.RULE_DEFAULTS;
+  assert.strictEqual(S.DEFAULTS.rulesTab, false); assert.deepStrictEqual(S.DEFAULTS.rulesHistory, []); assert.deepStrictEqual(S.DEFAULTS.rulesSlots, {}); assert.strictEqual(S.DEFAULTS.rulesPin, '');
+  assert.deepStrictEqual(S.rulesDiff(R, R), [], '같으면 차이 없음');
+  const d = S.rulesDiff(R, { ...R, stCodes: ['MZ006', 'NEW1'], round1Wards: [8, 9], erdtTherapists: [...R.erdtTherapists].reverse() });
+  assert.deepStrictEqual(d.map(x => x.key).sort(), ['round1Wards', 'stCodes'], '목록 순서만 바뀐 건 차이가 아니고, 병동 순서는 차이');
+  const st = d.find(x => x.key === 'stCodes'); assert.deepStrictEqual(st.added, ['NEW1']); assert.deepStrictEqual(st.removed.sort(), ['51010', 'IM006001', 'NZ010']);
+  const many = Array.from({ length: 15 }, (_, i) => ({ t: i, rules: { stCodes: ['A' + i] } }));
+  assert.strictEqual(S.normalize({ rulesHistory: many }).rulesHistory.length, 10, '이력은 최대 10개');
+  assert.deepStrictEqual(S.normalize({ rulesHistory: [{ t: 1, rules: { stCodes: [] } }] }).rulesHistory[0].rules.stCodes, R.stCodes, '이력 안의 잘못된 값도 기본값으로 정리');
+  assert.deepStrictEqual(Object.keys(S.normalize({ rulesSlots: { 1: { t: 1, rules: {} }, 2: { rules: {} }, 7: { rules: {} }, 3: {} } }).rulesSlots).sort(), ['1', '2'], '번호 칸은 1~3, 내용 있는 것만');
+  assert.strictEqual(S.pinHash('1234'), S.pinHash('1234')); assert.notStrictEqual(S.pinHash('1234'), S.pinHash('1235')); assert.strictEqual(S.normalize({ rulesPin: '<script>' }).rulesPin, '', '이상한 표식은 버림');
+  const rt = S.parseImport(S.exportJson(S.normalize({ rulesTab: true, rulesPin: S.pinHash('1'), rulesSlots: { 2: { t: 5, rules: { stCodes: ['X1'] } } } }), [], 'x'));
+  assert.ok(rt.ok && rt.settings.rulesTab && rt.settings.rulesSlots['2'].rules.stCodes[0] === 'X1' && rt.settings.rulesPin === S.pinHash('1'), '내보내기·가져오기에 이력·번호 칸·잠금도 같이 옮겨져요');
+}
 console.log('settings: OK');

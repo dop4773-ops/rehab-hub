@@ -32,6 +32,25 @@
     return [...new Set(out)];
   }
   DEFAULTS.rules = JSON.parse(JSON.stringify(RULE_DEFAULTS));
+  DEFAULTS.rulesHistory = []; DEFAULTS.rulesSlots = {}; DEFAULTS.rulesPin = ''; DEFAULTS.rulesTab = false; // 규칙 탭 보이기(고급, 기본 숨김) · 되돌리기 이력(최대 10) · 번호 칸 1~3 · 잠금 비밀번호 표식
+  const RULE_LABELS = { otCodes: '작업치료(OT) 오더 코드', stCodes: '언어·심리(ST) 오더 코드', fixed15Codes: '15분 고정 오더 코드', erdtTherapists: 'ERDT "E" 담당 치료사', round1Wards: '1회차 병동', round2Wards: '2회차 병동' };
+  // 규칙 객체 하나를 정리해서 돌려준다(없거나 잘못된 항목은 기본값). 저장된 값·보관 이력·번호 칸 모두 이 함수를 거친다.
+  function normRules(raw) {
+    const out = JSON.parse(JSON.stringify(RULE_DEFAULTS)), r = raw && typeof raw === 'object' ? raw : {};
+    for (const k of Object.keys(RULE_DEFAULTS)) { if (!Array.isArray(r[k])) continue; const v = cleanRuleList(k, r[k]); if (v.length || RULE_ALLOW_EMPTY.includes(k)) out[k] = v; }
+    return out;
+  }
+  // 두 규칙의 차이: [{key, label, added[], removed[], from[], to[]}] — 병동은 순서도 의미가 있어서 순서가 바뀌어도 "바뀜"으로 본다
+  function rulesDiff(a, b) {
+    a = normRules(a); b = normRules(b); const out = [];
+    for (const k of Object.keys(RULE_DEFAULTS)) {
+      const same = JSON.stringify(RULE_NUMS.includes(k) ? a[k] : [...a[k]].sort()) === JSON.stringify(RULE_NUMS.includes(k) ? b[k] : [...b[k]].sort()); if (same) continue;
+      out.push({ key: k, label: RULE_LABELS[k], from: a[k], to: b[k], added: b[k].filter(x => !a[k].includes(x)), removed: a[k].filter(x => !b[k].includes(x)) });
+    }
+    return out;
+  }
+  // 잠금 비밀번호는 "실수로 바꾸는 것"을 막는 용도라 가벼운 표식(해시)만 저장한다 — 보안 장치가 아니에요.
+  function pinHash(pin) { let h1 = 0xdeadbeef, h2 = 0x41c6ce57; const s = 'rehab-rules|' + String(pin); for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36); }
   const HOURS = ['08', '09', '10', '11', '13', '14', '15', '16'];
   const ENUMS = {
     syncMode: ['launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
@@ -74,10 +93,11 @@
     }
     for (const k of BOOLS) if (typeof r[k] === 'boolean') s[k] = r[k];
     if (typeof r.itdaCategory === 'string' && r.itdaCategory.trim()) s.itdaCategory = r.itdaCategory.trim().slice(0, 40);
-    if (r.rules && typeof r.rules === 'object') for (const k of Object.keys(RULE_DEFAULTS)) {
-      if (!Array.isArray(r.rules[k])) continue; const v = cleanRuleList(k, r.rules[k]);
-      if (v.length || RULE_ALLOW_EMPTY.includes(k)) s.rules[k] = v;
-    }
+    s.rules = normRules(r.rules);
+    if (Array.isArray(r.rulesHistory)) s.rulesHistory = r.rulesHistory.filter(x => x && typeof x === 'object' && x.rules).slice(0, 10).map(x => ({ t: Number(x.t) || 0, rules: normRules(x.rules) }));
+    if (r.rulesSlots && typeof r.rulesSlots === 'object') for (const k of ['1', '2', '3']) if (r.rulesSlots[k] && r.rulesSlots[k].rules) s.rulesSlots[k] = { t: Number(r.rulesSlots[k].t) || 0, rules: normRules(r.rulesSlots[k].rules) };
+    if (typeof r.rulesPin === 'string' && /^[0-9a-z]{1,16}$/.test(r.rulesPin)) s.rulesPin = r.rulesPin;
+    if (typeof r.rulesTab === 'boolean') s.rulesTab = r.rulesTab;
     if (r.keymap && typeof r.keymap === 'object') for (const [id, v] of Object.entries(r.keymap)) { const n = normKeys(v); if (n && n.includes('Ctrl')) s.keymap[id] = n; }
     return s;
   }
@@ -100,6 +120,6 @@
     return { ok: true, settings: normalize(o.settings), folders };
   }
 
-  root.RehabSettings = { KEY, DEFAULTS, RULE_DEFAULTS, cleanRuleList, ENUMS, ZOOM, VIVID_FILTER, normalize, load, save, normKeys, keysFromEvent, findConflict, RESERVED, exportJson, parseImport };
+  root.RehabSettings = { KEY, DEFAULTS, RULE_DEFAULTS, RULE_LABELS, cleanRuleList, normRules, rulesDiff, pinHash, ENUMS, ZOOM, VIVID_FILTER, normalize, load, save, normKeys, keysFromEvent, findConflict, RESERVED, exportJson, parseImport };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.RehabSettings;
 })(typeof window !== 'undefined' ? window : globalThis);

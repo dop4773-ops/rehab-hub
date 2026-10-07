@@ -91,72 +91,30 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       const cardOnly=all.filter(p=>p.category==='외래'&&!sa[p.name.replace(/[\\s·ㆍ\\-().,]/g,'').toUpperCase()]).filter(p=>!h.isOutpatient(p.name)&&all.filter(q=>q.name===p.name).every(q=>q.category==='외래'));
       if(bad.length||cardOnly.length) throw new Error('외래 판별이 이상해요: '+JSON.stringify({bad:bad.slice(0,3),cardOnly:cardOnly.slice(0,3).map(p=>p.name)}));
       return {status:Object.values(sa).filter(v=>v==='외래').length, cardOutpatients:all.filter(p=>p.category==='외래').length}; })()`));
-    await step('설정 › 규칙: 회차별 병동·코드 목록 바꾸면 도구에 반영, 기본값 복구', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); const g=${W('rm')}.document, keep=JSON.stringify(settings.rules), out={};
-      try{ setSetting('rules',{...settings.rules, round1Wards:[8], otCodes:[...settings.rules.otCodes,'ZZ999'], erdtTherapists:['테스트']}); await sl(1500);
-        out.opt=g.querySelector('#grandRouteSelect option[value=round1]').textContent; out.tool=${W('acting')}.__rhSettings.rules.otCodes.slice(-1)[0];
-        if(!/1회차 · 8병동/.test(out.opt)||out.tool!=='ZZ999') throw new Error('규칙이 도구에 안 들어갔어요: '+JSON.stringify(out));
-        document.querySelector('[data-rule-reset=round1Wards]').click(); await sl(300); out.back=g.querySelector('#grandRouteSelect option[value=round1]').textContent;
-        if(!/1회차 · 8·9병동/.test(out.back)) throw new Error('기본값 복구가 안 됐어요: '+out.back);
-      } finally { setSetting('rules', JSON.parse(keep)); await sl(1200); }
-      out.restored=JSON.stringify(settings.rules)===keep; return out; })()`));
-    await step('인수인계 신선도: 오래되면 홈·화면 띠·데이터 준비에 경고, 누르면 다시 가져옴', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', raw=localStorage.getItem(KEY); const o=JSON.parse(raw); const out={};
-      try{ o.fetchedAt=Date.now()-9*3600*1000; localStorage.setItem(KEY,JSON.stringify(o)); renderAll(); renderToolStrips(); await sl(200);
-        out.home=/인수인계 9시간 전/.test(document.getElementById('homeBand').textContent); out.strip=!!document.querySelector('.tool-status .fchip.err[data-ho-refresh]');
-        document.querySelector('[data-nav=data]').click(); await sl(300); out.data=/9시간 전/.test(document.getElementById('dataFileList').textContent);
-        if(!out.home||!out.strip||!out.data) throw new Error('오래된 인수인계 표시가 이상해요: '+JSON.stringify(out));
-        document.querySelector('[data-ho-refresh]').click(); for(let i=0;i<150;i++){ await sl(300); const f=JSON.parse(localStorage.getItem(KEY)||'{}').fetchedAt||0; if(f>Date.now()-60000){ out.refreshed=true; break; } }
-        if(!out.refreshed) out.refreshed=false; // 인터넷이 막힌 PC에서는 새로 못 가져오는 게 정상
-        if(out.refreshed && handoverFreshness().cls!=='ok') throw new Error('가져온 뒤에도 정상으로 안 바뀌어요');
-      } finally { if(!out.refreshed) localStorage.setItem(KEY,raw); renderAll(); }
+    await step('설정 › 규칙 안전장치: 숨김·잠금·저장 전 미적용·변경 확인·이력 되돌리기·원래 규칙·번호 칸·도구 반영', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), q=s=>document.querySelector(s), click=s=>q(s).click(), out={};
+      const keep=JSON.stringify([settings.rules,settings.rulesHistory,settings.rulesSlots,settings.rulesPin,settings.rulesTab]), g=${W('rm')}.document, ta=k=>q('[data-rule='+k+']');
+      const ev2=(el,v)=>{ el.value=v; el.dispatchEvent(new Event('input',{bubbles:true})); }, ask=async(i)=>{ await sl(80); click('[data-rask=\"'+i+'\"]'); await sl(200); };
+      try{
+        setSetting('rulesTab',false); await sl(100); out.hiddenTab=q('#stTabs [data-tab=rules]').hidden; setSetting('rulesTab',true); await sl(100);
+        document.querySelector('[data-nav=settings]').click(); click('#stTabs [data-tab=rules]'); await sl(200);
+        out.locked=ta('round1Wards').readOnly&&/잠겨/.test(q('#stRuleBar').textContent); if(!out.hiddenTab||!out.locked) throw new Error('숨김/잠금이 아니에요: '+JSON.stringify(out));
+        click('[data-rlock]'); await ask(0); out.unlocked=!ta('round1Wards').readOnly;
+        ev2(ta('round1Wards'),'8'); await sl(100); out.notApplied=JSON.stringify(settings.rules.round1Wards)==='[9,8]'&&!q('#stRuleSave').hidden; if(!out.unlocked||!out.notApplied) throw new Error('저장 전에 적용되면 안 돼요: '+JSON.stringify(out));
+        click('#stRuleReview'); await sl(150); out.diffShown=/1회차 병동/.test(q('#stRuleAsk').textContent)&&/→/.test(q('#stRuleAsk').textContent); await ask(0);
+        out.saved=JSON.stringify(settings.rules.round1Wards)==='[8]'&&settings.rulesHistory.length===1; await sl(900); out.tool=/1회차 · 8병동/.test(g.querySelector('#grandRouteSelect option[value=round1]').textContent);
+        if(!out.diffShown||!out.saved||!out.tool) throw new Error('저장/반영이 이상해요: '+JSON.stringify(out));
+        click('[data-rhist]'); await sl(150); click('[data-rask-h=\"0\"]'); await sl(150); await ask(0); out.undone=JSON.stringify(settings.rules.round1Wards)==='[9,8]'&&settings.rulesHistory.length===2; if(!out.undone) throw new Error('이전 값으로 안 돌아가요');
+        ev2(ta('otCodes'),settings.rules.otCodes.join(', ')+', ZZ999'); click('#stRuleReview'); await sl(150); await ask(0); out.otAdded=settings.rules.otCodes.includes('ZZ999')&&${W('acting')}.__rhSettings.rules.otCodes.includes('ZZ999');
+        click('[data-rslot-save=\"1\"]'); await sl(150); out.slot=!!settings.rulesSlots['1'];
+        click('[data-rdefault]'); await sl(150); await ask(0); out.reset=JSON.stringify(settings.rules)===JSON.stringify(RehabSettings.RULE_DEFAULTS);
+        click('[data-rslot-load=\"1\"]'); await sl(150); await ask(0); out.slotLoaded=settings.rules.otCodes.includes('ZZ999');
+        if(!out.otAdded||!out.slot||!out.reset||!out.slotLoaded) throw new Error('원래 규칙/번호 칸이 이상해요: '+JSON.stringify(out));
+        click('[data-rpin]'); await sl(100); q('#stRuleAsk .st-pin').value='1234'; await ask(0); click('[data-rlock]'); await sl(150); click('[data-rlock]'); await sl(150);
+        q('#stRuleAsk .st-pin').value='0000'; click('[data-rask=\"0\"]'); await sl(150); out.wrongPin=ta('round1Wards').readOnly; q('#stRuleAsk .st-pin').value='1234'; click('[data-rask=\"0\"]'); await sl(150); out.rightPin=!ta('round1Wards').readOnly;
+        if(!out.wrongPin||!out.rightPin) throw new Error('비밀번호 잠금이 이상해요: '+JSON.stringify(out));
+        click('[data-rlock]'); await sl(100);
+      } finally { const k=JSON.parse(keep); setSetting('rulesPin',k[3]); setSetting('rulesSlots',k[2]); setSetting('rulesHistory',k[1]); setSetting('rules',k[0]); setSetting('rulesTab',k[4]); await sl(1200); document.querySelector('[data-nav=home]').click(); }
       return out; })()`));
-    await step('환자 빠른 검색(Ctrl+K): 열기·검색·상세·이동·Esc', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), out={}; const g=${W('rm')};
-      for(let i=0;i<50&&!(g.__patientApi().length&&${W('cross')}.__issuesApi().length);i++) await sl(200); // 시작 직후 자동 동기화가 끝날 때까지
-      const pats=g.__patientApi(); const withIssue=${W('cross')}.__issuesApi().find(i=>pats.some(p=>p.name===i.patient)); const name=(withIssue||{patient:pats[0].name}).patient; out.name=name.slice(0,1)+'○○';
-      document.querySelector('[data-nav=home]').click(); await sl(200);
-      document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})); await sl(200); out.opened=!!document.querySelector('.ps-overlay');
-      const inp=document.querySelector('.ps-input'); inp.value=name; inp.dispatchEvent(new Event('input')); await sl(300);
-      out.rows=document.querySelectorAll('.ps-row').length; out.hasDetail=document.querySelector('.ps-name')?.textContent.includes(name); out.crossLines=document.querySelectorAll('.ps-detail .ps-cat').length; out.secs=[...document.querySelectorAll('.ps-sec')].map(x=>x.textContent.replace(/\\s+/g,' ')).join('|');
-      if(!out.opened||!out.rows||!out.hasDetail) throw new Error('검색이 안 열렸거나 결과가 없어요: '+JSON.stringify(out));
-      for(let i=0;i<30&&!document.querySelector('.ps-cardwrap table.cv-xl')&&!/찾지 못했어요/.test(document.getElementById('psCard')?.textContent||'');i++) await sl(200); out.card=!!document.querySelector('.ps-cardwrap table.cv-xl');
-      if(out.card){ document.querySelector('.ps-cardwrap').click(); await sl(300); out.big=!!document.querySelector('.ps-big table.cv-xl'); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(150); out.bigClosedOnly=!document.querySelector('.ps-big')&&!!document.querySelector('.ps-overlay'); if(!out.big||!out.bigClosedOnly) throw new Error('카드 크게 보기가 이상해요: '+JSON.stringify(out)); }
-      inp.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})); await sl(1200); out.view=document.querySelector('.view.active').dataset.view; out.closed=!document.querySelector('.ps-overlay');
-      if(withIssue){ out.crossFilter=${W('cross')}.document.getElementById('searchInput').value; if(out.view!=='cross'||out.crossFilter!==name) throw new Error('교차검증 이동이 이상해요: '+JSON.stringify(out)); }
-      ${W('cross')}.document.getElementById('searchInput').value=''; ${W('cross')}.document.getElementById('searchInput').dispatchEvent(new Event('input'));
-      document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})); await sl(150); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(100); out.escClosed=!document.querySelector('.ps-overlay');
-      if(!out.closed||!out.escClosed) throw new Error('닫기 동작이 이상해요: '+JSON.stringify(out));
-      document.querySelector('[data-nav=home]').click(); return out; })()`));
-    await step('이월: 어제 스냅샷을 심고 다시 검증 → 홈에 "어제부터 계속된 불일치"·오늘 요약·계속된 것만 보기', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), w=${W('cross')}, KEY='rehab_cross_history_v1', raw=localStorage.getItem(KEY), out={};
-      try{ const R=w.RehabCore, is=w.__testHooks.issues(), all={statusBook:true,cards:true,grids:true,handover:true,ptaBook:true};
-        const old=R.makeSnapshot(is,all,Date.now()-2*864e5); const keys=Object.keys(old.keys); for(const k of keys.slice(0,Math.ceil(keys.length/2))) delete old.keys[k]; // 일부는 2일 전에도 있었던 것으로
-        localStorage.setItem(KEY,JSON.stringify({v:1,snaps:[old]})); await w.handleRun(); await sl(600);
-        out.carry=w.__crossSummary.carry; if(!out.carry||!out.carry.count) throw new Error('이월 요약이 비었어요: '+JSON.stringify(out.carry));
-        renderHome(); await sl(200); const t=[...document.querySelectorAll('#homeTodo .todo')].map(x=>x.textContent).find(x=>/어제부터 계속된/.test(x)); out.todo=(t||'').slice(0,60); if(!t) throw new Error('홈에 이월 항목이 없어요');
-        out.summary=/어제부터 계속된 불일치/.test(todaySummaryText());
-        document.querySelector('[data-open-carry]').click(); await sl(800); out.view=document.querySelector('.view.active').dataset.view; out.cont=w.document.querySelector('#changeSeg button.active')?.textContent.trim().slice(0,6);
-        if(out.view!=='cross'||!/계속/.test(out.cont||'')||!out.summary) throw new Error('이동/요약이 이상해요: '+JSON.stringify(out));
-      } finally { if(raw==null) localStorage.removeItem(KEY); else localStorage.setItem(KEY,raw); try{ await w.handleRun(); }catch(e){} document.querySelector('[data-nav=home]').click(); }
-      return out; })()`));
-    await step('단축키: 새 기능 키가 설정 › 단축키 목록에 있고 실제로 동작(Ctrl+K·Ctrl+Shift+H·Ctrl+Shift+T)', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), out={}; document.querySelector('[data-nav=settings]').click(); document.querySelector('#stTabs [data-tab=keys]').click(); await sl(300);
-      const txt=document.querySelector('[data-page=keys]').textContent; out.listed=['환자 빠른 검색','인수인계 지금 다시 가져오기','오늘 요약 복사'].map(x=>txt.includes(x)); if(out.listed.includes(false)) throw new Error('단축키 목록에 빠졌어요: '+JSON.stringify(out.listed));
-      const key=(k,sh)=>document.dispatchEvent(new KeyboardEvent('keydown',{key:k,ctrlKey:true,shiftKey:!!sh,bubbles:true}));
-      document.querySelector('[data-nav=home]').click(); await sl(150);
-      key('k'); await sl(200); out.k=!!document.querySelector('.ps-overlay'); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(100);
-      document.getElementById('toast').classList.remove('show'); key('T',true); await sl(500); out.t=/오늘 요약/.test(document.getElementById('toast').textContent);
-      key('H',true); await sl(300); out.h=/인수인계를 새로 가져오는 중|새로 가져왔어요|가져오지 못했어요/.test(document.getElementById('toast').textContent); for(let i=0;i<60&&hoRefreshing;i++) await sl(300);
-      if(!out.k||!out.t||!out.h) throw new Error('단축키가 동작하지 않아요: '+JSON.stringify(out)); return out; })()`));
-    await step('교차검증: 수정 지시서 › 담당자별 메시지 복사', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); await w.handleRun(); let got=''; Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async t=>{ got=t; }},configurable:true});
-      d.getElementById('btnFixPlan').click(); await sl(500); d.getElementById('fixCopyWho').click(); await sl(300); d.getElementById('fixCancel')?.click?.();
-      if(!/<.+ 선생님 확인 부탁드려요>/.test(got)) throw new Error('담당자별 글이 안 만들어졌어요: '+got.slice(0,80)); const n=(got.match(/선생님 확인 부탁드려요/g)||[]).length; return {people:n, head:got.split('\\n').slice(0,3).join(' | ').slice(0,100)}; })()`));
-    await step('교차검증: 이력에 담당자가 같이 남고 이력 창에 「담당자별 반복」이 나옴', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, KEY='rehab_cross_history_v1', keep=localStorage.getItem(KEY); await w.handleRun(); await new Promise(r=>setTimeout(r,500));
-      try{ const h=JSON.parse(localStorage.getItem(KEY)), last=h.snaps[h.snaps.length-1], vs=Object.values(last.keys), withWho=vs.filter(v=>Array.isArray(v[6])&&v[6].length).length;
-        d.getElementById('histOpen')?.click(); await new Promise(r=>setTimeout(r,300)); const txt=d.getElementById('histModalBody').textContent; d.getElementById('histClose').click();
-        if(!withWho||!/담당자별 반복/.test(txt)) throw new Error('담당자 기록이 이상해요: '+JSON.stringify({withWho,total:vs.length,hasSec:/담당자별 반복/.test(txt)}));
-        return {withWho,total:vs.length}; } finally { if(keep==null) localStorage.removeItem(KEY); else localStorage.setItem(KEY,keep); await w.handleRun(); } })()`));
-    await step('홈: 퇴근 전 체크 한 줄(남은 것 칩이 눌러서 이동)', async () => await ev(`(async()=>{ document.querySelector('[data-nav=home]').click(); await new Promise(r=>setTimeout(r,300)); renderHome(); const e=document.getElementById('wbEnd'), chips=[...e.querySelectorAll('.wb-endchip')];
-      if(!/남은 것 \\d+|모두 확인/.test(e.textContent)) throw new Error('퇴근 전 체크 문구가 이상해요: '+e.textContent); const n=+(e.textContent.match(/남은 것 (\\d+)/)||[0,0])[1]; if(n!==chips.length) throw new Error('남은 개수와 칩 수가 달라요: '+n+'/'+chips.length);
-      const go=chips.find(c=>c.dataset.goto); let moved=null; if(go){ go.click(); await new Promise(r=>setTimeout(r,300)); moved=document.querySelector('.view.active').dataset.view===go.dataset.goto; document.querySelector('[data-nav=home]').click(); if(!moved) throw new Error('칩을 눌러도 화면이 안 바뀌어요'); }
-      renderHome(); const tb=document.querySelector('#homeTodo [data-goto]'); let todoMoved=null; if(tb){ tb.click(); await new Promise(r=>setTimeout(r,300)); todoMoved=document.querySelector('.view.active').dataset.view===tb.dataset.goto; document.querySelector('[data-nav=home]').click(); if(!todoMoved) throw new Error('오늘 할 일의 이동 버튼이 안 먹어요: '+tb.dataset.goto); }
-      return {text:e.textContent.slice(0,80), chips:chips.length, moved, todoMoved}; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';
