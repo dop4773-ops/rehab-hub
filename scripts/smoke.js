@@ -3,11 +3,12 @@
 // 실데이터를 읽기만 한다(원본 파일 수정 없음). 교차검증을 실행하므로 앱 보관 공간에 오늘 이력이 한 번 기록된다(실제 실행과 동일).
 // 치료기록 QA는 이 PC에 액팅 기록 파일이 없을 수 있어, 아래 FAKE_ACTING_B64 자리에 가짜 파일을 넣어 확인한다(없으면 그 단계는 건너뜀).
 'use strict';
-const { spawn } = require('child_process'); const fs = require('fs'); const path = require('path'); const PORT = 9351;
+const { spawn } = require('child_process'); const fs = require('fs'); const path = require('path'); const os = require('os'); const PORT = 9351;
 const R = require('../renderer/core/xlsx-reader.js'); const sleep = ms => new Promise(r => setTimeout(r, ms));
 const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 260); if (!msgs.includes(k)) msgs.push(k); };
 (async () => {
-  const mainLog = []; const app = spawn(process.execPath, [path.join(__dirname, '..', 'node_modules', 'electron', 'cli.js'), '.', `--remote-debugging-port=${PORT}`, '--remote-allow-origins=*', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'], { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe'] });
+  const exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rehab-smoke-export-'));
+  const mainLog = []; const app = spawn(process.execPath, [path.join(__dirname, '..', 'node_modules', 'electron', 'cli.js'), '.', `--remote-debugging-port=${PORT}`, '--remote-allow-origins=*', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'], { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, REHAB_EXPORT_DIR: exportDir } }); // 내보내기 파일은 임시 폴더로(다운로드 폴더를 어지럽히지 않게)
   app.stdout.on('data', d => mainLog.push(String(d))); app.stderr.on('data', d => mainLog.push(String(d)));
   try {
     let url; for (let i = 0; i < 60 && !url; i++) { try { const l = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json(); const p = l.find(t => t.type === 'page' && /rehab-shell/.test(t.url)); if (p) url = p.webSocketDebuggerUrl; } catch (e) {} if (!url) await sleep(500); }
@@ -85,6 +86,11 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     // 교차검증
     await nav('cross'); await sleep(8000);
     await step('교차검증: 실행', async () => await ev(`(async()=>{ const w=${W('cross')}; await w.runAllVerifications(); return w.__testHooks.issues().length; })()`));
+    await step('파일 내보내기: 지정 폴더에 바로 저장·알림·열기 허용 경로', async () => { const before = fs.readdirSync(exportDir).length;
+      const r = await ev(`(async()=>{ const w=${W('cross')}, sl=ms=>new Promise(r=>setTimeout(r,ms)); document.getElementById('export-toast')?.remove(); w.document.getElementById('btnExcel').click(); for(let i=0;i<50&&!document.getElementById('export-toast');i++) await sl(100); const t=document.getElementById('export-toast'); return t?{head:t.querySelector('b').textContent, btns:[...t.querySelectorAll('button')].map(b=>b.textContent.trim()), msg:t.querySelector('.ut-msg').textContent}:null; })()`);
+      if (!r) throw new Error('저장 알림이 안 떴어요'); const files = fs.readdirSync(exportDir); if (files.length <= before) throw new Error('파일이 저장되지 않았어요');
+      const bad = await ev(`(async()=>[await window.rehab.exportFiles.openFile('/etc/hosts'), await window.rehab.exportFiles.showInFolder('/etc/hosts')])()`); if (bad[0] !== 'not-saved-by-app' || bad[1] !== false) throw new Error('앱이 저장하지 않은 경로까지 열려요: ' + JSON.stringify(bad));
+      return { files: files.length, ...r }; });
     await step('교차검증: 칸 주소가 실제 원본 칸을 가리키는지(읽기만)', async () => {
       // 화면에서는 "이슈별 칸 주소와 그 칸의 실제 값"만 모아 오고, 맞는지는 여기(Node)에서 판정한다
       const items = await ev(`(async()=>{ const w=${W('cross')}, R=w.RehabCore, N=R.normalizeText, hk=w.__testHooks, st=hk.state();
@@ -140,7 +146,7 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     await step('백업 화면', async () => { await nav('backup'); await sleep(1500); return await ev(`document.querySelector('.bk-banner .t')?.innerText`); });
     for (const k of ['home', 'data', 'rm', 'acting', 'cross', 'handover', 'backup', 'report', 'settings']) await nav(k);
     await sleep(1500); ws.close();
-  } finally { app.kill('SIGTERM'); await sleep(1500); }
+  } finally { app.kill('SIGTERM'); await sleep(1500); try { fs.rmSync(exportDir, { recursive: true, force: true }); } catch (e) { /* 임시 폴더 정리 */ } }
   console.log('\n=== 수집된 오류/경고 ' + msgs.length + '건 ==='); msgs.forEach(m => console.log(m));
   const ml = mainLog.join('').split('\n').filter(l => /error|exception|unhandled|warn|fail/i.test(l) && !/DevTools listening/.test(l)); console.log('\n=== 메인 프로세스 로그 ' + ml.length + '줄 ==='); ml.slice(0, 15).forEach(l => console.log(l.slice(0, 220)));
 })();

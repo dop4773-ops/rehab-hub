@@ -14,8 +14,8 @@ assert.strictEqual(n.shortcuts, true); assert.strictEqual(n.grandTime, '13'); as
 assert.notStrictEqual(S.normalize({}).keymap, S.DEFAULTS.keymap); // 기본값 객체를 공유하지 않는다
 
 // ② 저장/불러오기 왕복, 예전 키에서 한 번 옮겨오기
-const o = {}; S.save(mem(o), S.normalize({ dataView: 'board', startView: 'data' }));
-assert.strictEqual(S.load(mem(o)).dataView, 'board'); assert.strictEqual(S.load(mem(o)).startView, 'data');
+const o = {}; S.save(mem(o), S.normalize({ dataView: 'board', homeLayout: 'classic' }));
+assert.strictEqual(S.load(mem(o)).dataView, 'board'); assert.strictEqual(S.load(mem(o)).homeLayout, 'classic');
 const legacy = S.load(mem({ rehab_sync_mode: '30', rehab_data_view_v1: 'board' }));
 assert.strictEqual(legacy.syncMode, '30'); assert.strictEqual(legacy.dataView, 'board');
 assert.deepStrictEqual(S.load(mem({ rehab_settings_v1: '{깨진' })), S.DEFAULTS);

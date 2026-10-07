@@ -7,7 +7,7 @@
   const DEFAULTS = {
     syncMode: 'launch', checkSec: 30, notifyStale: true,
     dataView: 'list', dataStaleFirst: true, dataHideUnused: false,
-    startView: 'last', homeLayout: 'workbench', sidebar: 'last', fontSize: 'normal', color: 'pastel', filesArea: 'collapsed',
+    homeLayout: 'workbench', sidebar: 'last', fontSize: 'normal', color: 'pastel', filesArea: 'collapsed',
     actingSeverity: 'error', grandStats: 'collapsed', grandTime: '09',
     shortcuts: true, keymap: {},
     itda: true, itdaPush: true, itdaCategory: '그랜드라운딩',
@@ -16,7 +16,7 @@
   const HOURS = ['08', '09', '10', '11', '13', '14', '15', '16'];
   const ENUMS = {
     syncMode: ['launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
-    dataView: ['list', 'matrix', 'board'], startView: ['last', 'home', 'data'], homeLayout: ['workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
+    dataView: ['list', 'matrix', 'board'], homeLayout: ['workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
     fontSize: ['small', 'normal', 'large'], color: ['pastel', 'vivid'], filesArea: ['collapsed', 'open'],
     actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS,
   };

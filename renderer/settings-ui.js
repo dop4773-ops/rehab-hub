@@ -8,6 +8,7 @@ function stShowTab(tab) {
   stTab = tab;
   stAll('#stTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   stAll('.st-page').forEach(p => p.classList.toggle('on', p.dataset.page === tab));
+  if (tab === 'data') stRenderExportDir();
   if (tab === 'itda') stRenderItdaStatus();
   if (tab === 'admin') stRenderBackupText();
   if (tab === 'about') stRenderDataDir();
@@ -98,6 +99,14 @@ async function stRenderItdaStatus() { let ok = false; try { ok = await window.re
 function stRenderBackupText() { const b = backupStatus; stq('#stBackupText').textContent = !b ? '확인 중…' : b.level === 'off' ? '백업 기록을 쓰지 않는 PC예요' : `${b.level === 'ok' ? '✔ ' : '⚠ '}${b.title || ''}`; }
 async function stRenderDataDir() { try { stq('#stDataDir').textContent = await window.rehab.app.dataDir(); } catch (e) { /* 표시만 못 함 */ } }
 stq('#stOpenDataDir').addEventListener('click', () => window.rehab.app.openDataDir());
+
+// 파일 저장 위치(내보내기 파일이 저장되는 폴더)
+async function stRenderExportDir(r) {
+  try { const s = r || await window.rehab.exportFiles.getDir(); stq('#stExportDir').textContent = s.dir + (s.custom ? '' : '  (기본 · 다운로드 폴더)'); stq('#stExportReset').disabled = !s.custom; } catch (e) { /* 표시만 못 함 */ }
+}
+stq('#stExportChoose').addEventListener('click', async () => stRenderExportDir(await window.rehab.exportFiles.chooseDir()));
+stq('#stExportReset').addEventListener('click', async () => stRenderExportDir(await window.rehab.exportFiles.resetDir()));
+stq('#stExportOpen').addEventListener('click', () => window.rehab.exportFiles.openDir());
 
 // 설정 옮기기 / 되돌리기
 const stMsg = (t, bad) => { const el = stq('#stAdminMsg'); el.textContent = t; el.style.color = bad ? 'var(--red)' : ''; };

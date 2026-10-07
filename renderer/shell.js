@@ -348,9 +348,7 @@ function ensureToolLoaded(key) {
   }
 }
 
-const LASTVIEW_KEY = 'rehab_last_view_v1';
 function showView(key) {
-  try { localStorage.setItem(LASTVIEW_KEY, key); } catch (e) { /* 기억 못 해도 동작에는 문제 없음 */ }
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.dataset.view === key));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.nav === key));
   ensureToolLoaded(key);
@@ -1095,6 +1093,28 @@ function showUpdateToast(s) {
   } else if (s.status === 'error' && s.auto !== false && el) close(); // 자동 진행 중 실패하면 안내를 정리(자세한 내용은 기록 파일)
 }
 window.rehab.updater.onStatus(s => { onUpdaterStatus(s); showUpdateToast(s); });
+// ── 파일 저장 안내: 내보낸 파일이 저장되면 오른쪽 아래에 "열기 / 폴더 보기"를 잠깐 보여준다(화면 이동 없음) ──
+let exportToastTimer = null, exportToastCount = 0;
+function showExportToast(info, failed) {
+  let el = document.getElementById('export-toast');
+  const close = () => { clearTimeout(exportToastTimer); exportToastCount = 0; if (el) el.remove(); };
+  if (!el) { el = document.createElement('div'); el.id = 'export-toast'; el.className = 'update-toast export-toast'; document.body.appendChild(el); }
+  else if (failed) exportToastCount = 0;
+  if (failed) {
+    el.innerHTML = `<b>⚠ 파일을 저장하지 못했어요</b><div class="ut-msg">${updEsc(info.name)} — 설정 &gt; 데이터·동기화 &gt; 파일 저장 위치를 확인해 주세요.</div><div class="ut-actions"><button class="btn" id="ex-close">닫기</button></div>`;
+  } else {
+    exportToastCount++;
+    el.innerHTML = `<b>✅ 저장했어요${exportToastCount > 1 ? ` · ${exportToastCount}개` : ''}</b><div class="ut-msg" title="${updEsc(info.path)}">${updEsc(info.name)}<br><span class="muted">${updEsc(info.dir)}</span></div>`
+      + '<div class="ut-actions"><button class="btn" id="ex-close">닫기</button><button class="btn" id="ex-folder">📂 폴더 보기</button><button class="btn primary" id="ex-open">📄 열기</button></div>';
+    el.querySelector('#ex-folder').addEventListener('click', () => { window.rehab.exportFiles.showInFolder(info.path); close(); });
+    el.querySelector('#ex-open').addEventListener('click', () => { window.rehab.exportFiles.openFile(info.path); close(); });
+  }
+  el.querySelector('#ex-close').addEventListener('click', close);
+  clearTimeout(exportToastTimer); exportToastTimer = setTimeout(close, failed ? 10000 : 14000);
+  el.onmouseenter = () => clearTimeout(exportToastTimer); el.onmouseleave = () => { clearTimeout(exportToastTimer); exportToastTimer = setTimeout(close, 5000); };
+}
+window.rehab.exportFiles.onSaved((info) => showExportToast(info, false));
+window.rehab.exportFiles.onFailed((info) => showExportToast(info, true));
 document.getElementById('updaterCheckBtn').addEventListener('click', async () => {
   setUpdateStatus('업데이트를 확인하는 중...');
   const r = await window.rehab.updater.checkNow();
@@ -1246,7 +1266,7 @@ function applySetting(key) {
     case 'itda': case 'itdaCategory': homeGrandAt = 0; homeGrandEvent = null; loadHomeGrandEvent(); renderHome(); pushSettingsToTools(); break;
     case 'itdaPush': renderHome(); break;
     case 'actingSeverity': case 'grandStats': case 'grandTime': pushSettingsToTools(); break;
-    default: break; // startView·notifyStale·shortcuts·keymap은 쓰는 쪽이 설정 값을 그때그때 읽는다
+    default: break; // notifyStale·shortcuts·keymap은 쓰는 쪽이 설정 값을 그때그때 읽는다
   }
   settingListeners.forEach(fn => fn(key));
 }
@@ -1269,10 +1289,6 @@ function applySetting(key) {
   { const memo = document.getElementById('wbMemo'); try { memo.value = localStorage.getItem('rehab_home_memo_v1') || ''; } catch (e) { /* 기억 못 해도 동작 */ } memo.addEventListener('input', () => { try { localStorage.setItem('rehab_home_memo_v1', memo.value); } catch (e) { /* 저장 실패해도 화면은 그대로 */ } }); }
   renderHome();
   loadHomeGrandEvent();
-  // 시작 화면(설정): 홈 / 데이터 준비 / 마지막에 쓴 화면
-  let startView = settings.startView;
-  if (startView === 'last') { try { startView = localStorage.getItem(LASTVIEW_KEY); } catch (e) { startView = null; } }
-  if (startView && startView !== 'home' && NAV_ORDER.includes(startView)) showView(startView);
   // 교차검증 화면을 아직 한 번도 안 열었어도, 화면 밖에서 미리 로드해둬야 "자동 불러오기"가
   // 그 도구까지 채워줄 수 있다(loadedTools에 들어있는 도구만 동기화 때 갱신 대상이 됨).
   ensureToolLoaded('cross');

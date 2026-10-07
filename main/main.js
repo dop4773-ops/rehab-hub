@@ -6,6 +6,7 @@ const { registerFoldersIpc } = require('./ipc/folders.ipc');
 const { registerItdaIpc } = require('./ipc/itda.ipc');
 const { registerSchedulesIpc } = require('./ipc/schedules.ipc');
 const { registerBackupIpc } = require('./ipc/backup.ipc');
+const { registerExportIpc } = require('./ipc/export.ipc');
 const { initUpdater } = require('./updater');
 
 registerSchemePrivileges(); // app.whenReady() 전에 호출해야 함(Electron 요구사항)
@@ -22,7 +23,8 @@ if (!gotLock) {
     try {
       const fs = require('fs'), file = path.join(app.getPath('userData'), 'error.log');
       let big = false; try { big = fs.statSync(file).size > 200 * 1024; } catch (e) { /* 아직 없음 */ }
-      (big ? fs.writeFileSync : fs.appendFileSync)(file, `[${new Date().toISOString()}] ${kind}: ${err && err.stack || err}\n`);
+      const line = `[${new Date().toISOString()}] ${kind}: ${err && err.stack || err}\n`;
+      if (big) fs.writeFileSync(file, line); else fs.appendFileSync(file, line);
     } catch (e) { /* 기록을 못 남겨도 앱은 계속 */ }
   };
   process.on('uncaughtException', (err) => logError('uncaughtException', err));
@@ -72,6 +74,7 @@ if (!gotLock) {
     registerItdaIpc();
     registerSchedulesIpc();
     registerBackupIpc();
+    registerExportIpc(() => mainWindow);
     ipcMain.handle('app:dataDir', () => app.getPath('userData'));
     ipcMain.handle('app:openDataDir', () => shell.openPath(app.getPath('userData')));
     createWindow();

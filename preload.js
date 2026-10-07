@@ -33,6 +33,16 @@ contextBridge.exposeInMainWorld('rehab', {
     grandEvents: (category) => ipcRenderer.invoke('itda:grandEvents', category),
     pushInboxItem: (content) => ipcRenderer.invoke('itda:pushInboxItem', content),
   },
+  exportFiles: {
+    getDir: () => ipcRenderer.invoke('export:getDir'),
+    chooseDir: () => ipcRenderer.invoke('export:chooseDir'),
+    resetDir: () => ipcRenderer.invoke('export:resetDir'),
+    openDir: () => ipcRenderer.invoke('export:openDir'),
+    openFile: (file) => ipcRenderer.invoke('export:openFile', file),
+    showInFolder: (file) => ipcRenderer.invoke('export:showInFolder', file),
+    onSaved: (cb) => ipcRenderer.on('export:saved', (event, info) => cb(info)),
+    onFailed: (cb) => ipcRenderer.on('export:failed', (event, info) => cb(info)),
+  },
   app: {
     dataDir: () => ipcRenderer.invoke('app:dataDir'),
     openDataDir: () => ipcRenderer.invoke('app:openDataDir'),

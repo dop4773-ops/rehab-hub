@@ -15,7 +15,7 @@
 body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont,"Malgun Gothic",'맑은 고딕',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
 
 /* ── 상단바 ────────────────────────────────────────────── */
-#topbar{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:linear-gradient(120deg,var(--navy),var(--navy2) 55%,var(--blue));color:#fff;box-shadow:0 2px 10px rgba(15,35,65,.15)}
+#topbar{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--navy);color:#fff;box-shadow:0 2px 10px rgba(15,35,65,.15)}
 #topbar .brand{display:flex;align-items:center;gap:10px}
 #topbar .brand .logo{width:36px;height:36px;object-fit:contain;display:block}
 #topbar .brand .title{font-weight:800;font-size:15px}
@@ -28,7 +28,7 @@ body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont
 
 /* ── 레이아웃 ──────────────────────────────────────────── */
 #app{display:flex;height:calc(100vh - 60px)}
-#sidebar{width:212px;background:linear-gradient(180deg,var(--sidebar-bg),var(--sidebar-bg2));padding:14px 10px;overflow-y:auto;display:flex;flex-direction:column}
+#sidebar{width:212px;background:var(--sidebar-bg);padding:14px 10px;overflow-y:auto;display:flex;flex-direction:column}
 .nav-list{flex:1}
 .sidebar-toggle{align-self:flex-end;border:none;background:rgba(255,255,255,.08);color:var(--sidebar-text);width:28px;height:24px;border-radius:7px;cursor:pointer;font-size:14px;line-height:1;margin-bottom:8px}
 .sidebar-toggle:hover{background:var(--sidebar-hover);color:#fff}
@@ -51,7 +51,7 @@ body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont
 .view.active{display:block}
 
 /* ── 홈: 환영 배너 ─────────────────────────────────────── */
-.welcome-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;background:linear-gradient(120deg,#e9f1fc,#f3f8ff);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:14px}
+.welcome-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#eef3fd;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:14px}
 .welcome-banner h2{margin:0 0 4px;font-size:16px;color:var(--navy)}
 .welcome-banner p{margin:0;font-size:12.5px;color:var(--sub)}
 .welcome-banner .deco{font-size:34px;opacity:.85}
@@ -322,14 +322,14 @@ details.home-more>summary small{color:var(--blue);margin-left:6px;font-weight:60
   --bg:#f6f8fd; --border:#e3e9f5; --text:#2b3550; --sub:#66718f; --muted:#a2abc2;
   --sidebar-text:#5d6b94; --sidebar-hover:rgba(111,148,227,.13);
 }
-#topbar{background:linear-gradient(120deg,#dbe7fb,#e7e2f8 60%,#f2e5f4);color:#3b4a7c;box-shadow:0 2px 10px rgba(110,130,190,.12)}
+#topbar{background:#e2eafa;color:#3b4a7c;box-shadow:0 2px 10px rgba(110,130,190,.12)}
 #topbar .brand .tag{color:#7684ad}
 #topbar .pill,#topbar .icon-btn{background:rgba(255,255,255,.7);border:1px solid rgba(110,130,190,.22);color:#3b4a7c}
 #topbar .icon-btn:hover{background:#fff}
 #topbar .pill.sync-pill.ok{background:#dff3ea;border-color:#bfe3d1;color:#2f7a5d}
 #topbar .pill.sync-pill.stale{background:#fdecd2;border-color:#f1d4a3;color:#a8692a}
 #topbar .pill.sync-pill.err{background:#fbe0e3;border-color:#f0b9c0;color:#b94a57}
-#sidebar{background:linear-gradient(180deg,#f0f4fd,#f4eefb);border-right:1px solid #e3e9f5}
+#sidebar{background:#f1f5fd;border-right:1px solid #e3e9f5}
 .sidebar-toggle{background:rgba(111,148,227,.14);color:#5d6b94}
 .sidebar-toggle:hover{background:rgba(111,148,227,.25);color:#35457a}
 .nav-item{color:#5d6b94}
@@ -500,3 +500,4 @@ body.home-wb .home-main>.card{min-width:0}
 .mcell.warn{border-left-color:#d9981f;background:#fffaf0}.mcell.warn .st{color:var(--orange)}.mcell.err{border-left-color:var(--red);background:#fff5f6}.mcell.err .st{color:var(--red)}
 .mcell.off{border-left-color:#cfd6e3;background:#f8f9fc;border-style:dashed}.mcell.off .st{color:#8a97ad}.mcell.busy{border-left-color:var(--blue)}.mcell.live{border-left-color:#4fa9a5;background:#f1fafa}
 .dv-side{margin-top:12px}.dv-side .it.act{display:block}.dv-side .it.act span{display:block;color:#8a97ad;font-size:11px}.dv-side .it.act b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:left;font-weight:600;color:var(--text)}.dv-side .it.act b.bad{color:var(--red)}
+.export-toast{bottom:20px}.export-toast .ut-msg{word-break:break-all}.export-toast .muted{font-size:11px}body:has(#update-toast) .export-toast{bottom:150px}
