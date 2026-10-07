@@ -1,7 +1,7 @@
 // 실행: node main/test_updaterFlow.js
 // 설치본(패키징된 앱)에서 업데이트 흐름이 의도대로 흐르는지를 가짜 electron-updater로 확인한다:
 //   자동 모드 → 켜고 15초 뒤 확인 → 받기 → 10초 안내 → 조용히 설치·재시작 / "나중에" → 설치 안 함
-//   수동 모드 → 자동 확인 없음(사용자가 "지금 확인"을 눌렀을 때만)
+//   수동 모드 → 켤 때 한 번 확인하고 안내만(저절로 설치·재시작 없음), 1시간마다 확인 없음
 'use strict';
 const assert = require('assert'), fs = require('fs'), os = require('os'), path = require('path'), Module = require('module'), EventEmitter = require('events');
 
@@ -34,11 +34,12 @@ const tick = () => new Promise((r) => setImmediate(r));
     c.fire(15000); await tick(); const r = await c.handlers['updater:postpone'](); assert.strictEqual(r.status, 'ok');
     c.fire(10000); await tick(); assert.ok(!c.calls.some(x => x.startsWith('install')), '미뤘는데 설치되면 안 돼요'); assert.ok(c.sent.includes('downloaded'));
   });
-  // ③ 수동 모드: 자동 확인 없음, "지금 확인"만 동작하고 받은 뒤엔 사용자가 설치 버튼을 눌러야 함
+  // ③ 수동 모드: 켤 때 한 번 확인·안내, 설치는 사용자가 버튼을 눌러야 함
   await run('manual', async (c) => {
-    c.fire(15000); await tick(); assert.deepStrictEqual(c.calls, [], '수동 모드는 시작할 때 자동 확인하지 않아요');
-    await c.handlers['updater:checkNow'](); assert.deepStrictEqual(c.calls, ['check']); assert.ok(c.sent.includes('downloaded') && !c.sent.includes('auto-install-pending'));
-    c.fire(10000); await tick(); assert.ok(!c.calls.some(x => x.startsWith('install')), '수동 모드는 저절로 설치하면 안 돼요');
+    c.fire(3600000); await tick(); assert.deepStrictEqual(c.calls, [], '수동 모드는 1시간마다 확인하지 않아요');
+    c.fire(15000); await tick(); assert.deepStrictEqual(c.calls, ['check'], '수동 모드도 시작할 때 한 번은 확인해요');
+    assert.ok(c.sent.includes('downloaded') && !c.sent.includes('auto-install-pending'), '받으면 안내만 해요');
+    c.fire(10000); c.fire(30000); await tick(); assert.ok(!c.calls.some(x => x.startsWith('install')), '수동 모드는 저절로 설치하면 안 돼요');
   });
   console.log('updaterFlow: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -143,12 +143,13 @@ function initUpdater(app, ipcMain, getMainWindow) {
   });
 
   // ── 자동 모드 백그라운드 확인 ───────────────────────────────
-  // 시작 15초 후 1회, 이후 1시간마다 확인한다. (mac에서 창을 새로 열 때(activate)마다 걸고 싶었지만,
+  // 시작 15초 후 1회(자동·수동 모두), 이후 1시간마다(자동만) 확인한다. (mac에서 창을 새로 열 때(activate)마다 걸고 싶었지만,
   // getMainWindow가 매번 최신 창을 찾아주는 이유(main.js 주석 참고)와 같은 이유로 여기서 창 인스턴스에
   // 직접 리스너를 붙이면 그 창이 닫힌 뒤엔 죽은 참조가 되므로 단순하게 시간 기반만 둔다.)
   let lastCheckAt = 0;
-  function autoCheck(reason) {
-    if (getMode() !== 'auto') return;
+  // 수동 모드는 시작할 때 한 번만 확인해서 새 버전이 있으면 안내만 띄운다(저절로 재시작하지 않음). 1시간마다 확인은 자동 모드만.
+  function autoCheck(reason, startup) {
+    if (getMode() !== 'auto' && !startup) return;
     const now = Date.now();
     if (now - lastCheckAt < 60 * 1000) return; // 1분 내 중복 호출 방지
     lastCheckAt = now;
@@ -156,7 +157,7 @@ function initUpdater(app, ipcMain, getMainWindow) {
       console.error(`[updater] 자동 확인 실패 (${reason}):`, err?.message || err);
     });
   }
-  setTimeout(() => autoCheck('시작'), 15 * 1000);
+  setTimeout(() => autoCheck('시작', true), 15 * 1000);
   setInterval(() => autoCheck('주기(1시간)'), 60 * 60 * 1000);
 }
 
