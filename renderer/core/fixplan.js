@@ -94,7 +94,7 @@ function itemsFor(i) {
       return [mk('handover', `${d.type} 기록`, `작성자(${d.writerCount}명)가 실제 배정(${d.realCount}명)보다 많아요 → 실제 배정에 없는 작성자(${(d.extra || []).join(', ')})의 기록은 정리하거나, 담당이 바뀐 것이면 시간표를 확인하세요`,
         { who: (d.extra || []).join(', '), basis: `작성자 ${(d.writers || []).join(', ')} · 실제 ${(d.realTherapists || []).join(', ') || '없음'}` })];
     case 'handover_doctor':
-      return [mk('handover', '주치의(RM) 칸', `주치의가 달라요 — 인수인계 "${d.handoverDoctor}" / 전체시간표 "${d.cardDoctor}" → 맞는 쪽에 맞춰 다른 쪽을 고치세요`, { basis: `${d.handoverDoctor} ↔ ${d.cardDoctor}` })];
+      return [mk('handover', '주치의(RM) 칸', `주치의가 달라요 — 인수인계 "${d.handoverDoctor}"${(d.writers || []).length ? `(${d.writers.join('·')} 기록)` : ''} / 전체시간표 "${d.cardDoctor}" → 맞는 쪽에 맞춰 다른 쪽을 고치세요`, { basis: `${d.handoverDoctor} ↔ ${d.cardDoctor}` })];
     case 'handover_notype':
       return (d.items || []).map(x => mk('handover', `${x.label} 기록 추가`, `현황엔 ${x.label} ${x.count}회인데 인수인계에 ${x.label} 기록이 없어요 → 담당 치료사가 인수인계를 작성하세요`,
         { who: (x.therapists || []).join(', '), basis: `현황 ${x.label} ${x.count}회` }));

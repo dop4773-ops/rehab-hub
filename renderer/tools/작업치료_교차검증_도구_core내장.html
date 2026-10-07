@@ -1861,10 +1861,10 @@ async function runAllVerifications(){
           id:'handover-'+allIssues.length, category:'handover', source:'doctor', floor:r.floor,
           patient:r.name, room:r.room,
           title:'주치의 불일치',
-          line:`인수인계 ${r.handoverDoctor} → 전체시간표 ${r.cardDoctor}`,
-          time:'', searchText:normKey(`${r.name} ${r.room} ${r.handoverDoctor} ${r.cardDoctor}`),
+          line:`인수인계 ${r.handoverDoctor}${r.writers.length?`(${r.writers.join('·')}${r.types.length?' '+r.types.join('/'):''})`:''} → 전체시간표 ${r.cardDoctor}`,
+          time:'', searchText:normKey(`${r.name} ${r.room} ${r.handoverDoctor} ${r.cardDoctor} ${r.writers.join(' ')}`),
           severityRank:0,
-          detail:{kind:'handover_doctor', patient:r.name, room:r.room, handoverDoctor:r.handoverDoctor, cardDoctor:r.cardDoctor}
+          detail:{kind:'handover_doctor', patient:r.name, room:r.room, handoverDoctor:r.handoverDoctor, cardDoctor:r.cardDoctor, writers:r.writers, types:r.types}
         });
       }
     }
@@ -1897,12 +1897,12 @@ async function runAllVerifications(){
   // ---- ⑤ 주치의(RM) 대조: PTA 재원현황의 의사를 기준으로 현황판 진료과 · 전체시간표 카드 · 인수인계 주치의가 같은지 ----
   // PTA에 같은 이름이 여러 명이라 누구인지 못 고른 경우(ambiguous)는 오탐을 막기 위해 건너뛴다.
   if(ptaMapAll){
-    const hoDoctor=new Map(); for(const e of (handoverListAll||[])){ const k=normKey(e.name); if(!hoDoctor.has(k)) hoDoctor.set(k,e.doctor); } // 환자당 첫 줄(최신)
+    const hoDoctor=new Map(); { const seenRec=new Set(); for(const e of (handoverListAll||[])){ if(!e.doctor) continue; const rk=normKey(e.name)+'|'+(e.type||'')+'|'+normKey(e.therapist||''); if(seenRec.has(rk)) continue; seenRec.add(rk); const k=normKey(e.name); if(!hoDoctor.has(k)) hoDoctor.set(k,[]); if(!hoDoctor.get(k).includes(e.doctor)) hoDoctor.get(k).push(e.doctor); } } // 환자의 모든 인수인계 기록(치료사·종류별 맨 위)에 적힌 주치의 — 맨 위 한 건만 보면 다른 기록의 틀린 값을 놓침
     const stDept=new Map(); if(status) for(const r of status.list){ if(r.admit==='입원'||r.admit==='재입원') stDept.set(normKey(r.name), r.dept); }
     for(const [k,pc] of ptaCandByKey){
       const pRm=normDoctor(pc.cand.rm); if(pc.ambiguous||!pRm) continue;
       const card=findCard(pc.name);
-      const vals=[['현황판',stDept.get(k)],['전체시간표',card&&card.doctor],['인수인계',hoDoctor.get(k)]].filter(([,v])=>v);
+      const vals=[['현황판',stDept.get(k)],['전체시간표',card&&card.doctor],...(hoDoctor.get(k)||[]).map(v=>['인수인계',v])].filter(([,v])=>v);
       if(!vals.length) continue;
       roomChecked++;
       const bad=vals.filter(([,v])=>v!==pRm); if(!bad.length) continue;
@@ -2128,19 +2128,25 @@ function buildHandoverExcessChecks(handoverList, schedOcc, schedCcrt){
   return {out, checked};
 }
 // 인수인계의 주치의(RM#) vs 전체시간표(원본) 카드의 주치의(RM#) 비교
+// 인수인계에는 같은 환자라도 치료사·치료 종류마다 기록(행)이 따로 있고, 파일 순서가 수정 시각 순서와 다르기도 해서
+// "환자당 맨 위 한 건"만 보면 다른 기록에 적힌 틀린 주치의를 놓친다(2026-10 오창수 사례). 그래서 환자의 모든 기록(치료사·종류별 맨 위 기록)을
+// 카드와 비교하고, 카드와 다른 주치의가 하나라도 있으면 알린다(같은 틀린 주치의는 환자당 한 건으로 묶고 작성자·종류를 같이 알려 준다).
 function buildDoctorChecks(handoverList, findCardFn){
-  const out=[]; let checked=0;
-  const seen=new Set();
-  for(const e of handoverList){
-    const key=normKey(e.name);
-    if(seen.has(key)) continue; seen.add(key); // 환자당 1회만(가장 위=최신 항목 기준)
-    if(!e.doctor) continue;
+  const rec=new Map(); // 환자+치료사+종류별 맨 위(최신) 기록 — 같은 치료사의 지난 기록은 제외
+  for(const e of handoverList){ if(!e.doctor) continue; const k=normKey(e.name)+'|'+(e.type||'')+'|'+normKey(e.therapist||''); if(!rec.has(k)) rec.set(k,e); }
+  const checked=new Set(), groups=new Map();
+  for(const e of rec.values()){
     const card=findCardFn(e.name);
     if(!card || !card.doctor) continue; // 판정 불가는 집계하지 않음
-    checked++;
-    if(card.doctor!==e.doctor) out.push({name:e.name, handoverDoctor:e.doctor, cardDoctor:card.doctor, floor:card.floor, room:card.room});
+    checked.add(normKey(e.name));
+    if(card.doctor===e.doctor) continue;
+    const g=normKey(e.name)+'|'+e.doctor;
+    if(!groups.has(g)) groups.set(g,{name:e.name, handoverDoctor:e.doctor, cardDoctor:card.doctor, floor:card.floor, room:card.room, writers:[], types:[]});
+    const x=groups.get(g), t=String(e.type||'').toUpperCase();
+    if(e.therapist && !x.writers.includes(e.therapist)) x.writers.push(e.therapist);
+    if(t && !x.types.includes(t)) x.types.push(t);
   }
-  return {out, checked};
+  return {out:[...groups.values()], checked:checked.size};
 }
 
 // 평일시간표(원본)와 표 레이아웃이 조금 다르고, 10F/3F 층 구분 없이 한 팀(0팀)으로 통합돼 있다.
@@ -3305,6 +3311,7 @@ function renderDetail(){
     bodyHtml = `
       <table class="kv-table">
         <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+        ${d.writers&&d.writers.length?`<tr><td>인수인계 기록자</td><td>${esc(d.writers.join(', '))}${d.types&&d.types.length?` · ${esc(d.types.join('/'))}`:''}</td></tr>`:''}
       </table>
       <div class="compare-box">
         <div class="cb bad"><div class="cbt">인수인계 주치의</div><div class="cbv">${esc(d.handoverDoctor)}</div></div>

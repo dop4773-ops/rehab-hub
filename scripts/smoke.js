@@ -86,6 +86,11 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         return {chips, saved:saved.map(x=>[x.dateKey,x.rm,x.ward,x.day,x.patients.length]), msg:d.getElementById('grandItdaMsg').textContent.slice(0,140)};
       } finally { w.__itdaApi=keepI; w.__schedulesApi=keepS; }
     })()`));
+    await step('그랜드: 외래 환자 판별(현황 외래 표기·전체시간표 외래 시트)이 미반영 확인 대상에서 빠짐', async () => await ev(`(()=>{ const h=${W('rm')}.__testHooks, sa=h.statusAdmit(), all=h.allPatients(); const bad=[];
+      for(const [k,v] of Object.entries(sa)){ const nm=all.find(p=>p.name.replace(/[\\s·ㆍ\\-().,]/g,'').toUpperCase()===k)?.name||k; const got=h.isOutpatient(nm); if(got!==(v==='외래')) bad.push([k,v,got]); }
+      const cardOnly=all.filter(p=>p.category==='외래'&&!sa[p.name.replace(/[\\s·ㆍ\\-().,]/g,'').toUpperCase()]).filter(p=>!h.isOutpatient(p.name)&&all.filter(q=>q.name===p.name).every(q=>q.category==='외래'));
+      if(bad.length||cardOnly.length) throw new Error('외래 판별이 이상해요: '+JSON.stringify({bad:bad.slice(0,3),cardOnly:cardOnly.slice(0,3).map(p=>p.name)}));
+      return {status:Object.values(sa).filter(v=>v==='외래').length, cardOutpatients:all.filter(p=>p.category==='외래').length}; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';

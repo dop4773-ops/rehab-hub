@@ -413,6 +413,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 <script src="../core/normalize.js"></script>
 <script src="../core/treatment.js"></script>
 <script src="../core/cards.js"></script>
+<script src="../core/parsers_status.js"></script>
 <script>
 const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, isTreatmentText, treatmentCore, inlineLocation, treatmentRoom, cleanTreatmentName, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows } = RehabCore; // renderer/core 공통 모듈
 'use strict';
@@ -807,7 +808,7 @@ function grandArchiveComputeIssues(scoped,rm){
     if(currentKeys.has(key)) return false;
     const stillHere=stillHereByKey.get(key);
     if(stillHere&&!profile.targetWards.includes(roomFloor(stillHere.room))) return false;
-    return true;
+    return !grandIsOutpatient(x.name); // 외래 환자는 퇴원·전원 확인 대상이 아님
   });
   const missing=scoped.filter(p=>!grandHandoverMap.has(grandHandoverKey(p.rm,p.name)));
   const matched=records.filter(x=>currentKeys.has(grandHandoverKey(x.rm,x.name)));
@@ -1092,6 +1093,19 @@ function grandOtFindCognitiveSections(cells){
   }
   return out;
 }
+// 외래 환자 판별(미반영·확인 필요에서 빼기 위해): ① 작업치료현황 "현황(회복기)" 시트의 입원 칸이 외래/입원/재입원/퇴원 중 무엇인지 ② 거기 없으면 전체시간표의 외래 시트(카드)에만 있는지
+let grandStatusAdmit=new Map();
+async function rebuildGrandStatusAdmit(){
+  grandStatusAdmit=new Map();
+  if(!grandOtBook||!RehabCore.parseStatusSheet) return;
+  try{ const r=await RehabCore.parseStatusSheet(grandOtBook); for(const x of [...r.list,...r.dischargedList]) grandStatusAdmit.set(normalizeGrandOtPatientKey(x.name),x.admit); }catch(e){ /* 현황 시트가 없으면 전체시간표 외래 시트만으로 판단 */ }
+}
+function grandIsOutpatient(name){
+  const k=normalizeGrandOtPatientKey(name), admit=grandStatusAdmit.get(k);
+  if(admit) return admit==='외래';
+  const cards=allPatients.filter(p=>normalizeGrandOtPatientKey(p.name)===k);
+  return cards.length>0&&cards.every(p=>p.category==='외래');
+}
 async function rebuildGrandOtTherapistMap(){
   grandOtTherapistMap=new Map(); grandSwallowTherapistMap=new Map(); grandCogTherapistMap=new Map(); grandOtSheetName='';
   const status=document.getElementById('grandOtStatus'); if(!status) return;
@@ -1169,12 +1183,13 @@ async function handleGrandOtFile(file){
   if(s){s.className='status';s.textContent='작업치료현황에서 작업·연하·인지 치료사 배정을 읽고 있습니다…';}
   try{
     grandOtBook=await readWorkbookFile(file); grandOtFileName=file.name;
+    await rebuildGrandStatusAdmit();
     await rebuildGrandOtTherapistMap();
     await rebuildGrandTeamRoster();
     if(allPatients.length) renderGrandTable();
   }catch(err){
     console.error(err);
-    grandOtBook=null; grandOtTherapistMap=new Map(); grandSwallowTherapistMap=new Map(); grandCogTherapistMap=new Map(); grandTeamRoster=new Map();
+    grandOtBook=null; grandStatusAdmit=new Map(); grandOtTherapistMap=new Map(); grandSwallowTherapistMap=new Map(); grandCogTherapistMap=new Map(); grandTeamRoster=new Map();
     if(s){s.className='status warn';s.textContent=`작업치료현황 분석 실패: ${err.message}`;}
   }
 }
@@ -1592,7 +1607,7 @@ function updateGrandHandoverStatus(){
   const current=allPatients.filter(p=>p.category!=='외래'&&(rm==='ALL'||normalizeGrandRm(p.rm)===rmKey));
   const currentKeys=new Set(current.map(p=>grandHandoverKey(p.rm,p.name)));
   const matched=records.filter(x=>currentKeys.has(grandHandoverKey(x.rm,x.name)));
-  const unmatched=records.filter(x=>!currentKeys.has(grandHandoverKey(x.rm,x.name)));
+  const unmatched=records.filter(x=>!currentKeys.has(grandHandoverKey(x.rm,x.name))&&!grandIsOutpatient(x.name)); // 외래 환자는 퇴원·전원 확인 대상이 아님
   const missing=current.filter(p=>!grandHandoverMap.has(grandHandoverKey(p.rm,p.name)));
   const missingClassified=missing.map(p=>({p,...grandHandoverMissingDetail(p)}));
   const writersOf=(rec)=>grandHandoverEntries(rec).map(e=>e.therapist);
@@ -2123,7 +2138,7 @@ function exportGrandAll(){
 
 function downloadBytes(bytes,name){ const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000); }
 function dateStamp(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function resetApp(){ allPatients=[];rawCardCount=0;loadedFiles={3:null,10:null};grandNotes.clear();grandOtBook=null;grandOtFileName='';grandOtSheetName='';grandOtTherapistMap=new Map();grandSwallowTherapistMap=new Map();grandCogTherapistMap=new Map();grandPtBooks={10:null,3:null};grandPtFileNames={10:'',3:''};grandPtSheetNames={10:'',3:''};grandPtTherapistMaps={10:new Map(),3:new Map()};grandHandoverBook=null;grandHandoverFileName='';grandHandoverSheetName='';grandHandoverMap=new Map();grandHandoverLiveOk=false;document.getElementById('fileInput').value='';const go=document.getElementById('grandOtFileInput');if(go)go.value='';const gh=document.getElementById('grandHandoverFileInput');if(gh)gh.value='';for(const id of ['grandPt10FileInput','grandPt3FileInput']){const x=document.getElementById(id);if(x)x.value='';}const gs=document.getElementById('grandOtStatus');if(gs){gs.className='status';gs.textContent='미업로드 · 작업치료현황의 평일시간표(원본)에서 작업(ST/SM 등)·연하(R)·인지(CCRT/BETTER/COMCOG) 치료사를 분리 매칭합니다.';}const hs=document.getElementById('grandHandoverStatus');if(hs){hs.className='grand-handover-status';hs.textContent='불러오는 중 · OT인수인계서(통합)에서 실시간으로 Goal / 그랜드라운딩을 가져옵니다.';}fetchGrandHandoverLive();const hb=document.getElementById('grandHandoverMatchSummary');if(hb)hb.style.display='none';const p10=document.getElementById('grandPt10Status');if(p10){p10.className='status';p10.textContent='10F 미업로드';}const p3=document.getElementById('grandPt3Status');if(p3){p3.className='status';p3.textContent='3F 미업로드';}const gp=document.getElementById('grandPrintPeriodSelect');if(gp)gp.value='am';const gws=document.getElementById('grandWardSelect');if(gws){gws.innerHTML='<option value="ALL">회차 전체 병동</option>';gws.value='ALL';}updateGrandExportButtonLabels();setFileCard(3,null);setFileCard(10,null);clearStatus();document.getElementById('statsPanel').style.display='none';document.getElementById('resultPanel').style.display='none'; }
+function resetApp(){ grandStatusAdmit=new Map(); allPatients=[];rawCardCount=0;loadedFiles={3:null,10:null};grandNotes.clear();grandOtBook=null;grandOtFileName='';grandOtSheetName='';grandOtTherapistMap=new Map();grandSwallowTherapistMap=new Map();grandCogTherapistMap=new Map();grandPtBooks={10:null,3:null};grandPtFileNames={10:'',3:''};grandPtSheetNames={10:'',3:''};grandPtTherapistMaps={10:new Map(),3:new Map()};grandHandoverBook=null;grandHandoverFileName='';grandHandoverSheetName='';grandHandoverMap=new Map();grandHandoverLiveOk=false;document.getElementById('fileInput').value='';const go=document.getElementById('grandOtFileInput');if(go)go.value='';const gh=document.getElementById('grandHandoverFileInput');if(gh)gh.value='';for(const id of ['grandPt10FileInput','grandPt3FileInput']){const x=document.getElementById(id);if(x)x.value='';}const gs=document.getElementById('grandOtStatus');if(gs){gs.className='status';gs.textContent='미업로드 · 작업치료현황의 평일시간표(원본)에서 작업(ST/SM 등)·연하(R)·인지(CCRT/BETTER/COMCOG) 치료사를 분리 매칭합니다.';}const hs=document.getElementById('grandHandoverStatus');if(hs){hs.className='grand-handover-status';hs.textContent='불러오는 중 · OT인수인계서(통합)에서 실시간으로 Goal / 그랜드라운딩을 가져옵니다.';}fetchGrandHandoverLive();const hb=document.getElementById('grandHandoverMatchSummary');if(hb)hb.style.display='none';const p10=document.getElementById('grandPt10Status');if(p10){p10.className='status';p10.textContent='10F 미업로드';}const p3=document.getElementById('grandPt3Status');if(p3){p3.className='status';p3.textContent='3F 미업로드';}const gp=document.getElementById('grandPrintPeriodSelect');if(gp)gp.value='am';const gws=document.getElementById('grandWardSelect');if(gws){gws.innerHTML='<option value="ALL">회차 전체 병동</option>';gws.value='ALL';}updateGrandExportButtonLabels();setFileCard(3,null);setFileCard(10,null);clearStatus();document.getElementById('statsPanel').style.display='none';document.getElementById('resultPanel').style.display='none'; }
 function defaultGrandHour(){ return '09'; }
 const grandDaySel=document.getElementById('grandDaySelect');
 const dayOptions=DAY_ORDER.map(d=>`<option value="${d}">${d}</option>`).join(''); grandDaySel.innerHTML=dayOptions; grandDaySel.value=defaultDay();
@@ -2240,7 +2255,7 @@ document.getElementById('grandHelpBtn').addEventListener('click',()=>document.ge
 document.getElementById('grandHelpCloseBtn').addEventListener('click',()=>document.getElementById('grandHelpDialog').close());
 document.getElementById('grandHelpDialog').addEventListener('click',(e)=>{ if(e.target.id==='grandHelpDialog') e.target.close(); });
 // 검증 스크립트(scripts/golden.js)가 화면 데이터를 읽는 통로 — 보안 정책(CSP)이 eval을 막기 때문에 eval 대신 이 함수로 읽는다. 읽기 전용.
-window.__testHooks={ allPatients:()=>allPatients };
+window.__testHooks={ allPatients:()=>allPatients, isOutpatient:grandIsOutpatient, statusAdmit:()=>Object.fromEntries(grandStatusAdmit) };
 </script>
 </body>
 </html>

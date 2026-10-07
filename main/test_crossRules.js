@@ -87,5 +87,29 @@ const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) 
   assert.strictEqual(lab(4).text, '오늘 수정'); assert.strictEqual(lab(3).text, '어제 수정'); assert(!lab(3).old);
   assert.strictEqual(lab(1).text, '3일 전 수정 (10/1)'); assert(lab(1).old); assert(lab(2).old);
   console.log('OK ⑥ 파일 수정 시각 라벨');
-  console.log('ALL PASS');
+  
+// ⑤ 인수인계 주치의 대조: 환자의 기록이 여러 건(치료사·종류별)일 때 맨 위 한 건만 보지 않고, 카드와 다른 주치의가 하나라도 있으면 잡는다(오창수 사례)
+{
+  const c2 = { console, ...require('../renderer/core/normalize.js') }; vm.createContext(c2);
+  vm.runInContext(grab('function buildDoctorChecks', '// 평일시간표(원본)와 표 레이아웃') + '\nthis.check=buildDoctorChecks;', c2);
+  const card = { 오창수: { doctor: 'RM4', floor: 3, room: '703' }, 김가나: { doctor: 'RM6', floor: 10, room: '1001' }, 박다라: { doctor: 'RM9', floor: 10, room: '1002' } };
+  const find = (n) => card[n] || null;
+  const list = [
+    { name: '오창수', doctor: 'RM4', therapist: '채지윤', type: 'sot' },   // 맨 위 기록은 카드와 같지만
+    { name: '오창수', doctor: 'RM8', therapist: '차성은', type: 'sot' },   // 다른 치료사 기록의 주치의가 다름 → 잡아야 함
+    { name: '오창수', doctor: 'RM3', therapist: '채지윤', type: 'sot' },   // 같은 치료사의 지난 기록(아래쪽)은 무시
+    { name: '김가나', doctor: 'RM6', therapist: 'A', type: 'sot' }, { name: '김가나', doctor: 'RM6', therapist: 'B', type: 'rdt' }, // 모두 같으면 문제 없음
+    { name: '박다라', doctor: '', therapist: 'A', type: 'sot' },            // 주치의 칸이 비면 판정 안 함
+    { name: '없는사람', doctor: 'RM1', therapist: 'A', type: 'sot' },       // 카드가 없으면 판정 불가
+  ];
+  const r = c2.check(list, find);
+  assert.strictEqual(r.out.length, 1, '불일치는 오창수 1건이어야 해요'); assert.strictEqual(r.out[0].name, '오창수');
+  assert.strictEqual(r.out[0].handoverDoctor, 'RM8'); assert.strictEqual(r.out[0].cardDoctor, 'RM4'); assert.deepStrictEqual([...r.out[0].writers], ['차성은']); assert.deepStrictEqual([...r.out[0].types], ['SOT']);
+  assert.strictEqual(r.checked, 2, '판정한 환자는 오창수·김가나 2명');
+  // 같은 틀린 주치의가 여러 치료사 기록에 있으면 한 건으로 묶는다
+  const r2 = c2.check([{ name: '김가나', doctor: 'RM1', therapist: 'A', type: 'sot' }, { name: '김가나', doctor: 'RM1', therapist: 'B', type: 'rdt' }], find);
+  assert.strictEqual(r2.out.length, 1); assert.deepStrictEqual([...r2.out[0].writers], ['A', 'B']); assert.deepStrictEqual([...r2.out[0].types], ['SOT', 'RDT']);
+  console.log('OK ⑤ 인수인계 주치의 대조: 여러 기록 중 하나라도 카드와 다르면 잡음');
+}
+console.log('ALL PASS');
 })().catch((e) => { console.error(e); process.exit(1); });
