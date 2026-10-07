@@ -194,6 +194,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
 .grand-map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:14px}
 .grand-map-card{margin:0;border:1px solid #e5ebf2;border-radius:12px;background:#fbfdff;overflow:hidden}.grand-map-card figcaption{padding:10px 12px;border-bottom:1px solid #e8edf3;background:#fff;font-size:11px;font-weight:800;color:#27415f}.grand-map-card figcaption small{display:block;font-size:9px;color:#708094;font-weight:600;margin-top:3px}.grand-map-card img{display:block;width:100%;height:auto;background:#f3f6f9}.grand-map-note{padding:10px 12px;font-size:10px;color:#64748b;line-height:1.55;border-top:1px solid #e8edf3;background:#fff}
 .grand-itda{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.grand-itda-msg{font-size:11px;color:#66758a}.grand-itda-msg.warn{color:#b3541e;font-weight:700}.grand-itda-list{display:flex;flex-wrap:wrap;gap:6px;width:100%}.grand-itda-chip{border:1px solid #cfdcec;background:#fff;color:#2a3d57;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}.grand-itda-chip:hover{background:#f1f6fd}.grand-itda-chip.on{background:#5b72b4;border-color:#5b72b4;color:#fff}.grand-itda-chip small{font-weight:500;opacity:.75;margin-left:4px}
+.grand-itda-item{display:inline-flex;align-items:center;gap:5px}.grand-itda-ck{width:15px;height:15px;cursor:pointer}.grand-itda-saved{display:none}.grand-itda-item.saved .grand-itda-saved{display:inline}.grand-itda-bar{display:flex;align-items:center;gap:12px;width:100%;font-size:12px}.grand-itda-bar[hidden]{display:none}.grand-itda-all{display:flex;align-items:center;gap:5px;font-weight:700;cursor:pointer}
 
     /* 파스텔 버튼 */
     .btn.primary{background:#dbe6fb !important;color:#2f4378 !important;border-color:#c1d3f4 !important;}
@@ -309,6 +310,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
           <button id="grandItdaBtn" class="btn" type="button">📅 잇다 일정 불러오기</button>
           <span class="grand-itda-msg" id="grandItdaMsg">잇다의 "그랜드라운딩" 일정(오늘 이후)을 불러와 눌러서 회차·RM·요일을 한 번에 맞춥니다. 시각은 설정의 시작 시각(기본 09시)으로 맞춰져요.</span>
           <div class="grand-itda-list" id="grandItdaList"></div>
+          <div class="grand-itda-bar" id="grandItdaBar" hidden><label class="grand-itda-all"><input type="checkbox" id="grandItdaAll"> 전체 선택</label><span class="muted" id="grandItdaSel">선택 0건</span><button id="grandItdaRegBtn" class="btn primary" type="button" disabled>📚 선택한 일정 보관함에 등록</button></div>
         </div>
         <div class="grand-controls-priority">
           <div class="field"><label>① 회차 / 대상 병동</label><select id="grandRouteSelect">
@@ -904,24 +906,29 @@ async function renderGrandArchiveList(){
   updateGrandArchiveSelectionUi();
 }
 window.__onSchedulesApiReady=renderGrandArchiveList; // 셸이 브리지를 심어준 직후 목록을 채워달라는 훅
-async function grandArchiveSave(){
-  const status=document.getElementById('grandArchiveSaveStatus'), api=grandArchiveApi();
-  if(!api){ if(status) status.textContent='데스크톱 앱 안에서만 사용할 수 있습니다.'; return; }
-  if(!allPatients.length){ if(status) status.textContent='먼저 시간표를 업로드해 주세요.'; return; }
+// 지금 화면의 ①~⑤ 조건으로 한 건을 보관함에 등록한다. 결과는 {ok, text}로 돌려주고 화면 문구는 부르는 쪽이 정한다.
+async function grandArchiveSaveCurrent(){
+  const api=grandArchiveApi();
+  if(!api) return {ok:false,text:'데스크톱 앱 안에서만 사용할 수 있습니다.'};
+  if(!allPatients.length) return {ok:false,text:'먼저 시간표를 업로드해 주세요.'};
   const dateKey=document.getElementById('grandDateInput').value;
-  if(!dateKey){ if(status) status.textContent='⑤ 회진일을 선택한 뒤 등록해 주세요.'; return; }
+  if(!dateKey) return {ok:false,text:'⑤ 회진일을 선택한 뒤 등록해 주세요.'};
   const rm=document.getElementById('grandRmSelect')?.value||'ALL';
-  if(rm==='ALL'){ if(status) status.textContent='③ 대회진 RM을 하나 선택한 뒤 등록해 주세요.'; return; }
+  if(rm==='ALL') return {ok:false,text:'③ 대회진 RM을 하나 선택한 뒤 등록해 주세요.'};
   const scoped=grandArchiveScopedPatients(rm);
-  if(!scoped.length){ if(status) status.textContent=`${rm} 조건에 맞는 환자가 없어 등록하지 않았습니다.`; return; }
+  if(!scoped.length) return {ok:false,text:`${rm} 조건에 맞는 환자가 없어 등록하지 않았습니다.`};
   const ward=grandArchiveWardLabel(scoped);
   const issues=grandArchiveComputeIssues(scoped,rm);
   const day=document.getElementById('grandDaySelect').value, hour=document.getElementById('grandTimeInput').value||'09', routeKey=document.getElementById('grandRouteSelect').value||'round1';
   try{
     const r=await api.save({dateKey,rm,ward,day,hour,routeKey,patients:scoped,issues});
-    if(status) status.textContent=`${dateKey} · ${rm} · ${ward} · ${r.count}명 등록 완료.`;
-    renderGrandArchiveList();
-  }catch(err){ if(status) status.textContent=`등록 실패: ${err.message}`; }
+    return {ok:true,text:`${dateKey} · ${rm} · ${ward} · ${r.count}명 등록 완료.`};
+  }catch(err){ return {ok:false,text:`등록 실패: ${err.message}`}; }
+}
+async function grandArchiveSave(){
+  const status=document.getElementById('grandArchiveSaveStatus'), r=await grandArchiveSaveCurrent();
+  if(status) status.textContent=r.text;
+  if(r.ok) renderGrandArchiveList();
 }
 // [전체]/[팀별]/[언어] — 행의 작은 버튼(id 1개)과 위 일괄 추출 바(체크된 id 여러 개)가 이 함수 하나를 같이 쓴다.
 // 회차·요일·시각은 각 항목을 등록할 당시 값을 그대로 써서(entry.day/hour/routeKey) 등록 시점과 같은 동선으로 뽑는다.
@@ -2146,18 +2153,68 @@ function grandItdaApply(ev,chip){
   else { msg.className='grand-itda-msg warn'; text+=` 제목에서 RM을 읽지 못했어요(${ev.title}) — RM은 직접 골라 주세요.`; }
   msg.textContent=text; document.querySelectorAll('#grandItdaList .grand-itda-chip').forEach(c=>c.classList.toggle('on',c===chip));
 }
+// 불러온 일정 중 체크한 것을 한 번에 보관함에 등록한다(날짜+RM이 같은 보관 항목은 새 내용으로 바뀜).
+// 일정마다 회차·병동(전체)·요일·시각·RM을 맞춘 뒤 한 건씩 등록하고, 끝나면 화면 조건을 원래대로 돌려 놓는다.
+let grandItdaEvents=[];
+const grandItdaChecked=new Set();
+function grandItdaUpdateBar(){
+  const n=grandItdaChecked.size, all=document.getElementById('grandItdaAll'), cnt=document.getElementById('grandItdaSel'), btn=document.getElementById('grandItdaRegBtn');
+  if(cnt) cnt.textContent=`선택 ${n}건`; if(btn) btn.disabled=!n; if(all) all.checked=n>0&&n===grandItdaEvents.length;
+}
+async function grandItdaBatchRegister(){
+  const $=id=>document.getElementById(id), msg=$('grandItdaMsg'), btn=$('grandItdaRegBtn'), events=grandItdaEvents.filter((e,i)=>grandItdaChecked.has(i));
+  if(!events.length) return;
+  if(!allPatients.length){ msg.className='grand-itda-msg warn'; msg.textContent='먼저 시간표를 업로드해 주세요. (환자 명단이 있어야 보관함에 등록할 수 있어요)'; return; }
+  btn.disabled=true; msg.className='grand-itda-msg';
+  const keep={route:$('grandRouteSelect').value, ward:$('grandWardSelect').value, date:$('grandDateInput').value, day:$('grandDaySelect').value, hour:$('grandTimeInput').value, rm:$('grandRmSelect').value};
+  const before=new Set((await grandArchiveApi().list().catch(()=>[])).map(x=>x.dateKey+'|'+x.rm));
+  const hh=grandItdaHour(); let added=0, updated=0; const skipped=[];
+  const rebuild=async()=>{ if(grandOtBook) await rebuildGrandOtTherapistMap(); if(grandPtBooks[10]||grandPtBooks[3]) await rebuildGrandPtTherapistMap(); };
+  try{
+    for(const [k,ev] of events.entries()){
+      msg.textContent=`보관함에 등록 중… ${k+1}/${events.length}`;
+      const label=`${ev.date.slice(5).replace('-','/')} ${ev.rm||ev.title}`;
+      if(!ev.rm){ skipped.push(`${label} (제목에서 RM을 못 읽음)`); continue; }
+      if(![...$('grandRmSelect').options].some(o=>o.value===ev.rm)){ skipped.push(`${label} (불러온 시간표에 ${ev.rm} 없음)`); continue; }
+      if(ev.route){ $('grandRouteSelect').value=ev.route; updateGrandWardOptions(); }
+      $('grandWardSelect').value='ALL'; $('grandDateInput').value=ev.date; const d=grandDateToDay(ev.date); if(d) $('grandDaySelect').value=d;
+      $('grandTimeInput').value=hh; $('grandRmSelect').value=ev.rm;
+      await rebuild(); // 날짜마다 담당 치료사 표가 달라서 그 날짜 기준으로 다시 만든 뒤 등록
+      const r=await grandArchiveSaveCurrent();
+      if(r.ok){ if(before.has(ev.date+'|'+ev.rm)) updated++; else added++; } else skipped.push(`${label} (${r.text})`);
+    }
+  }finally{
+    $('grandRouteSelect').value=keep.route; updateGrandWardOptions(); $('grandWardSelect').value=keep.ward; $('grandDateInput').value=keep.date; $('grandDaySelect').value=keep.day; $('grandTimeInput').value=keep.hour; $('grandRmSelect').value=keep.rm;
+    await rebuild(); renderGrandTable(); renderGrandArchiveList(); grandItdaMarkSaved(); btn.disabled=!grandItdaChecked.size;
+  }
+  msg.className='grand-itda-msg'+(skipped.length?' warn':'');
+  msg.textContent=`보관함에 등록: 새로 ${added}건${updated?` · 갱신 ${updated}건`:''}${skipped.length?` · 건너뜀 ${skipped.length}건 — ${skipped.join(' / ')}`:''}`;
+}
+async function grandItdaMarkSaved(){ // 이미 보관함에 있는 일정(날짜+RM)에 📚 표시
+  const api=grandArchiveApi(); if(!api) return; let list=[]; try{ list=await api.list(); }catch(e){ return; }
+  const have=new Set(list.map(x=>x.dateKey+'|'+x.rm));
+  document.querySelectorAll('#grandItdaList .grand-itda-item').forEach(it=>{ const e=grandItdaEvents[+it.dataset.i]; it.classList.toggle('saved',!!(e&&e.rm&&have.has(e.date+'|'+e.rm))); });
+}
 async function grandItdaLoad(){
-  const msg=document.getElementById('grandItdaMsg'), list=document.getElementById('grandItdaList'), api=window.__itdaApi;
-  msg.className='grand-itda-msg'; list.innerHTML='';
+  const msg=document.getElementById('grandItdaMsg'), list=document.getElementById('grandItdaList'), bar=document.getElementById('grandItdaBar'), api=window.__itdaApi;
+  msg.className='grand-itda-msg'; list.innerHTML=''; bar.hidden=true; grandItdaEvents=[]; grandItdaChecked.clear();
   if(!api){ msg.className='grand-itda-msg warn'; msg.textContent='데스크톱 앱 안에서만 잇다 일정을 불러올 수 있어요.'; return; }
   msg.textContent='잇다에서 불러오는 중…';
   let r; try{ r=await api.grandEvents(); }catch(e){ r={ok:false,message:e.message}; }
   if(!r.ok){ msg.className='grand-itda-msg warn'; msg.textContent=r.message||'불러오지 못했어요.'; return; }
   if(!r.events.length){ msg.textContent='오늘 이후의 "그랜드라운딩" 일정이 없어요.'; return; }
-  msg.textContent=`오늘 이후 그랜드라운딩 일정 ${r.events.length}건 — 눌러서 적용하세요.`;
-  list.innerHTML=r.events.map((e,i)=>{ const wd=new Date(e.date+'T00:00:00').toLocaleDateString('ko-KR',{weekday:'short'}); return `<button type="button" class="grand-itda-chip" data-i="${i}">${xmlEscape(e.date.slice(5).replace('-','/'))}(${wd}) ${xmlEscape(e.rm||e.title)}${e.wards?`<small>${xmlEscape(e.wards.replace(',','·'))}병동 · ${grandItdaHour()}시</small>`:`<small>${grandItdaHour()}시</small>`}</button>`; }).join('');
-  list.onclick=ev=>{ const b=ev.target.closest('.grand-itda-chip'); if(b) grandItdaApply(r.events[+b.dataset.i],b); };
+  grandItdaEvents=r.events;
+  msg.textContent=`오늘 이후 그랜드라운딩 일정 ${r.events.length}건 — 이름을 누르면 그 일정으로 맞추고, 체크한 일정은 한 번에 보관함에 등록해요.`;
+  list.innerHTML=r.events.map((e,i)=>{ const wd=new Date(e.date+'T00:00:00').toLocaleDateString('ko-KR',{weekday:'short'}); return `<span class="grand-itda-item" data-i="${i}"><input type="checkbox" class="grand-itda-ck" aria-label="보관함에 등록할 일정 선택"><button type="button" class="grand-itda-chip">${xmlEscape(e.date.slice(5).replace('-','/'))}(${wd}) ${xmlEscape(e.rm||e.title)}${e.wards?`<small>${xmlEscape(e.wards.replace(',','·'))}병동</small>`:''}<small class="grand-itda-saved">📚 보관됨</small></button></span>`; }).join('');
+  bar.hidden=false; grandItdaUpdateBar(); grandItdaMarkSaved();
+  list.onclick=ev=>{
+    const item=ev.target.closest('.grand-itda-item'); if(!item) return; const i=+item.dataset.i;
+    if(ev.target.classList.contains('grand-itda-ck')){ ev.target.checked?grandItdaChecked.add(i):grandItdaChecked.delete(i); grandItdaUpdateBar(); return; }
+    const b=ev.target.closest('.grand-itda-chip'); if(b) grandItdaApply(grandItdaEvents[i],b);
+  };
 }
+document.getElementById('grandItdaAll').addEventListener('change',e=>{ grandItdaChecked.clear(); if(e.target.checked) grandItdaEvents.forEach((_,i)=>grandItdaChecked.add(i)); document.querySelectorAll('#grandItdaList .grand-itda-ck').forEach((c,i)=>{ c.checked=grandItdaChecked.has(i); }); grandItdaUpdateBar(); });
+document.getElementById('grandItdaRegBtn').addEventListener('click',grandItdaBatchRegister);
 document.getElementById('grandItdaBtn').addEventListener('click',grandItdaLoad);
 // 2. 분석 결과는 기본으로 접어 둔다(RM별 인원은 머리글 오른쪽에 그대로 보임)
 const grandSetStats=open=>{ document.getElementById('statsBody').style.display=open?'':'none'; document.getElementById('statsToggle').textContent=open?'접기 ▴':'펼치기 ▾'; };

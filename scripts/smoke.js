@@ -68,6 +68,24 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         if (!book.sheets.length || !cells) throw new Error(n + ' 비어 있음'); res.push(`${n.normalize('NFC').slice(0, 24)}: 시트 ${book.sheets.length}·셀 ${cells}`); }
       return res; });
 
+    await step('그랜드: 잇다 일정 여러 건을 한 번에 보관함 등록(가짜 잇다·가짜 보관함)', async () => await ev(`(async()=>{ const w=${W('rm')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const keepI=w.__itdaApi, keepS=w.__schedulesApi, saved=[];
+      try{
+        const rms=[...d.getElementById('grandRmSelect').options].map(o=>o.value).filter(v=>v!=='ALL').slice(0,3); if(rms.length<2) throw new Error('RM이 부족해요');
+        const base=new Date(); const day=n=>{ const x=new Date(base.getFullYear(),base.getMonth(),base.getDate()+n,12); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); };
+        const events=[{date:day(1),rm:rms[0],wards:'8,9',route:'round1',title:'x'},{date:day(2),rm:rms[1],wards:'5,7',route:'round2',title:'y'},{date:day(3),rm:null,wards:null,route:null,title:'RM 모름'},{date:day(4),rm:'RM99',wards:'8,9',route:'round1',title:'z'}];
+        w.__itdaApi={grandEvents:async()=>({ok:true,events})}; w.__schedulesApi={save:async e=>{ saved.push(e); return {count:e.patients.length}; }, list:async()=>[], delete:async()=>{}};
+        const keep={route:d.getElementById('grandRouteSelect').value, date:d.getElementById('grandDateInput').value, rm:d.getElementById('grandRmSelect').value};
+        d.getElementById('grandItdaBtn').click(); await sl(500);
+        const chips=d.querySelectorAll('#grandItdaList .grand-itda-item').length, btn=d.getElementById('grandItdaRegBtn'), disabledBefore=btn.disabled;
+        d.getElementById('grandItdaAll').click(); await sl(100); const sel=d.getElementById('grandItdaSel').textContent; btn.click();
+        for(let i=0;i<60&&btn.disabled;i++) await sl(200); await sl(300);
+        const after={route:d.getElementById('grandRouteSelect').value, date:d.getElementById('grandDateInput').value, rm:d.getElementById('grandRmSelect').value};
+        if(chips!==4||!disabledBefore||sel!=='선택 4건') throw new Error('목록/선택 표시가 이상해요: '+JSON.stringify({chips,disabledBefore,sel}));
+        if(saved.length!==2||saved[0].rm!==rms[0]||saved[1].rm!==rms[1]||saved[0].dateKey!==events[0].date||saved[1].routeKey!=='round2'||!saved[0].patients.length||!saved[0].issues) throw new Error('등록된 내용이 이상해요: '+JSON.stringify(saved.map(x=>[x.dateKey,x.rm,x.routeKey,x.day,x.patients.length])));
+        if(JSON.stringify(keep)!==JSON.stringify(after)) throw new Error('화면 조건이 원래대로 안 돌아왔어요: '+JSON.stringify({keep,after}));
+        return {chips, saved:saved.map(x=>[x.dateKey,x.rm,x.ward,x.day,x.patients.length]), msg:d.getElementById('grandItdaMsg').textContent.slice(0,140)};
+      } finally { w.__itdaApi=keepI; w.__schedulesApi=keepS; }
+    })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';
