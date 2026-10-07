@@ -109,6 +109,19 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         if(out.refreshed && handoverFreshness().cls!=='ok') throw new Error('가져온 뒤에도 정상으로 안 바뀌어요');
       } finally { if(!out.refreshed) localStorage.setItem(KEY,raw); renderAll(); }
       return out; })()`));
+    await step('환자 빠른 검색(Ctrl+K): 열기·검색·상세·이동·Esc', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), out={}; const g=${W('rm')};
+      const pats=g.__patientApi(); const withIssue=${W('cross')}.__issuesApi().find(i=>pats.some(p=>p.name===i.patient)); const name=(withIssue||{patient:pats[0].name}).patient; out.name=name.slice(0,1)+'○○';
+      document.querySelector('[data-nav=home]').click(); await sl(200);
+      document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})); await sl(200); out.opened=!!document.querySelector('.ps-overlay');
+      const inp=document.querySelector('.ps-input'); inp.value=name; inp.dispatchEvent(new Event('input')); await sl(300);
+      out.rows=document.querySelectorAll('.ps-row').length; out.hasDetail=document.querySelector('.ps-name')?.textContent.includes(name); out.crossLines=document.querySelectorAll('.ps-detail .ps-cat').length; out.secs=[...document.querySelectorAll('.ps-sec')].map(x=>x.textContent.replace(/\\s+/g,' ')).join('|');
+      if(!out.opened||!out.rows||!out.hasDetail) throw new Error('검색이 안 열렸거나 결과가 없어요: '+JSON.stringify(out));
+      inp.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})); await sl(1200); out.view=document.querySelector('.view.active').dataset.view; out.closed=!document.querySelector('.ps-overlay');
+      if(withIssue){ out.crossFilter=${W('cross')}.document.getElementById('searchInput').value; if(out.view!=='cross'||out.crossFilter!==name) throw new Error('교차검증 이동이 이상해요: '+JSON.stringify(out)); }
+      ${W('cross')}.document.getElementById('searchInput').value=''; ${W('cross')}.document.getElementById('searchInput').dispatchEvent(new Event('input'));
+      document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})); await sl(150); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(100); out.escClosed=!document.querySelector('.ps-overlay');
+      if(!out.closed||!out.escClosed) throw new Error('닫기 동작이 이상해요: '+JSON.stringify(out));
+      document.querySelector('[data-nav=home]').click(); return out; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';

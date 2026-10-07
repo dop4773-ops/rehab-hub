@@ -1194,6 +1194,7 @@ const focusIn = (v, id) => () => { const el = viewDoc(v)?.getElementById(id); if
 const GLOBAL_KEYS = [
   ...NAV_ORDER.map((v, i) => ({ id: `nav:${v}`, keys: `Ctrl+${i + 1}`, label: `${document.querySelector(`.nav-item[data-nav=${v}] .nl`).textContent.trim()} 화면으로 이동`, run: () => showView(v) })),
   { id: 'sidebar', keys: 'Ctrl+\\', label: '사이드바 접기/펼치기', run: () => sidebarBtn.click() },
+  { id: 'patient-search', keys: 'Ctrl+K', label: '환자 빠른 검색', run: () => window.__openPatientSearch && window.__openPatientSearch() },
 ];
 // run이 없는 항목은 그 화면이 스스로 처리하는 키(안내용)
 const VIEW_KEYS = {
@@ -1242,6 +1243,7 @@ function showAlt(byHold) {
 }
 function onKeyDown(e) {
   if (keyRecording) return;
+  if (e.key === 'Escape' && window.__psOpen) { window.__psClose(); return; } // 환자 빠른 검색이 열려 있으면 Esc는 그것만 닫는다
   if (e.key === 'Escape' && chipMenu) { closeChipMenu(); return; }
   if (e.key === 'Alt') { if (!e.repeat) { altCombo = false; clearTimeout(altHold); altHold = setTimeout(() => showAlt(true), 500); } return; }
   if (e.altKey) altCombo = true;

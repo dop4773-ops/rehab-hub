@@ -2265,6 +2265,8 @@ document.getElementById('grandHelpBtn').addEventListener('click',()=>document.ge
 document.getElementById('grandHelpCloseBtn').addEventListener('click',()=>document.getElementById('grandHelpDialog').close());
 document.getElementById('grandHelpDialog').addEventListener('click',(e)=>{ if(e.target.id==='grandHelpDialog') e.target.close(); });
 // 검증 스크립트(scripts/golden.js)가 화면 데이터를 읽는 통로 — 보안 정책(CSP)이 eval을 막기 때문에 eval 대신 이 함수로 읽는다. 읽기 전용.
+// 환자 빠른 검색(Ctrl+K)이 읽는 목록 — 읽기 전용
+window.__patientApi=()=>allPatients.map(p=>({name:p.name,room:p.room,floor:p.floor,category:p.category,rm:p.rm,kinds:grandTherapistKinds(p.name)}));
 window.__testHooks={ allPatients:()=>allPatients, isOutpatient:grandIsOutpatient, statusAdmit:()=>Object.fromEntries(grandStatusAdmit) };
 </script>
 </body>

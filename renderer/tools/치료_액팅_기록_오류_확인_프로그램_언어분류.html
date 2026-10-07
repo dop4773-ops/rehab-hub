@@ -3294,6 +3294,8 @@ ${text}`,
     }
     return out;
   }
+  // 환자 빠른 검색(Ctrl+K)이 읽는 결과 — 읽기 전용
+  window.__qaApi = { errors: () => (state.issues||[]).filter(i=>i.severity==='오류').map(i=>({patientName:i.patientName,type:i.type,therapist:i.therapist})), missing: () => thvMissingEntries().map(x=>({name:x.name,type:x.type,timeSlot:x.timeSlot})) };
   function thvMissingTotal(){ return (msState.result||[]).filter(r=>!r.dc).reduce((s,r)=>s+Math.max(r.diff,0),0); } // 미액팅 탭 요약의 "미액팅" 숫자와 같은 식
   function refreshTabBadges(){
     const on = thvSettings().qaTabCounts !== false;
