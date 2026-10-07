@@ -99,6 +99,16 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         if(!/1회차 · 8·9병동/.test(out.back)) throw new Error('기본값 복구가 안 됐어요: '+out.back);
       } finally { setSetting('rules', JSON.parse(keep)); await sl(1200); }
       out.restored=JSON.stringify(settings.rules)===keep; return out; })()`));
+    await step('인수인계 신선도: 오래되면 홈·화면 띠·데이터 준비에 경고, 누르면 다시 가져옴', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', raw=localStorage.getItem(KEY); const o=JSON.parse(raw); const out={};
+      try{ o.fetchedAt=Date.now()-9*3600*1000; localStorage.setItem(KEY,JSON.stringify(o)); renderAll(); renderToolStrips(); await sl(200);
+        out.home=/인수인계 9시간 전/.test(document.getElementById('homeBand').textContent); out.strip=!!document.querySelector('.tool-status .fchip.err[data-ho-refresh]');
+        document.querySelector('[data-nav=data]').click(); await sl(300); out.data=/9시간 전/.test(document.getElementById('dataFileList').textContent);
+        if(!out.home||!out.strip||!out.data) throw new Error('오래된 인수인계 표시가 이상해요: '+JSON.stringify(out));
+        document.querySelector('[data-ho-refresh]').click(); for(let i=0;i<150;i++){ await sl(300); const f=JSON.parse(localStorage.getItem(KEY)||'{}').fetchedAt||0; if(f>Date.now()-60000){ out.refreshed=true; break; } }
+        if(!out.refreshed) out.refreshed=false; // 인터넷이 막힌 PC에서는 새로 못 가져오는 게 정상
+        if(out.refreshed && handoverFreshness().cls!=='ok') throw new Error('가져온 뒤에도 정상으로 안 바뀌어요');
+      } finally { if(!out.refreshed) localStorage.setItem(KEY,raw); renderAll(); }
+      return out; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';

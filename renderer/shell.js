@@ -466,6 +466,29 @@ function handoverCacheStats() {
   } catch (e) { return null; }
 }
 
+// 인수인계(구글 시트 실시간)를 마지막으로 가져온 시각 — 오래된 자료로 검증하는 일을 막으려고 얼마나 지났는지 보여 준다(2시간 이내 정상 · 8시간 이내 주의 · 그 이상/없음 경고)
+function handoverFreshness() {
+  let at = 0; try { at = JSON.parse(localStorage.getItem('rehab_handover_cache_v1')).fetchedAt || 0; } catch (e) { /* 아직 가져온 적 없음 */ }
+  if (!at) return { at: 0, cls: 'err', age: '', label: '아직 못 가져옴', text: '아직 가져온 적이 없어요' };
+  const min = Math.max(0, Math.round((Date.now() - at) / 60000));
+  const age = min < 1 ? '방금' : min < 60 ? `${min}분 전` : min < 1440 ? `${Math.floor(min / 60)}시간 전` : `${Math.floor(min / 1440)}일 전`;
+  return { at, min, age, cls: min <= 120 ? 'ok' : min <= 480 ? 'warn' : 'err', label: age, text: `마지막 가져옴 ${fmtTime(at)} (${age})` };
+}
+// 지금 인수인계를 다시 가져온다 — 이미 열려 있는 그랜드라운딩·교차검증·인수인계 화면의 가져오기 함수를 그대로 부른다(같은 저장본을 같이 쓴다)
+let hoRefreshing = false;
+async function refreshHandoverNow() {
+  if (hoRefreshing) return; hoRefreshing = true;
+  const before = handoverFreshness().at; showToast('🔄 인수인계를 새로 가져오는 중…', 8000);
+  try {
+    for (const [key, fn] of [['rm', 'fetchGrandHandoverLive'], ['cross', 'fetchHandoverLive'], ['handover', 'loadData']]) {
+      try { const w = viewDoc(key)?.defaultView; if (w && typeof w[fn] === 'function') await (fn === 'loadData' ? w[fn](true) : w[fn]()); } catch (e) { /* 그 화면만 건너뜀 */ }
+    }
+  } finally { hoRefreshing = false; }
+  const f = handoverFreshness(), st = handoverCacheStats();
+  showToast(f.at > before ? `✅ 인수인계를 새로 가져왔어요${st ? ` · 환자 ${st.total}명` : ''}` : '⚠ 인수인계를 가져오지 못했어요 — 인터넷 연결을 확인해 주세요', 4500);
+  renderAll();
+}
+
 function renderHome() {
   const matched = (lastScan && lastScan.matched) || {};
   const localRoles = fileRoles.filter(r => r.key !== 'handover'); // 인수인계는 실시간 연동이라 파일 수에 넣지 않는다
@@ -495,6 +518,7 @@ function renderHome() {
     + (cross ? (cross.count ? chipHtml('warn', `교차검증 불일치 ${cross.count}건`, (() => { const d = crossTrend().delta; return d ? (d > 0 ? `▲${d}` : `▼${-d}`) : ''; })()) : chipHtml('ok', '교차검증 이상 없음')) : chipHtml('off', '교차검증 확인 전'))
     + (acting && acting.count ? chipHtml('err', `치료기록 오류 ${acting.count}건`) : acting ? chipHtml('ok', '치료기록 오류 없음') : chipHtml('off', '치료기록 QA 파일 없음'))
     + bkChip
+    + (() => { const hf = handoverFreshness(); return hf.cls === 'ok' ? '' : `<span data-ho-refresh class="band-click" title="${hf.text} — 누르면 지금 다시 가져와요">${chipHtml(hf.cls, hf.at ? `인수인계 ${hf.age}` : '인수인계 못 가져옴')}</span>`; })()
     + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>${settings.homeLayout === 'classic' ? '' : '<button class="btn" data-today-summary title="카톡에 붙여넣을 오늘 현황 글을 복사해요">📋 오늘 요약</button>'}<button class="btn primary" id="homeScanBtn" data-sync-now>🔄 지금 업데이트</button>`;
 
   // 2) 오늘 할 일(확인이 필요한 것만)
@@ -714,14 +738,14 @@ function renderDataView() {
   const order = (list) => settings.dataStaleFirst ? [...list].sort((a, b) => attn(a) - attn(b)) : list;
   const req = order(roles.filter(r => r.required)), opt = roles.filter(r => !r.required);
   const optHave = order(opt.filter(r => matched[r.key] || roleInfo(r.key).entries.length)), optMiss = opt.filter(r => !optHave.includes(r));
-  const ho = handoverCacheStats();
+  const ho = handoverCacheStats(), hf = handoverFreshness(), hfChip = hf.cls === 'warn' ? 'warn' : hf.cls === 'err' ? 'err' : 'ok', hfCls = hf.cls === 'ok' ? '' : hf.cls;
   const hasHo = fileRoles.some(r => r.key === 'handover');
   if (dataViewMode === 'board') {
     const need = roles.filter(r => { const st = roleStateOf(r.key); return ['stale', 'error', 'updating'].includes(st) || (st === 'missing' && r.required); });
     const fresh = roles.filter(r => roleStateOf(r.key) === 'latest');
     const none = optMiss.filter(r => !need.includes(r));
     const col = (title, cls, list, extra = '') => `<div class="bcol ${cls}"><div class="bh"><b>${title}</b><span class="chip ${cls === 'ok' ? 'ok' : cls === 'warn' ? 'warn' : 'off'}">${list.length + (extra ? 1 : 0)}</span></div>${list.map(boardCard).join('')}${extra}${(list.length || extra) ? '' : '<div class="muted bempty">없음</div>'}</div>`;
-    const hoCard = hasHo ? `<div class="bcard live"><div class="bt"><b>🌐 OT 인수인계</b><span class="rt"><span class="chip ok"><i></i>연동됨</span></span></div><div class="bf2"><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="bw">실시간</span></div></div>` : '';
+    const hoCard = hasHo ? `<div class="bcard live"><div class="bt"><b>🌐 OT 인수인계</b><span class="rt"><span class="chip ${hfChip}"><i></i>${hf.label}</span><span class="ac"><button class="btn" data-ho-refresh title="지금 다시 가져오기">↻</button></span></span></div><div class="bf2"><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="bw">${hf.text}</span></div></div>` : '';
     box.innerHTML = `<div class="board${settings.dataHideUnused ? ' two' : ''}">${col('✅ 최신', 'ok', fresh, hoCard)}${col('⚠ 확인 필요', 'warn', need)}${settings.dataHideUnused ? '' : col('⬜ 선택 안 함', 'off', none)}</div>`;
   } else if (dataViewMode === 'matrix') {
     const rows = MATRIX_ROWS.map(([title, c3, c10]) => {
@@ -733,14 +757,14 @@ function renderDataView() {
     }).join('');
     const inRows = new Set(MATRIX_ROWS.flatMap(x => x[1].concat(x[2])));
     const common = roles.filter(r => !inRows.has(r.key) && !hideRole(r));
-    const hoCell = hasHo ? `<div class="mcell live"><span class="st">연동됨</span><b>🌐 OT 인수인계</b><em>구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''} · 실시간</em></div>` : '';
+    const hoCell = hasHo ? `<div class="mcell live ${hfCls}"><span class="st">${hf.label}</span><b>🌐 OT 인수인계</b><em>구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''} · ${hf.text}</em><div class="ac"><button class="btn" data-ho-refresh title="지금 다시 가져오기">↻</button></div></div>` : '';
     box.innerHTML = `<div class="feat-strip">${featureHtml(featureCards())}</div>`
       + `<div class="mgrid"><span></span><div class="mhd">3F</div><div class="mhd">10F</div>${rows}</div>`
       + `<div class="grp"><b>공통</b><span class="muted">층 구분 없는 파일</span></div><div class="mcommon">${common.map(mcell).join('')}${hoCell}</div>`;
   } else {
-    const hoRow = hasHo ? `<div class="frow live"><b>🌐 OT 인수인계</b><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="wh">실시간</span><span class="chip ok"><i></i>연동됨</span><span class="ac"></span></div>` : '';
+    const hoRow = hasHo ? `<div class="frow live ${hfCls}"><b>🌐 OT 인수인계</b><span class="muted fn">구글 시트에서 읽기${ho ? ` · 환자 ${ho.total}명` : ''}</span><span class="age ${hfCls}"></span><span class="wh">${hf.text}</span><span class="chip ${hfChip}"><i></i>${hf.label}</span><span class="ac"><button class="btn" data-ho-refresh title="지금 다시 가져오기">↻</button></span></div>` : '';
     const acts = activityLog.slice(0, 4).map(a => `<div class="it act"><span>${a.time.toTimeString().slice(0, 5)} · ${updEsc(a.feature)}</span><b${a.ok ? '' : ' class="bad"'} title="${updEsc(a.detail)}">${updEsc(a.detail)}</b></div>`).join('');
-    const side = `<div class="dv-side"><div class="panel"><div class="lab">기능별 준비 상태</div>${featureCards().map(f => `<div class="it"><span>${f.label}</span><b class="${f.cls}">${f.cls === 'ok' ? '✔ ' : f.cls === 'off' ? '' : '⚠ '}${f.text}</b></div>`).join('')}${hasHo ? `<div class="it"><span>OT 인수인계(실시간)</span><b class="ok">✔ ${ho ? ho.total + '명' : '연동'}</b></div>` : ''}</div>`
+    const side = `<div class="dv-side"><div class="panel"><div class="lab">기능별 준비 상태</div>${featureCards().map(f => `<div class="it"><span>${f.label}</span><b class="${f.cls}">${f.cls === 'ok' ? '✔ ' : f.cls === 'off' ? '' : '⚠ '}${f.text}</b></div>`).join('')}${hasHo ? `<div class="it"><span>OT 인수인계(실시간)</span><b class="${hf.cls}">${hf.cls === 'ok' ? '✔ ' : '⚠ '}${hf.age || '못 가져옴'}${ho ? ` · ${ho.total}명` : ''}</b></div>` : ''}</div>`
       + (acts ? `<div class="panel"><div class="lab">최근 활동</div>${acts}</div>` : '') + '</div>';
     box.innerHTML = `<div class="dv-cols"><div class="dv-main"><div class="grp"><b>필수 파일</b><span class="muted">${req.length}개 · 모두 있어야 검증이 정확해요</span></div>${req.map(fileRow).join('')}`
       + `<div class="grp"><b>선택 파일</b><span class="muted">있으면 더 많이 검증해요</span></div>${optHave.map(fileRow).join('')}`
@@ -878,7 +902,7 @@ function renderToolStrips() {
     el.className = `tool-status ${o.cls}`;
     el.innerHTML = `<b>${o.cls === 'ok' ? '● 데이터 최신' : o.text}</b>`
       + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>`
-      + `<span class="chips">${roles.map(r => fileChip(r, key)).join('')}${hasHandover ? '<span class="fchip ok" title="인수인계 구글 시트에서 실시간으로 읽어옵니다"><i></i>인수인계<small>실시간</small></span>' : ''}</span>`
+      + `<span class="chips">${roles.map(r => fileChip(r, key)).join('')}${hasHandover ? (() => { const hf = handoverFreshness(); return `<span class="fchip ${hf.cls === 'warn' ? 'stale' : hf.cls}" data-ho-refresh title="${hf.text} — 누르면 지금 다시 가져와요"><i></i>인수인계<small>${hf.at ? hf.age : '실시간'}</small></span>`; })() : ''}</span>`
       + `<span class="acts"><button class="btn${o.cls === 'ok' ? '' : ' primary'}" data-sync-now>🔄 불러오기</button>`
       + `<button class="btn" data-files-toggle="${key}">📂 직접 넣기 ${open ? '▴' : '▾'}</button></span>`;
     if (loadedTools.has(key)) applyFilesCollapse(key);
@@ -1015,6 +1039,7 @@ document.addEventListener('click', async (e) => {
   if (chip) { chipMenu && chipMenu.dataset.for === chip.dataset.chip + chip.dataset.chipTool ? closeChipMenu() : (openChipMenu(chip), chipMenu.dataset.for = chip.dataset.chip + chip.dataset.chipTool); return; }
   if (chipMenu) closeChipMenu(); // 메뉴 안 버튼은 아래 처리기가 이어서 실행한다(눌린 버튼 요소는 그대로 남아 있음)
   const rs = e.target.closest('[data-chip-resync]'); if (rs) { resyncRole(rs.dataset.chipResync); return; }
+  if (e.target.closest('[data-ho-refresh]')) { refreshHandoverNow(); return; }
   if (e.target.closest('[data-sync-now]')) { toastEl.classList.remove('show'); syncNow(); return; }
   const dv = e.target.closest('[data-dv]'); if (dv) { dataViewMode = dv.dataset.dv; renderDataView(); return; }
   if (e.target.closest('#dataViewDefault')) { setDataViewDefault(dataViewMode); return; }
