@@ -1201,6 +1201,8 @@ const GLOBAL_KEYS = [
   ...NAV_ORDER.map((v, i) => ({ id: `nav:${v}`, keys: `Ctrl+${i + 1}`, label: `${document.querySelector(`.nav-item[data-nav=${v}] .nl`).textContent.trim()} 화면으로 이동`, run: () => showView(v) })),
   { id: 'sidebar', keys: 'Ctrl+\\', label: '사이드바 접기/펼치기', run: () => sidebarBtn.click() },
   { id: 'patient-search', keys: 'Ctrl+K', label: '환자 빠른 검색', run: () => window.__openPatientSearch && window.__openPatientSearch() },
+  { id: 'ho-refresh', keys: 'Ctrl+Shift+H', label: '인수인계 지금 다시 가져오기', run: () => refreshHandoverNow() },
+  { id: 'today-summary', keys: 'Ctrl+Shift+T', label: '오늘 요약 복사(카톡용)', run: async () => showToast((await copyText(todaySummaryText())) ? '✅ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500) },
 ];
 // run이 없는 항목은 그 화면이 스스로 처리하는 키(안내용)
 const VIEW_KEYS = {

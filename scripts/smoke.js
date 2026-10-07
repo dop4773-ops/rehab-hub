@@ -135,6 +135,14 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         if(out.view!=='cross'||!/계속/.test(out.cont||'')||!out.summary) throw new Error('이동/요약이 이상해요: '+JSON.stringify(out));
       } finally { if(raw==null) localStorage.removeItem(KEY); else localStorage.setItem(KEY,raw); try{ await w.handleRun(); }catch(e){} document.querySelector('[data-nav=home]').click(); }
       return out; })()`));
+    await step('단축키: 새 기능 키가 설정 › 단축키 목록에 있고 실제로 동작(Ctrl+K·Ctrl+Shift+H·Ctrl+Shift+T)', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), out={}; document.querySelector('[data-nav=settings]').click(); document.querySelector('#stTabs [data-tab=keys]').click(); await sl(300);
+      const txt=document.querySelector('[data-page=keys]').textContent; out.listed=['환자 빠른 검색','인수인계 지금 다시 가져오기','오늘 요약 복사'].map(x=>txt.includes(x)); if(out.listed.includes(false)) throw new Error('단축키 목록에 빠졌어요: '+JSON.stringify(out.listed));
+      const key=(k,sh)=>document.dispatchEvent(new KeyboardEvent('keydown',{key:k,ctrlKey:true,shiftKey:!!sh,bubbles:true}));
+      document.querySelector('[data-nav=home]').click(); await sl(150);
+      key('k'); await sl(200); out.k=!!document.querySelector('.ps-overlay'); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(100);
+      document.getElementById('toast').classList.remove('show'); key('T',true); await sl(500); out.t=/오늘 요약/.test(document.getElementById('toast').textContent);
+      key('H',true); await sl(300); out.h=/인수인계를 새로 가져오는 중|새로 가져왔어요|가져오지 못했어요/.test(document.getElementById('toast').textContent); for(let i=0;i<60&&hoRefreshing;i++) await sl(300);
+      if(!out.k||!out.t||!out.h) throw new Error('단축키가 동작하지 않아요: '+JSON.stringify(out)); return out; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';
