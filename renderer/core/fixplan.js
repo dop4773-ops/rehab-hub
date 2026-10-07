@@ -147,7 +147,25 @@ function fixItemsToText(items, { title = '교차검증 수정 지시서', date =
   return lines.join('\n').trim();
 }
 
-const api = { FIX_GROUPS: GROUPS, FIX_GROUP_ORDER: GROUP_ORDER, buildFixItems, fixItemsToText };
+// 치료사(담당자)별로 보낼 글: 항목의 who(쉼표로 여러 명일 수 있음)마다 그 사람 몫만 모아 "<이름 선생님 확인 부탁드려요>" 형식으로 만든다.
+// who를 모르는 항목은 빠진다. opts: {date, mask(환자 이름 가리는 함수, 없으면 그대로)}. 반환: [{who, count, text}] — 많은 순.
+function fixItemsToWhoMessages(items, { date = '', mask = null } = {}) {
+  const byWho = new Map();
+  for (const x of items || []) for (const w of String(x.who || '').split(/\s*,\s*/).filter(Boolean)) { if (!byWho.has(w)) byWho.set(w, []); byWho.get(w).push(x); }
+  const nm = (n) => (mask ? mask(n) : n);
+  return [...byWho.entries()].map(([who, list]) => {
+    const lines = [date, `<${who} 선생님 확인 부탁드려요>`];
+    for (const g of GROUP_ORDER) {
+      const part = list.filter(x => x.group === g); if (!part.length) continue;
+      lines.push(`■ ${GROUPS[g].label}`);
+      for (const x of part) lines.push(`- ${x.floor ? x.floor + 'F ' : ''}${x.room ? x.room + '호 ' : ''}${nm(x.patient)} — ${x.action}${x.cellText ? ` [칸: ${x.cellText}]` : ''}`);
+    }
+    lines.push('', '✅ 확인하고 고친 뒤 수정했다고 알려 주세요.');
+    return { who, count: list.length, text: lines.filter((l, i) => l !== '' || i > 1).join('\n') };
+  }).sort((a, b) => b.count - a.count || a.who.localeCompare(b.who, 'ko'));
+}
+
+const api = { FIX_GROUPS: GROUPS, FIX_GROUP_ORDER: GROUP_ORDER, buildFixItems, fixItemsToText, fixItemsToWhoMessages };
 root.RehabCore = Object.assign(root.RehabCore || {}, api);
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -110,6 +110,7 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       } finally { if(!out.refreshed) localStorage.setItem(KEY,raw); renderAll(); }
       return out; })()`));
     await step('환자 빠른 검색(Ctrl+K): 열기·검색·상세·이동·Esc', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), out={}; const g=${W('rm')};
+      for(let i=0;i<50&&!(g.__patientApi().length&&${W('cross')}.__issuesApi().length);i++) await sl(200); // 시작 직후 자동 동기화가 끝날 때까지
       const pats=g.__patientApi(); const withIssue=${W('cross')}.__issuesApi().find(i=>pats.some(p=>p.name===i.patient)); const name=(withIssue||{patient:pats[0].name}).patient; out.name=name.slice(0,1)+'○○';
       document.querySelector('[data-nav=home]').click(); await sl(200);
       document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})); await sl(200); out.opened=!!document.querySelector('.ps-overlay');
@@ -143,6 +144,9 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       document.getElementById('toast').classList.remove('show'); key('T',true); await sl(500); out.t=/오늘 요약/.test(document.getElementById('toast').textContent);
       key('H',true); await sl(300); out.h=/인수인계를 새로 가져오는 중|새로 가져왔어요|가져오지 못했어요/.test(document.getElementById('toast').textContent); for(let i=0;i<60&&hoRefreshing;i++) await sl(300);
       if(!out.k||!out.t||!out.h) throw new Error('단축키가 동작하지 않아요: '+JSON.stringify(out)); return out; })()`));
+    await step('교차검증: 수정 지시서 › 담당자별 메시지 복사', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); await w.handleRun(); let got=''; Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async t=>{ got=t; }},configurable:true});
+      d.getElementById('btnFixPlan').click(); await sl(500); d.getElementById('fixCopyWho').click(); await sl(300); d.getElementById('fixCancel')?.click?.();
+      if(!/<.+ 선생님 확인 부탁드려요>/.test(got)) throw new Error('담당자별 글이 안 만들어졌어요: '+got.slice(0,80)); const n=(got.match(/선생님 확인 부탁드려요/g)||[]).length; return {people:n, head:got.split('\\n').slice(0,3).join(' | ').slice(0,100)}; })()`));
     // 치료기록 QA: 가짜 액팅 파일 업로드
     await nav('acting'); await sleep(2500);
     const fakePath = path.join(__dirname, 'fixtures', 'fake_acting.b64'); const b64 = fs.existsSync(fakePath) ? fs.readFileSync(fakePath, 'utf8').trim() : '';

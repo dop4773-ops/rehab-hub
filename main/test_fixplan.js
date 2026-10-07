@@ -2,7 +2,7 @@
 // 교차검증 불일치 → 수정 지시서 항목(renderer/core/fixplan.js)을 이슈 종류별 가짜 데이터로 확인한다.
 'use strict';
 const assert = require('assert');
-const { buildFixItems, fixItemsToText, FIX_GROUPS } = require('../renderer/core/fixplan.js');
+const { buildFixItems, fixItemsToText, fixItemsToWhoMessages, FIX_GROUPS } = require('../renderer/core/fixplan.js');
 
 const I = (detail, extra = {}) => ({ id: 'x' + Math.random(), patient: '홍길동', room: '501', floor: 10, title: '제목', line: '내용', detail, ...extra });
 const CASES = {
@@ -62,4 +62,16 @@ assert(all.every((x, i) => i === 0 || order.indexOf(all[i - 1].group) <= order.i
 const txt = fixItemsToText(all, { date: '2026.10.5.' });
 assert(txt.includes('■ 작업치료현황') && txt.includes('■ OT 인수인계') && /원본 파일은 이 프로그램이 바꾸지 않아요/.test(txt)); assert(/\(담당: 서송지\)/.test(txt));
 console.log('OK ④ 정렬·번호·복사 텍스트');
+// ⑦ 담당자별 메시지: 담당이 여러 명이면 각자 글에 들어가고, 모르는 항목은 빠지며, 환자 이름 가리기가 적용된다
+{
+  const items = buildFixItems([CASES.count_sot, CASES.count_lang, CASES.ho_ther]); // count_sot의 담당: 김A, 이B / ho_ther: 인수인계 김A
+  const msgs = fixItemsToWhoMessages(items, { date: '10/7(수)', mask: (n) => n[0] + '○○' });
+  const byWho = Object.fromEntries(msgs.map(m => [m.who, m]));
+  assert(byWho['김A'] && byWho['이B'], '담당자마다 글이 하나씩 있어야 해요'); assert(byWho['김A'].count >= byWho['이B'].count, '많은 사람이 먼저');
+  assert(byWho['김A'].text.startsWith('10/7(수)\n<김A 선생님 확인 부탁드려요>'), byWho['김A'].text);
+  assert(byWho['김A'].text.includes('홍○○') && !byWho['김A'].text.includes('홍길동'), '환자 이름은 가려져야 해요');
+  assert(!msgs.some(m => m.text.includes('언어') && !items.find(x => x.who.includes(m.who) && /언어/.test(x.action))), '담당을 모르는 항목은 넣지 않아요');
+  assert(fixItemsToWhoMessages(items, {})[0].text.includes('홍길동'), '가리기 옵션이 없으면 실제 이름');
+  assert.strictEqual(fixItemsToWhoMessages([], {}).length, 0);
+}
 console.log('ALL PASS');

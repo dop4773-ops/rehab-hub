@@ -726,6 +726,7 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
       <label><input type="checkbox" id="fixHideDone"> 완료 숨기기</label>
       <span class="sp"></span>
       <button class="btn sm" id="fixCopy">📋 복사</button>
+      <button class="btn sm" id="fixCopyWho" title="담당 치료사마다 보낼 글을 만들어 복사해요(지금 보이는 항목 기준)">📋 담당자별 메시지</button>
       <button class="btn sm" id="fixCsv">📊 CSV 저장</button>
       <button class="btn sm" id="fixPrint">🖨️ 인쇄</button>
     </div>
@@ -797,9 +798,10 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
 <script src="../core/parsers_grids.js"></script>
 <script src="../core/fixrefs.js"></script>
 <script src="../core/fixplan.js"></script>
+<script src="../core/therapistview.js"></script>
 <script src="../core/issuehistory.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, pruneAck, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, fixItemsToWhoMessages, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, pruneAck, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
@@ -3770,6 +3772,13 @@ document.getElementById('fixBody').addEventListener('change',e=>{ const c=e.targ
 document.getElementById('fixCopy').addEventListener('click',async()=>{
   const text=fixItemsToText(fixVisibleItems(),{date:currentDateLabel()});
   try{ await navigator.clipboard.writeText(text); flashBtn('fixCopy','✅ 복사됨'); }catch(_){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); flashBtn('fixCopy','✅ 복사됨'); }catch(e){ alert('복사에 실패했습니다.'); } document.body.removeChild(ta); }
+});
+document.getElementById('fixCopyWho').addEventListener('click',async()=>{
+  const mask=(window.__rhSettings||{}).qaMaskNames!==false ? RehabCore.therapistView.maskName : null; // 설정 > 도구별 > 환자 이름 가리기(치료사 메시지 공통)
+  const msgs=fixItemsToWhoMessages(fixVisibleItems(),{date:currentDateLabel(),mask});
+  if(!msgs.length){ alert('지금 보이는 항목 중 담당자를 알 수 있는 항목이 없어요.'); return; }
+  const text=msgs.map(m=>m.text).join('\n\n──────────\n\n'), done=()=>flashBtn('fixCopyWho',`✅ ${msgs.length}명 복사됨`);
+  try{ await navigator.clipboard.writeText(text); done(); }catch(_){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){ alert('복사하지 못했어요.'); } ta.remove(); }
 });
 document.getElementById('fixCsv').addEventListener('click',()=>{
   const items=fixVisibleItems(); if(!items.length){ alert('저장할 항목이 없습니다.'); return; }
