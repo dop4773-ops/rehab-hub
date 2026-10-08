@@ -440,7 +440,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .dhead .dtag{margin-left:0 !important}.dhead .hbadge{margin-left:0}
 .cardsec{margin-top:16px}.cardhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}.cardhead b{font-size:13.5px}.cardhead small{color:var(--muted);font-weight:600}
 .cardhead .legend{margin-left:auto;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:5px}.cardhead .lg{width:14px;height:14px;border-radius:4px;background:#fff0b8;border:2px solid #e0a800;display:inline-block}
-.cv-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;padding:4px}.cv-none{font-size:12.5px;color:var(--muted);padding:10px 2px}
+.cv-wrap[hidden]{display:none}.cv-wrap{cursor:pointer;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;padding:4px}.cv-none{font-size:12.5px;color:var(--muted);padding:10px 2px}
 table.cv-xl{border-collapse:collapse;table-layout:fixed;font-family:"Malgun Gothic","맑은 고딕","Pretendard Variable",sans-serif;color:#000}table.cv-xl td{padding:0 2px;overflow:hidden}
 table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:inset 0 0 0 100px rgba(255,214,0,.35)}
 .detailpanel .dnav{position:sticky;bottom:-18px;background:#fff;padding:12px 0 6px;margin-bottom:-6px;z-index:2}
@@ -3533,9 +3533,11 @@ function cardHighlights(issue, card, cells, c0, height){
   }
   return hl;
 }
+const CARD_MAX_ZOOM=0.62; // 상세 패널 안 카드의 최대 배율
+let cardCollapsed=false; // 카드를 눌러 접어 두면 다른 불일치를 골라도 접힌 채로 둔다
 function fitCardZoom(){
   const wrap=document.getElementById('cvWrap'), z=document.getElementById('cvZoom'); if(!wrap||!z||!cardShown) return;
-  z.style.zoom=Math.min(1,(wrap.clientWidth-10)/cardShown.width);
+  z.style.zoom=Math.min(CARD_MAX_ZOOM,(wrap.clientWidth-10)/cardShown.width); // 상세 패널에선 작게(크게 보려면 ⤢ 버튼)
 }
 // 카드 한 장을 엑셀 원본 모양으로 그릴 준비(상세 패널과 팝업 공용). hlFn(cells,c0,height) → 칠할 칸 Set
 async function cardRenderData(card, hlFn){
@@ -3614,8 +3616,8 @@ async function renderCardSection(issue){
     if(my!==cardSecToken) return;
     const out={html:d.html,width:d.width}, hl=d.hl;
     cardShown={html:d.html,width:d.width,height:d.height,title:d.title};
-    box.innerHTML=head(` <small>(엑셀 원본 그대로 · ${esc(card.sheet)} 시트)</small>${hl.size?'<span class="legend"><i class="lg"></i>이 불일치와 관련된 칸</span>':''}<button class="btn sm" id="cardBig">⤢ 크게 보기</button>`)
-      +`<div class="cv-wrap" id="cvWrap"><div class="cv-zoom" id="cvZoom">${out.html}</div></div>`
+    box.innerHTML=head(` <small>(엑셀 원본 그대로 · ${esc(card.sheet)} 시트)</small>${hl.size?'<span class="legend"><i class="lg"></i>이 불일치와 관련된 칸</span>':''}<button class="btn sm" id="cardBig">⤢ 크게 보기</button><button class="btn sm" id="cardToggle">${cardCollapsed?'▸ 펼치기':'▾ 접기'}</button>`)
+      +`<div class="cv-wrap" id="cvWrap" title="누르면 접혀요"${cardCollapsed?' hidden':''}><div class="cv-zoom" id="cvZoom">${out.html}</div></div>`
       +(hl.size?'':`<div class="cv-none" style="margin-top:6px">${issue.category==='location'&&issue.time?`카드에서 <b>${esc(issue.time)}</b> 시간의 치료위치(${esc((issue.detail||{}).loc||'')}) 기록을 찾지 못했어요.`:'이 항목은 카드 안에서 칠할 칸이 없어 카드만 보여드려요.'}</div>`);
     fitCardZoom();
     const first=box.querySelector('td.cv-hl'); if(first && first.scrollIntoView) { /* 카드 안에서 첫 강조 칸은 그대로 두고 화면은 움직이지 않는다 */ }
@@ -3623,6 +3625,10 @@ async function renderCardSection(issue){
 }
 window.addEventListener('resize',fitCardZoom);
 document.getElementById('detailPanel').addEventListener('click',e=>{
+  if(e.target.closest('#cardToggle')||e.target.closest('#cvWrap')){ // 카드 또는 접기 버튼을 누르면 접고/펼친다
+    const w=document.getElementById('cvWrap'); if(!w) return; cardCollapsed=!cardCollapsed; w.hidden=cardCollapsed;
+    const t=document.getElementById('cardToggle'); if(t) t.textContent=cardCollapsed?'▸ 펼치기':'▾ 접기'; if(!cardCollapsed) fitCardZoom(); return;
+  }
   if(!e.target.closest('#cardBig')||!cardShown) return;
   document.getElementById('cardModalTitle').textContent='📇 '+cardShown.title;
   document.getElementById('cardModalBody').innerHTML=`<div id="cvPopZoom">${cardShown.html}</div>`; document.getElementById('cardModal').classList.add('show');
