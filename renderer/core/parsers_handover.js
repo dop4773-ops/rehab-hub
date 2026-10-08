@@ -42,7 +42,9 @@ function handoverListFromLiveRecords(records){
     const doctor=normDoctor(r.doctor||'');
     const typeRaw=normalizeText(r.type||'');
     const type = handoverType(typeRaw);
-    list.push({name, therapist, doctor, type, row:0});
+    const e={name, therapist, doctor, type, row:0};
+    if('tx' in r) e.tx=normalizeText(r.tx||''); // 치료내용(Tx) 칸 — 실시간 연동 기록에만 있다(Tx 미작성 확인용). 엑셀 파일 방식은 이 칸을 읽지 않아 tx가 없다
+    list.push(e);
   }
   return list;
 }

@@ -24,6 +24,8 @@ const CASES = {
   ho_excess: I({ kind: 'handover_excess', type: '작업(SOT)', writerCount: 3, realCount: 2, writers: ['A', 'B', 'C'], realTherapists: ['A', 'B'], extra: ['C'] }),
   ho_doctor: I({ kind: 'handover_doctor', handoverDoctor: 'RM8', cardDoctor: 'RM9' }),
   ho_notype: I({ kind: 'handover_notype', items: [{ label: '인지(CCRT)', count: 2, therapists: ['서송지'] }, { label: '연하(RDT)', count: 1, therapists: [] }] }),
+  ho_notx: I({ kind: 'handover_notx', items: [{ label: '작업(SOT)', therapist: '김A' }, { label: '인지(CCRT)', therapist: '이B' }] }),
+  ho_nowriter: I({ kind: 'handover_nowriter', items: [{ label: '작업(SOT)', type: 'sot', therapist: '김A', none: false }, { label: '인지(CCRT)', type: 'ccrt', therapist: '이B', none: true }] }),
   eval_missing: I({ kind: 'eval_missing' }), eval_extra: I({ kind: 'eval_extra' }), eval_dup: I({ kind: 'eval_dup', count: 2, places: [{ time: '09:05', therapist: '김A' }], sameNameInStatus: 1 }), eval_noeval: I({ kind: 'eval_noeval', admit: '입원' }),
   room_both: I({ kind: 'room_mismatch', pta: { room: '502' }, statusRoom: '501', cardRoom: '503', badStatus: true, badCard: true, ambiguous: false }),
   room_status: I({ kind: 'room_mismatch', pta: { room: '502' }, statusRoom: '501', cardRoom: '502', badStatus: true, badCard: false, ambiguous: true }),
@@ -34,7 +36,7 @@ const CASES = {
 };
 
 // ① 알려진 종류는 전부 지시가 나오고 "기타 확인"으로 빠지지 않는다
-const expectedCount = { room_both: 2, room_rm: 2, ho_notype: 2 };
+const expectedCount = { room_both: 2, room_rm: 2, ho_notype: 2, ho_notx: 2, ho_nowriter: 2 };
 for (const [k, issue] of Object.entries(CASES)) {
   const items = buildFixItems([issue]);
   assert.strictEqual(items.length, expectedCount[k] || 1, `${k}: 항목 수`);
@@ -51,7 +53,7 @@ console.log('OK ② 모르는 종류는 기타 확인으로 보존');
 const rb = buildFixItems([CASES.room_both]); assert.deepStrictEqual(rb.map(x => x.group).sort(), ['card', 'status']); assert(rb.every(x => /502/.test(x.action)));
 const rm = buildFixItems([CASES.room_rm]); assert.deepStrictEqual(rm.map(x => x.group).sort(), ['card', 'handover']); assert(!rm.some(x => /현황판의 주치의/.test(x.action)), '맞는 쪽(현황판)은 고치라고 하지 않는다');
 const ct = buildFixItems([CASES.count_sot])[0]; assert(/현황이 맞으면/.test(ct.action) && /시간표.*맞으면|가 맞으면/.test(ct.action), '개수 불일치는 두 방향 안내'); assert.strictEqual(ct.who, '김A, 이B');
-assert.strictEqual(buildFixItems([CASES.ho_notype])[0].who, '서송지'); assert.strictEqual(buildFixItems([CASES.ho_excess])[0].who, 'C');
+assert.strictEqual(buildFixItems([CASES.ho_notype])[0].who, '서송지'); assert.deepStrictEqual(buildFixItems([CASES.ho_notx]).map(x => x.who), ['김A', '이B']); assert.deepStrictEqual(buildFixItems([CASES.ho_nowriter]).map(x => x.who), ['김A', '이B']); assert.strictEqual(buildFixItems([CASES.ho_excess])[0].who, 'C');
 assert(/외래로 등록/.test(buildFixItems([CASES.nostatus_outp])[0].action));
 console.log('OK ③ 고칠 쪽/담당자 판단');
 
