@@ -50,6 +50,26 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     await step('그랜드: 모든 select 옵션 순회(오류 확인)', async () => await ev(`(async()=>{ const d=${W('rm')}.document; let c=0; for(const s of d.querySelectorAll('select')){ if(s.id==='grandRmSelect') continue; for(const o of [...s.options]){ s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); c++; await new Promise(r=>setTimeout(r,60)); } } return c; })()`));
     await step('그랜드: 언어치료 필터/팀 메뉴/도움말 버튼', async () => await ev(`(async()=>{ const d=${W('rm')}.document; const ids=[...d.querySelectorAll('button')].map(b=>b.id).filter(Boolean); return ids.length; })()`));
 
+    await step('환자 빠른 검색: Enter 3모드·Esc/닫기로만 닫힘·최근 기록 지우기/끄기', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), q=s=>document.querySelector(s), out={}; const bak=JSON.parse(JSON.stringify(settings));
+      const name=${W('rm')}.__testHooks.allPatients().find(p=>p.category!=='외래').name; const key=e=>document.dispatchEvent(new KeyboardEvent('keydown',{key:e,bubbles:true}));
+      const type=async v=>{ const i=q('.ps-input'); i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); await sl(600); };
+      const enter=()=>q('.ps-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+      localStorage.removeItem('rehab_recent_patients_v1'); showView('home'); setSetting('psRecent',true); setSetting('psEnter','card');
+      __openPatientSearch(); await sl(200); await type(name);
+      q('.ps-overlay').dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); out.outsideKeepsOpen=!!q('.ps-overlay');
+      enter(); await sl(1500); out.cardBig=!!q('.ps-big'); out.viewAfterCard=currentView();
+      q('.ps-big').dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); out.bigOutsideKeeps=!!q('.ps-big');
+      key('Escape'); out.bigEsc=!q('.ps-big')&&!!q('.ps-overlay');
+      setSetting('psEnter','stay'); enter(); await sl(300); out.stayNoBig=!q('.ps-big'); out.stayView=currentView();
+      setSetting('psEnter','goto'); enter(); await sl(800); out.gotoView=currentView(); out.gotoClosed=!q('.ps-overlay'); out.recentSaved=(JSON.parse(localStorage.getItem('rehab_recent_patients_v1')||'[]')).includes(name);
+      __openPatientSearch(); await sl(200); out.chips=document.querySelectorAll('.ps-chip').length; q('[data-ps-clear]').click(); await sl(100); out.afterClear=document.querySelectorAll('.ps-chip').length+'/'+localStorage.getItem('rehab_recent_patients_v1');
+      q('[data-ps-keep]').click(); await sl(100); out.offSetting=settings.psRecent===false; await type(name); setSetting('psEnter','goto'); enter(); await sl(500); out.offNotSaved=localStorage.getItem('rehab_recent_patients_v1')===null;
+      __openPatientSearch(); await sl(200); q('.ps-input').value='abc'; q('[data-ps-keep]').focus(); key('F2'); out.f2=document.activeElement===q('.ps-input')&&q('.ps-input').selectionStart===0&&q('.ps-input').selectionEnd===3; q('[data-ps-close]').click();
+      q('.ps-overlay')&&q('[data-ps-close]').click();
+      __openPatientSearch(); await sl(200); q('[data-ps-close]').click(); out.closeBtn=!q('.ps-overlay'); __openPatientSearch(); await sl(100); key('Escape'); out.esc=!q('.ps-overlay');
+      for(const t of ['cross','handover','acting']){ const si=${W('cross')}.document&&document.querySelector('iframe[data-tool="'+t+'"]').contentWindow.document.querySelector('#searchInput,#searchName'); if(si&&si.value){ si.value=''; si.dispatchEvent(new Event('input',{bubbles:true})); } }
+      replaceSettings(bak); showView('home');
+      for(const [k,v] of Object.entries(out)) if(v===false) throw new Error('실패: '+k+' '+JSON.stringify(out)); return out; })()`));
     await nav('rm'); await sleep(1500);
     const exp = await ev(`(async()=>{ const w=${W('rm')}; const ps=w.__testHooks.allPatients().filter(p=>p.category!=='외래'); const rms=[...new Set(ps.map(p=>p.rm))].filter(r=>/^RM/i.test(r)).slice(0,2);
       const entries=rms.map((rm,i)=>({id:'t'+i,dateKey:'2026-10-0'+(5+i),rm,ward:'8·9병동',day:'월요일',hour:'09',routeKey:'round1',patients:ps.filter(p=>p.rm===rm),issues:{unmatched:[],notWritten:[]}}));

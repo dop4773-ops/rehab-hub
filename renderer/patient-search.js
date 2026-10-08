@@ -7,7 +7,9 @@
   const esc = (s) => updEsc(String(s == null ? '' : s));
   const toolFn = (key, fn) => { try { const w = document.querySelector(`iframe[data-tool="${key}"]`)?.contentWindow; return w && typeof w[fn] === 'function' ? w[fn] : null; } catch (e) { return null; } };
   const recents = () => { try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch (e) { return []; } };
-  const remember = (name) => { try { localStorage.setItem(RECENT_KEY, JSON.stringify([name, ...recents().filter(n => n !== name)].slice(0, 8))); } catch (e) { /* 기억 못 해도 동작에는 문제 없음 */ } };
+  const keepOn = () => settings.psRecent !== false;
+  const clearRecents = () => { try { localStorage.removeItem(RECENT_KEY); } catch (e) { /* 지우지 못해도 동작에는 문제 없음 */ } };
+  const remember = (name) => { if (!keepOn()) return; try { localStorage.setItem(RECENT_KEY, JSON.stringify([name, ...recents().filter(n => n !== name)].slice(0, 8))); } catch (e) { /* 기억 못 해도 동작에는 문제 없음 */ } };
   const handoverRecords = () => { try { return (JSON.parse(localStorage.getItem('rehab_handover_cache_v1')) || {}).records || []; } catch (e) { return []; } };
 
   // 검색 대상: 전체시간표의 환자(입원·외래) + 인수인계에만 있는 이름. 이름이 같은 다른 사람은 병실로 구분되게 각각 따로 둔다.
@@ -40,7 +42,9 @@
 
   let ov = null, results = [], sel = 0, input = null;
   const isOpen = () => !!ov;
-  function close() { closeBig(); if (!ov) return; ov.remove(); ov = null; window.__psOpen = false; }
+  // F2: 어디를 눌러 놓았든 검색창으로 돌아가 바로 글을 쓸 수 있게(쓰던 글은 선택되어 덮어써진다)
+  const onF2 = (e) => { if (e.key === 'F2' && input) { e.preventDefault(); closeBig(); input.focus(); input.select(); } };
+  function close() { closeBig(); document.removeEventListener('keydown', onF2, true); if (!ov) { window.__psOpen = false; return; } ov.remove(); ov = null; window.__psOpen = false; }
   // 화면이 아직 처음 열리는 중일 수 있어서(도구는 처음 열 때 불러옴) 필요한 칸이 생길 때까지 잠깐 기다렸다가 실행한다
   const whenReady = (key, probe, fn) => { let n = 0; const t = setInterval(() => { const d = viewDoc(key); if (d && probe(d)) { clearInterval(t); fn(d); } else if (++n > 30) clearInterval(t); }, 150); };
   const setSearch = (d, id, v) => { const el = d.getElementById(id); if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } };
@@ -66,8 +70,9 @@
   function render() {
     const body = ov.querySelector('.ps-body'), q = input.value;
     if (!q.trim()) {
-      const rc = recents();
-      body.innerHTML = rc.length ? `<div class="ps-hint">최근 본 환자</div><div class="ps-recents">${rc.map(n => `<button type="button" class="ps-chip" data-ps-q="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : '<div class="ps-hint">환자 이름(또는 병실 번호)을 입력하세요 — 시간표 · 인수인계 · 교차검증 · 치료기록 QA를 한 번에 보여 줘요.</div>';
+      const rc = keepOn() ? recents() : [], hint = '<div class="ps-hint">환자 이름(또는 병실 번호)을 입력하세요 — 시간표 · 인수인계 · 교차검증 · 치료기록 QA를 한 번에 보여 줘요.</div>';
+      const tools = `<div class="ps-rtools">${rc.length ? '<button type="button" class="btn" data-ps-clear>🗑 기록 지우기</button>' : ''}<button type="button" class="btn" data-ps-keep>${keepOn() ? '최근 기록 저장 끄기' : '최근 기록 저장 켜기'}</button></div>`;
+      body.innerHTML = (rc.length ? `<div class="ps-hint">최근 본 환자</div><div class="ps-recents">${rc.map(n => `<button type="button" class="ps-chip" data-ps-q="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : hint + (keepOn() ? '' : '<div class="ps-hint" style="padding-top:0">최근 본 환자 저장이 꺼져 있어요.</div>')) + tools;
       return;
     }
     if (!results.length) { body.innerHTML = '<div class="ps-hint">일치하는 환자가 없어요. 그랜드라운딩에 시간표가 올라와 있어야 이름이 검색돼요.</div>'; return; }
@@ -84,8 +89,9 @@
     fillCard(p);
   }
   // 전체시간표 카드(엑셀 원본 그대로) — 교차검증 화면이 이미 불러 둔 시간표에서 그려서 상세 아래에 넣는다. 클릭하면 크게 본다.
-  let cardToken = 0, cardNow = null;
-  async function fillCard(p) {
+  let cardToken = 0, cardNow = null, cardLoad = null;
+  function fillCard(p) { return (cardLoad = loadCard(p)); }
+  async function loadCard(p) {
     const my = ++cardToken, box = ov && ov.querySelector('#psCard'); if (!box) return; cardNow = null;
     const api = toolFn('cross', '__cardApi');
     if (!api) { box.innerHTML = '<div class="ps-cardhead">전체시간표 카드</div><div class="ps-cardnone">교차검증 화면이 준비되면 카드가 보여요.</div>'; return; }
@@ -100,26 +106,36 @@
   function openBig() {
     if (!cardNow || document.querySelector('.ps-big')) return;
     const b = document.createElement('div'); b.className = 'ps-big'; window.__psBig = true;
-    b.innerHTML = `<div class="ps-bigbox"><h3>📇 ${esc(cardNow.title)}<kbd>Esc / 바깥을 누르면 닫기</kbd></h3><div class="ps-bigzoom">${cardNow.html}</div></div>`;
+    b.innerHTML = `<div class="ps-bigbox"><h3>📇 ${esc(cardNow.title)}<kbd>Esc</kbd><button type="button" class="btn" data-ps-bigclose>닫기</button></h3><div class="ps-bigzoom">${cardNow.html}</div></div>`;
     document.body.appendChild(b);
     const box = b.querySelector('.ps-bigbox'), z = b.querySelector('.ps-bigzoom'), head = b.querySelector('h3');
     z.style.zoom = Math.max(0.3, Math.min(1.4, (window.innerWidth * 0.94 - 60) / cardNow.width, (window.innerHeight * 0.94 - head.offsetHeight - 60) / cardNow.height));
-    b.addEventListener('mousedown', (e) => { if (!box.contains(e.target)) closeBig(); });
+    b.addEventListener('click', (e) => { if (e.target.closest('[data-ps-bigclose]')) { closeBig(); input && input.focus(); } });
   }
   function closeBig() { document.querySelector('.ps-big')?.remove(); window.__psBig = false; }
   window.__psCloseBig = closeBig;
+  const ENTER_HINT = { card: '전체시간표 크게', stay: '(이동 없음)', goto: '화면 이동' };
+  // Enter: 설정에 따라 전체시간표 카드를 크게 / 그대로 두기 / 해당 화면으로 이동
+  async function onEnter(p) {
+    const mode = settings.psEnter;
+    if (mode === 'goto') { go(detail(p).cross.length ? 'cross' : 'grand', p); return; }
+    if (mode === 'stay') return;
+    remember(p.name); if (cardLoad) await cardLoad; if (ov && results[sel] === p) openBig();
+  }
   function open() {
     if (ov) { input.focus(); input.select(); return; }
     ov = document.createElement('div'); ov.className = 'ps-overlay'; window.__psOpen = true;
-    ov.innerHTML = '<div class="ps-card" role="dialog" aria-label="환자 빠른 검색"><div class="ps-top"><span>🔎</span><input type="text" class="ps-input" placeholder="환자 이름 또는 병실 번호" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div><div class="ps-body"></div><div class="ps-foot">↑↓ 환자 선택 · Enter 열기 · Esc 닫기</div></div>';
-    document.body.appendChild(ov); input = ov.querySelector('.ps-input'); results = []; sel = 0; render(); input.focus();
-    ov.addEventListener('mousedown', (e) => { if (e.target === ov) close(); });
+    ov.innerHTML = '<div class="ps-card" role="dialog" aria-label="환자 빠른 검색"><div class="ps-top"><span>🔎</span><input type="text" class="ps-input" placeholder="환자 이름 또는 병실 번호" autocomplete="off" spellcheck="false"><kbd>Esc</kbd><button type="button" class="btn" data-ps-close>닫기</button></div><div class="ps-body"></div><div class="ps-foot">↑↓ 환자 선택 · Enter ' + (ENTER_HINT[settings.psEnter] || ENTER_HINT.card) + ' · F2 검색창에 쓰기 · Esc 또는 닫기 버튼으로 닫기</div></div>';
+    document.body.appendChild(ov); document.addEventListener('keydown', onF2, true); input = ov.querySelector('.ps-input'); results = []; sel = 0; render(); input.focus();
     input.addEventListener('input', () => { results = search(input.value); sel = 0; render(); });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (results.length) { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : results.length - 1)) % results.length; render(); } }
-      else if (e.key === 'Enter' && results[sel]) { e.preventDefault(); const d = detail(results[sel]); go(d.cross.length ? 'cross' : 'grand', results[sel]); }
+      else if (e.key === 'Enter' && results[sel]) { e.preventDefault(); onEnter(results[sel]); }
     });
     ov.addEventListener('click', (e) => {
+      if (e.target.closest('[data-ps-close]')) { close(); return; }
+      if (e.target.closest('[data-ps-clear]')) { clearRecents(); render(); input.focus(); return; }
+      if (e.target.closest('[data-ps-keep]')) { setSetting('psRecent', !keepOn()); if (!keepOn()) clearRecents(); render(); input.focus(); return; }
       const r = e.target.closest('[data-ps-i]'); if (r) { sel = +r.dataset.psI; render(); input.focus(); return; }
       const c = e.target.closest('[data-ps-q]'); if (c) { input.value = c.dataset.psQ; results = search(input.value); sel = 0; render(); input.focus(); return; }
       if (e.target.closest('[data-ps-big]')) { openBig(); return; }

@@ -12,6 +12,7 @@
     shortcuts: true, keymap: {},
     itda: true, itdaPush: true, itdaCategory: '그랜드라운딩',
     exportToast: true, exportToastAuto: '30', exportToastCloseOnOpen: true,
+    psEnter: 'card', psRecent: true,
     qaTherapistTab: true, qaTabCounts: true, qaMaskNames: true, qaStartTab: 'missing',
   };
   // 병원 사정에 따라 바뀌는 규칙(사람 이름·오더 코드·회차별 병동). 화면 도구의 기본값과 같아야 하며(test_settings가 확인), 설정 > 규칙에서 바꾼다.
@@ -56,9 +57,9 @@
     syncMode: ['launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
     dataView: ['list', 'matrix', 'board'], homeLayout: ['workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
     fontSize: ['small', 'normal', 'large'], color: ['pastel', 'vivid'], filesArea: ['collapsed', 'open'],
-    actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS, exportToastAuto: ['10', '30', '60', '0'],
+    actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS, exportToastAuto: ['10', '30', '60', '0'], psEnter: ['card', 'stay', 'goto'],
   };
-  const BOOLS = ['notifyStale', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen'];
+  const BOOLS = ['notifyStale', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen', 'psRecent'];
   const ZOOM = { small: 0.92, normal: 1, large: 1.12 };
   const VIVID_FILTER = 'saturate(1.45)'; // "선명" 색감 — 파스텔 색을 그대로 두고 채도만 올린다
 

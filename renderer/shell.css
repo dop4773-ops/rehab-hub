@@ -535,3 +535,5 @@ body:not(.home-wb) .wb-end{display:none}
 .st-rtools{border:1px dashed var(--border);border-radius:12px;padding:10px 14px;margin:6px 0 10px}.st-rtitle{font-size:11px;font-weight:800;color:#8a97ad;margin:8px 0 4px}.st-rtitle small{font-weight:600}.st-rrow{display:flex;gap:6px;flex-wrap:wrap}.st-rslot{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}.st-rslot>b{min-width:92px}.st-rslot>span{flex:1;color:var(--sub)}.st-rhist{max-height:240px;overflow:auto;margin-top:6px}
 .st-rsave{display:flex;align-items:center;gap:8px;position:sticky;bottom:0;background:#fff;padding:10px 0;border-top:1px solid var(--border);margin-top:8px}
 .st-ta[readonly]{background:#f6f8fc;color:#5d6a80;cursor:not-allowed}.st-ta.changed{outline:2px solid #f0c36c;background:#fffdf5}
+
+.ps-top .btn,.ps-bigbox h3 .btn{padding:3px 11px;font-size:12px}.ps-rtools{grid-column:1/3;display:flex;gap:6px;padding:0 16px 14px}.ps-rtools .btn{font-size:11.5px;padding:3px 10px}.ps-bigbox h3 kbd{margin-left:auto}.ps-bigbox h3 .btn{margin-left:0}
