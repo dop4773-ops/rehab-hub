@@ -42,9 +42,9 @@
 
   let ov = null, results = [], sel = 0, input = null;
   const isOpen = () => !!ov;
-  // F2: 어디를 눌러 놓았든 검색창으로 돌아가 바로 글을 쓸 수 있게(쓰던 글은 선택되어 덮어써진다)
-  const onF2 = (e) => { if (e.key === 'F2' && input) { e.preventDefault(); closeBig(); input.focus(); input.select(); } };
-  function close() { closeBig(); document.removeEventListener('keydown', onF2, true); if (!ov) { window.__psOpen = false; return; } ov.remove(); ov = null; window.__psOpen = false; }
+  // 검색창에 쓰기 단축키(설정 > 단축키, 기본 F2): 어디를 눌러 놓았든 검색창으로 돌아가 바로 글을 쓸 수 있게(쓰던 글은 선택되어 덮어써진다). 검색창이 닫혀 있으면 false(= 할 일 없음)
+  function focusInput() { if (!ov || !input) return false; closeBig(); input.focus(); input.select(); return true; }
+  function close() { closeBig(); if (!ov) { window.__psOpen = false; return; } ov.remove(); ov = null; window.__psOpen = false; }
   // 화면이 아직 처음 열리는 중일 수 있어서(도구는 처음 열 때 불러옴) 필요한 칸이 생길 때까지 잠깐 기다렸다가 실행한다
   const whenReady = (key, probe, fn) => { let n = 0; const t = setInterval(() => { const d = viewDoc(key); if (d && probe(d)) { clearInterval(t); fn(d); } else if (++n > 30) clearInterval(t); }, 150); };
   const setSearch = (d, id, v) => { const el = d.getElementById(id); if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } };
@@ -125,8 +125,8 @@
   function open() {
     if (ov) { input.focus(); input.select(); return; }
     ov = document.createElement('div'); ov.className = 'ps-overlay'; window.__psOpen = true;
-    ov.innerHTML = '<div class="ps-card" role="dialog" aria-label="환자 빠른 검색"><div class="ps-top"><span>🔎</span><input type="text" class="ps-input" placeholder="환자 이름 또는 병실 번호" autocomplete="off" spellcheck="false"><kbd>Esc</kbd><button type="button" class="btn" data-ps-close>닫기</button></div><div class="ps-body"></div><div class="ps-foot">↑↓ 환자 선택 · Enter ' + (ENTER_HINT[settings.psEnter] || ENTER_HINT.card) + ' · F2 검색창에 쓰기 · Esc 또는 닫기 버튼으로 닫기</div></div>';
-    document.body.appendChild(ov); document.addEventListener('keydown', onF2, true); input = ov.querySelector('.ps-input'); results = []; sel = 0; render(); input.focus();
+    ov.innerHTML = '<div class="ps-card" role="dialog" aria-label="환자 빠른 검색"><div class="ps-top"><span>🔎</span><input type="text" class="ps-input" placeholder="환자 이름 또는 병실 번호" autocomplete="off" spellcheck="false"><kbd>Esc</kbd><button type="button" class="btn" data-ps-close>닫기</button></div><div class="ps-body"></div><div class="ps-foot">↑↓ 환자 선택 · Enter ' + (ENTER_HINT[settings.psEnter] || ENTER_HINT.card) + ' · ' + keyLabel(effKeys({ id: 'ps-write', keys: 'F2' })) + ' 검색창에 쓰기 · Esc 또는 닫기 버튼으로 닫기</div></div>';
+    document.body.appendChild(ov); input = ov.querySelector('.ps-input'); results = []; sel = 0; render(); input.focus();
     input.addEventListener('input', () => { results = search(input.value); sel = 0; render(); });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (results.length) { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : results.length - 1)) % results.length; render(); } }
@@ -142,5 +142,5 @@
       const g = e.target.closest('[data-ps-go]'); if (g && results[sel]) go(g.dataset.psGo, results[sel]);
     });
   }
-  window.__openPatientSearch = open; window.__psClose = close; window.__psIsOpen = isOpen;
+  window.__openPatientSearch = open; window.__psClose = close; window.__psFocus = focusInput; window.__psIsOpen = isOpen;
 })();

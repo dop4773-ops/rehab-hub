@@ -1217,6 +1217,7 @@ const GLOBAL_KEYS = [
   ...NAV_ORDER.map((v, i) => ({ id: `nav:${v}`, keys: `Ctrl+${i + 1}`, label: `${document.querySelector(`.nav-item[data-nav=${v}] .nl`).textContent.trim()} 화면으로 이동`, run: () => showView(v) })),
   { id: 'sidebar', keys: 'Ctrl+\\', label: '사이드바 접기/펼치기', run: () => sidebarBtn.click() },
   { id: 'patient-search', keys: 'Ctrl+K', label: '환자 빠른 검색', run: () => window.__openPatientSearch && window.__openPatientSearch() },
+  { id: 'ps-write', keys: 'F2', label: '환자 빠른 검색: 검색창에 쓰기(검색창이 열려 있을 때)', run: () => window.__psFocus ? window.__psFocus() : false },
   { id: 'ho-refresh', keys: 'Ctrl+Shift+H', label: '인수인계 지금 다시 가져오기', run: () => refreshHandoverNow() },
   { id: 'today-summary', keys: 'Ctrl+Shift+T', label: '오늘 요약 복사(카톡용)', run: async () => showToast((await copyText(todaySummaryText())) ? '✅ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500) },
 ];
@@ -1279,9 +1280,9 @@ function onKeyDown(e) {
   }
   if (e.key === 'Escape' && altOverlay) { hideAlt(); return; }
   if (e.key === 'Escape' && closeExportToast) { closeExportToast(); return; } // 저장 안내는 Esc로도 닫힌다
-  if (!settings.shortcuts || !(e.ctrlKey || e.metaKey)) return;
+  if (!settings.shortcuts || !((e.ctrlKey || e.metaKey) || /^F\d+$/.test(e.key))) return; // Ctrl 조합 또는 F1~F12 단독
   const hit = [...(VIEW_KEYS[currentView()] || []), ...GLOBAL_KEYS].find(x => x.run && matchKeys(e, effKeys(x)));
-  if (hit) { e.preventDefault(); hit.run(); }
+  if (hit && hit.run() !== false) e.preventDefault(); // run이 false를 돌려주면 "지금은 할 일 없음" — 브라우저 기본 동작을 막지 않는다
 }
 function onKeyUp(e) {
   if (e.key !== 'Alt') return;

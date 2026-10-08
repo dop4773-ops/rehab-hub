@@ -88,7 +88,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { stStopRec(); stRenderKeys(); return; }
   if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
   const k = RehabSettings.keysFromEvent(e);
-  if (!k) { stRecErr = 'Ctrl(⌘)과 함께 눌러 주세요'; stRenderKeys(); return; }
+  if (!k) { stRecErr = 'Ctrl(⌘)과 함께(또는 F1~F12) 눌러 주세요'; stRenderKeys(); return; }
   const items = keyItems(), c = RehabSettings.findConflict(items, stRecId, k, settings.keymap);
   if (c) { stRecErr = c.reserved ? '복사·붙여넣기 등 기본 키라 쓸 수 없어요' : `"${c.label}"에서 이미 쓰고 있어요`; stRenderKeys(); return; }
   const me = items.find(x => x.id === stRecId), km = { ...settings.keymap };

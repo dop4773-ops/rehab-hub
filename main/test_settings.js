@@ -27,8 +27,12 @@ assert.strictEqual(S.normKeys('Ctrl+Enter'), 'Ctrl+Enter');
 assert.strictEqual(S.keysFromEvent({ ctrlKey: true, key: 'k' }), 'Ctrl+K');
 assert.strictEqual(S.keysFromEvent({ metaKey: true, shiftKey: true, key: 'f' }), 'Ctrl+Shift+F');
 assert.strictEqual(S.keysFromEvent({ key: 'k' }), null); // Ctrl 없이는 안 됨
+assert.strictEqual(S.keysFromEvent({ key: 'F2' }), 'F2'); // F1~F12는 혼자서도 됨
+assert.strictEqual(S.keysFromEvent({ key: 'F2', shiftKey: true }), null); assert.strictEqual(S.keysFromEvent({ key: 'F13' }), null);
+assert.deepStrictEqual(S.findConflict([{ id: 'a', scope: 'global', keys: 'F2' }], 'a', 'F5'), { reserved: true }); // 새로고침(F5) 등은 막는다
 assert.strictEqual(S.keysFromEvent({ ctrlKey: true, key: 'Control' }), null);
-assert.strictEqual(S.normalize({ keymap: { a: 'F5', b: 'ctrl+j' } }).keymap.a, undefined); // Ctrl 없는 조합은 버린다
+assert.strictEqual(S.normalize({ keymap: { a: 'K', b: 'ctrl+j', c: 'F3', d: 'Shift+F3' } }).keymap.a, undefined); // Ctrl 없는 일반 키는 버린다
+assert.strictEqual(S.normalize({ keymap: { c: 'F3', d: 'Shift+F3' } }).keymap.c, 'F3'); assert.strictEqual(S.normalize({ keymap: { d: 'Shift+F3' } }).keymap.d, undefined);
 assert.strictEqual(S.normalize({ keymap: { b: 'ctrl+j' } }).keymap.b, 'Ctrl+J');
 
 // ④ 충돌: 같은 화면·공통끼리만 겹침, 다른 화면끼리는 같은 키 허용

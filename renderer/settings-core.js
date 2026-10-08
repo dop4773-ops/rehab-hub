@@ -71,13 +71,15 @@
     const key = parts.pop(), mods = MODS.filter(m => parts.some(p => p.toLowerCase() === m.toLowerCase()));
     return [...mods, key.length === 1 ? key.toUpperCase() : key].join('+');
   }
-  // 키 입력 이벤트 → 조합 문자열. Ctrl이 없거나 Ctrl/Shift 같은 보조키만 누르면 null.
+  // 키 입력 이벤트 → 조합 문자열. F1~F12 단독이거나 Ctrl과 함께여야 하고, Ctrl이 없거나 Ctrl/Shift 같은 보조키만 누르면 null.
+  const isFKey = (k) => /^F([1-9]|1[0-2])$/.test(k);
   function keysFromEvent(e) {
+    if (isFKey(e.key) && !(e.ctrlKey || e.metaKey || e.altKey || e.shiftKey)) return e.key; // F1~F12는 혼자서도 단축키로 쓸 수 있다
     if (!(e.ctrlKey || e.metaKey) || ['Control', 'Shift', 'Alt', 'Meta', '+'].includes(e.key) || e.altKey) return null; // '+'는 조합 표기와 헷갈려서 제외
     return normKeys([e.shiftKey ? 'Shift' : '', 'Ctrl', e.key].filter(Boolean).join('+'));
   }
   // 복사·붙여넣기 같은 기본 동작과 겹치면 안 되는 조합
-  const RESERVED = ['Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+A', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+Shift+Z', 'Ctrl+W', 'Ctrl+Q'];
+  const RESERVED = ['Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+A', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+Shift+Z', 'Ctrl+W', 'Ctrl+Q', 'F5', 'F11', 'F12'];
   // items: [{id, scope('global' 또는 화면 이름), keys}] — 같은 화면(또는 공통)에서 이미 쓰는 조합이면 그 항목을 돌려준다.
   function findConflict(items, id, keys, keymap = {}) {
     const me = items.find(x => x.id === id), k = normKeys(keys);
@@ -99,7 +101,7 @@
     if (r.rulesSlots && typeof r.rulesSlots === 'object') for (const k of ['1', '2', '3']) if (r.rulesSlots[k] && r.rulesSlots[k].rules) s.rulesSlots[k] = { t: Number(r.rulesSlots[k].t) || 0, rules: normRules(r.rulesSlots[k].rules) };
     if (typeof r.rulesPin === 'string' && /^[0-9a-z]{1,16}$/.test(r.rulesPin)) s.rulesPin = r.rulesPin;
     if (typeof r.rulesTab === 'boolean') s.rulesTab = r.rulesTab;
-    if (r.keymap && typeof r.keymap === 'object') for (const [id, v] of Object.entries(r.keymap)) { const n = normKeys(v); if (n && n.includes('Ctrl')) s.keymap[id] = n; }
+    if (r.keymap && typeof r.keymap === 'object') for (const [id, v] of Object.entries(r.keymap)) { const n = normKeys(v); if (n && (n.includes('Ctrl') || isFKey(n))) s.keymap[id] = n; }
     return s;
   }
   function load(storage) {
