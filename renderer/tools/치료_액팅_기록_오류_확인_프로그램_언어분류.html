@@ -1887,7 +1887,9 @@ ${text}`,
   function msNormText(v){ if(v==null) return ''; return String(v).replace(/\u3000/g,' ').replace(/\r\n?/g,'\n').trim(); }
   const MS_MINI_TITLE_RE = /^(ERDT|CCRT|BETTER|COMCOG)$/i;
   // 치료사 표기 뒤에 붙는 조(A/B)나 "OT" 표시를 뗀 이름("김기범OT"→"김기범", "이승규B"→"이승규")
-  function msBaseTherapistName(n){ return String(n||'').replace(/OT$/,'').replace(/[A-Z]$/,''); }
+  function msBaseTherapistName(n){ return String(n||'').replace(/\s*(OT|PT|ST)$/i,'').replace(/[A-Z]$/,''); }
+  // 시간표 치료사 칸 머리글의 직종 표시("엄주용OT", "김OT" 등)는 이름이 아니므로 뗀다 — 액팅 기록의 치료사 이름("엄주용")과 같은 사람으로 본다
+  function msCleanTherapistHeader(t){ return String(t||'').replace(/^([가-힣]{2,})\s*(OT|PT|ST)$/i,'$1'); }
   function msTimeToMinutes(text){
     const m = String(text||'').match(/(\d{1,2}):(\d{2})/);
     if(!m) return null;
@@ -1989,7 +1991,7 @@ ${text}`,
     const therapistCols = [];
     for(let c=1;c<therapistColLimit;c++){
       const t = rows[therapistRow] ? msNormText(rows[therapistRow][c]) : '';
-      if(t!=='') therapistCols.push({ col:c, name:t });
+      if(t!=='') therapistCols.push({ col:c, name:msCleanTherapistHeader(t) });
     }
 
     const entries = [];
@@ -2141,7 +2143,7 @@ ${text}`,
         }
         for(let r2=dataStart; r2<=lastDataRow; r2++){
           slotCols.forEach(c=>{
-            const therapist = msNormText(rows[r2] ? rows[r2][therapistColFor(headerRow2, sec, c, therapistCol)] : '');
+            const therapist = msCleanTherapistHeader(msNormText(rows[r2] ? rows[r2][therapistColFor(headerRow2, sec, c, therapistCol)] : ''));
             const s = msNormText(rows[r2] ? rows[r2][c] : '');
             if(!s) return;
             const lines = s.split('\n').map(x=>x.trim()).filter(Boolean);
@@ -2159,7 +2161,7 @@ ${text}`,
         }
         if(targetCol==null) return;
         for(let r2=dataStart; r2<=lastDataRow; r2++){
-          const therapist = therapistCol!=null ? msNormText(rows[r2] ? rows[r2][therapistCol] : '') : '';
+          const therapist = therapistCol!=null ? msCleanTherapistHeader(msNormText(rows[r2] ? rows[r2][therapistCol] : '')) : '';
           const s = msNormText(rows[r2] ? rows[r2][targetCol] : '');
           if(!s) continue;
           const { name, isTest } = msStripTestSuffix(s);
@@ -2762,6 +2764,17 @@ ${text}`,
       (issuesByPatient[nm] = issuesByPatient[nm] || []).push(x);
     });
 
+    // 시간표에 "김강숙S"처럼 이름에 S가 공백 없이 붙어 있으면 동명이인 구분 알파벳으로 읽히는데, 액팅 기록에 그 이름이 없고 알파벳 없는 이름만 있으면
+    // 작업특수(S) 표기를 붙여 쓴 같은 환자로 보고 합친다(안 그러면 "김강숙S" 미액팅 1건 + "김강숙" 초과 1건으로 갈라져 잡힌다).
+    Object.keys(orderMap).forEach(name=>{
+      const m = name.match(/^([가-힣]{2,})S$/);
+      if(!m || actMap[name] || !actMap[m[1]]) return;
+      const dst = orderMap[m[1]] || (orderMap[m[1]] = { count:0, list:[] });
+      dst.count += orderMap[name].count; dst.list.push(...orderMap[name].list); delete orderMap[name];
+      dst.list.sort((a,b)=> (a.timeSlot||'').localeCompare(b.timeSlot||'') || a.row-b.row);
+      dupGroups[m[1]] = (dupGroups[m[1]] || []).filter(n=>n!==name);
+      if(!dupGroups[m[1]].includes(m[1])) dupGroups[m[1]].push(m[1]);
+    });
     // 예정 오더와 액팅 세션을 "가장 가까운 시작 시간" 기준으로 1:1 매칭해서
     // 실제로 어느 시간대가 미액팅인지 더 정확히 추정합니다(그래도 추정치입니다).
     const slotFlagMap = {};

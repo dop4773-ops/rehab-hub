@@ -15,9 +15,12 @@ vm.runInContext([
   cut('function msNormText', '// FMA·수지기능'),
   cut('// 같은 환자·같은 시간대·같은 치료 유형이', '// 카톡 텍스트용'),
   cut('function msExcelSerialToDate', '// 일부 한글 오피스'),
-  'this.parse = msParseScheduleSheet; this.ymd = msYmd;',
+  'this.parse = msParseScheduleSheet; this.ymd = msYmd; this.base = msBaseTherapistName; this.clean = msCleanTherapistHeader;',
 ].join('\n'), ctx);
 const parse = (rows) => ctx.parse(rows);
+// 치료사 이름 뒤 직종 표시(OT/PT/ST)는 이름이 아니다. A/B 조 표시는 기존대로 뗀다
+for (const [raw, want] of [['엄주용OT', '엄주용'], ['홍길동PT', '홍길동'], ['김가나ST', '김가나'], ['이승규B', '이승규'], ['김기범', '김기범']]) assert.strictEqual(ctx.base(raw), want, raw);
+assert.strictEqual(ctx.clean('엄주용OT'), '엄주용'); assert.strictEqual(ctx.clean('엄주용 pt'), '엄주용'); assert.strictEqual(ctx.clean('이승규B'), '이승규B'); assert.strictEqual(ctx.clean('OT'), 'OT');
 const byName = (r, n) => r.entries.filter(e => e.name === n);
 const same = (a, b, msg) => assert.strictEqual(JSON.stringify(a), JSON.stringify(b), msg); // vm 안에서 만든 배열은 prototype이 달라 deepStrictEqual 대신 JSON으로 비교
 const pad = (arr, n) => arr.concat(Array(Math.max(0, n - arr.length)).fill(null));
@@ -34,7 +37,7 @@ const sideRows = [
 let r = parse(sideRows);
 assert.strictEqual(ctx.ymd(r.sheetDate), '2026-10-03');
 assert.strictEqual(r.weekdayChar, '토');
-same(r.grid.therapistCols.map(t => t.name), ['이승규', '김기범OT', '박모모'], '오른쪽 ERDT 표의 머리글이 치료사 칸으로 잡히면 안 됨');
+same(r.grid.therapistCols.map(t => t.name), ['이승규', '김기범', '박모모'], '오른쪽 ERDT 표의 머리글이 치료사 칸으로 잡히면 안 됨(직종 표시 OT는 이름에서 뗀다)');
 assert.strictEqual(byName(r, '홍길동')[0].type, '연하전기', '이승규 칸의 E = 연하전기');
 assert.strictEqual(byName(r, '가나다')[0].type, '작업특수');
 assert.strictEqual(byName(r, '사아자')[0].type, '전산화인지', 'CC = 전산화인지');
@@ -43,12 +46,12 @@ assert.strictEqual(byName(r, '카타파')[0].type, '평가', 'CC + TEST = 평가
 assert.strictEqual(byName(r, '마바사')[0].type, '작업특수', '둘째 줄이 MSK면 작업특수');
 assert.strictEqual(byName(r, '아자')[0].type, '연하치료');
 assert(!r.entries.some(e => /ERDT|3F|10층/.test(e.name)), '병동 ERDT/단독 ERDT 칸은 환자가 아니다');
-assert.strictEqual(byName(r, '환자삼')[0].therapist, '김기범OT', 'S3는 두 번째 "치료사" 칸의 치료사 소속');
+assert.strictEqual(byName(r, '환자삼')[0].therapist, '김기범', 'S3는 두 번째 "치료사" 칸의 치료사 소속');
 assert.strictEqual(byName(r, '환자일')[0].therapist, '박모모');
 assert(byName(r, '환자일')[0].conflict, '박모모가 같은 시간에 메인 표에서 다른 환자를 보면 시간 충돌');
 assert.strictEqual(byName(r, '환자이')[0].conflict && byName(r, '환자이')[0].conflict.withName, '사아자');
 // 메인 표의 "3F ERDT / 10층 ERDT / ERDT" 표시 칸은 환자가 아니지만 미리보기에서 보여줄 수 있게 마커로 남긴다
-same(r.grid.markers.map(m => [m.therapist, m.timeSlot, m.kind]), [['김기범OT', '10:15~10:45', 'ERDT'], ['박모모', '10:15~10:45', 'ERDT'], ['이승규', '10:50~11:20', 'ERDT']], '병동 ERDT·단독 ERDT 칸이 마커로 기록됨');
+same(r.grid.markers.map(m => [m.therapist, m.timeSlot, m.kind]), [['김기범', '10:15~10:45', 'ERDT'], ['박모모', '10:15~10:45', 'ERDT'], ['이승규', '10:50~11:20', 'ERDT']], '병동 ERDT·단독 ERDT 칸이 마커로 기록됨');
 assert(r.grid.markers.every(m => m.row > 0 && m.col > 0 && m.label), '마커에 위치·표기 글자가 있어야 함');
 console.log('OK ① 토요일/공휴일(ERDT 표 옆) 형식 + ERDT 표시 칸 마커');
 
