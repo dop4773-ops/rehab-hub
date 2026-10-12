@@ -26,6 +26,7 @@ assert.strictEqual(S.normKeys('shift+ctrl+f'), 'Ctrl+Shift+F');
 assert.strictEqual(S.normKeys('Ctrl+Enter'), 'Ctrl+Enter');
 assert.strictEqual(S.keysFromEvent({ ctrlKey: true, key: 'k' }), 'Ctrl+K');
 assert.strictEqual(S.keysFromEvent({ metaKey: true, shiftKey: true, key: 'f' }), 'Ctrl+Shift+F');
+assert.strictEqual(S.DEFAULTS.notifyOneDrive, true); assert.strictEqual(S.normalize({ notifyOneDrive: false }).notifyOneDrive, false);
 assert.strictEqual(S.keysFromEvent({ key: 'k' }), null); // Ctrl 없이는 안 됨
 assert.strictEqual(S.keysFromEvent({ key: 'F2' }), 'F2'); // F1~F12는 혼자서도 됨
 assert.strictEqual(S.keysFromEvent({ key: 'F2', shiftKey: true }), null); assert.strictEqual(S.keysFromEvent({ key: 'F13' }), null);

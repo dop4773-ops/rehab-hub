@@ -272,9 +272,29 @@ async function syncNow({ statusEl = null, skipScan = false } = {}) {
 async function syncTick() {
   if (syncing || !lastScan) return;
   try { await refreshScan(); } catch (e) { return; }
+  await refreshOneDrive();
   const pending = fileRoles.some(r => r.key !== 'handover' && ['stale', 'error'].includes(roleStateOf(r.key)));
   if (pending && RehabSync.isSyncDue({ mode: syncMode, now: Date.now(), lastSyncAt })) await syncNow({ skipScan: true });
   else { renderAll(); notifyStale(); }
+}
+// OneDrive 동기화 점검: 프로그램이 켜져 있는지(Windows, 1분에 한 번만 확인) + 평일 파일이 며칠째 안 바뀌었는지. 연결한 폴더가 OneDrive가 아니면 아무것도 안 한다.
+let oneDriveRunning = null, oneDriveCheckedAt = 0, notifiedSyncHealth = '';
+async function refreshOneDrive() {
+  if (!settings.notifyOneDrive || !lastScan || Date.now() - oneDriveCheckedAt < 60000) return;
+  oneDriveCheckedAt = Date.now();
+  const before = syncHealthNow().key + '|' + syncHealthNow().level;
+  try { oneDriveRunning = await window.rehab.sync.oneDriveRunning(); } catch (e) { oneDriveRunning = null; }
+  if (syncHealthNow().key + '|' + syncHealthNow().level !== before) renderHome(); // 달라졌을 때만 다시 그린다(홈 메모 입력 중 방해 금지)
+  notifySyncHealth();
+}
+function syncHealthNow() {
+  if (!settings.notifyOneDrive || !lastScan) return { level: 'off' };
+  return RehabSyncHealth.evaluate({ matched: lastScan.matched, running: oneDriveRunning });
+}
+function notifySyncHealth() { // 같은 문제로는 하루에 한 번만 작은 알림을 띄운다
+  const h = syncHealthNow(); if (h.level !== 'warn' && h.level !== 'err') { notifiedSyncHealth = ''; return; }
+  const sig = new Date().toDateString() + h.key; if (sig === notifiedSyncHealth) return; notifiedSyncHealth = sig;
+  showToast(`☁️ ${h.title} <button class="btn" data-goto="home">자세히</button>`, 12000);
 }
 let syncTickTimer = null;
 function scheduleSyncTick() { // 설정 > 변경 감지 간격(기본 30초)
@@ -517,6 +537,7 @@ function renderHome() {
     + (cross ? (cross.count ? chipHtml('warn', `교차검증 불일치 ${cross.count}건`, (() => { const d = crossTrend().delta; return d ? (d > 0 ? `▲${d}` : `▼${-d}`) : ''; })()) : chipHtml('ok', '교차검증 이상 없음')) : chipHtml('off', '교차검증 확인 전'))
     + (acting && acting.count ? chipHtml('err', `치료기록 오류 ${acting.count}건`) : acting ? chipHtml('ok', '치료기록 오류 없음') : chipHtml('off', '치료기록 QA 파일 없음'))
     + bkChip
+    + (() => { const h = syncHealthNow(); return h.level === 'warn' || h.level === 'err' ? `<span class="band-click" title="${updEsc(h.detail)}">${chipHtml(h.level, h.level === 'err' ? 'OneDrive 꺼짐' : 'OneDrive 확인')}</span>` : ''; })()
     + (() => { const hf = handoverFreshness(); return hf.cls === 'ok' ? '' : `<span data-ho-refresh class="band-click" title="${hf.text} — 누르면 지금 다시 가져와요">${chipHtml(hf.cls, hf.at ? `인수인계 ${hf.age}` : '인수인계 못 가져옴')}</span>`; })()
     + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>${settings.homeLayout === 'classic' ? '' : '<button class="btn" data-today-summary title="카톡에 붙여넣을 오늘 현황 글을 복사해요">📋 오늘 요약</button>'}<button class="btn primary" id="homeScanBtn" data-sync-now>🔄 지금 업데이트</button>`;
 
@@ -524,6 +545,7 @@ function renderHome() {
   const itda = (content) => !settings.itdaPush ? '' : `<button class="btn" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>`;
   const todos = [];
   if (missReq.length) todos.push(todoHtml('err', '📦', `필수 파일 ${missReq.length}개를 못 찾았어요`, missReq.map(r => r.label).join(' · '), missReq.map(r => `<button class="btn primary" data-manual-pick="${r.key}" title="${updEsc(r.label)} — 파일을 직접 골라서 불러오기">📂 ${CHIP_NAME[r.key] || r.label}</button>`).join('') + '<button class="btn" data-goto="data">데이터 준비 →</button>'));
+  { const h = syncHealthNow(); if (h.level === 'warn' || h.level === 'err') todos.push(todoHtml(h.level, '☁️', h.title, updEsc(h.detail), '<button class="btn" data-goto="data">데이터 준비 →</button>')); }
   if (errRoles.length) todos.push(todoHtml('err', '⚠️', `읽기 오류 ${errRoles.length}개`, errRoles.map(r => r.label).join(' · '), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
   if (staleRoles.length) todos.push(todoHtml('warn', '🔄', `업데이트 필요 ${staleRoles.length}개`, staleRoles.map(r => r.label).join(' · ') + ' — 파일이 바뀌었어요', '<button class="btn primary" data-sync-now>지금 업데이트</button>'));
   if (cross && cross.count) {

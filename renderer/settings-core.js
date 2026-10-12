@@ -5,7 +5,7 @@
   const KEY = 'rehab_settings_v1';
   const LEGACY = { syncMode: 'rehab_sync_mode', dataView: 'rehab_data_view_v1' }; // 예전에 따로 저장하던 값(처음 한 번만 옮겨옴)
   const DEFAULTS = {
-    syncMode: 'launch', checkSec: 30, notifyStale: true,
+    syncMode: 'launch', checkSec: 30, notifyStale: true, notifyOneDrive: true,
     dataView: 'list', dataStaleFirst: true, dataHideUnused: false,
     homeLayout: 'workbench', sidebar: 'last', fontSize: 'normal', color: 'pastel', filesArea: 'collapsed',
     actingSeverity: 'error', grandStats: 'collapsed', grandTime: '09',
@@ -59,7 +59,7 @@
     fontSize: ['small', 'normal', 'large'], color: ['pastel', 'vivid'], filesArea: ['collapsed', 'open'],
     actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS, exportToastAuto: ['10', '30', '60', '0'], psEnter: ['card', 'stay', 'goto'],
   };
-  const BOOLS = ['notifyStale', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen', 'psRecent'];
+  const BOOLS = ['notifyStale', 'notifyOneDrive', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen', 'psRecent'];
   const ZOOM = { small: 0.92, normal: 1, large: 1.12 };
   const VIVID_FILTER = 'saturate(1.45)'; // "선명" 색감 — 파스텔 색을 그대로 두고 채도만 올린다
 

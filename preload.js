@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld('rehab', {
     load: (ids) => ipcRenderer.invoke('schedules:load', ids),
     delete: (id) => ipcRenderer.invoke('schedules:delete', id),
   },
+  sync: {
+    oneDriveRunning: () => ipcRenderer.invoke('sync:oneDriveRunning'),
+  },
   backup: {
     status: () => ipcRenderer.invoke('backup:status'),
     chooseLog: () => ipcRenderer.invoke('backup:chooseLog'),
