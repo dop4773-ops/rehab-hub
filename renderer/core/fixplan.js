@@ -18,7 +18,7 @@ const GROUPS = {
 const GROUP_ORDER = ['status', 'card', 'grid', 'handover', 'etc'];
 // 칸 주소 문구("현황(회복기) J45 · 평일시간표(원본) C12") — 항목의 group 쪽을 앞에, 다른 파일은 파일 이름을 붙여서
 function cellTextFor(refs, group) {
-  return (refs || []).slice().sort((a, b) => (b.group === group) - (a.group === group)).map(r => `${r.group !== group && GROUPS[r.group] ? GROUPS[r.group].label + ' ' : ''}${r.sheet} ${r.cells.join(', ')}`).join(' · ');
+  return (refs || []).slice().sort((a, b) => (b.group === group) - (a.group === group)).map(r => `${r.group !== group && GROUPS[r.group] ? GROUPS[r.group].label + ' ' : ''}${r.foreign ? r.floor + 'F ' : ''}${r.sheet} ${r.cells.join(', ')}`).join(' · ');
 }
 const uniq = (a) => [...new Set(a.filter(Boolean))];
 const names = (s) => uniq(String(s || '').split(/[\/,·]/).map(x => x.trim()));

@@ -43,5 +43,11 @@ const items = buildFixItems([issue]); assert.strictEqual(items[0].group, 'card')
 assert.strictEqual(items[0].cellText, '입원 A101, C109 · 매트·테이블현황 매트위치 W12, W13'); assert(/\[칸: 입원 A101, C109/.test(fixItemsToText(items)));
 const noRef = buildFixItems([I({ kind: 'handover_doctor', handoverDoctor: 'RM8', cardDoctor: 'RM9' })]); assert.strictEqual(noRef[0].cellText, ''); assert(!/\[칸:/.test(fixItemsToText(noRef)));
 assert.strictEqual(formatRefs([{ group: 'card', sheet: '입원', cells: ['A1'] }], 'status', { card: '전체시간표' }), '전체시간표 입원 A1');
+// 이슈는 3F인데 카드는 10F 파일에만 있을 때(3F 매트 칸에 이름은 있고 3F 전체시간표엔 카드 없음): 카드 칸에 층을 붙여 다른 파일임을 알린다
+ctx.findCard = () => ({ ...card, floor: 10 });
+const far = I({ kind: 'missing', time: '10:15', loc: 'B-22' }, { floor: 3 }); attachRefs([far], ctx);
+const farRef = far.refs.find(x => x.group === 'card'); assert.strictEqual(farRef.floor, 10); assert(farRef.foreign);
+assert(/10F 입원 A101/.test(buildFixItems([far])[0].cellText), '다른 층 파일 칸에는 10F 표시');
+const same = I({ kind: 'missing', time: '10:15', loc: 'B-22' }, { floor: 10 }); attachRefs([same], ctx); assert(!same.refs.find(x => x.group === 'card').foreign);
 console.log('OK ② 지시서 반영');
 console.log('ALL PASS');

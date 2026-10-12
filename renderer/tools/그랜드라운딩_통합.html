@@ -625,8 +625,9 @@ async function handleFiles(fileList){
     if(grandOtBook||grandPtBooks[10]||grandPtBooks[3]) renderGrandTable();
     const missing=[3,10].filter(f=>!loadedFiles[f]); const autoTherN=allPatients.filter(p=>!!autoTherapistSummary(p)).length; let msg=`분석 완료: 원본 카드 ${rawCardCount}건 → 최신 환자 ${allPatients.length}명으로 정리했습니다. 주치료사 정확추출 ${autoTherN}명.`;
     if(missing.length) msg+=` ${missing.join('F, ')}F 파일은 선택되지 않아 해당 층은 제외되었습니다.`;
+    const regDup=[...grandRegCollisions()]; if(regDup.length) msg+=` ⚠ 병록번호가 같은 다른 환자: ${regDup.map(([r,n])=>`${r}(${n.join('·')})`).join(', ')} — 전체시간표 원본의 병록번호를 확인해 주세요.`;
     if(unknown.length) msg+=` 인식하지 못한 파일: ${unknown.join(', ')}`;
-    setStatus(msg,missing.length||unknown.length?'warn':'success');
+    setStatus(msg,missing.length||unknown.length||regDup.length?'warn':'success');
   }catch(err){ console.error(err); setStatus(`분석 실패: ${err.message}`,'error'); document.getElementById('statsPanel').style.display='none'; document.getElementById('resultPanel').style.display='none'; }
 }
 function updateAfterLoad(){
@@ -1709,7 +1710,17 @@ function shortTreatmentLocation(e){
   // 시간대 셀은 치료명과 위치를 두 줄로 짧게 표시한다. 층 정보는 별도 치료위치 열에서 확인한다.
   return [name,loc&&loc!==name?loc:''].filter(Boolean).join('\n');
 }
-function grandIdentityKey(p){ return p.reg?`REG:${p.reg}`:`NAME:${p.name}|ROOM:${p.room||''}`; }
+// 병록번호가 같은데 이름이 다른 환자들(원본 시간표의 입력 오류) — 이런 번호는 이름까지 붙여서 구분한다(안 그러면 한 사람의 메모·체크·언어치료 여부가 다른 사람에게 섞인다).
+// 번호가 겹치지 않는 환자의 키는 예전 그대로라서 저장해 둔 메모·체크는 유지된다.
+let grandRegSrc=null, grandRegLen=-1, grandRegDup=new Map();
+function grandRegCollisions(){
+  if(grandRegSrc!==allPatients||grandRegLen!==allPatients.length){
+    const names=new Map(); for(const p of allPatients){ if(!p.reg) continue; if(!names.has(p.reg)) names.set(p.reg,new Set()); names.get(p.reg).add(p.name); }
+    grandRegDup=new Map([...names].filter(([,s])=>s.size>1).map(([r,s])=>[r,[...s]])); grandRegSrc=allPatients; grandRegLen=allPatients.length;
+  }
+  return grandRegDup;
+}
+function grandIdentityKey(p){ return p.reg?(grandRegCollisions().has(p.reg)?`REG:${p.reg}|${p.name}`:`REG:${p.reg}`):`NAME:${p.name}|ROOM:${p.room||''}`; }
 function grandVisitKey(p){ const d=document.getElementById('grandDateInput')?.value||dateStamp(); return `${d}::${grandIdentityKey(p)}`; }
 const THERAPIST_SUMMARY_ORDER=[['exercise','운동'],['ot','작업'],['manual','도수'],['swallow','연하'],['cog','인지'],['speech','언어']];
 function autoTherapistSummary(p){

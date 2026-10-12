@@ -50,6 +50,15 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
     await step('그랜드: 모든 select 옵션 순회(오류 확인)', async () => await ev(`(async()=>{ const d=${W('rm')}.document; let c=0; for(const s of d.querySelectorAll('select')){ if(s.id==='grandRmSelect') continue; for(const o of [...s.options]){ s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); c++; await new Promise(r=>setTimeout(r,60)); } } return c; })()`));
     await step('그랜드: 언어치료 필터/팀 메뉴/도움말 버튼', async () => await ev(`(async()=>{ const d=${W('rm')}.document; const ids=[...d.querySelectorAll('button')].map(b=>b.id).filter(Boolean); return ids.length; })()`));
 
+    await step('그랜드: 병록번호가 같은 다른 환자는 서로 섞이지 않음(언어명단·메모 키)', async () => await ev(`(async()=>{ const w=${W('rm')}; const keep=w.__testHooks.allPatients(); const sched=(tx)=>({월요일:{'09:05':{treatment:tx,floor:3}}});
+      const A={name:'테스트가나',reg:'ZZ9',room:'501',floor:3,rm:'RM1',category:'입원',schedule:sched('운동치료'),therapists:{}}, B={name:'테스트다라',reg:'ZZ9',room:'906',floor:10,rm:'RM1',category:'입원',schedule:sched('언어치료'),therapists:{}};
+      const out={}; try{ keep.push(A,B);
+        out.keysDiffer=w.grandIdentityKey(A)!==w.grandIdentityKey(B); out.normalKeyKept=w.grandIdentityKey({reg:'12345',name:'가'})==='REG:12345';
+        out.aNotLang=!w.grandIsLanguagePatient(A); out.bIsLang=w.grandIsLanguagePatient(B);
+        const keepApi=w.__schedulesApi, keepDl=w.downloadBytes, names=[]; w.__schedulesApi={load:async()=>[{id:'z',dateKey:'2026-10-01',rm:'RM1',ward:'5병동',day:'월요일',hour:'09',routeKey:'round1',patients:[A],issues:{unmatched:[],notWritten:[]}}]}; w.downloadBytes=(b,n)=>names.push(n);
+        const note=await w.grandArchiveExport(['z'],'lang',null,''); w.__schedulesApi=keepApi; w.downloadBytes=keepDl; out.langExportEmpty=names.length===0;
+      } finally { for(let i=keep.length-1;i>=0;i--) if(keep[i].reg==='ZZ9') keep.splice(i,1); }
+      for(const [k,v] of Object.entries(out)) if(v===false) throw new Error('실패: '+k+' '+JSON.stringify(out)); return out; })()`));
     await step('환자 빠른 검색: Enter 3모드·Esc/닫기로만 닫힘·최근 기록 지우기/끄기', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)), q=s=>document.querySelector(s), out={}; const bak=JSON.parse(JSON.stringify(settings));
       const name=${W('rm')}.__testHooks.allPatients().find(p=>p.category!=='외래').name; const key=e=>document.dispatchEvent(new KeyboardEvent('keydown',{key:e,bubbles:true}));
       const type=async v=>{ const i=q('.ps-input'); i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); await sl(600); };
@@ -116,6 +125,7 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       const keep=JSON.stringify([settings.rules,settings.rulesHistory,settings.rulesSlots,settings.rulesPin,settings.rulesTab]), g=${W('rm')}.document, ta=k=>q('[data-rule='+k+']');
       const ev2=(el,v)=>{ el.value=v; el.dispatchEvent(new Event('input',{bubbles:true})); }, ask=async(i)=>{ await sl(80); click('[data-rask=\"'+i+'\"]'); await sl(200); };
       try{
+        { const dflt=RehabSettings.normalize({}); for(const k of ['rules','rulesHistory','rulesSlots','rulesPin']) setSetting(k,JSON.parse(JSON.stringify(dflt[k]))); } // 이전에 중간에 끊긴 점검이 남긴 규칙·이력이 있어도 같은 출발점에서 시작
         setSetting('rulesTab',false); await sl(100); out.hiddenTab=q('#stTabs [data-tab=rules]').hidden; setSetting('rulesTab',true); await sl(100);
         document.querySelector('[data-nav=settings]').click(); click('#stTabs [data-tab=rules]'); await sl(200);
         out.locked=ta('round1Wards').readOnly&&/잠겨/.test(q('#stRuleBar').textContent); if(!out.hiddenTab||!out.locked) throw new Error('숨김/잠금이 아니에요: '+JSON.stringify(out));
@@ -194,7 +204,7 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         const grid=[st.mat10Book,st.table10Book,st.mt3Book].filter(Boolean);
         const read=async(book,sheet,ref)=>{ const c=book&&await R.getSheetCells(book,sheet); return c?N(c.get(ref)||''):null; };
         const out=[]; for(const i of hk.issues()){ if(!i.refs) continue; const d=i.detail||{}; const it={kind:d.kind,patient:i.patient,floor:i.floor,d:{expected:d.expected,source:d.source,statusRoom:d.statusRoom,cardRoom:d.cardRoom,vals:d.vals,loc:d.loc,cardLoc:d.cardLoc,scheduleLoc:d.scheduleLoc,gridNames:d.gridNames},refs:[]};
-          for(const r of i.refs) for(const cell of r.cells){ let v=null; if(r.group==='status') v=await read(st.statusBook,r.sheet,cell); else if(r.group==='card') v=await read(i.floor===3?st.card3Book:st.card10Book,r.sheet,cell); else for(const b of grid){ v=await read(b,r.sheet,cell); if(v) break; } it.refs.push({group:r.group,sheet:r.sheet,cell,value:v,isStatusSheet:r.sheet===hk.statusSheet()}); }
+          for(const r of i.refs) for(const cell of r.cells){ let v=null; if(r.group==='status') v=await read(st.statusBook,r.sheet,cell); else if(r.group==='card') v=await read((r.floor||i.floor)===3?st.card3Book:st.card10Book,r.sheet,cell); else for(const b of grid){ v=await read(b,r.sheet,cell); if(v) break; } it.refs.push({group:r.group,sheet:r.sheet,cell,value:v,isStatusSheet:r.sheet===hk.statusSheet()}); }
           out.push(it); } return {items:out,total:hk.issues().length}; })()`);
       const nk = (v) => String(v == null ? '' : v).replace(/[\s·ㆍ\-\(\)\[\]{}.,\/\\]/g, '').toUpperCase(), first = (v) => nk(String(v).split('\n')[0]);
       const dr = (v) => String(v == null ? '' : v).match(/\d{3,4}/)?.[0] || '', dc = (v) => { const m = /(\d+)/.exec(String(v)); return m ? 'RM' + m[1] : String(v).toUpperCase(); };
