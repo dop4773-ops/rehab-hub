@@ -42,4 +42,11 @@ const pOf = (n) => parts.find(r => r.name === n).part;
 assert.strictEqual(pOf('배민지'), 'OT'); assert.strictEqual(pOf('김민영'), 'ST'); assert.strictEqual(pOf('정유정'), 'OT'); assert.strictEqual(pOf(T.UNKNOWN), '기타');
 const fb = T.groupByTherapist({ issues: [{ therapist: '한PT', orderGroup: 'PT', severity: '오류', time: '09:00' }], missing: [{ therapist: '류OT', name: 'a', timeSlot: '09:00' }] });
 assert.strictEqual(fb.find(r => r.name === '한PT').part, 'PT'); assert.strictEqual(fb.find(r => r.name === '류OT').part, 'OT');
+// ⑦ 스케줄과 다른 종류로 액팅한 건: 액팅한 선생님 묶음에 들어가고, 합계(오류·미액팅)에는 영향이 없으며 글에 한 구역으로 나온다
+{ const base = T.groupByTherapist({ issues, missing }), withT = T.groupByTherapist({ issues, missing, typeMis: [{ therapist: '정유정', name: '최민서', start: '13:05', schedLabel: '인지(CCRT)', actLabel: '특수' }] });
+  assert.strictEqual(withT.reduce((s, r) => s + r.errors.length + r.warns.length + r.missing.length, 0), base.reduce((s, r) => s + r.errors.length + r.warns.length + r.missing.length, 0));
+  assert.deepStrictEqual(withT.map(r => r.name), base.map(r => r.name)); assert.strictEqual(withT.find(r => r.name === '정유정').typeMis.length, 1);
+  const msg = T.buildMessage(withT.find(r => r.name === '정유정'), { dateLabel: '10/13', mask: true });
+  assert.ok(msg.includes('<액팅 종류 다름(스케줄과 다른 곳에 액팅)>') && msg.includes('정유정-최○○ 스케줄 인지(CCRT)→특수 액팅(13:05)'));
+  assert.ok(!T.buildMessage(withT.find(r => r.name === '김민영'), {}).includes('종류 다름')); }
 console.log('therapistview: OK');

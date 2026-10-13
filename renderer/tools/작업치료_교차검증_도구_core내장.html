@@ -2827,21 +2827,29 @@ document.getElementById('displayModeSeg').addEventListener('click', e=>{
 /* ======================================================================
    실행 버튼 / 진행상태
    ====================================================================== */
-let running=false;
-async function handleRun(){
+let running=false, ranOnce=false;
+// opts.keep: 인수인계를 새로 가져온 뒤 자동으로 다시 계산할 때 — 보던 필터·분류는 그대로 둔다
+async function handleRun(opts){
   if(running) return;
   running=true;
+  const keep=!!(opts&&opts.keep===true);
+  // "다시 검증"은 인수인계를 고친 뒤 눌러도 반영되도록 실시간 인수인계를 새로 가져와서 계산한다(엑셀로 올린 인수인계가 있으면 그것을 쓴다)
+  if(ranOnce&&!keep&&!state.handoverBook){ const b=document.getElementById('btnRerun'); if(b) b.disabled=true; handoverLiveFetchPromise=fetchHandoverLive(); }
   const btn=document.getElementById('btnRun'), btnRerun=document.getElementById('btnRerun');
   if(btn){ btn.disabled=true; btn.textContent='검증 중…'; }
   if(btnRerun){ btnRerun.disabled=true; }
   try{
     const {stats, floorCount} = await runAllVerifications();
     try{ trackHistory(); }catch(e){ console.error(e); } // 이력 추적 실패가 검증 화면을 막지 않게
-    exclRunBase={stats, floorCount}; const ex=applyExclusions();
+    ranOnce=true; exclRunBase={stats, floorCount}; const ex=applyExclusions();
     renderDashboard(ex.stats, ex.floorCount); renderFreshness(); if(document.getElementById('fixModal').classList.contains('show')) renderFixPlan();
     document.getElementById('resultEmpty').style.display='none';
     document.getElementById('resultBody').style.display='block';
     document.getElementById('mainArea').style.display='block';
+    if(keep){ // 보던 분류·필터는 그대로 두고, 사라진 불일치를 보고 있었다면 상세만 닫는다
+      currentPage=1; if(!issues.some(i=>i.id===selectedIssueId)){ selectedIssueId=null; closeDetail(); }
+      applyFilters(); setTimeout(fitMain,60);
+    } else {
     currentCat='all'; currentFloor='all'; currentField='all'; currentSource='all'; currentHSource='all'; currentRSource='all'; currentPage=1; selectedIssueId=null;
     document.querySelectorAll('#catSeg button').forEach(b=>b.classList.toggle('active', b.dataset.cat==='all'));
     document.getElementById('fieldSeg').style.display='none';
@@ -2850,6 +2858,7 @@ async function handleRun(){
     document.getElementById('roomSourceSeg').style.display='none';
     document.querySelectorAll('.floor-row2').forEach(el=>el.classList.toggle('active', el.dataset.floor==='all'));
     applyFilters(); setTimeout(fitMain,60);
+    }
   }catch(err){
     alert('검증 중 오류가 발생했습니다: '+err.message);
     console.error(err);
@@ -2858,8 +2867,10 @@ async function handleRun(){
   if(btn){ btn.disabled=false; btn.textContent='전체 교차검증 실행'; }
   if(btnRerun){ btnRerun.disabled=false; }
 }
-document.getElementById('btnRun').addEventListener('click', handleRun);
-document.getElementById('btnRerun').addEventListener('click', handleRun);
+document.getElementById('btnRun').addEventListener('click', () => handleRun());
+document.getElementById('btnRerun').addEventListener('click', () => handleRun());
+// 셸이 "인수인계 다시 가져오기"를 끝낸 뒤 부른다 — 이미 검증 결과가 있으면 새 인수인계로 다시 계산해서, 고친 항목이 목록에서 사라지게 한다(보던 필터 유지)
+window.__reverify = async () => { if(!ranOnce||running) return false; await handleRun({keep:true}); return true; };
 
 function renderDashboard(stats, floorCount){
   const total = stats.countChecked+stats.locChecked+stats.therChecked+stats.handoverChecked+stats.evalChecked+(stats.roomChecked||0);

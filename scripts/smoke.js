@@ -249,6 +249,18 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         setSetting('notifyOneDrive',true); lastScan={...lastScan, matched:{status:{path:'D:\\\\자료\\\\현황.xlsx', name:'현황.xlsx', mtimeMs:Date.now()}}}; renderHome(); out.notOneDrive=!/OneDrive/.test(document.getElementById('homeBand').innerText);
         for(const [k,v] of Object.entries(out)) if(!v) throw new Error('실패: '+k+' '+JSON.stringify(out)); return out;
       } finally { lastScan=keep[0]; oneDriveRunning=keep[1]; setSetting('notifyOneDrive',keep[2]); renderHome(); } })()`));
+    await step('교차검증: 인수인계를 고친 뒤 「다시 검증」/다시 가져오기로 사라진 오류가 목록에서 빠짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', orig=localStorage.getItem(KEY), origFetch=w.fetch;
+      try{ const is0=w.__testHooks.issues().filter(i=>i.source==='notx'); if(!is0.length) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,'');
+        const fixed=recs.map(r=>nk(r.name)===nk(is0[0].patient)&&!String(r.tx||'').trim()?{...r,tx:'수정함'}:r); const out={before:is0.length};
+        w.fetch=async()=>({ok:true,json:async()=>({records:fixed})});
+        // ① 다시 검증 버튼: 인수인계를 새로 가져와서 계산
+        d.getElementById('btnRerun').click(); for(let i=0;i<120&&d.getElementById('btnRerun').disabled;i++) await sl(250); await sl(300);
+        out.afterRerun=w.__testHooks.issues().filter(i=>i.source==='notx').length;
+        // ② 셸의 「인수인계 다시 가져오기」 경로: 가져오기만 하고(__reverify) 자동으로 다시 계산 — 먼저 원래대로 되돌려 놓고 확인
+        w.fetch=async()=>({ok:true,json:async()=>({records:recs})}); d.getElementById('btnRerun').click(); for(let i=0;i<120&&d.getElementById('btnRerun').disabled;i++) await sl(250); await sl(300); out.restored=w.__testHooks.issues().filter(i=>i.source==='notx').length;
+        w.fetch=async()=>({ok:true,json:async()=>({records:fixed})}); await w.fetchHandoverLive(); const ok=await w.__reverify(); out.viaShell=ok&&w.__testHooks.issues().filter(i=>i.source==='notx').length;
+        if(out.afterRerun!==0||out.restored!==is0.length||out.viaShell!==0) throw new Error('고친 오류가 목록에서 안 빠지거나 되돌려도 안 돌아와요: '+JSON.stringify(out)); return out;
+      } finally { w.fetch=origFetch; if(orig) localStorage.setItem(KEY,orig); } })()`));
     await step('교차검증: 모든 이슈 상세 열기', async () => await ev(`(()=>{ const w=${W('cross')}; const bad=[]; for(const i of w.__testHooks.issues()){ try{ w.openDetail(i.id); const t=w.document.getElementById('detailPanel').innerText; if(t.length<20) bad.push(i.id+':빈상세'); if(/undefined|NaN|\\[object/.test(t)) bad.push(i.id+':'+(t.match(/.{0,20}(undefined|NaN|\\[object).{0,20}/)||[''])[0]); }catch(e){ bad.push(i.id+':'+e.message); } } return {bad:bad.slice(0,8),n:bad.length}; })()`));
     await step('교차검증 미리보기: 전체시간표 카드 팝업 작게·카드 다시 누르면 닫힘', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)), modal=d.getElementById('cardModal');
       let name=null; for(const i of w.__testHooks.issues().slice(0,80)){ w.openCardByName(i.patient, i.floor); for(let k=0;k<30&&!d.getElementById('cvPopZoom')&&!/찾지 못/.test(d.getElementById('cardModalBody').innerText);k++) await sl(100); if(d.getElementById('cvPopZoom')){ name=i.patient; break; } }

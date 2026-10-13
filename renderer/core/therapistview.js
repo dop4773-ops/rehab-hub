@@ -18,10 +18,11 @@ function maskName(name) {
 // acts: (선택) 액팅 기록 전체 [{therapist, group('OT'|'PT'|'언어/심리')}] — 치료사의 파트(OT/PT/ST)를 가장 많이 한 오더 종류로 정한다.
 //   기록이 없으면 오류 항목의 오더 종류 → 그것도 없고 미액팅만 있으면 OT(미액팅 시간표는 작업치료실 것) → 그 외 '기타'.
 // 반환: [{name, part, errors[], warns[], missing[]}] — 확인할 게 많은 치료사 먼저(오류+미액팅 내림차순, 같으면 이름순). 치료사가 없으면 "담당자 미상"으로 모은다.
-function groupByTherapist({ issues = [], missing = [], acts = [] }) {
-  const map = new Map(), get = (raw) => { const k = norm(raw) || UNKNOWN; if (!map.has(k)) map.set(k, { name: k === UNKNOWN ? UNKNOWN : String(raw).trim(), errors: [], warns: [], missing: [] }); return map.get(k); };
+function groupByTherapist({ issues = [], missing = [], acts = [], typeMis = [] }) {
+  const map = new Map(), get = (raw) => { const k = norm(raw) || UNKNOWN; if (!map.has(k)) map.set(k, { name: k === UNKNOWN ? UNKNOWN : String(raw).trim(), errors: [], warns: [], missing: [], typeMis: [] }); return map.get(k); };
   for (const i of issues) (i.severity === '오류' ? get(i.therapist).errors : get(i.therapist).warns).push(i);
   for (const m of missing) get(m.therapist).missing.push(m);
+  for (const t of typeMis) get(t.therapist).typeMis.push(t); // 스케줄과 다른 종류로 액팅한 건(액팅한 선생님 이름으로) — 합계·정렬에는 넣지 않는다
   const timeKey = (x) => String(x.time || x.timeSlot || '99:99');
   for (const r of map.values()) { r.errors.sort((a, b) => timeKey(a).localeCompare(timeKey(b))); r.warns.sort((a, b) => timeKey(a).localeCompare(timeKey(b))); r.missing.sort((a, b) => timeKey(a).localeCompare(timeKey(b))); }
   const cnt = new Map(), vote = (raw, g) => { const k = norm(raw), p = PART_OF[g]; if (!k || !p) return; const c = cnt.get(k) || {}; c[p] = (c[p] || 0) + 1; cnt.set(k, c); };
@@ -47,6 +48,7 @@ function buildMessage(r, opts = {}) {
   const other = all.filter(x => x.type !== '시간 오류' && !isNote(x.type) && x.type !== '치료내용 누락');
   if (other.length) sections.push(['*기타 오류', other.map(x => `${line(x)} ${x.type}`)]);
   if (r.missing.length) sections.push(['<미액팅오류>', r.missing.map(m => `${r.name}-${nm(m.name)} ${m.type || ''}(${m.timeSlot || ''})`)]);
+  if ((r.typeMis || []).length) sections.push(['<액팅 종류 다름(스케줄과 다른 곳에 액팅)>', r.typeMis.map(x => `${r.name}-${nm(x.name)} 스케줄 ${x.schedLabel}→${x.actLabel} 액팅(${x.start || '시간 미상'})`)]);
   const lines = [opts.dateLabel || '', `<${r.name} 선생님 확인 부탁드려요>`];
   sections.forEach(([title, list]) => { if (list.length) lines.push(title, ...list, ''); });
   if (lines.length <= 2) lines.push('확인할 항목이 없어요 👍', '');

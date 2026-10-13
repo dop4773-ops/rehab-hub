@@ -8,6 +8,7 @@
   <!-- 인터넷 없이도 동작하도록 라이브러리를 앱 안(renderer/vendor)에 넣어 둔다 -->
   <script src="../vendor/xlsx.full.min.js"></script>
 <script src="../core/therapistview.js"></script>
+<script src="../core/ordertype.js"></script>
 <script src="../core/workstate.js"></script>
   <script src="../vendor/jszip.min.js"></script>
   <style>
@@ -235,6 +236,7 @@
   .schedule-grid .g-missing{background:#ffe3e0;color:#c4505c;font-weight:800;cursor:pointer;}
   .schedule-grid .g-excluded{background:#eee;color:#999;text-decoration:line-through;cursor:pointer;}
   .schedule-grid .g-dc{background:#e8eef7;color:#3a5a8c;font-style:italic;cursor:pointer;}
+  .schedule-grid .g-type{background:#ffe9c7;color:#a85a00;font-weight:800;cursor:pointer;}
   
     /* 업로드 줄 + 접이식 기준 — 파일 넣는 부분이 화면을 차지하지 않게 한다 */
     .grid { grid-template-columns:1fr !important; }
@@ -278,7 +280,7 @@
     .ms-sumbar{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;margin-top:12px;padding:8px 14px;border:1px solid var(--line);border-radius:12px;background:#f8fbff;}
     .ms-sum{display:inline-flex;align-items:baseline;gap:6px;font-size:12.5px;color:#647789;}
     .ms-sum b{font-size:17px;font-weight:900;color:#5b72b4;letter-spacing:-.02em;}
-    .ms-sum.err b{color:var(--red);}.ms-sum.warn b{color:#b9782d;}
+    .ms-sum.err b{color:var(--red);}.ms-sum.warn b{color:#b9782d;}.ms-sum.type b{color:#a85a00;}
     .ms-sum + .ms-sum{padding-left:14px;border-left:1px solid var(--line);}
     .ms-help{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:#fff;color:#5b72b4;font-weight:900;font-size:13px;cursor:pointer;align-items:center;justify-content:center;padding:0;}
     .ms-help:hover{background:#eef4fb;}
@@ -558,6 +560,7 @@
                   <span class="ms-sum"><span class="l">액팅</span><b id="msStatActs">0</b></span>
                   <span class="ms-sum err"><span class="l">미액팅</span><b id="msStatMissing">0</b></span>
                   <span class="ms-sum warn"><span class="l">액팅 초과</span><b id="msStatOver">0</b></span>
+                  <span class="ms-sum type"><span class="l">종류 다름</span><b id="msStatType">0</b></span>
                 </div>
               </div>
               <div class="btns">
@@ -600,6 +603,7 @@
               <button type="button" class="order-scope-tab active" data-ms-filter="all">전체</button>
               <button type="button" class="order-scope-tab" data-ms-filter="missing">미액팅 있음</button>
               <button type="button" class="order-scope-tab" data-ms-filter="over">액팅 초과</button>
+              <button type="button" class="order-scope-tab" data-ms-filter="type">액팅 종류 다름</button>
               <button type="button" class="order-scope-tab" data-ms-filter="dup">동명이인</button>
               <button type="button" class="order-scope-tab" data-ms-filter="dc">D/C 명단</button>
               <button type="button" class="order-scope-tab" data-ms-filter="dcButActed">D/C인데 액팅있음</button>
@@ -626,6 +630,7 @@
             <div class="legend-row">
               <span class="legend-chip"><span class="legend-swatch" style="background:#eef8f0;border:1px solid #c9e7cf;"></span>액팅 매칭 추정(정상)</span>
               <span class="legend-chip"><span class="legend-swatch" style="background:#ffe3e0;border:1px solid #f3b6b0;"></span>미액팅 후보(추정)</span>
+              <span class="legend-chip"><span class="legend-swatch" style="background:#ffe9c7;border:1px solid #f0c98a;"></span>액팅 종류 다름(스케줄과 다른 곳에 액팅)</span>
               <span class="legend-chip"><span class="legend-swatch" style="background:#e8eef7;border:1px solid #c7d4ea;"></span>D/C(집계 제외)</span>
               <span class="legend-chip"><span class="legend-swatch" style="background:#f2f2f2;border:1px solid #ddd;"></span>점심시간</span>
               <span style="color:#7a8ba1;">칸을 누르면 상세 정보와 오류확인 결과를 함께 볼 수 있습니다.</span>
@@ -656,6 +661,7 @@
               <li>액팅 쪽 집계는 왼쪽 "오류 확인"에서 이미 분류된 <b>OT 오더</b>만 사용하고, 같은 환자·같은 처방명·같은 치료사로 시간이 끊기지 않고 이어지는 기록은 하나의 세션(오더 1건)으로 묶어 시간표 예정 오더 수와 비교합니다.</li>
               <li>황선용A / 김순자D처럼 이름 뒤 구분용 알파벳(A~E 등)은 액팅 기록에도 동일하게 남아 있어 그대로 이름으로 매칭합니다.</li>
               <li><b>시간 충돌</b>: CCRT/BETTER/COMCOG/ERDT 미니표의 오더가 "같은 치료사·같은 시간"에 메인 표에서는 다른 환자를 치료 중인 것으로 나오면, 그 치료사가 실제로는 그 시간에 미니표 환자를 볼 수 없었다는 뜻이므로 미액팅 집계에서 제외하고 미리보기 하단 칩에 보라색 취소선으로 따로 표시합니다.</li>
+              <li><b>액팅 종류 다름</b>: 스케줄(시간표) 오더와 같은 시간대(60분 안)에 <b>다른 종류로 액팅</b>한 경우(예: 인지(CCRT)로 잡힌 시간에 특수작업치료로 액팅, 특수인데 연하치료로 액팅)입니다. 같은 종류끼리 먼저 짝을 지은 뒤 남은 것만 비교하고, 모르는 처방명이나 D/C 환자는 비교하지 않습니다. 미리보기에서는 주황색 칸(「특수→연하」처럼 표시), 목록형에서는 「액팅 종류 다름」 표시·필터, 카톡 공유용 텍스트에서는 「<액팅 종류 다름>」 구역으로 알려 주며 미액팅 합계에는 넣지 않습니다.</li>
               <li><b>D/C 명단</b>: 팀별 일일통계 파일을 함께 올리면, 그 안의 "회복기 D/C 명단"과 "비회복기 D/C 명단" 두 표 모두에서 오늘 날짜로 올라온 환자를 D/C로 인식해 미액팅 집계·합계·카톡 텍스트에서 자동으로 빠집니다. 다만 그 환자를 D/C로 적은 바로 그 담당 선생님 이름으로, D/C 명단의 "구분"이 가리키는 것과 같은 종류의 치료(구분 C = 전산화인지·평가, 구분 S = 작업특수)가 실제 액팅되어 있으면 "D/C인데 액팅있음"으로 표시합니다. (CCRT/BETTERCOG/COMCOG의 평가(TEST)가 D/C될 때는 구분을 C로 적는 관례를 반영했습니다.)</li>
               <li><b>미리보기</b>의 빨간 칸은 액팅 세션 시작 시간과 가장 가까운 예정 오더를 1:1로 짝지은 뒤, 짝을 찾지 못한 예정 오더를 후보로 표시한 <b>추정치</b>입니다. 실제로 어느 시간대가 빠졌는지는 "?" 표시나 상세보기에서 액팅 목록과 함께 확인해 주세요.</li>
             </ul>
@@ -1866,7 +1872,7 @@ ${text}`,
 
   // ==================== 미액팅 오더 확인 (병합 기능) ====================
   const WEEKDAY_CHARS = ['일','월','화','수','목','금','토'];
-  const msState = { schedFiles:{}, schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[], dcResults:{}, dcFileObjs:{}, dcReparsing:false };
+  const msState = { schedFiles:{}, schedWB:null, schedRows:null, schedSheetName:'', result:null, therapistResult:null, sched:null, slotFlagMap:{}, slotTypeMap:{}, issuesByPatient:{}, group:'patient', filter:'all', search:'', userPickedSheet:false, teamFilter:'all', excludedSlots:new Set(), dcEntries:[], dcFileErrors:[], dcResults:{}, dcFileObjs:{}, dcReparsing:false };
   // 제외한 미액팅 칸은 앱을 다시 켜거나 업데이트해도 남도록 저장한다. 같은 시트·날짜의 같은 칸에 같은 환자·시간이 있을 때만 되살린다(시간표가 바뀌었으면 버림).
   const QA_EXCL_KEY = 'rehab_qa_excl_slots_v1';
   const qaExclScope = () => `${msState.schedSheetName||''}|${msState.sched && msState.sched.sheetDate ? msYmd(msState.sched.sheetDate) : ''}`;
@@ -2785,6 +2791,7 @@ ${text}`,
       const diff = ord.count - act.count;
       const orderPool = ord.list.map((e,idx)=>({ idx, minutes: msTimeToMinutes(e.timeSlot) }));
       const usedIdx = new Set();
+      const actSlot = new Map(); // 액팅 세션 → 시간이 가장 가까워서 짝지어진 스케줄 칸
       act.list.forEach(a=>{
         const am = msTimeToMinutes(a.start);
         let bestIdx = -1, bestDiff = Infinity;
@@ -2797,15 +2804,24 @@ ${text}`,
           const d = Math.abs(o.minutes - am);
           if(d < bestDiff){ bestDiff = d; bestIdx = o.idx; }
         });
-        if(bestIdx!==-1) usedIdx.add(bestIdx);
+        if(bestIdx!==-1){ usedIdx.add(bestIdx); actSlot.set(a, bestIdx); }
+      });
+      const dupList = dupGroups[msStripDupLetter(name).base] || [name];
+      const hasEvalOrder = ord.list.some(e=>e.type==='평가');
+      const dcMatches = msState.dcEntries.filter(d => d.patientName === name || d.patientName === msStripDupLetter(name).base);
+      // 스케줄 오더와 다른 종류로 액팅했는지(예: 인지인데 특수로 액팅). D/C 환자는 제외.
+      const typeMis = dcMatches.length ? [] : RehabCore.orderType.findTypeMismatches(ord.list, act.list, { simplify: msSimplifyOrderName });
+      // 그 액팅은 종류가 다를 뿐 그 시간 칸에 한 것이므로, 시간이 더 가까워 다른 칸과 짝지어졌다면 이 칸이 액팅된 것으로 옮긴다(안 그러면 이 칸이 미액팅으로 잘못 잡힌다)
+      typeMis.forEach(m=>{
+        const zi = ord.list.indexOf(m.entry), yi = actSlot.get(m.act);
+        if(zi < 0 || yi === undefined || yi === zi) return;
+        if(![...actSlot].some(([a2, i2]) => a2 !== m.act && i2 === yi)) usedIdx.delete(yi);
+        usedIdx.add(zi); actSlot.set(m.act, zi);
       });
       ord.list.forEach((e,idx)=>{
         const key = `${e.source}|${e.row}|${e.col}`;
         slotFlagMap[key] = usedIdx.has(idx) ? 'ok' : 'missing';
       });
-      const dupList = dupGroups[msStripDupLetter(name).base] || [name];
-      const hasEvalOrder = ord.list.some(e=>e.type==='평가');
-      const dcMatches = msState.dcEntries.filter(d => d.patientName === name || d.patientName === msStripDupLetter(name).base);
       // "D/C인데 액팅있음"은 D/C 명단에 적힌 바로 그 담당 선생님 이름으로, 그 D/C가 가리키는 것과 같은 종류의
       // 치료가 실제 액팅됐을 때만 잡습니다. (CCRT/BETTERCOG/COMCOG의 평가(TEST)가 D/C될 때는 "구분"을 C로 적으므로,
       // 구분이 C인 경우 전산화인지·평가 계열 액팅만 대조하고, 그 환자의 다른 치료(예: 특수작업치료)는 무시합니다.)
@@ -2819,7 +2835,7 @@ ${text}`,
         });
       });
       return {
-        name, orderCount:ord.count, actCount:act.count, diff,
+        name, orderCount:ord.count, actCount:act.count, diff, typeMis,
         orderList: ord.list, actList: act.list, dup: dupList.length>1, rawNames: dupList,
         issues: issuesByPatient[name] || [],
         dc: dcMatches[0] || null, dcMatches, dcActedBySameTherapist, hasEvalOrder
@@ -2853,17 +2869,25 @@ ${text}`,
         therapistActMap[t].list.push({ orderName:s.orderName, start:s.start, end:s.end, therapist:s.therapist, patientName });
       });
     });
+    const slotTypeMap = {}, typeMisAll = [];
+    rows.forEach(r=>(r.typeMis||[]).forEach(m=>{
+      const key = `${m.entry.source}|${m.entry.row}|${m.entry.col}`;
+      slotTypeMap[key] = { schedType:m.schedType, actType:m.actType, orderName:m.act.orderName, start:m.act.start, end:m.act.end, therapist:m.act.therapist, name:r.name };
+      typeMisAll.push({ name:r.name, entry:m.entry, act:m.act, schedType:m.schedType, actType:m.actType });
+    }));
     const allTherapists = new Set([...Object.keys(therapistOrderMap), ...Object.keys(therapistActMap)]);
     msState.therapistResult = [...allTherapists].map(t=>{
       const ord = therapistOrderMap[t] || { count:0, list:[] };
       const act = therapistActMap[t] || { count:0, list:[] };
       return {
         name:t, orderCount:ord.count, actCount:act.count, diff: ord.count-act.count,
+        typeMis: typeMisAll.filter(x=>(x.entry.therapist || '(치료사 미상)')===t).map(x=>({ entry:x.entry, act:x.act, schedType:x.schedType, actType:x.actType, name:x.name })),
         orderList: ord.list, actList: act.list, dup:false, rawNames:[t], issues:[]
       };
     }).sort((a,b)=> b.diff - a.diff || a.name.localeCompare(b.name,'ko'));
 
     msState.slotFlagMap = slotFlagMap;
+    msState.slotTypeMap = slotTypeMap;
     msState.issuesByPatient = issuesByPatient;
     msState.conflictEntries = conflictEntries;
     $('msDownloadCsvBtn').disabled = false;
@@ -2947,6 +2971,7 @@ ${text}`,
     } else if(r.diff>0) html += `<div style="margin-top:4px;">예정 오더 ${r.orderCount}건 중 <b>${r.diff}건이 미액팅</b>으로 추정됩니다.</div>`;
     else if(r.diff<0) html += `<div style="margin-top:4px;">액팅이 예정 오더보다 <b>${-r.diff}건 많습니다</b>${r.hasEvalOrder ? ' (평가는 한 타임에 여러 세부검사가 이어져 초과로 보지 않습니다)' : '(보충 세션이거나 시간표에 없는 오더일 수 있음)'}.</div>`;
     else html += `<div style="margin-top:4px;">예정 오더와 액팅 수가 일치합니다.</div>`;
+    if(r.typeMis && r.typeMis.length) html += `<div style="margin-top:6px;color:#ffe2b3;"><b>액팅 종류 다름</b><br>${r.typeMis.map(m=>'· '+escapeHtml((m.name?m.name+' ':'')+msTypeMisText(m))).join('<br>')}</div>`;
     if(r.issues && r.issues.length){
       const byType = {};
       r.issues.forEach(x=>{ byType[x.type]=(byType[x.type]||0)+1; });
@@ -2969,10 +2994,12 @@ ${text}`,
     $('msStatActs').textContent = totalActs;
     $('msStatMissing').textContent = totalMissing;
     $('msStatOver').textContent = totalOver;
+    $('msStatType').textContent = countable.reduce((s,r)=>s+((r.typeMis||[]).length),0);
 
     let filtered = rows;
     if(msState.filter==='missing') filtered = rows.filter(r=>r.diff>0 && !r.dc);
     else if(msState.filter==='over') filtered = rows.filter(r=>r.diff<0 && !r.dc && !r.hasEvalOrder);
+    else if(msState.filter==='type') filtered = rows.filter(r=>(r.typeMis||[]).length && !r.dc);
     else if(msState.filter==='dup') filtered = rows.filter(r=>r.dup);
     else if(msState.filter==='dc') filtered = rows.filter(r=>r.dc);
     else if(msState.filter==='dcButActed') filtered = rows.filter(r=>r.dcActedBySameTherapist);
@@ -2989,10 +3016,11 @@ ${text}`,
                   : (r.diff<0 && !r.hasEvalOrder) ? `<span class="pill warn">액팅초과 ${-r.diff}</span>`
                   : `<span class="pill ok">일치</span>`;
       const dupNote = r.dup ? ' <span class="pill warn">동명이인?</span>' : '';
+      const typeNote = (r.typeMis||[]).length ? ` <span class="pill" style="background:#ffe9c7;color:#a85a00;border-color:#f0c98a;" title="${msEscapeAttr(r.typeMis.map(msTypeMisText).join(' / '))}">액팅 종류 다름 ${r.typeMis.length}</span>` : '';
       const issueNote = (r.issues && r.issues.length) ? ` <span class="pill warn">오류확인 ${r.issues.length}</span>` : '';
       const dcActedNote = r.dcActedBySameTherapist ? ` <span class="pill err">D/C인데 액팅있음</span>` : '';
       return `<tr>
-        <td><b>${escapeHtml(r.name)}</b>${dupNote}${issueNote}${dcActedNote}<span class="info-q" data-ms-info="${msEscapeAttr(r.name)}" title="자세히">?</span></td>
+        <td><b>${escapeHtml(r.name)}</b>${dupNote}${typeNote}${issueNote}${dcActedNote}<span class="info-q" data-ms-info="${msEscapeAttr(r.name)}" title="자세히">?</span></td>
         <td>${r.orderCount}</td>
         <td>${r.actCount}</td>
         <td>${(r.diff>0 && !r.dc) ? r.diff : 0}</td>
@@ -3021,9 +3049,11 @@ ${text}`,
     const ordHtml = r.orderList.length ? r.orderList.map(o=>{
       const key = `${o.source}|${o.row}|${o.col}`;
       const flagged = msState.slotFlagMap[key]==='missing';
+      const tm = msState.slotTypeMap[key];
       const baseStyle = 'padding:6px 9px;border:1px solid var(--line);border-radius:9px;margin-bottom:5px;font-size:12.5px;background:var(--soft);';
-      const style = flagged ? 'padding:6px 9px;border:1px solid #f3b6b0;border-radius:9px;margin-bottom:5px;font-size:12.5px;background:#ffe3e0;color:#c4505c;font-weight:800;' : baseStyle;
-      return `<li style="${style}">[${escapeHtml(o.type)}] ${escapeHtml(o.timeSlot||'')}${o.therapist?(' · '+escapeHtml(o.therapist)):''}${flagged?' (미액팅 후보)':''}</li>`;
+      const style = flagged ? 'padding:6px 9px;border:1px solid #f3b6b0;border-radius:9px;margin-bottom:5px;font-size:12.5px;background:#ffe3e0;color:#c4505c;font-weight:800;'
+        : tm ? 'padding:6px 9px;border:1px solid #f0c98a;border-radius:9px;margin-bottom:5px;font-size:12.5px;background:#ffe9c7;color:#a85a00;font-weight:800;' : baseStyle;
+      return `<li style="${style}">[${escapeHtml(o.type)}] ${escapeHtml(o.timeSlot||'')}${o.therapist?(' · '+escapeHtml(o.therapist)):''}${flagged?' (미액팅 후보)':''}${tm?` (${escapeHtml(RehabCore.orderType.abbr(tm.actType))}로 액팅됨)`:''}</li>`;
     }).join('') : '<li style="padding:6px 9px;border:1px solid var(--line);border-radius:9px;background:var(--soft);">예정 오더 없음</li>';
     const actHtml = r.actList.length ? r.actList.map(a=>`<li>${escapeHtml(a.start)}~${escapeHtml(a.end)} · ${escapeHtml(a.orderName)} · ${escapeHtml(a.therapist)}${a.patientName?(' · '+escapeHtml(a.patientName)):''}</li>`).join('') : '<li>액팅 기록 없음</li>';
     const issuesHtml = (r.issues && r.issues.length) ? `<div style="margin-top:12px;"><div class="small" style="margin-bottom:6px;font-weight:900;">오류확인 결과 (${r.issues.length}건)</div><ul style="list-style:none;margin:0;padding:0;">${r.issues.map(x=>`<li style="padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;font-size:12.5px;background:var(--soft);"><div style="margin-bottom:4px;"><span class="pill ${x.severity==='오류'?'err':'warn'}">${escapeHtml(x.severity)}</span> <span class="type">${escapeHtml(x.type)}</span> · 행 ${escapeHtml(x.excelRow)} · ${escapeHtml(x.time||'')} · ${escapeHtml(x.therapist||'')}</div><div class="details">${formatDetailHtml(x.detail, x)}</div></li>`).join('')}</ul></div>` : '';
@@ -3046,6 +3076,11 @@ ${text}`,
     if(e.target.id==='msDetailPanel' || e.target.closest('#msCloseDetailBtn')) $('msDetailPanel').style.display='none';
   });
 
+  // "스케줄 인지(CCRT) → 특수로 액팅(09:10 · 처방명 · 치료사)"
+  function msTypeMisText(m){
+    const ab = RehabCore.orderType.abbr, a = m.act || m; // 목록의 항목({act}) 또는 칸 지도의 항목(납작한 모양) 둘 다
+    return `스케줄 ${ab(m.schedType)} → ${ab(m.actType)}로 액팅 (${a.start||''}${a.therapist?' · '+a.therapist:''})`;
+  }
   function msTypeAbbr(type){
     const map = { '복잡':'복잡', '작업특수':'특수', '연하치료':'연하', '평가':'평가', '연하전기':'ERDT', '전산화인지':'CCRT' };
     return map[type] || type;
@@ -3110,8 +3145,9 @@ ${text}`,
           const status = msState.slotFlagMap[key];
           const flagged = status==='missing' && !excluded;
           const isDc = status==='dc';
-          const cls = flagged ? 'g-missing' : (excluded ? 'g-excluded' : (isDc ? 'g-dc' : 'g-ok'));
-          html += `<div class="g-cell ${cls}" title="${msEscapeAttr(e.name+' · '+e.type+(e.timeSlot?(' · '+e.timeSlot):''))}" data-ms-cell="${msEscapeAttr(key)}">${escapeHtml(e.name)}<span style="display:block;font-size:8.3px;opacity:.75;line-height:1.1;">${escapeHtml(msTypeAbbr(e.type))}</span></div>`;
+          const tm = !flagged && !excluded && !isDc ? msState.slotTypeMap[key] : null;
+          const cls = flagged ? 'g-missing' : (excluded ? 'g-excluded' : (isDc ? 'g-dc' : (tm ? 'g-type' : 'g-ok')));
+          html += `<div class="g-cell ${cls}" title="${msEscapeAttr(e.name+' · '+e.type+(e.timeSlot?(' · '+e.timeSlot):'')+(tm?' · '+msTypeMisText(tm):''))}" data-ms-cell="${msEscapeAttr(key)}">${escapeHtml(e.name)}<span style="display:block;font-size:8.3px;opacity:.75;line-height:1.1;">${escapeHtml(msTypeAbbr(e.type))}${tm?'→'+escapeHtml(msTypeAbbr(tm.actType)):''}</span></div>`;
         });
       });
       html += '</div>';
@@ -3161,9 +3197,11 @@ ${text}`,
           ? 'background:#ffe3e0;border:1px solid #f3b6b0;color:#c4505c;'
           : st==='dc'
           ? 'background:#e8eef7;border:1px solid #c7d4ea;color:#3a5a8c;'
+          : msState.slotTypeMap[key]
+          ? 'background:#ffe9c7;border:1px solid #f0c98a;color:#a85a00;'
           : 'background:#eef8f0;border:1px solid #c9e7cf;color:#3f9a78;';
         const title = e.conflict ? `${e.therapist} 선생님은 이 시간에 메인 표에서 ${e.conflict.withName}님을 치료 중이라 이 오더는 진행되지 않았을 가능성이 높습니다(시간 충돌, 미액팅 집계 제외)` : '';
-        chipsHtml += `<span data-ms-cell="${msEscapeAttr(key)}" data-ms-conflict="${e.conflict? '1':'0'}" title="${msEscapeAttr(title)}" style="cursor:pointer;padding:4px 9px;border-radius:999px;font-size:11.5px;font-weight:700;${style}">${escapeHtml(e.name)} · ${escapeHtml(e.timeSlot||'')}${e.conflict?' ⚠':''}</span>`;
+        chipsHtml += `<span data-ms-cell="${msEscapeAttr(key)}" data-ms-conflict="${e.conflict? '1':'0'}" title="${msEscapeAttr(title)}" style="cursor:pointer;padding:4px 9px;border-radius:999px;font-size:11.5px;font-weight:700;${style}">${escapeHtml(e.name)} · ${escapeHtml(e.timeSlot||'')}${e.conflict?' ⚠':''}${msState.slotTypeMap[key]&&!e.conflict&&st!=='missing'&&st!=='dc'?' →'+escapeHtml(msTypeAbbr(msState.slotTypeMap[key].actType)):''}</span>`;
       });
       chipsHtml += '</div></div>';
     });
@@ -3191,7 +3229,9 @@ ${text}`,
     } else if(excluded){
       html += `<div style="margin-top:4px;">이 슬롯은 <b>보고에서 제외</b>로 표시했습니다.</div>`;
     } else {
-      html += `<div style="margin-top:4px;">${flagged ? '이 슬롯은 <b>미액팅 후보</b>로 추정됩니다.' : '액팅과 매칭된 것으로 추정됩니다.'}</div>`;
+      const tm = !flagged ? msState.slotTypeMap[key] : null;
+      html += tm ? `<div style="margin-top:4px;color:#ffe2b3;">⚠ <b>스케줄과 다른 종류로 액팅</b>: ${escapeHtml(msTypeMisText(tm))}<br><span style="opacity:.85">${escapeHtml(tm.orderName||'')}</span></div>`
+        : `<div style="margin-top:4px;">${flagged ? '이 슬롯은 <b>미액팅 후보</b>로 추정됩니다.' : '액팅과 매칭된 것으로 추정됩니다.'}</div>`;
     }
     if(r) html += `<div style="margin-top:6px;opacity:.9;">${escapeHtml(entry.name)} 전체: 예정 ${r.orderCount}건 · 액팅 ${r.actCount}건 · 미액팅 ${Math.max(r.diff,0)}건</div>`;
     if(r && r.issues && r.issues.length){
@@ -3228,6 +3268,7 @@ ${text}`,
     if(e.conflict) return '<span class="pill warn">시간 충돌</span>';
     if(st==='dc') return '<span class="pill warn">D/C</span>';
     if(ex) return '<span class="pill">제외</span>';
+    if(st!=='missing' && msState.slotTypeMap[key]) return '<span class="pill" style="background:#ffe9c7;color:#a85a00;border-color:#f0c98a;">종류 다름</span>';
     return st==='missing' ? '<span class="pill err">미액팅 후보</span>' : '<span class="pill ok">정상</span>';
   }
   let msMarkerCtx = null; // 마커 목록 팝오버에서 환자를 눌렀다가 "← 목록"으로 돌아오기 위한 정보
@@ -3362,7 +3403,8 @@ ${text}`,
     return `대조: <b>${escapeHtml(sheet||'-')}</b>`;
   }
   const thvActs = () => (state.dataRows||[]).map(it=>({ therapist: normalizeText(getCell(it.row,'therapist')), group: it.orderGroup }));
-  const thvGroup = () => RehabCore.therapistView.groupByTherapist({ issues: state.issues || [], missing: thvMissingEntries(), acts: thvActs() });
+  const thvTypeMis = () => Object.values(msState.slotTypeMap || {}).filter(m => m && m.name).map(m => ({ therapist:m.therapist, name:m.name, start:m.start, schedLabel:RehabCore.orderType.abbr(m.schedType), actLabel:RehabCore.orderType.abbr(m.actType) }));
+  const thvGroup = () => RehabCore.therapistView.groupByTherapist({ issues: state.issues || [], missing: thvMissingEntries(), acts: thvActs(), typeMis: thvTypeMis() });
   function thvRows(){
     let rows = thvGroup();
     if(thvPart!=='all') rows = rows.filter(r=>r.part===thvPart);
@@ -3398,12 +3440,12 @@ ${text}`,
     box.innerHTML = rows.map(r=>{
       const open = thvOpen.has(r.name), t = ther.get(String(r.name).replace(/\s+/g,''));
       const bar = t && t.orderCount ? `<span class="thv-bar2"><i style="width:${Math.min(100,Math.round(t.actCount/t.orderCount*100))}%"></i></span><span class="thv-pc">액팅 ${t.actCount}/${t.orderCount}</span>` : '<span class="thv-sp"></span>';
-      const e = r.errors.length, w = r.warns.length, m = r.missing.length;
-      const pills = `<span class="pill ${e?'err':'ok'}">오류 ${e}</span>${w?`<span class="pill warn">주의 ${w}</span>`:''}<span class="pill ${m?'miss':'ok'}">미액팅 ${m}</span>`;
+      const e = r.errors.length, w = r.warns.length, m = r.missing.length, tmN = (r.typeMis||[]).length;
+      const pills = `<span class="pill ${e?'err':'ok'}">오류 ${e}</span>${w?`<span class="pill warn">주의 ${w}</span>`:''}<span class="pill ${m?'miss':'ok'}">미액팅 ${m}</span>${tmN?`<span class="pill" style="background:#ffe9c7;color:#a85a00;border-color:#f0c98a;">종류 다름 ${tmN}</span>`:''}`;
       const errItems = r.errors.concat(r.warns).map(x=>`<div class="thv-it"><b>${escapeHtml(String(x.time||'').split('~')[0].trim()||'-')}</b><a data-thv-jump="error" data-name="${msEscapeAttr(x.patientName||'')}">${escapeHtml(x.patientName||'환자명 미상')}</a><span>${escapeHtml(x.type)} · ${escapeHtml(msSimplifyOrderName(x.orderName))}</span><em class="${x.severity==='오류'?'e':'w'}">${escapeHtml(x.severity)}</em></div>`).join('') || '<div class="thv-none">없어요</div>';
       const missItems = r.missing.map(x=>`<div class="thv-it"><b>${escapeHtml(x.timeSlot||'-')}</b><a data-thv-jump="missing" data-name="${msEscapeAttr(x.name||'')}">${escapeHtml(x.name||'')}</a><span>${escapeHtml(x.type||'')}</span><em class="m">미액팅</em></div>`).join('') || '<div class="thv-none">없어요</div>';
       return `<div class="thv-row${open?' open':''}" data-thv="${msEscapeAttr(r.name)}"><div class="thv-hd" data-thv-toggle><b>${escapeHtml(r.name)}</b><span class="thv-part">${r.part==='ST'?'언어/심리':r.part}</span>${pills}<span class="thv-sp"></span>${bar}<span class="thv-msg"></span><button type="button" class="secondary" data-thv-copy style="padding:5px 11px;font-size:12px;">📋 메시지</button><span class="thv-caret">${open?'▾':'▸'}</span></div>`
-        + (open ? `<div class="thv-bd"><div><h4>치료기록 오류 ${e+w}건</h4>${errItems}</div><div><h4>미액팅 ${m}건</h4>${missItems}</div></div>` : '') + '</div>';
+        + (open ? `<div class="thv-bd"><div><h4>치료기록 오류 ${e+w}건</h4>${errItems}</div><div><h4>미액팅 ${m}건</h4>${missItems}${tmN?`<h4 style="margin-top:10px">액팅 종류 다름 ${tmN}건</h4>${r.typeMis.map(x=>`<div class="thv-it"><b>${escapeHtml(x.start||'-')}</b><a data-thv-jump="missing" data-name="${msEscapeAttr(x.name||'')}">${escapeHtml(x.name||'')}</a><span>스케줄 ${escapeHtml(x.schedLabel)} → ${escapeHtml(x.actLabel)}</span><em class="m" style="color:#a85a00">종류 다름</em></div>`).join('')}`:''}</div></div>` : '') + '</div>';
     }).join('');
   }
   $('therapistView').addEventListener('click', e=>{
@@ -3487,6 +3529,13 @@ ${text}`,
         }
       }
       lines.push('', '', '<미액팅오류>', missingBlock);
+      // 스케줄 오더와 다른 종류로 액팅한 경우(예: 인지인데 특수로 액팅) — 액팅한 선생님이 고치도록 그 이름으로 적는다
+      const typeMisList = Object.values(msState.slotTypeMap || {}).filter(m=>m && m.name);
+      const ab = RehabCore.orderType.abbr;
+      lines.push('', '', '<액팅 종류 다름(스케줄과 다른 곳에 액팅)>', typeMisList.length
+        ? typeMisList.slice().sort((a,b)=>(a.therapist||'').localeCompare(b.therapist||'','ko') || (a.start||'').localeCompare(b.start||''))
+            .map(m => simple ? `${m.therapist || '담당자 미상'}T-${m.name}` : `${m.therapist || '담당자 미상'}-${m.name} 스케줄 ${ab(m.schedType)}→${ab(m.actType)} 액팅(${m.start || '시간 미상'})`).join('\n')
+        : '(해당 없음)');
     }
 
     lines.push(

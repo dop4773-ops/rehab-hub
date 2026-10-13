@@ -504,7 +504,9 @@ async function refreshHandoverNow() {
     }
   } finally { hoRefreshing = false; }
   const f = handoverFreshness(), st = handoverCacheStats();
-  showToast(f.at > before ? `✅ 인수인계를 새로 가져왔어요${st ? ` · 환자 ${st.total}명` : ''}` : '⚠ 인수인계를 가져오지 못했어요 — 인터넷 연결을 확인해 주세요', 4500);
+  let reverified = false;
+  if (f.at > before) { try { const w = viewDoc('cross')?.defaultView; if (w && typeof w.__reverify === 'function') reverified = await w.__reverify(); } catch (e) { /* 교차검증 화면만 건너뜀 */ } }
+  showToast(f.at > before ? `✅ 인수인계를 새로 가져왔어요${st ? ` · 환자 ${st.total}명` : ''}${reverified ? ' · 교차검증도 다시 계산했어요' : ''}` : '⚠ 인수인계를 가져오지 못했어요 — 인터넷 연결을 확인해 주세요', 4500);
   renderAll();
 }
 
