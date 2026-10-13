@@ -249,6 +249,15 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         setSetting('notifyOneDrive',true); lastScan={...lastScan, matched:{status:{path:'D:\\\\자료\\\\현황.xlsx', name:'현황.xlsx', mtimeMs:Date.now()}}}; renderHome(); out.notOneDrive=!/OneDrive/.test(document.getElementById('homeBand').innerText);
         for(const [k,v] of Object.entries(out)) if(!v) throw new Error('실패: '+k+' '+JSON.stringify(out)); return out;
       } finally { lastScan=keep[0]; oneDriveRunning=keep[1]; setSetting('notifyOneDrive',keep[2]); renderHome(); } })()`));
+    await step('교차검증: 제외한 오류가 해결되면 제외명단에서도 자동으로 사라짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', EK='rehab_cross_exclude_v1', orig=localStorage.getItem(KEY), origEx=localStorage.getItem(EK), origFetch=w.fetch;
+      try{ const t=w.__testHooks.issues().find(i=>i.source==='notx'); if(!t) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,''), out={};
+        w.openExclModal(t); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);
+        out.excluded=Object.keys(JSON.parse(localStorage.getItem(EK)||'{}')).length;
+        const fixed=recs.map(x=>nk(x.name)===nk(t.patient)&&!String(x.tx||'').trim()?{...x,tx:'수정함'}:x);
+        w.fetch=async()=>({ok:true,json:async()=>({records:fixed})}); d.getElementById('btnRerun').click(); for(let i=0;i<120&&d.getElementById('btnRerun').disabled;i++) await sl(250); await sl(300);
+        out.after=Object.keys(JSON.parse(localStorage.getItem(EK)||'{}')).length; out.btnHidden=d.getElementById('exclBtn').style.display==='none';
+        if(out.excluded<1||out.after!==0||!out.btnHidden) throw new Error('해결된 제외 항목이 안 사라져요: '+JSON.stringify(out)); return out;
+      } finally { w.fetch=origFetch; if(orig) localStorage.setItem(KEY,orig); if(origEx==null) localStorage.removeItem(EK); else localStorage.setItem(EK,origEx); d.getElementById('btnRerun').click(); for(let i=0;i<120&&d.getElementById('btnRerun').disabled;i++) await sl(250); await sl(300); /* 다음 단계를 위해 원래 자료로 되돌림 */ } })()`));
     await step('교차검증: 인수인계를 고친 뒤 「다시 검증」/다시 가져오기로 사라진 오류가 목록에서 빠짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', orig=localStorage.getItem(KEY), origFetch=w.fetch;
       try{ const is0=w.__testHooks.issues().filter(i=>i.source==='notx'); if(!is0.length) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,'');
         const fixed=recs.map(r=>nk(r.name)===nk(is0[0].patient)&&!String(r.tx||'').trim()?{...r,tx:'수정함'}:r); const out={before:is0.length};
