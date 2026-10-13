@@ -13,4 +13,4 @@ function oneDriveRunning() {
   });
 }
 function registerSyncIpc() { ipcMain.handle('sync:oneDriveRunning', () => oneDriveRunning()); }
-module.exports = { registerSyncIpc };
+module.exports = { registerSyncIpc, oneDriveRunning };

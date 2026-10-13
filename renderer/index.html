@@ -237,6 +237,11 @@
               <div class="upd-h">프로그램 정보</div>
               <div class="action-row"><div><b>데이터 저장 위치</b><span class="desc"><code id="stDataDir">-</code><br>설정·폴더 목록·일정 보관함이 이 PC의 이 위치에 저장됩니다.</span></div><button class="btn" id="stOpenDataDir">폴더 열기</button></div>
             </div>
+            <div class="st-row upd-card" data-kw="환경 점검 진단 파일 읽기 OneDrive 온라인 전용 권한 저장 폴더 문제 확인">
+              <div class="upd-h">환경 점검</div>
+              <div class="action-row"><div><b>이 PC에서 프로그램이 제대로 돌 수 있는지 확인</b><span class="desc">연결한 폴더·파일을 읽을 수 있는지, OneDrive에서 아직 내려받지 않은 파일은 없는지, 저장 폴더에 쓸 수 있는지 봅니다. 원본 파일은 바꾸지 않아요. 병원 PC에서 처음 쓸 때나 이상할 때 눌러 보세요.</span></div><div class="st-btns"><button class="btn primary" id="envRun">점검 실행</button><button class="btn" id="envCopy" hidden>결과 복사</button></div></div>
+              <div id="envResult" class="env-result"></div>
+            </div>
           </div>
           <p class="st-empty" id="stEmpty" hidden>일치하는 설정이 없어요.</p>
         </div>
@@ -257,6 +262,7 @@
 <div id="toast" class="toast" role="status"></div>
 <script src="sync-core.js"></script>
 <script src="core/syncHealth.js"></script>
+<script src="core/envReport.js"></script>
 <script src="settings-core.js"></script>
 <script src="shell.js"></script>
 <script src="patient-search.js"></script>

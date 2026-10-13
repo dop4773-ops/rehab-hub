@@ -8,6 +8,7 @@ const { registerSchedulesIpc } = require('./ipc/schedules.ipc');
 const { registerBackupIpc } = require('./ipc/backup.ipc');
 const { registerExportIpc } = require('./ipc/export.ipc');
 const { registerSyncIpc } = require('./ipc/sync.ipc');
+const { registerEnvIpc } = require('./ipc/env.ipc');
 const { initUpdater } = require('./updater');
 
 registerSchemePrivileges(); // app.whenReady() 전에 호출해야 함(Electron 요구사항)
@@ -77,6 +78,7 @@ if (!gotLock) {
     registerBackupIpc();
     registerExportIpc(() => mainWindow);
     registerSyncIpc();
+    registerEnvIpc();
     ipcMain.handle('app:flags', () => ({ noResume: !!process.env.REHAB_NO_RESUME })); // 점검 스크립트는 "하던 화면 복원"을 끈다
     ipcMain.handle('app:dataDir', () => app.getPath('userData'));
     ipcMain.handle('app:openDataDir', () => shell.openPath(app.getPath('userData')));

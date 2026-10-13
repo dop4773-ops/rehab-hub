@@ -102,6 +102,27 @@ function stRenderBackupText() { const b = backupStatus; stq('#stBackupText').tex
 async function stRenderDataDir() { try { stq('#stDataDir').textContent = await window.rehab.app.dataDir(); } catch (e) { /* 표시만 못 함 */ } }
 stq('#stOpenDataDir').addEventListener('click', () => window.rehab.app.openDataDir());
 
+// ───────── 환경 점검 — 이 PC에서 파일을 읽고 저장할 수 있는지(읽기만, core/envReport.js가 결과 목록을 만든다) ─────────
+let envText = '';
+async function stRunEnvCheck() {
+  const btn = stq('#envRun'), box = stq('#envResult'); btn.disabled = true; btn.textContent = '점검 중…'; box.innerHTML = '';
+  try {
+    await refreshScan(); // 폴더를 다시 훑어 최신 상태로
+    const roles = await window.rehab.folders.fileRoles();
+    const files = Object.entries(lastScan.matched || {}).map(([role, f]) => ({ role, path: f.path }));
+    const env = await window.rehab.env.check(files);
+    const rep = RehabEnvReport.build({ env, scan: lastScan, roles });
+    envText = rep.text;
+    const ic = { ok: '✔', warn: '⚠', err: '✖', info: 'ℹ' };
+    box.innerHTML = `<div class="env-sum"><b class="${rep.counts.err ? 'err' : rep.counts.warn ? 'warn' : 'ok'}">${rep.counts.err ? `문제 ${rep.counts.err}건` : rep.counts.warn ? `주의 ${rep.counts.warn}건` : '문제 없어요'}</b> · 정상 ${rep.counts.ok} · 주의 ${rep.counts.warn} · 문제 ${rep.counts.err}</div>` +
+      rep.items.slice().sort((a, b) => ['err', 'warn', 'info', 'ok'].indexOf(a.level) - ['err', 'warn', 'info', 'ok'].indexOf(b.level)).map(i => `<div class="env-item ${i.level}"><span class="ic">${ic[i.level]}</span><div><b>${esc2(i.title)}</b><small>${esc2(i.group)}${i.detail ? ' · ' + esc2(i.detail) : ''}</small></div></div>`).join('');
+    stq('#envCopy').hidden = false;
+  } catch (e) { box.innerHTML = `<div class="env-item err"><span class="ic">✖</span><div><b>점검을 끝내지 못했어요</b><small>${esc2(e.message || e)}</small></div></div>`; }
+  finally { btn.disabled = false; btn.textContent = '다시 점검'; }
+}
+stq('#envRun').addEventListener('click', stRunEnvCheck);
+stq('#envCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(envText); showToast('점검 결과를 복사했어요'); } catch (e) { showToast('복사하지 못했어요'); } });
+
 // ───────── 규칙(코드·이름·병동 목록) — 안전장치 ─────────
 // 평소엔 잠겨 있고(읽기만), 잠금을 풀어 고친 뒤 "변경 내용 확인"에서 바뀐 곳을 보고 저장한다. 저장할 때마다 이전 값이 이력(최대 10개)에 남아 되돌릴 수 있고,
 // 원래 규칙(기본값)으로 한 번에 돌아가거나 번호 칸 1·2·3에 저장해 두고 불러올 수 있다. 잠금 비밀번호는 선택이며 "실수 방지용"이다.

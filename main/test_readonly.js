@@ -19,6 +19,7 @@ const ALLOWED = {
   'main/ipc/backup.ipc.js': /configPath/,                  // 백업 로그 위치 설정
   'main/main.js': /\bfile\b/,                            // 앱 오류 기록(앱 데이터 폴더의 error.log)
   'main/exportSaver.js': /settingsFile/,                   // 파일 저장 위치 설정(앱 데이터 폴더)
+  'main/envCheck.js': /\bf\b/,                             // 환경 점검: 앱 데이터·내보내기 폴더에 쓸 수 있는지 임시 파일을 만들었다 바로 지움(연결한 원본 폴더는 건드리지 않음)
   'main/updateLog.js': /file\b/,                           // 업데이트 기록(앱 데이터 폴더의 update-log.json)
 };
 const mainFiles = walk(path.join(root, 'main')).filter(f => f.endsWith('.js') && !/\/test_/.test(f.split(path.sep).join('/')));

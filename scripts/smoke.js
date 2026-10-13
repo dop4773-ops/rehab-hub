@@ -235,6 +235,11 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       return { 이슈: items.total, 칸주소_붙은_이슈: items.items.length, 확인한_칸: checked };
     });
     await step('교차검증: handleRun(이력 포함)', async () => await ev(`(async()=>{ const w=${W('cross')}; await w.handleRun(); return w.document.getElementById('histBox').innerText.slice(0,60); })()`));
+    await step('설정: 환경 점검(실행·결과 목록·복사 버튼)', async () => await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); showView('settings'); await sl(300); document.querySelector('#stTabs [data-tab=about]').click(); await sl(300);
+      const b=document.getElementById('envRun'); b.click(); for(let i=0;i<60&&b.disabled;i++) await sl(250); await sl(200);
+      const items=document.querySelectorAll('#envResult .env-item'), sum=document.querySelector('#envResult .env-sum'), t=document.getElementById('envResult').innerText;
+      if(!items.length||!sum) throw new Error('결과가 안 나와요: '+t.slice(0,120)); if(/undefined|NaN|\\[object/.test(t)) throw new Error('이상한 글자: '+t.match(/.{0,20}(undefined|NaN|\\[object).{0,20}/)[0]);
+      return {n:items.length, sum:sum.innerText, copy:!document.getElementById('envCopy').hidden, first:items[0].innerText.replace(/\\s+/g,' ').slice(0,100)}; })()`));
     await step('교차검증: 인수인계 Tx 미작성(실시간 기록 Tx와 일치)', async () => await ev(`(()=>{ const w=${W('cross')}; const is=w.__testHooks.issues().filter(i=>i.source==='notx'); const recs=(JSON.parse(localStorage.getItem('rehab_handover_cache_v1')||'{}').records)||[]; const hasTx=recs.some(r=>'tx' in r);
       const bad=is.filter(i=>!recs.some(r=>String(r.name).replace(/\\s+/g,'')===String(i.patient).replace(/\\s+/g,'')&&!String(r.tx||'').trim())).map(i=>i.patient);
       if(bad.length) throw new Error('Tx가 비지 않은 환자가 잡혔어요: '+bad.join(',')); return {notx:is.length, sample:is.slice(0,3).map(i=>i.title+' / '+i.line), recWithTx:hasTx, total:recs.length, emptyTx:recs.filter(r=>!String(r.tx||'').trim()).length}; })()`));
