@@ -94,6 +94,7 @@ select.dateSel{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .freshbox{font-size:12.5px;color:var(--muted,#667);margin:0 0 10px;display:flex;flex-wrap:wrap;gap:6px 14px}
 .freshbox:empty{display:none}
 .freshbox .old{color:#b45309;font-weight:700}
+.freshbox .anom{flex-basis:100%;background:#fff4df;border:1px solid #f0c98a;border-radius:10px;padding:8px 12px;color:#7a4a00;display:flex;flex-direction:column;gap:2px}.freshbox .anom b{color:#a85a00}.freshbox .anom span{font-weight:500}
 .cat-chip.room{background:var(--room-bg);color:var(--room)}
 .cat-chip .cc-label{font-size:11.5px;font-weight:800;display:flex;align-items:center;gap:6px}
 .cat-chip .cc-num{font-size:21px;font-weight:800;margin-top:3px}
@@ -808,7 +809,7 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
 <script src="../core/workstate.js"></script>
 <script src="../core/issuehistory.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, fixItemsToWhoMessages, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, summarizeByWho, pruneAck, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, fixItemsToWhoMessages, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, summarizeByWho, pruneAck, detectAnomalies, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
@@ -997,7 +998,7 @@ let handoverLiveFetchPromise=null; // 검증 실행 전 이 fetch가 끝나길 �
 let currentChange='all', hideAck=false, histState=null;
 const BUMPS=new WeakMap(); // 불일치 → 그 불일치가 올린 문제 건수(제외할 때 되돌리는 데 씀)
 let cardFinder=null; // (이름, 층) → 전체시간표 카드(머리 위치 포함)
-let crossSkipNotes=[], allDetected=[], excludedIssues=[], exclMap={}, exclRunBase=null; // 제외 기능: 찾아낸 전체 / 제외된 것 / 제외 기록 / 대시보드 원래 숫자
+let crossSkipNotes=[], crossInputs=null, crossAnomalies=[], allDetected=[], excludedIssues=[], exclMap={}, exclRunBase=null; // 제외 기능: 찾아낸 전체 / 제외된 것 / 제외 기록 / 대시보드 원래 숫자
 let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentRSource='all', currentView='type', currentPage=1;
 let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
 let previewSaturday={occs:[], weekdayCode:new Map()};
@@ -1046,6 +1047,7 @@ function renderFreshness(){
   const box=document.getElementById('freshBox'); if(!box) return;
   // 오래된(2일 이상) 파일만 경고로 보여준다 — 오늘·어제 수정된 파일은 위쪽 띠에 이미 있어 반복하지 않는다
   box.innerHTML=FILES_META.filter(m=>state[m.key]&&state.fileMtime[m.key]&&fileAgeLabel(state.fileMtime[m.key]).old).map(m=>{ const a=fileAgeLabel(state.fileMtime[m.key]); return `<span class="old">⚠ ${esc(m.label)} ${esc(a.text)}</span>`; }).join('')
+    +(crossAnomalies.length?`<div class="anom" title="최근 며칠과 비교해 읽어 들인 자료의 규모가 크게 달라졌어요"><b>⚠ 자료가 평소와 달라요</b>${crossAnomalies.map(a=>`<span>${esc(a.text)}</span>`).join('')}</div>`:'')
     +(crossSkipNotes.length?`<span class="old" title="파일이 없거나 자료 방식 때문에 이번에는 확인하지 못했어요">ℹ 이번에 검사하지 못한 것: ${crossSkipNotes.map(esc).join(' · ')}</span>`:'');
 }
 function guessKeyFromFilename(name){
@@ -2024,6 +2026,12 @@ async function runAllVerifications(){
   issues=allIssues; allDetected=allIssues; excludedIssues=[];
   const stats={countChecked,countProblems,locChecked,locProblems,therChecked,therProblems,handoverChecked,handoverProblems,evalChecked,evalProblems,roomChecked,roomProblems};
   publishCrossSummary(stats);
+  // 이번에 읽은 자료의 규모 — 이력과 비교해 "자료가 평소와 달라요" 경고에 쓴다
+  crossInputs={ cards10:cardsByFloor[10].length, cards3:cardsByFloor[3].length };
+  if(status){ crossInputs.statusRows=status.list.length; crossInputs.statusActive=status.list.filter(r=>r.admit==='입원'||r.admit==='재입원').length; }
+  if(sched) crossInputs.schedOcc=sched.occ.length;
+  if(handoverListAll) crossInputs.handover=handoverListAll.length;
+  if(ptaMapAll) crossInputs.pta=ptaMapAll.size!=null?ptaMapAll.size:(ptaMapAll.length||0);
   return { stats, floorCount };
 }
 // 데스크톱 앱 홈 대시보드가 이 화면의 요약(검증 불일치 건수)을 읽기 위한 훅. top-level let은 window에
@@ -3954,7 +3962,8 @@ function trackHistory(){
   const sources={statusBook:!!state.statusBook, cards:!!(state.card10Book&&state.card3Book), grids:!!(state.mat10Book&&state.table10Book&&state.mt3Book), handover:!!(state.handoverBook||state.handoverLiveOk), ptaBook:!!state.ptaBook};
   // 담당자별 반복 요약을 위해 불일치마다 고치거나 작성해야 할 사람(수정 지시서의 "담당")을 함께 남긴다 — 이슈 객체는 바꾸지 않는다
   const whoMemo=new Map(); const whoOf=(i)=>{ if(!whoMemo.has(i)){ let w=[]; try{ w=[...new Set(buildFixItems([i]).flatMap(x=>String(x.who||'').split(/\s*,\s*/).filter(Boolean)))]; }catch(e){ /* 담당 모름 */ } whoMemo.set(i,w); } return whoMemo.get(i); };
-  const snap=makeSnapshot(issues,sources,Date.now(),whoOf), hist=histLoad(HIST_KEY,{v:1,snaps:[]}), cmp=compareIssueHistory(hist,snap);
+  const snap=makeSnapshot(issues,sources,Date.now(),whoOf,crossInputs), hist=histLoad(HIST_KEY,{v:1,snaps:[]}), cmp=compareIssueHistory(hist,snap);
+  crossAnomalies=detectAnomalies(hist,snap);
   const ack=pruneAck(histLoad(ACK_KEY,{}),snap);
   for(const [k,i] of keyIssues(issues)) i.hist={key:k,isNew:cmp.isNew.has(k),streak:cmp.streak.get(k)||1,changed:cmp.changed.has(k),acked:!!ack[k]};
   let next=addSnapshot(hist,snap); while(!histSave(HIST_KEY,next)&&next.snaps.length>7) next={v:1,snaps:next.snaps.slice(1)}; // 저장 공간이 모자라면 오래된 날부터 덜어낸다
@@ -4071,6 +4080,6 @@ window.__setWorkState=(st)=>{ try{ if(!st||!issues||!issues.length||!histState) 
   const q=document.getElementById('searchInput'); if(st.q){ q.value=st.q; q.dispatchEvent(new Event('input')); }
   return true; }catch(e){ return false; } };
 window.__issuesApi=()=>issues.map(i=>({patient:i.patient,room:i.room,category:i.category,title:i.title,line:i.line}));
-window.__testHooks={ issues:()=>issues, state:()=>state, statusSheet:()=>(window.__statusSheetName||'') };
+window.__testHooks={ issues:()=>issues, state:()=>state, statusSheet:()=>(window.__statusSheetName||''), inputs:()=>crossInputs, anomalies:()=>crossAnomalies };
 </script>
 </body></html>

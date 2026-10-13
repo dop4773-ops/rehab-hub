@@ -33,10 +33,10 @@ function keyIssues(issues) {
 function evaluatedCats(sources) { return CATS.filter(c => CAT_SOURCES[c].every(s => sources[s])); }
 
 // whoOf(issue)가 있으면 그 불일치를 고치거나 작성해야 할 사람들(배열)을 7번째 칸에 함께 남긴다 — "담당자별 반복" 요약용(비교 로직은 이 칸을 쓰지 않는다)
-function makeSnapshot(issues, sources, now = Date.now(), whoOf = null) {
+function makeSnapshot(issues, sources, now = Date.now(), whoOf = null, inputs = null) {
   const keys = {}, counts = {};
   for (const [k, i] of keyIssues(issues)) { keys[k] = [i.category, i.title || '', i.patient || '', i.room || '', i.floor || '', i.line || '', (whoOf && whoOf(i)) || []]; counts[i.category] = (counts[i.category] || 0) + 1; }
-  return { day: dayOf(now), t: now, cats: evaluatedCats(sources), counts, keys };
+  return { day: dayOf(now), t: now, cats: evaluatedCats(sources), counts, keys, ...(inputs ? { inputs } : {}) };
 }
 // 같은 날짜 스냅샷은 마지막 것으로 바꿔 끼우고, 오래된 것은 maxDays개만 남긴다
 function addSnapshot(history, snap, maxDays = 90) {
@@ -84,13 +84,38 @@ function summarizeByWho(history, { days = 30, today = dayOf(Date.now()) } = {}) 
     return { who, issues: m.size, repeated, days: allDays.size, cats };
   }).sort((a, b) => b.repeated - a.repeated || b.issues - a.issues || a.who.localeCompare(b.who, 'ko'));
 }
+// 읽어 들인 자료의 규모(환자 줄 수 등)가 최근 며칠과 크게 다르면 알린다 — 파일이 일부만 읽혔거나 엑셀 양식이 바뀌었을 때 검사 결과가 조용히 틀어지는 것을 막으려는 경고.
+// 자료 규모가 저장된 이전 스냅샷(최대 lookback일)의 중앙값과 비교한다. 기준이 작으면(5~10 미만) 흔들림이 커서 비교하지 않는다.
+const INPUT_LABELS = { statusRows: '현황판 환자 줄', statusActive: '현황판 입원·재입원 환자', cards10: '10F 전체시간표 카드', cards3: '3F 전체시간표 카드', schedOcc: '평일시간표 배정 칸', handover: '인수인계 기록', pta: 'PTA 재원현황 환자' };
+const INPUT_UNITS = { statusRows: '줄', statusActive: '명', pta: '명', cards10: '장', cards3: '장', schedOcc: '칸', handover: '건' };
+const median = (a) => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function detectAnomalies(history, snap, { lookback = 5 } = {}) {
+  const prior = ((history && history.snaps) || []).filter(s => s.day < snap.day).slice(-lookback), out = [];
+  const withIn = prior.filter(s => s.inputs);
+  if (snap.inputs) for (const [k, v] of Object.entries(snap.inputs)) {
+    if (typeof v !== 'number') continue;
+    const vals = withIn.map(s => s.inputs[k]).filter(x => typeof x === 'number'); if (!vals.length) continue;
+    const b = median(vals), label = INPUT_LABELS[k] || k, u = INPUT_UNITS[k] || '개';
+    if (b >= 5 && v === 0) out.push({ key: k, kind: 'zero', label, value: v, base: b, text: `${label}이(가) 0${u}예요(평소 ${Math.round(b)}${u}) — 파일을 못 읽었을 수 있어요` });
+    else if (b >= 10 && v < b * 0.6) out.push({ key: k, kind: 'drop', label, value: v, base: b, text: `${label} ${v}${u} (평소 ${Math.round(b)}${u}) — 파일이 일부만 읽혔거나 양식이 바뀌었을 수 있어요` });
+    else if (b >= 10 && v > b * 1.7) out.push({ key: k, kind: 'jump', label, value: v, base: b, text: `${label} ${v}${u} (평소 ${Math.round(b)}${u}) — 파일이 중복되거나 양식이 바뀌었을 수 있어요` });
+  }
+  // 검사 결과 건수: 이번에도 검사했고 그날도 검사했던 분류만 합쳐서 본다
+  const sums = prior.map(s => snap.cats.filter(c => s.cats.includes(c)).reduce((n, c) => n + (s.counts[c] || 0), 0)).filter((_, i) => snap.cats.some(c => prior[i].cats.includes(c)));
+  if (sums.length) {
+    const b = median(sums), v = snap.cats.reduce((n, c) => n + (snap.counts[c] || 0), 0);
+    if (b >= 10 && v >= b * 2.5) out.push({ key: 'issues', kind: 'jump', label: '검사 결과', value: v, base: b, text: `불일치가 ${v}건 (평소 ${Math.round(b)}건) — 평소보다 크게 늘었어요. 파일 양식이 바뀐 것은 아닌지 확인하세요` });
+    else if (b >= 10 && v === 0) out.push({ key: 'issues', kind: 'zero', label: '검사 결과', value: v, base: b, text: `불일치가 0건이에요(평소 ${Math.round(b)}건) — 모두 고친 것이 아니라면 파일이 일부만 읽혔을 수 있어요` });
+  }
+  return out;
+}
 // 확인함 표시는 그 불일치가 해결되면(검사한 분류에서 사라지면) 자동으로 지운다
 function pruneAck(ack, snap) {
   const out = {};
   for (const [k, v] of Object.entries(ack || {})) { const cat = k.split('|')[0]; if (!snap.cats.includes(cat) || snap.keys[k]) out[k] = v; }
   return out;
 }
-const api = { issueKey, keyIssues, evaluatedCats, makeSnapshot, addSnapshot, compareIssueHistory: compare, summarizeByWho, pruneAck, ISSUE_HISTORY_CATS: CATS };
+const api = { issueKey, keyIssues, evaluatedCats, makeSnapshot, addSnapshot, compareIssueHistory: compare, summarizeByWho, pruneAck, detectAnomalies, ISSUE_HISTORY_CATS: CATS };
 root.RehabCore = Object.assign(root.RehabCore || {}, api);
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

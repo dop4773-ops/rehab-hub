@@ -254,6 +254,15 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         setSetting('notifyOneDrive',true); lastScan={...lastScan, matched:{status:{path:'D:\\\\자료\\\\현황.xlsx', name:'현황.xlsx', mtimeMs:Date.now()}}}; renderHome(); out.notOneDrive=!/OneDrive/.test(document.getElementById('homeBand').innerText);
         for(const [k,v] of Object.entries(out)) if(!v) throw new Error('실패: '+k+' '+JSON.stringify(out)); return out;
       } finally { lastScan=keep[0]; oneDriveRunning=keep[1]; setSetting('notifyOneDrive',keep[2]); renderHome(); } })()`));
+    await step('교차검증: 자료가 평소와 달라요 경고(이력과 비교)', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const HK='rehab_cross_history_v1', orig=localStorage.getItem(HK);
+      try{ const inp=w.__testHooks.inputs(); if(!inp||!inp.statusActive||inp.statusActive<10) return '자료가 적어 건너뜀'; const out={inputs:inp};
+        const hist={v:1,snaps:[1,2,3].map(n=>{ const dt=new Date(Date.now()-n*86400000); const day=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); return {day,t:dt.getTime(),cats:[],counts:{},keys:{},inputs:{...inp,statusActive:inp.statusActive*3}}; })};
+        localStorage.setItem(HK,JSON.stringify(hist)); await w.handleRun(); await sl(300);
+        out.an=w.__testHooks.anomalies().map(a=>a.key+':'+a.kind); out.box=d.getElementById('freshBox').innerText.slice(0,120);
+        if(!out.an.includes('statusActive:drop')||!/자료가 평소와 달라요/.test(out.box)) throw new Error('경고가 안 떠요: '+JSON.stringify(out));
+        hist.snaps.forEach(s=>s.inputs={...inp}); localStorage.setItem(HK,JSON.stringify(hist)); await w.handleRun(); await sl(300);
+        out.same=w.__testHooks.anomalies().length; if(out.same!==0) throw new Error('평소와 같은데 경고가 떠요: '+JSON.stringify(w.__testHooks.anomalies())); return out;
+      } finally { if(orig==null) localStorage.removeItem(HK); else localStorage.setItem(HK,orig); await w.handleRun(); } })()`));
     await step('교차검증: 인수인계 RM·작성자 미작성(실시간 기록의 빈 칸과 일치)·검사 못한 항목 안내', async () => await ev(`(()=>{ const w=${W('cross')}; const is=w.__testHooks.issues().filter(i=>i.source==='nofield'); const recs=(JSON.parse(localStorage.getItem('rehab_handover_cache_v1')||'{}').records)||[], nk=s=>String(s||'').replace(/\\s+/g,'');
       const bad=is.filter(i=>!recs.some(r=>nk(r.name)===nk(i.patient)&&(!String(r.doctor||'').trim()||!String(r.therapist||'').trim()))).map(i=>i.patient);
       if(bad.length) throw new Error('RM·작성자가 비지 않은 환자가 잡혔어요: '+bad.join(','));

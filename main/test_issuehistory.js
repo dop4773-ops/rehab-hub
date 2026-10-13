@@ -75,4 +75,30 @@ console.log('OK ⑤ 확인함 정리·보관 일수');
   assert.deepStrictEqual(H.summarizeByWho(hist, { days: 2, today: '2026-10-10' }).find(x => x.who === '김A').issues, 1, '기간 밖(3일 전)은 빼요');
   assert.strictEqual(H.summarizeByWho({ v: 1, snaps: [] }, {}).length, 0);
 }
+// 자료 규모 이상 감지
+{
+  const srcs = { statusBook: true, cards: true, grids: true, handover: true, ptaBook: true };
+  const day = (n) => Date.parse('2026-10-10T12:00:00') - n * 86400000;
+  const I = (patient, title, cat = 'count') => ({ category: cat, title, patient, room: '1', floor: 3, line: 'x', detail: {} });
+  const inp = (a, c) => ({ statusActive: a, cards10: c });
+  const mk = (n, issues, inputs) => H.makeSnapshot(issues, srcs, day(n), null, inputs);
+  const many = (n) => Array.from({ length: n }, (_, i) => I('환자' + i, '문제' + i));
+  let hist = { v: 1, snaps: [] };
+  for (const n of [4, 3, 2, 1]) hist = H.addSnapshot(hist, mk(n, many(12), inp(40, 30)));
+  assert.deepStrictEqual(H.detectAnomalies(hist, mk(0, many(12), inp(41, 30))), [], '평소 수준이면 경고 없음');
+  let a = H.detectAnomalies(hist, mk(0, many(12), inp(15, 30))); assert.strictEqual(a.length, 1); assert.strictEqual(a[0].kind, 'drop'); assert.strictEqual(a[0].key, 'statusActive');
+  a = H.detectAnomalies(hist, mk(0, many(12), inp(40, 0))); assert.strictEqual(a[0].kind, 'zero'); assert.strictEqual(a[0].key, 'cards10');
+  a = H.detectAnomalies(hist, mk(0, many(12), inp(80, 30))); assert.strictEqual(a[0].kind, 'jump');
+  a = H.detectAnomalies(hist, mk(0, many(40), inp(40, 30))); assert.strictEqual(a[0].key, 'issues'); assert.strictEqual(a[0].kind, 'jump');
+  a = H.detectAnomalies(hist, mk(0, [], inp(40, 30))); assert.strictEqual(a[0].key, 'issues'); assert.strictEqual(a[0].kind, 'zero');
+  assert.deepStrictEqual(H.detectAnomalies(hist, mk(0, many(12), { statusActive: 40 })), [], '오늘 못 잰 항목은 비교하지 않음');
+  assert.deepStrictEqual(H.detectAnomalies({ v: 1, snaps: [] }, mk(0, many(12), inp(5, 5))), [], '이력이 없으면 비교하지 않음');
+  // 기준이 작으면(10 미만) 흔들림이 커서 비교하지 않는다. 옛 스냅샷(inputs 없음)이 섞여도 안 깨진다
+  let small = { v: 1, snaps: [mk(2, [], inp(6, 6)), H.makeSnapshot([], srcs, day(1))] };
+  assert.deepStrictEqual(H.detectAnomalies(small, mk(0, [], inp(2, 2))), []);
+  // 분류 구성이 다르면(그날은 PTA 파일 없음) 그 분류는 합계에서 뺀다
+  const noPta = { ...srcs, ptaBook: false }; let h2 = { v: 1, snaps: [] };
+  for (const n of [3, 2, 1]) h2 = H.addSnapshot(h2, H.makeSnapshot(many(12), noPta, day(n), null, inp(40, 30)));
+  assert.deepStrictEqual(H.detectAnomalies(h2, H.makeSnapshot(many(12), srcs, day(0), null, inp(40, 30))), []);
+}
 console.log('ALL PASS');
