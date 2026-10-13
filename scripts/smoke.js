@@ -249,6 +249,10 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         setSetting('notifyOneDrive',true); lastScan={...lastScan, matched:{status:{path:'D:\\\\자료\\\\현황.xlsx', name:'현황.xlsx', mtimeMs:Date.now()}}}; renderHome(); out.notOneDrive=!/OneDrive/.test(document.getElementById('homeBand').innerText);
         for(const [k,v] of Object.entries(out)) if(!v) throw new Error('실패: '+k+' '+JSON.stringify(out)); return out;
       } finally { lastScan=keep[0]; oneDriveRunning=keep[1]; setSetting('notifyOneDrive',keep[2]); renderHome(); } })()`));
+    await step('교차검증: 인수인계 RM·작성자 미작성(실시간 기록의 빈 칸과 일치)·검사 못한 항목 안내', async () => await ev(`(()=>{ const w=${W('cross')}; const is=w.__testHooks.issues().filter(i=>i.source==='nofield'); const recs=(JSON.parse(localStorage.getItem('rehab_handover_cache_v1')||'{}').records)||[], nk=s=>String(s||'').replace(/\\s+/g,'');
+      const bad=is.filter(i=>!recs.some(r=>nk(r.name)===nk(i.patient)&&(!String(r.doctor||'').trim()||!String(r.therapist||'').trim()))).map(i=>i.patient);
+      if(bad.length) throw new Error('RM·작성자가 비지 않은 환자가 잡혔어요: '+bad.join(','));
+      return {nofield:is.length, sample:is.slice(0,3).map(i=>i.title+' / '+i.line), skip:w.document.getElementById('freshBox').innerText.slice(0,160)}; })()`));
     await step('교차검증: 제외한 오류가 해결되면 제외명단에서도 자동으로 사라짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', EK='rehab_cross_exclude_v1', orig=localStorage.getItem(KEY), origEx=localStorage.getItem(EK), origFetch=w.fetch;
       try{ const t=w.__testHooks.issues().find(i=>i.source==='notx'); if(!t) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,''), out={};
         w.openExclModal(t); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);

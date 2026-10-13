@@ -584,6 +584,7 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
         <button data-hsource="excess">작성자 수 초과</button>
         <button data-hsource="notype">치료 기록 없음</button>
         <button data-hsource="notx">Tx 미작성</button>
+        <button data-hsource="nofield">RM·작성자 미작성</button>
         <button data-hsource="nowriter">시간표 담당 미작성</button>
       </div>
       <div class="seg" id="roomSourceSeg" style="display:none">
@@ -708,6 +709,7 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
       <li><b>PTA에만 있음</b>: PTA 재활 코드가 X·빈칸이 아닌 입원 환자가 현황판(입원·재입원)과 전체시간표 입원 카드 어디에도 없으면 신환 등록 누락 후보로 알립니다.</li>
       <li><b>현황판에 없는 입원 카드</b>(개수 불일치 &gt; 퇴원오류): 전체시간표 입원 카드는 있는데 현황판에 활성·퇴원 어느 쪽에도 이름이 없는 경우입니다.</li>
       <li><b>시간표 담당 미작성</b>: 평일시간표(원본)에서 그 환자·치료(SOT/RDT/CCRT)로 배정된 선생님마다, 인수인계에 그 선생님 이름의 기록이 있는지 확인해 쓰지 않은 선생님을 알립니다(현황판 입원·재입원 환자만, 인수인계가 아예 없는 환자도 포함 — 「치료 기록 없음」으로 이미 잡힌 치료는 또 알리지 않아요).</li>
+      <li><b>인수인계 RM·작성자 미작성</b>: 현황판 입원·재입원 환자의 인수인계 기록(SOT/RDT/CCRT) 중 주치의(RM) 칸이나 작성자(치료사) 칸이 비어 있는 것을 알립니다. 그 열 자체가 없는 인수인계 파일은 건너뜁니다.</li>
       <li><b>인수인계 Tx 미작성</b>: 현황판 입원·재입원 환자의 인수인계 기록 중 치료내용(Tx) 칸이 비어 있는 것을 작성자와 함께 알립니다(실시간 연동 기록 기준 — 엑셀 파일로 올린 인수인계는 Tx 칸을 읽지 않아 확인하지 않아요). Goal·그랜드라운딩 칸은 그랜드라운딩의 미작성에서 확인합니다.</li>
       <li><b>인수인계 치료 기록 없음</b>: 현황판에 SOT/RDT/CCRT 횟수가 있는데 인수인계에 그 치료 기록이 없는 환자를, 담당 치료사(평일시간표 → 카드 순)와 함께 알립니다.</li>
       <li>결과 맨 위에 각 파일의 수정 시각(오늘/어제/N일 전)을 보여주고, 2일 이상 지난 파일은 ⚠로 표시합니다 — 오래된 PTA 파일이면 병실 불일치 중 일부가 그 사이의 이동일 수 있어요.</li>
@@ -995,7 +997,7 @@ let handoverLiveFetchPromise=null; // 검증 실행 전 이 fetch가 끝나길 �
 let currentChange='all', hideAck=false, histState=null;
 const BUMPS=new WeakMap(); // 불일치 → 그 불일치가 올린 문제 건수(제외할 때 되돌리는 데 씀)
 let cardFinder=null; // (이름, 층) → 전체시간표 카드(머리 위치 포함)
-let allDetected=[], excludedIssues=[], exclMap={}, exclRunBase=null; // 제외 기능: 찾아낸 전체 / 제외된 것 / 제외 기록 / 대시보드 원래 숫자
+let crossSkipNotes=[], allDetected=[], excludedIssues=[], exclMap={}, exclRunBase=null; // 제외 기능: 찾아낸 전체 / 제외된 것 / 제외 기록 / 대시보드 원래 숫자
 let issues=[], filteredIssues=[], selectedIssueId=null, currentCat='all', currentFloor='all', currentField='all', currentSource='all', currentHSource='all', currentRSource='all', currentView='type', currentPage=1;
 let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[],3:[]};
 let previewSaturday={occs:[], weekdayCode:new Map()};
@@ -1043,7 +1045,8 @@ function fileAgeLabel(ms, now=new Date()){
 function renderFreshness(){
   const box=document.getElementById('freshBox'); if(!box) return;
   // 오래된(2일 이상) 파일만 경고로 보여준다 — 오늘·어제 수정된 파일은 위쪽 띠에 이미 있어 반복하지 않는다
-  box.innerHTML=FILES_META.filter(m=>state[m.key]&&state.fileMtime[m.key]&&fileAgeLabel(state.fileMtime[m.key]).old).map(m=>{ const a=fileAgeLabel(state.fileMtime[m.key]); return `<span class="old">⚠ ${esc(m.label)} ${esc(a.text)}</span>`; }).join('');
+  box.innerHTML=FILES_META.filter(m=>state[m.key]&&state.fileMtime[m.key]&&fileAgeLabel(state.fileMtime[m.key]).old).map(m=>{ const a=fileAgeLabel(state.fileMtime[m.key]); return `<span class="old">⚠ ${esc(m.label)} ${esc(a.text)}</span>`; }).join('')
+    +(crossSkipNotes.length?`<span class="old" title="파일이 없거나 자료 방식 때문에 이번에는 확인하지 못했어요">ℹ 이번에 검사하지 못한 것: ${crossSkipNotes.map(esc).join(' · ')}</span>`:'');
 }
 function guessKeyFromFilename(name){
   // macOS(Finder)에서 끌어온 한글 파일명은 자모가 풀어써진(NFD) 형태로 들어오는 경우가 있어
@@ -1875,6 +1878,34 @@ async function runAllVerifications(){
         });
       }
     }
+    // 인수인계 기록은 있는데 주치의(RM)·작성자 칸이 비어 있는 경우 — 현황판 입원·재입원 환자의 SOT/RDT/CCRT 기록만 본다. 그 칸 자체를 읽지 못하는 자료(열이 없는 엑셀 등)는 건너뛴다.
+    if(status){
+      const hasDr=handoverList.some(e=>e.doctor), hasTh=handoverList.some(e=>e.therapist);
+      const act=new Set(status.list.filter(r=>r.admit==='입원'||r.admit==='재입원').map(r=>normKey(r.name))), seenF=new Set(), byPt=new Map(), tl={sot:'작업(SOT)',rdt:'연하(RDT)',ccrt:'인지(CCRT)'};
+      for(const e of handoverList){ // 최신 기록이 먼저 — 같은 환자·치료·작성자는 최신 기록 하나만 본다
+        if(!e.type) continue;
+        const k=normKey(e.name), rk=k+'|'+e.type+'|'+normKey(e.therapist||''); if(seenF.has(rk)) continue; seenF.add(rk);
+        if(!act.has(k)) continue;
+        const miss=[]; if(hasDr&&!e.doctor) miss.push('주치의(RM)'); if(hasTh&&!e.therapist) miss.push('작성자');
+        if(!miss.length) continue;
+        if(!byPt.has(k)) byPt.set(k,{name:e.name,items:[]});
+        byPt.get(k).items.push({label:tl[e.type], therapist:e.therapist||'', miss});
+      }
+      for(const {name,items} of byPt.values()){
+        handoverProblems++;
+        const fl=floorOfPatient(name, null); if(fl) floorCount[fl]++;
+        const rec=status.list.find(r=>normKey(r.name)===normKey(name)&&(r.admit==='입원'||r.admit==='재입원'));
+        const fields=[...new Set(items.flatMap(x=>x.miss))];
+        allIssues.push({
+          id:'handover-'+allIssues.length, category:'handover', source:'nofield', floor:fl,
+          patient:name, room:rec?rec.room:'',
+          title:`인수인계 ${fields.join('·')} 미작성`,
+          line:items.map(x=>`${x.label} · ${x.therapist||'작성자 없음'} → ${x.miss.join('·')} 비어 있음`).join(' · '),
+          time:'', searchText:normKey(`${name} ${rec?rec.room:''} ${items.map(x=>x.therapist+x.label).join(' ')} ${fields.join(' ')}`), severityRank:items.length,
+          detail:{kind:'handover_nofield', patient:name, room:rec?rec.room:'', items}
+        });
+      }
+    }
     // 인수인계 기록은 있는데 치료내용(Tx) 칸이 비어 있는 경우 — 현황판 입원·재입원 환자의 기록만 본다(퇴원·외래의 지난 기록은 제외). 실시간 연동 기록에만 Tx가 들어 있어, 엑셀 파일로 올린 인수인계는 이 확인을 건너뛴다.
     if(status){
       const act=new Set(status.list.filter(r=>r.admit==='입원'||r.admit==='재입원').map(r=>normKey(r.name))), seenTx=new Set(), byPt=new Map();
@@ -1952,6 +1983,16 @@ async function runAllVerifications(){
       });
     }
   }
+  // 이번에 검사하지 못한 항목 — 파일이 없거나 자료 방식 때문에 건너뛴 것을 결과 위쪽에 알린다
+  crossSkipNotes=[]; { const hoOk=state.handoverBook||state.handoverLiveOk;
+    if(!hoOk) crossSkipNotes.push('인수인계 대조 전체(인수인계 없음)');
+    else {
+      if(state.handoverBook) crossSkipNotes.push('Tx 미작성(엑셀 인수인계는 Tx 칸을 읽지 않아요)');
+      if(handoverListAll&&handoverListAll.length&&!handoverListAll.some(e=>e.doctor)) crossSkipNotes.push('주치의(RM) 미작성(인수인계에 주치의 칸이 없어요)');
+      if(!status) crossSkipNotes.push('치료 기록 없음·미작성 계열(작업치료현황 없음)');
+      else if(!sched) crossSkipNotes.push('시간표 담당 미작성(평일시간표 없음)');
+    }
+    if(!state.ptaBook) crossSkipNotes.push('PTA 대조(PTA 재원현황 없음)'); }
   // ---- ⑤ 주치의(RM) 대조: PTA 재원현황의 의사를 기준으로 현황판 진료과 · 전체시간표 카드 · 인수인계 주치의가 같은지 ----
   // PTA에 같은 이름이 여러 명이라 누구인지 못 고른 경우(ambiguous)는 오탐을 막기 위해 건너뛴다.
   if(ptaMapAll){
@@ -2904,10 +2945,10 @@ function renderDashboard(stats, floorCount){
   });
   document.getElementById('chipTher').textContent = stats.therProblems;
   document.getElementById('chipHandover').textContent = stats.handoverProblems;
-  const handoverCounts={therapist:0, doctor:0, orphan:0, excess:0, notype:0, notx:0, nowriter:0};
+  const handoverCounts={therapist:0, doctor:0, orphan:0, excess:0, notype:0, notx:0, nofield:0, nowriter:0};
   issues.filter(i=>i.category==='handover').forEach(i=>{ if(handoverCounts[i.source]!=null) handoverCounts[i.source]++; });
-  document.getElementById('chipHandoverBreak').innerHTML = `<span>담당 치료사 ${handoverCounts.therapist}</span><span>주치의 ${handoverCounts.doctor}</span><span>근거 없음 ${handoverCounts.orphan}</span><span>작성자 수 초과 ${handoverCounts.excess}</span><span>치료 기록 없음 ${handoverCounts.notype}</span><span>Tx 미작성 ${handoverCounts.notx}</span><span>시간표 담당 미작성 ${handoverCounts.nowriter}</span>`;
-  const handoverSourceLabel={therapist:'담당 치료사', doctor:'주치의', orphan:'근거 없음', excess:'작성자 수 초과', notype:'치료 기록 없음', notx:'Tx 미작성', nowriter:'시간표 담당 미작성'};
+  document.getElementById('chipHandoverBreak').innerHTML = `<span>담당 치료사 ${handoverCounts.therapist}</span><span>주치의 ${handoverCounts.doctor}</span><span>근거 없음 ${handoverCounts.orphan}</span><span>작성자 수 초과 ${handoverCounts.excess}</span><span>치료 기록 없음 ${handoverCounts.notype}</span><span>Tx 미작성 ${handoverCounts.notx}</span><span>RM·작성자 미작성 ${handoverCounts.nofield}</span><span>시간표 담당 미작성 ${handoverCounts.nowriter}</span>`;
+  const handoverSourceLabel={therapist:'담당 치료사', doctor:'주치의', orphan:'근거 없음', excess:'작성자 수 초과', notype:'치료 기록 없음', notx:'Tx 미작성', nofield:'RM·작성자 미작성', nowriter:'시간표 담당 미작성'};
   document.querySelectorAll('#handoverSourceSeg button').forEach(b=>{
     const s=b.dataset.hsource;
     b.textContent = s==='all' ? `전체 ${stats.handoverProblems}` : `${handoverSourceLabel[s]} ${handoverCounts[s]}`;
@@ -3082,6 +3123,7 @@ const HANDOVER_VERDICT={
   excess:    {label:'작성자 초과', cls:'hexcess',  cvar:'--excess'},
   notype:    {label:'치료 기록 없음', cls:'horphan', cvar:'--record'},
   notx:      {label:'Tx 미작성', cls:'horphan', cvar:'--record'},
+  nofield:   {label:'RM·작성자 미작성', cls:'horphan', cvar:'--record'},
   nowriter:  {label:'시간표 담당 미작성', cls:'horphan', cvar:'--record'},
 };
 function handoverVerdictOf(issue){ return HANDOVER_VERDICT[issue.source] || null; }
@@ -3532,6 +3574,15 @@ function renderDetail(){
       </table>
       <div class="verdictbox">판정: 평일시간표(원본)에 이 환자가 이 선생님의 치료로 배정돼 있는데, 인수인계에는 그 선생님이 쓴 기록이 없어요. 표시된 선생님에게 작성 여부를 확인해 보세요(담당이 바뀐 것이면 시간표를 고치세요).</div>
     `;
+  } else if(issue.detail.kind==='handover_nofield'){
+    const d=issue.detail;
+    bodyHtml = `
+      <table class="kv-table">
+        <tr><td>병실</td><td>${esc(d.room)}</td></tr>
+        ${d.items.map(x=>`<tr><td>${esc(x.label)}</td><td>${esc(x.miss.join('·'))} 비어 있음 · 작성자 <b>${esc(x.therapist||'없음')}</b></td></tr>`).join('')}
+      </table>
+      <div class="verdictbox">판정: 인수인계에 이 치료 기록은 있는데 ${esc([...new Set(d.items.flatMap(x=>x.miss))].join('·'))} 칸이 비어 있어요. 작성자에게 채워 달라고 확인해 보세요(작성자가 없으면 누가 쓴 기록인지부터 확인하세요).</div>
+    `;
   } else if(issue.detail.kind==='handover_notx'){
     const d=issue.detail;
     bodyHtml = `
@@ -3611,10 +3662,10 @@ function cardHighlights(issue, card, cells, c0, height){
     hl.add(d.kind==='room_rm' ? ref(card.headRow+5,c0) : ref(card.headRow+1,c0+6)); // 주치의 / 병실 칸
   } else if(issue.category==='handover' && d.kind==='handover_doctor'){
     hl.add(ref(card.headRow+5,c0));
-  } else if(issue.category==='therapist' || (issue.category==='handover' && ['handover_therapist','handover_excess','handover_notype','handover_notx','handover_nowriter'].includes(d.kind))){
+  } else if(issue.category==='therapist' || (issue.category==='handover' && ['handover_therapist','handover_excess','handover_notype','handover_notx','handover_nofield','handover_nowriter'].includes(d.kind))){
     // 카드 윗부분의 "작업치료 / 연하치료 / 인지치료 … 담당 치료사" 줄(이름 칸 포함)을 칠한다
     const labOf=(t)=>/SOT|작업/i.test(t)?'작업치료':/RDT|연하/i.test(t)?'연하치료':/CCRT|인지/i.test(t)?'인지치료':'';
-    const labs=new Set((d.kind==='handover_notype'||d.kind==='handover_notx'||d.kind==='handover_nowriter') ? (d.items||[]).map(x=>labOf(String(x.label||''))) : [labOf(String(d.type||d.field||issue.field||''))]); labs.delete('');
+    const labs=new Set((d.kind==='handover_notype'||d.kind==='handover_notx'||d.kind==='handover_nofield'||d.kind==='handover_nowriter') ? (d.items||[]).map(x=>labOf(String(x.label||''))) : [labOf(String(d.type||d.field||issue.field||''))]); labs.delete('');
     for(let r=card.headRow;r<=card.headRow+12;r++) for(let c=c0;c<=c0+24;c++) if(labs.has(normalizeText(getCell(cells,r,c)))){ hl.add(ref(r,c)); hl.add(ref(r,c+2)); }
   }
   return hl;

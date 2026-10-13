@@ -100,6 +100,8 @@ function itemsFor(i) {
         { who: (x.therapists || []).join(', '), basis: `현황 ${x.label} ${x.count}회` }));
     case 'handover_nowriter':
       return (d.items || []).map(x => mk('handover', `${x.label} 기록`, `평일시간표에 ${x.label} 담당(${x.therapist})인데 인수인계에 ${x.therapist} 선생님이 쓴 기록이 없어요${x.none ? '(이 치료의 인수인계가 아직 없음)' : ''} → 담당 치료사가 작성하세요(담당이 바뀐 것이면 시간표를 고치세요)`, { who: x.therapist, basis: `시간표 담당 ${x.therapist}` }));
+    case 'handover_nofield':
+      return (d.items || []).map(x => mk('handover', `${x.label} 기록의 ${x.miss.join('·')} 칸`, `인수인계 ${x.label} 기록의 ${x.miss.join('·')} 칸이 비어 있어요 → ${x.therapist ? '작성한 치료사가' : '누가 쓴 기록인지 확인해'} 채워 주세요`, { who: x.therapist || '', basis: `${x.label} · 작성자 ${x.therapist || '없음'}` }));
     case 'handover_notx':
       return (d.items || []).map(x => mk('handover', `${x.label} 기록의 Tx(치료내용)`, `인수인계 ${x.label} 기록의 Tx(치료내용)가 비어 있어요 → 담당 치료사가 Tx를 작성하세요`, { who: x.therapist || '', basis: `${x.label} · 작성자 ${x.therapist || '확인 필요'}` }));
     case 'eval_missing':
