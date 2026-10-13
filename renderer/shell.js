@@ -541,7 +541,7 @@ function renderHome() {
     + bkChip
     + (() => { const h = syncHealthNow(); return h.level === 'warn' || h.level === 'err' ? `<span class="band-click" title="${updEsc(h.detail)}">${chipHtml(h.level, h.level === 'err' ? 'OneDrive 꺼짐' : 'OneDrive 확인')}</span>` : ''; })()
     + (() => { const hf = handoverFreshness(); return hf.cls === 'ok' ? '' : `<span data-ho-refresh class="band-click" title="${hf.text} — 누르면 지금 다시 가져와요">${chipHtml(hf.cls, hf.at ? `인수인계 ${hf.age}` : '인수인계 못 가져옴')}</span>`; })()
-    + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>${settings.homeLayout === 'classic' ? '' : '<button class="btn" data-today-summary title="카톡에 붙여넣을 오늘 현황 글을 복사해요">📋 오늘 요약</button>'}<button class="btn primary" id="homeScanBtn" data-sync-now>🔄 지금 업데이트</button>`;
+    + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>${settings.homeLayout === 'classic' ? '' : '<button class="btn" data-today-summary title="카톡에 붙여넣을 오늘 현황 글을 복사해요">📋 오늘 요약</button>'}<button class="btn green" data-daily-check title="파일 확인 → 인수인계 → 교차검증 → 치료기록 QA를 한 번에 하고 결과를 모아 보여 줘요 (Ctrl+Shift+D)">▶ 오늘 점검</button><button class="btn primary" id="homeScanBtn" data-sync-now>🔄 지금 업데이트</button>`;
 
   // 2) 오늘 할 일(확인이 필요한 것만)
   const itda = (content) => !settings.itdaPush ? '' : `<button class="btn" data-itda-push="${content.replace(/"/g, '&quot;')}">🔗 잇다로 보내기</button>`;
@@ -595,6 +595,61 @@ function renderHome() {
   renderSyncPill();
   renderToolStrips();
   if (settings.homeLayout === 'workbench') renderWorkbench(summaries, { o, missReq });
+}
+
+// ── 오늘 점검(한 번에) ─────────────────────────────────────
+// 파일 확인 → 화면 준비 → 인수인계 가져오기 → 교차검증 → 치료기록 QA 결과 읽기 → 결과를 한 창에 모아 보여 준다. 각 단계는 평소 버튼과 같은 함수를 부를 뿐이다.
+let dailyChecking = false;
+async function waitTool(key, ready, ms = 25000) {
+  ensureToolLoaded(key);
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    try { const w = document.querySelector(`iframe[data-tool="${key}"]`).contentWindow; if (w && ready(w)) return w; } catch (e) { /* 아직 준비 전 */ }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  return null;
+}
+function dailyInputs() {
+  const matched = (lastScan && lastScan.matched) || {}, local = fileRoles.filter(r => r.key !== 'handover'), req = local.filter(r => r.required);
+  const names = (list) => list.map(r => r.label);
+  return {
+    files: { reqFound: req.filter(r => matched[r.key]).length, reqTotal: req.length, missReq: lastScan ? names(req.filter(r => !matched[r.key])) : [],
+      stale: lastScan ? names(local.filter(r => roleStateOf(r.key) === 'stale')) : [], err: lastScan ? names(local.filter(r => roleStateOf(r.key) === 'error')) : [] },
+    handover: handoverFreshness(), cross: readToolSummary('cross'), acting: readToolSummary('acting'), sync: syncHealthNow(), backup: backupStatus, now: Date.now(),
+  };
+}
+function showDailyResult() {
+  const rep = RehabDailyReport.build(dailyInputs()), ic = { ok: '✔', info: 'ℹ', warn: '⚠', err: '✖' };
+  lastDailyText = rep.text;
+  document.getElementById('dailyBody').innerHTML = `<div class="env-sum"><b class="${rep.level}">${rep.level === 'ok' ? '이상 없어요' : rep.level === 'warn' ? '확인할 것이 있어요' : '바로 확인이 필요해요'}</b> · ${fmtDateTime(Date.now())}</div>`
+    + rep.sections.map(s => `<div class="daily-sec"><h4>${updEsc(s.title)}</h4>${s.lines.map(l => `<div class="env-item ${l.level}"><span class="ic">${ic[l.level]}</span><div><b>${updEsc(l.text)}</b></div></div>`).join('')}</div>`).join('');
+  document.getElementById('dailyModal').classList.add('show');
+  return rep;
+}
+let lastDailyText = '';
+async function runDailyCheck() {
+  if (dailyChecking) return; dailyChecking = true;
+  const step = (t) => showToast(`▶ 오늘 점검 · ${t}`, 90000), t0 = Date.now();
+  try {
+    step('파일 확인 중…'); await refreshScan(); await syncNow({ skipScan: true });
+    step('화면 준비 중…');
+    const required = TOOLS.cross.requiredRoles.every(r => lastScan && RehabSync.roleSig(lastScan, r));
+    const cw = await waitTool('cross', w => typeof w.handleRun === 'function' && typeof w.__reverify === 'function');
+    if (lastScan && lastScan.matched.acting) { await waitTool('acting', w => !!w.__testHooks); await waitForSummaryThenRender('acting', 40); }
+    step('인수인계 가져오는 중…'); await refreshHandoverNow();
+    step('교차검증 계산 중…');
+    if (cw && required) {
+      if (RehabSync.roleSig(lastScan, 'status')) await new Promise(r => setTimeout(r, 300));
+      const s = readToolSummary('cross');
+      if (!s || !s.ranAt || s.ranAt < t0) await cw.handleRun({ keep: true }); // 인수인계를 새로 가져오며 이미 다시 계산했으면 또 하지 않는다
+    }
+    renderAll();
+    showDailyResult();
+    logActivity('오늘 점검', '한 번에 점검 완료');
+    toastEl.classList.remove('show');
+  } catch (e) {
+    showToast('⚠ 오늘 점검을 끝내지 못했어요: ' + ((e && e.message) || e), 8000);
+  } finally { dailyChecking = false; }
 }
 
 // ── 홈 작업대 ──────────────────────────────────────────────
@@ -1063,6 +1118,7 @@ document.getElementById('dataScanBtn').addEventListener('click', () => syncNow({
 document.addEventListener('click', async (e) => {
   const fp = e.target.closest('[data-files-pop]');
   if (fp) { chipMenu && chipMenu.dataset.for === 'files-pop' ? closeChipMenu() : openFilesPop(fp); return; }
+  if (e.target.closest('[data-daily-check]')) { closeChipMenu(); runDailyCheck(); return; }
   const ts = e.target.closest('[data-today-summary]');
   if (ts) { closeChipMenu(); const ok = await copyText(todaySummaryText()); showToast(ok ? '✔ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500); return; }
   const wp = e.target.closest('[data-who-plan]');
@@ -1222,6 +1278,10 @@ async function renderUpdLog(tab) {
     <div class="b ${x.body ? '' : 'none'}">${updEsc(x.body || '(등록된 변경 내용이 없어요)')}</div></div>`).join('') || '<p class="muted">릴리즈가 없어요.</p>';
 }
 document.getElementById('updaterLogBtn').addEventListener('click', () => { document.getElementById('updLogModal').classList.add('show'); renderUpdLog('rel'); });
+document.getElementById('dailyClose').addEventListener('click', () => document.getElementById('dailyModal').classList.remove('show'));
+document.getElementById('dailyModal').addEventListener('click', (e) => { if (e.target.id === 'dailyModal') e.currentTarget.classList.remove('show'); });
+document.getElementById('dailyCopy').addEventListener('click', async () => showToast((await copyText(lastDailyText)) ? '✅ 점검 결과를 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요'));
+document.getElementById('dailyAgain').addEventListener('click', () => { document.getElementById('dailyModal').classList.remove('show'); runDailyCheck(); });
 document.getElementById('updLogClose').addEventListener('click', () => document.getElementById('updLogModal').classList.remove('show'));
 document.getElementById('updLogModal').addEventListener('click', (e) => { if (e.target.id === 'updLogModal') e.currentTarget.classList.remove('show'); });
 document.querySelector('.upd-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) renderUpdLog(b.dataset.t); });
@@ -1243,6 +1303,7 @@ const GLOBAL_KEYS = [
   { id: 'patient-search', keys: 'Ctrl+K', label: '환자 빠른 검색', run: () => window.__openPatientSearch && window.__openPatientSearch() },
   { id: 'ps-write', keys: 'F2', label: '환자 빠른 검색: 검색창에 쓰기(검색창이 열려 있을 때)', run: () => window.__psFocus ? window.__psFocus() : false },
   { id: 'ho-refresh', keys: 'Ctrl+Shift+H', label: '인수인계 지금 다시 가져오기', run: () => refreshHandoverNow() },
+  { id: 'daily-check', keys: 'Ctrl+Shift+D', label: '오늘 점검 한 번에 실행', run: () => runDailyCheck() },
   { id: 'today-summary', keys: 'Ctrl+Shift+T', label: '오늘 요약 복사(카톡용)', run: async () => showToast((await copyText(todaySummaryText())) ? '✅ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500) },
 ];
 // run이 없는 항목은 그 화면이 스스로 처리하는 키(안내용)

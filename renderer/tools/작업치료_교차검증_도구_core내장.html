@@ -2049,6 +2049,8 @@ function publishCrossSummary(s){
     cats: issues.reduce((m,i)=>{ m[i.category]=(m[i.category]||0)+1; return m; },{}), // 홈 "오늘 할 일"의 분류별 건수
     excludedCount: excludedIssues.length,
     carry: carryOf(), // 홈 "어제부터 계속된 불일치"
+    anomalies: crossAnomalies.map(a=>a.text), skipNotes: crossSkipNotes.slice(), // 홈 「오늘 점검」: 자료가 평소와 달라요 · 이번에 검사하지 못한 것
+    ...((()=>{ try{ if(!histState||!histState.cmp.baseline) return {}; return {since:histState.cmp.baseline.day, newCount:issues.filter(i=>i.hist&&i.hist.isNew).length, resolvedCount:histState.cmp.resolved.length}; }catch(e){ return {}; } })()),
     ranAt: Date.now(),
     byWho: (()=>{ try{ const m=new Map(); for(const x of buildFixItems(issues)) for(const w of String(x.who||'').split(/\s*,\s*/).filter(Boolean)) m.set(w,(m.get(w)||0)+1); return [...m.entries()].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,'ko')); }catch(e){ return []; } })(), // 홈 "담당자별 확인 필요"(수정 지시서 기준 건수)
   };
