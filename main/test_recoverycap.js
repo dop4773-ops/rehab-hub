@@ -1,4 +1,4 @@
-// test_recoverycap.js — 삭제·추가 내역 읽기(삭제 유지만) · 회복기재활 16개 이상 찾기. 실행: node main/test_recoverycap.js
+// test_recoverycap.js — 삭제·추가 내역 읽기(삭제 유지만) · 회복기재활 16개 초과 찾기. 실행: node main/test_recoverycap.js
 'use strict';
 const assert = require('assert'); const C = require('../renderer/core/recoverycap.js');
 const N = null;
@@ -34,16 +34,16 @@ assert.deepStrictEqual(C.parseDelAddRows([]).entries, []); assert.deepStrictEqua
   const o3 = C.delAddOverlaps(ents, [{ startM: 700, ref: 'late' }]); assert.strictEqual(o3.hits.length, 0); assert.strictEqual(o3.rest.length, 2, '겹치는 액팅이 없으면 모두 rest');
   assert.strictEqual(C.delAddOverlaps([], its).hits.length, 0); assert.strictEqual(C.delAddOverlaps(null, null).rest.length, 0);
 }
-// 16개 이상
+// 16개 초과(17개부터)
 const mk = (n, reg, name, base = 480) => Array.from({ length: n }, (_, i) => ({ regNo: reg, name, startM: base + i * 15, time: `x${i}`, therapist: 'T' + i, ref: i }));
-let o = C.findRecoveryOver([...mk(15, '1', '가'), ...mk(16, '2', '나'), ...mk(20, '', '다')]);
-assert.deepStrictEqual(o.map(x => [x.name, x.count]), [['다', 20], ['나', 16]], '15개는 통과, 16개부터 잡고 많은 순');
-assert.strictEqual(o[1].trigger.ref, 15, '16번째(시간순) 액팅이 기준을 넘긴 것');
-assert.strictEqual(C.findRecoveryOver(mk(15, '1', '가')).length, 0);
-assert.strictEqual(C.findRecoveryOver([...mk(8, '1', '가'), ...mk(8, '1', '가-다른표기')]).length, 1, '등록번호가 같으면 이름 표기가 달라도 한 환자');
+let o = C.findRecoveryOver([...mk(16, '1', '가'), ...mk(17, '2', '나'), ...mk(20, '', '다')]);
+assert.deepStrictEqual(o.map(x => [x.name, x.count]), [['다', 20], ['나', 17]], '16개까지는 통과, 17개부터 잡고 많은 순');
+assert.strictEqual(o[1].trigger.ref, 16, '17번째(시간순) 액팅이 기준을 처음 넘긴 것');
+assert.strictEqual(C.findRecoveryOver(mk(16, '1', '가')).length, 0, '딱 16개는 정상'); assert.strictEqual(C.findRecoveryOver(mk(17, '1', '가')).length, 1);
+assert.strictEqual(C.findRecoveryOver([...mk(9, '1', '가'), ...mk(8, '1', '가-다른표기')]).length, 1, '등록번호가 같으면 이름 표기가 달라도 한 환자');
 assert.strictEqual(C.findRecoveryOver([...mk(8, '', '가'), ...mk(8, '', '나')]).length, 0, '이름이 다르면 합치지 않음');
-assert.strictEqual(C.findRecoveryOver(mk(16, '1', '가'), 20).length, 0, '기준 값 바꾸기');
-assert.strictEqual(C.patientKey({ regNo: '00123', name: 'a' }), '00123'.replace(/\D/g, '')); assert.strictEqual(C.patientKey({ regNo: '', name: '김 영옥A' }), 'n:김영옥A'); assert.strictEqual(o[0].key, 'n:다', '결과에 환자 키가 들어감'); assert.strictEqual(C.findRecoveryOver(mk(16, '7', '가'))[0].key, '7');
+assert.strictEqual(C.findRecoveryOver(mk(17, '1', '가'), 20).length, 0, '기준 값 바꾸기');
+assert.strictEqual(C.patientKey({ regNo: '00123', name: 'a' }), '00123'.replace(/\D/g, '')); assert.strictEqual(C.patientKey({ regNo: '', name: '김 영옥A' }), 'n:김영옥A'); assert.strictEqual(o[0].key, 'n:다', '결과에 환자 키가 들어감'); assert.strictEqual(C.findRecoveryOver(mk(17, '7', '가'))[0].key, '7');
 // 시간을 못 읽는 줄은 뒤로
-o = C.findRecoveryOver([{ regNo: '1', name: '가', startM: null, ref: 'z' }, ...mk(15, '1', '가')]); assert.strictEqual(o[0].trigger.ref, 'z');
+o = C.findRecoveryOver([{ regNo: '1', name: '가', startM: null, ref: 'z' }, ...mk(16, '1', '가')]); assert.strictEqual(o[0].trigger.ref, 'z');
 console.log('recoverycap: OK');

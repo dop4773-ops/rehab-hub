@@ -1,4 +1,4 @@
-// recoverycap.js — 치료기록 QA: ① 평일 OT·PT 공통 "삭제·추가 내역" 엑셀 읽기(삭제 유지만) ② 한 환자의 회복기재활 액팅이 기준(15개)을 넘는 경우 찾기. 순수 함수(화면·파일 접근 없음).
+// recoverycap.js — 치료기록 QA: ① 평일 OT·PT 공통 "삭제·추가 내역" 엑셀 읽기(삭제 유지만) ② 한 환자의 회복기재활 액팅이 기준(16개까지 정상)을 넘는 경우 찾기. 순수 함수(화면·파일 접근 없음).
 // 브라우저: <script src="../core/recoverycap.js"> / Node: require() (테스트용)
 // rows: SheetJS sheet_to_json(header:1)와 같은 2차원 배열(0부터, 빈 칸은 null/undefined).
 'use strict';
@@ -75,9 +75,9 @@ function delAddOverlaps(entries, items) {
   return { hits, rest: (entries || []).filter(e => !used.has(e)) };
 }
 // items: [{regNo, name, startM, time, therapist, ref}] — 이미 "회복기재활 오더"만 골라 넣는다. 환자(등록번호 없으면 이름)별로 세어 max를 넘는 환자를 돌려준다.
-// 시간순으로 줄 세워 (max+1)번째 액팅을 trigger로 한다(기준을 넘기게 한 액팅).
+// 시간순으로 줄 세워 (max+1)번째 액팅을 trigger로 한다(기준을 처음 넘긴 액팅). 정상 한도는 max개(기본 16)까지.
 const patientKey = (it) => regDigits(it.regNo) || 'n:' + nameKey(it.name); // 같은 환자 판단: 등록번호가 있으면 등록번호, 없으면 이름
-function findRecoveryOver(items, max = 15) {
+function findRecoveryOver(items, max = 16) {
   const by = new Map();
   for (const it of items || []) { const k = patientKey(it); if (!by.has(k)) by.set(k, []); by.get(k).push(it); }
   const out = [];
