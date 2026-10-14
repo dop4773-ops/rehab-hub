@@ -52,7 +52,7 @@
   window.addEventListener('pagehide', () => { const prev = load(); save({ clean: true, resume: !!(prev && prev.resume && Date.now() - prev.t < 60000) }); }); // 업데이트 준비 표식(resume)은 닫히는 순간에도 유지
 
   // 메인의 신호: 설치 직전 저장 · 저장 안 된 작업 확인
-  window.rehab.app.onPrepareQuit(async () => { save({ clean: true, resume: true }); });
+  window.rehab.app.onPrepareQuit(async () => { save({ clean: true, resume: true }); try { backupState(); } catch (e) { /* 사본 복사 실패해도 종료는 진행 */ } });
   window.rehab.app.onCheckUnsaved(async () => unsavedWork());
 
   // "지금 설치"를 눌렀을 때: 저장 안 된 작업이 있으면 먼저 알리고 선택하게 한다

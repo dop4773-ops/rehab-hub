@@ -316,6 +316,10 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         out.people=whoMerged.length; out.top=whoMerged.slice(0,3).map(p=>p.who+' '+p.total+'('+p.sources.map(s=>s.label+s.count).join('/')+')'); out.copyBtn=!document.getElementById('whoCopyAll').disabled; document.getElementById('whoClose').click(); out.closed=!m.classList.contains('show'); return JSON.stringify(out); })()`));
       if (!r.shown || !r.closed) throw new Error('창이 안 열리거나 안 닫혀요: ' + JSON.stringify(r)); if (r.bad.length) throw new Error('합친 결과가 이상해요: ' + r.bad.slice(0, 5).join(', ')); if (r.people && r.rows !== r.people) throw new Error('줄 수가 사람 수와 달라요'); return r;
     });
+    await step('중요 기록 사본: 앱 데이터 폴더에 복사되고 읽힘', async () => {
+      const r = JSON.parse(await ev(`(async()=>{ lastStateBackup=null; backupState(); await new Promise(r=>setTimeout(r,600)); const snap=RehabCore.stateBackup.snapshot(localStorage), file=window.rehab.state.loadSync(); return JSON.stringify({snapKeys:Object.keys(snap).length, fileKeys:Object.keys(file).length, sameSettings:file.rehab_settings_v1===snap.rehab_settings_v1, hasSettings:!!file.rehab_settings_v1}); })()`));
+      if (!r.hasSettings || !r.sameSettings || r.fileKeys !== r.snapKeys) throw new Error('사본이 저장소와 달라요: ' + JSON.stringify(r)); return r;
+    });
     await step('교차검증: 제외한 오류가 해결되면 제외명단에서도 자동으로 사라짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', EK='rehab_cross_exclude_v1', orig=localStorage.getItem(KEY), origEx=localStorage.getItem(EK), origFetch=w.fetch;
       try{ const t=w.__testHooks.issues().find(i=>i.source==='notx'); if(!t) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,''), out={};
         w.openExclModal(t); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);

@@ -25,6 +25,10 @@ contextBridge.exposeInMainWorld('rehab', {
   sync: {
     oneDriveRunning: () => ipcRenderer.invoke('sync:oneDriveRunning'),
   },
+  state: {
+    loadSync: () => ipcRenderer.sendSync('state:loadSync'),
+    save: (data) => ipcRenderer.send('state:save', data),
+  },
   env: {
     check: (files) => ipcRenderer.invoke('env:check', files),
   },

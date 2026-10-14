@@ -108,6 +108,9 @@ const updatingRoles = new Set();
 const roleErrors = new Map(); // role -> 오류 메시지
 let lastSyncAt = 0;
 let syncing = false;
+// 저장소(localStorage)가 비었을 때(캐시 삭제·프로필 초기화 등) 앱 데이터 폴더의 사본에서 중요한 기록(설정·메모·교차검증 이력·제외·확인함…)을 되살린다 — 설정을 읽기 전에 해야 한다.
+let stateRestored = [];
+try { stateRestored = RehabCore.stateBackup.restoreMissing(localStorage, window.rehab.state.loadSync()); } catch (e) { /* 사본이 없거나 못 읽으면 그대로 시작 */ }
 // 설정 값은 settings-core.js(저장·검증)로 한 곳에서 관리한다. 바꿀 때는 setSetting()만 쓴다.
 const settings = RehabSettings.load(localStorage);
 const settingListeners = []; // (key) => void — 설정 화면이 값이 바뀔 때 자기 표시를 고치려고 등록한다
@@ -313,6 +316,11 @@ function notifySyncHealth() { // 같은 문제로는 하루에 한 번만 작은
   const sig = new Date().toDateString() + h.key; if (sig === notifiedSyncHealth) return; notifiedSyncHealth = sig;
   showToast(`☁️ ${h.title} <button class="btn" data-goto="home">자세히</button>`, 12000);
 }
+// 중요한 기록의 사본: 30초마다 바뀐 게 있을 때만 앱 데이터 폴더에 복사하고, 종료·업데이트 직전에도 한 번 더 복사한다.
+let lastStateBackup = null;
+function backupState() { try { const snap = RehabCore.stateBackup.snapshot(localStorage); if (RehabCore.stateBackup.changed(lastStateBackup, snap)) { lastStateBackup = snap; window.rehab.state.save(snap); } } catch (e) { /* 사본이 못 써져도 앱은 계속 */ } }
+setInterval(backupState, 30000); setTimeout(backupState, 8000); window.addEventListener('beforeunload', backupState);
+setTimeout(() => { if (stateRestored.length) showToast(`🛟 저장소가 비어 있어 이전 기록을 되살렸어요 (${stateRestored.length}가지)`, 8000); }, 2000);
 let syncTickTimer = null;
 function scheduleSyncTick() { // 설정 > 변경 감지 간격(기본 30초)
   clearTimeout(syncTickTimer);
