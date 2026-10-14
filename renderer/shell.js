@@ -628,6 +628,11 @@ function renderHome() {
 // 파일을 바꿔 읽을 때만 다시 계산한다(읽은 파일은 이름+수정시각으로 기억해 두고 재사용).
 let scheduleChecks = { items: [], robot: [], at: 0, files: 0 }, scheduleSig = '';
 const schedBookCache = new Map();
+async function bookOf(f) { // 읽은 엑셀은 이름+수정시각으로 기억해 재사용(여러 기능이 같은 파일을 또 읽지 않게)
+  const ck = f.name + '|' + f.lastModified; let book = schedBookCache.get(ck);
+  if (!book) { book = await RehabCore.readWorkbookFile(f); schedBookCache.set(ck, book); if (schedBookCache.size > 12) schedBookCache.delete(schedBookCache.keys().next().value); }
+  return book;
+}
 const SCHED_ROLES = [['pt10', '10층 물리치료시간표'], ['pt3', '3층 물리치료시간표'], ['gi10', '10층 기구시간표'], ['gi3', '3층 기구시간표'], ['dailySchedule', '작업치료실 시간표']];
 async function refreshScheduleChecks() {
   if (!lastScan || typeof RehabCore === 'undefined' || !RehabCore.scheduleCheck) return;
@@ -638,7 +643,7 @@ async function refreshScheduleChecks() {
     for (const [role, label] of SCHED_ROLES) {
       if (!roleInfo(role).entries.length) continue;
       for (const f of await getFilesForRole(role)) {
-        const ck = f.name + '|' + f.lastModified; let book = schedBookCache.get(ck); if (!book) { book = await RehabCore.readWorkbookFile(f); schedBookCache.set(ck, book); if (schedBookCache.size > 12) schedBookCache.delete(schedBookCache.keys().next().value); }
+        const book = await bookOf(f);
         const names = book.sheets.map(s => s.name), titles = {};
         for (const n of DP.sheetsForDate(names, today)) {
           const cells = await RehabCore.getSheetCells(book, n); titles[n] = [];
@@ -652,6 +657,54 @@ async function refreshScheduleChecks() {
     renderHome();
   } catch (e) { console.error('시간표 파일 점검 실패', e); }
 }
+
+// ── 오늘 하루 일정(환자 빠른 검색): 작업치료실 시간표(OT)·물리치료시간표(운동 1:1)·기구시간표(기구·FES 1:다)의 그 날짜 시트에서 한 환자의 하루를 시간순으로 모은다.
+const dayPlanCache = new Map();
+const OT_TYPE_LABEL = { 작업특수: '작업치료(특수)', 연하치료: '연하치료', 전산화인지: '인지(CCRT)', 연하전기: '연하전기(ERDT)', 복잡: '복잡작업치료', 평가: '평가' };
+function cellsToRows(cells) { // 셀 지도 → SheetJS 모양 2차원 배열(작업치료실 시간표 파서가 받는 모양). 0행 0열의 날짜는 숫자로.
+  let maxR = 0, maxC = 0; for (const k of cells.keys()) { const rc = RehabCore.splitRef(k); if (rc) { if (rc.row > maxR) maxR = rc.row; if (rc.col > maxC) maxC = rc.col; } }
+  const rows = Array.from({ length: maxR }, () => new Array(maxC).fill(null));
+  for (const [k, v] of cells) { const rc = RehabCore.splitRef(k); if (rc) rows[rc.row - 1][rc.col - 1] = v; }
+  const a1 = rows[0] && rows[0][0]; if (typeof a1 === 'string' && /^\d+(\.\d+)?$/.test(a1)) rows[0][0] = Number(a1);
+  return rows;
+}
+const slotStartM = (t) => { const m = /(\d{1,2})[:.](\d{2})/.exec(String(t || '')); return m ? +m[1] * 60 + +m[2] : null; };
+async function buildDayPlan(date) {
+  const DP = RehabCore.dailyPlan, wd = DP.weekdayChar(date), plan = { date, ot: new Map(), pt: new Map(), gi: new Map(), have: { ot: false, pt: false, gi: false }, missing: [] };
+  const nk = (n) => String(n || '').replace(/\s+/g, '').normalize('NFC');
+  const sheetsOf = async (role, label, fn) => {
+    for (const f of await getFilesForRole(role)) {
+      const book = await bookOf(f), names = DP.sheetsForDate(book.sheets.map(s => s.name), date);
+      if (!names.length) { plan.missing.push(label); continue; }
+      for (const n of names) { const cells = await RehabCore.getSheetCells(book, n); if (cells && cells.size) fn(cells); }
+    }
+  };
+  const grid = (cells) => { let maxRow = 0, maxCol = 0; for (const k of cells.keys()) { const rc = RehabCore.splitRef(k); if (rc) { maxRow = Math.max(maxRow, rc.row); maxCol = Math.max(maxCol, rc.col); } } return { get: (r, c) => RehabCore.normalizeText(RehabCore.getCell(cells, r, c)), maxRow, maxCol }; };
+  await sheetsOf('dailySchedule', '작업치료실 시간표', (cells) => {
+    const res = RehabCore.otSchedule.parseScheduleSheet(cellsToRows(cells), { erdtTherapists: settings.rules.erdtTherapists });
+    for (const e of res.entries) { const k = nk(e.name); if (!plan.ot.has(k)) plan.ot.set(k, []); const loc = (/([A-Z]{1,2}\s*-\s*\d+)/.exec(String(e.raw || '').split('\n').slice(1).join(' ')) || [''])[0].replace(/\s+/g, ''); plan.ot.get(k).push({ startM: slotStartM(e.timeSlot), cat: e.type, therapist: e.therapist, loc, src: e.source }); plan.have.ot = true; }
+  });
+  const ptE = [], giE = [];
+  for (const role of ['pt10', 'pt3']) await sheetsOf(role, role === 'pt10' ? '10층 물리치료시간표' : '3층 물리치료시간표', (cells) => ptE.push(...DP.parsePtGrid(grid(cells), wd)));
+  for (const role of ['gi10', 'gi3']) await sheetsOf(role, role === 'gi10' ? '10층 기구시간표' : '3층 기구시간표', (cells) => giE.push(...DP.parseGiGrid(grid(cells), wd)));
+  plan.pt = DP.toMap(ptE, () => '운동'); plan.gi = DP.toMap(giE, (e) => e.kind); plan.have.pt = ptE.length > 0; plan.have.gi = giE.length > 0;
+  return plan;
+}
+// 한 환자의 그날 일정 → {date, rows:[{startM, kind:'OT'|'PT'|'GI', label, who, loc}], have, missing}. 시트가 없거나 환자가 없으면 rows가 비어 있다.
+async function dayPlanFor(name, date) {
+  if (!lastScan || typeof RehabCore === 'undefined' || !RehabCore.otSchedule) return null;
+  date = date || RehabCore.scheduleCheck.ymdOf(new Date());
+  const sig = [...SCHED_ROLES.map(([r]) => RehabSync.roleSig(lastScan, r)), JSON.stringify(settings.rules.erdtTherapists)].join('#') + '|' + date;
+  let c = dayPlanCache.get(date); if (!c || c.sig !== sig) { c = { sig, plan: await buildDayPlan(date) }; dayPlanCache.set(date, c); }
+  const p = c.plan, DP = RehabCore.dailyPlan, nm = String(name || '').replace(/\s*\(외래\)\s*$/, '').trim(), key = nm.replace(/\s+/g, '').normalize('NFC'), rows = [];
+  const base = key.replace(/[A-E]$/, ''), otHit = p.ot.get(key) || (() => { const ks = [...p.ot.keys()].filter(k => k.replace(/[A-E]$/, '') === base); return ks.length === 1 ? p.ot.get(ks[0]) : []; })();
+  for (const e of otHit) rows.push({ startM: e.startM, kind: 'OT', label: OT_TYPE_LABEL[e.cat] || e.cat, who: e.therapist || '', loc: e.loc });
+  for (const e of DP.lookup(p.pt, nm) || []) rows.push({ startM: e.startM, kind: 'PT', label: e.test ? '운동치료(TEST)' : '운동치료', who: e.therapist, loc: e.bed });
+  for (const e of DP.lookup(p.gi, nm) || []) rows.push({ startM: e.startM, kind: 'GI', label: e.cat === '기구' ? '기구치료' : '전기치료(FES)', who: '', loc: e.station });
+  rows.sort((a, b) => (a.startM == null) - (b.startM == null) || a.startM - b.startM || a.kind.localeCompare(b.kind));
+  return { date, rows, have: p.have, missing: [...new Set(p.missing)] };
+}
+window.__dayPlanFor = dayPlanFor;
 
 // ── 오늘 점검(한 번에) ─────────────────────────────────────
 // 파일 확인 → 화면 준비 → 인수인계 가져오기 → 교차검증 → 치료기록 QA 결과 읽기 → 결과를 한 창에 모아 보여 준다. 각 단계는 평소 버튼과 같은 함수를 부를 뿐이다.

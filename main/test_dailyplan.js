@@ -29,6 +29,7 @@ const PC = (raw, wd) => D.patientsOfCell(raw, wd).map(p => p.name);
 assert.deepStrictEqual(PC('김영옥A\n최상희'), ['김영옥A', '최상희']); assert.deepStrictEqual(PC('김기한\n이복순A'), ['김기한', '이복순A']);
 assert.deepStrictEqual(PC('김금학G\n(월수금)\n김두남', '목'), ['김두남'], '조건 줄은 바로 앞 환자에게만 적용'); assert.deepStrictEqual(PC('김금학G\n(월수금)\n김두남', '월'), ['김금학', '김두남']);
 assert.deepStrictEqual(PC('김무석\n(GAIT)'), ['김무석']); assert.deepStrictEqual(PC('(GAIT)'), []); assert.deepStrictEqual(PC(''), []); assert.deepStrictEqual(PC('FES\n(3층)'), []);
+assert.strictEqual(D.bedOf('이영미\nB-20'), 'B-20'); assert.strictEqual(D.bedOf('김기한M\nA-2 NWB'), 'A-2'); assert.strictEqual(D.bedOf('오상열M\n나-24'), '나-24'); assert.strictEqual(D.bedOf('박지예(S)\nC-도수'), ''); assert.strictEqual(D.bedOf('김순자D M\nTEST나-31'), '나-31'); assert.strictEqual(D.bedOf('임태치 BS'), ''); assert.strictEqual(D.bedOf(''), '');
 // ── 치료사 머리글
 assert.strictEqual(D.isTherapistName('곽은진'), true); assert.strictEqual(D.isTherapistName('월요일'), false); assert.strictEqual(D.isTherapistName('치료시간'), false); assert.strictEqual(D.isTherapistName('3F 통증'), false); assert.strictEqual(D.isTherapistName('로봇재활'), false);
 
@@ -56,7 +57,7 @@ const pt = mk({
 const pe = D.parsePtGrid(pt, '목');
 const key = (e) => `${e.name}@${Math.floor(e.startM / 60)}:${String(e.startM % 60).padStart(2, '0')}/${e.therapist}`;
 assert.deepStrictEqual(pe.map(key), ['이영미@8:30/정진우', '변경주@8:30/장연서', '이대양@8:30/김혜인', '임태치@9:05/정진우', '박세훈@9:05/장연서', '이영미@9:05/김혜인', '김영옥A@13:00/최혜빈', '황승진@8:30/정용범', '이영도@9:05/김정무'], '치료사 열·시간 줄·두 번째 표, FES·통증·알봇·(월수금)은 빠지고 오른쪽 옆 표(장순달·박진헌)는 안 읽음');
-assert.strictEqual(pe.find(e => e.name === '변경주').test, true); assert.strictEqual(pe.find(e => e.name === '박세훈').outpatient, true);
+assert.deepStrictEqual(pe.filter(e => e.bed).map(e => e.name + ':' + e.bed), ['이영미:B-20', '변경주:C-33', '이대양:B-14', '박세훈:나-29', '이영미:B-20', '김영옥A:B-14', '황승진:B-27', '이영도:B-25'], '침상 번호는 칸 둘째 줄에서'); assert.strictEqual(pe.find(e => e.name === '변경주').test, true); assert.strictEqual(pe.find(e => e.name === '박세훈').outpatient, true);
 assert.strictEqual(D.parsePtGrid(pt, '월').some(e => e.name === '김금학'), true, '월요일엔 (월수금) 환자가 들어온다');
 assert.deepStrictEqual(D.parsePtGrid(mk({ 1: { 1: '아무것도 없는 시트' } }), '목'), []);
 assert.deepStrictEqual(D.parsePtGrid(mk({ 3: { 1: '치료시간', 2: '월요일', 3: '화요일' }, 4: { 1: '08:30~09:00', 2: '신상태' } }), '목'), [], '치료사가 아닌 머리글(요일 표)은 건너뜀');
@@ -75,6 +76,7 @@ const gi = mk({
 const ge = D.parseGiGrid(gi, '목'), gk = (e) => `${e.kind}:${e.name}@${Math.floor(e.startM / 60)}:${String(e.startM % 60).padStart(2, '0')}`;
 assert.deepStrictEqual(ge.map(gk), ['기구:서옥자@8:30', '기구:김부수@8:30', '기구:하경심@9:05', '기구:이정국@9:05', '기구:김주희@13:00', '기구:박진호@13:00', '기구:최상희@13:00', '기구:이종철A@13:00', '기구:유봉아@13:00',
   '전기:박진호@8:30', '전기:조명옥@8:30', '전기:김기홍@9:05', '전기:정도운@9:05', '전기:서명희@9:05'], '기구 담당 치료사(이고은)·청구 숫자·FES 안내 글은 환자가 아니고, 목요일엔 (월수)·(월수금)·(월) 환자가 빠진다');
+assert.deepStrictEqual(ge.filter(e => e.kind === '기구').slice(0, 3).map(e => e.name + '@' + e.station), ['서옥자@전동자전거', '김부수@전동자전거', '하경심@경사대'], '기구 칸 이름(머리글에서 (1) 같은 번호는 뗌)'); assert.deepStrictEqual([...new Set(ge.filter(e => e.kind === '전기').map(e => e.station))], ['FES1', 'FES2'], 'FES는 왼쪽의 가장 가까운 머리글');
 assert.strictEqual(D.parseGiGrid(gi, '월').some(e => e.name === '오상열' && e.kind === '기구'), true);
 assert.strictEqual(D.parseGiGrid(gi, '월').some(e => e.name === '전태분' && e.kind === '전기'), true);
 assert.deepStrictEqual(D.parseGiGrid(mk({ 1: { 1: '??' } }), '목'), []);

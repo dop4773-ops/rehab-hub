@@ -551,3 +551,8 @@ body:not(.home-wb) .wb-end{display:none}
 /* 도구 위 파일 띠 — 「파일 N/M」 목록 창의 묶음 줄 */
 .fp-row.grp{align-items:center;flex-wrap:nowrap}.fp-row.grp b{width:118px}.fp-cell{display:inline-flex;align-items:center;gap:5px;padding:2px 6px;border-radius:8px;background:#f6f8fc;margin-right:4px}
 .fp-cell em{font-style:normal;font-size:10.5px;font-weight:800;color:#5b72b4;min-width:24px}.fp-cell .w{color:var(--sub);font-size:11px;min-width:34px}
+
+/* 환자 빠른 검색 › 오늘 일정 */
+.ps-day{display:flex;flex-direction:column;gap:3px;margin:2px 0 6px}.ps-dr{display:grid;grid-template-columns:48px 112px 62px 1fr;align-items:center;gap:8px;padding:3px 8px;border-radius:7px;font-size:12.5px;background:#f6f8fc}
+.ps-dr b{font-variant-numeric:tabular-nums;color:#43546d}.ps-dr.past{opacity:.5}.ps-dr.now{background:#fff4df;box-shadow:inset 3px 0 0 #e08a00}
+.ps-dk{font-size:11.5px;font-weight:800;padding:1px 8px;border-radius:99px;text-align:center}.ps-dk.OT{background:#e3f5ec;color:#2f8a63}.ps-dk.PT{background:#e6eefc;color:#3b64b8}.ps-dk.GI{background:#eef0f4;color:#5a6577}

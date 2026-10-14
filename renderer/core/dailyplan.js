@@ -61,6 +61,8 @@ function patientsOfCell(raw, wdChar) {
   for (const l of lines) { if (l.startsWith('(') && groups.length) groups[groups.length - 1].push(l); else groups.push([l]); }
   return groups.map(g => patientOf(g.join('\n'), wdChar)).filter(Boolean);
 }
+// 칸 글자의 둘째 줄 이하에서 침상/테이블 번호("B-20", "나-25", "A-2 NWB")를 뽑는다(없으면 '')
+function bedOf(raw) { const m = /([가-힣A-Z])\s*-\s*(\d+)/.exec(String(raw == null ? '' : raw).split(/\r?\n/).slice(1).join(' ')); return m ? m[1] + '-' + m[2] : ''; }
 // ── 물리치료시간표: 첫 칸이 "치료시간"인 표 = 치료사 열 × 시간 줄. (오른쪽 옆 표들은 자기 시간 열이 따로 있어 그 앞에서 멈춘다)
 function parsePtGrid(g, wdChar) {
   const out = [];
@@ -77,7 +79,7 @@ function parsePtGrid(g, wdChar) {
       if (m === '점심시간') continue;
       const tm = TIME.exec(m); if (!tm) break;
       const startM = +tm[1] * 60 + +tm[2];
-      for (const { c, name } of cols) { const p = patientOf(g.get(q, c), wdChar); if (p) out.push({ name: p.name, test: p.test, outpatient: p.outpatient, startM, therapist: name, row: q, col: c }); }
+      for (const { c, name } of cols) { const raw = g.get(q, c), p = patientOf(raw, wdChar); if (p) out.push({ name: p.name, test: p.test, outpatient: p.outpatient, startM, therapist: name, bed: bedOf(raw), row: q, col: c }); }
     }
   }
   return out;
@@ -91,7 +93,9 @@ function parseGiGrid(g, wdChar) {
     if (!kind) continue;
     let first = 0; for (let q = r + 1; q <= Math.min(g.maxRow, r + 3); q++) if (TIME.test(compact(g.get(q, 1)))) { first = q; break; }
     if (!first) continue;
-    const cols = [];
+    const cols = [], heads = {}; let lastHead = '';
+    for (let c = 2; c <= g.maxCol; c++) { const hh = compact(g.get(r, c)); if (hh && hh !== '치료사') lastHead = hh; heads[c] = lastHead; } // FES는 머리글이 칸 묶음의 첫 칸에만 있어 왼쪽의 가장 가까운 머리글을 쓴다
+    const stationOf = (c) => String(heads[c] || '').replace(/\(.*?\)/g, '');
     for (let c = 2; c <= g.maxCol; c++) {
       const hd = compact(g.get(r, c));
       if (kind === '기구') { if (/경사대|전동자전거|스탠딩|슬라이딩|트레드밀|WALK|MATE/i.test(hd) && !/^기구\d/.test(hd)) cols.push(c); }
@@ -102,7 +106,7 @@ function parseGiGrid(g, wdChar) {
       if (m === '점심시간') continue;
       const tm = TIME.exec(m); if (!tm) break;
       const startM = +tm[1] * 60 + +tm[2];
-      for (const c of cols) for (const p of patientsOfCell(g.get(q, c), wdChar)) out.push({ name: p.name, kind, startM, row: q, col: c });
+      for (const c of cols) for (const p of patientsOfCell(g.get(q, c), wdChar)) out.push({ name: p.name, kind, startM, station: stationOf(c), row: q, col: c });
     }
   }
   return out;
@@ -119,7 +123,7 @@ function lookup(map, name) {
 // 항목들 → 이름별 칸 목록 Map(이름 → [{startM, cat, text, therapist?, src:'daily'}])
 function toMap(entries, catOf) {
   const m = new Map();
-  for (const e of entries) { const k = compact(e.name); if (!m.has(k)) m.set(k, []); m.get(k).push({ startM: e.startM, cat: catOf(e), text: catOf(e) === '운동' ? '운동치료' : catOf(e) === '기구' ? '기구' : '전기치료', therapist: e.therapist || '', test: !!e.test, src: 'daily' }); }
+  for (const e of entries) { const k = compact(e.name); if (!m.has(k)) m.set(k, []); m.get(k).push({ startM: e.startM, cat: catOf(e), text: catOf(e) === '운동' ? '운동치료' : catOf(e) === '기구' ? '기구' : '전기치료', therapist: e.therapist || '', test: !!e.test, bed: e.bed || '', station: e.station || '', src: 'daily' }); }
   return m;
 }
 // 이 환자에게 그날 시간표(kind: 'pt' | 'gi')를 쓸 수 있는가: 그 층의 시간표가 올라와 있거나(층을 알 때), 층을 모르는 시간표가 있거나, 시간표에 이 이름이 있으면 쓴다.
@@ -138,7 +142,7 @@ function mergeSlots(cardSlots, name, daily) {
   if (daily && daily.useDaily && daily.useDaily.gi) { drop.add('기구'); drop.add('전기'); add.push(...(lookup(daily.gi, name) || [])); }
   return (cardSlots || []).filter(s => !drop.has(s.cat)).concat(add);
 }
-const api = { sheetsForDate, weekdayChar, isTherapistName, patientOf, patientsOfCell, parsePtGrid, parseGiGrid, lookup, toMap, useDaily, mergeSlots, baseOf };
+const api = { sheetsForDate, weekdayChar, isTherapistName, patientOf, patientsOfCell, bedOf, parsePtGrid, parseGiGrid, lookup, toMap, useDaily, mergeSlots, baseOf };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 root.RehabCore = Object.assign(root.RehabCore || {}, { dailyPlan: api });
 })(typeof window !== 'undefined' ? window : globalThis);

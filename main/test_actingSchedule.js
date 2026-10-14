@@ -1,22 +1,12 @@
 // 실행: node main/test_actingSchedule.js
-// 치료기록 QA의 시간표 파서(msParseScheduleSheet)를 HTML에서 잘라 내 평일/토요일·공휴일 형식을 가짜 데이터로 확인한다.
+// 치료기록 QA의 시간표 파서(core/otschedule.js)로 평일/토요일·공휴일 형식을 가짜 데이터로 확인한다.
 'use strict';
 const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const vm = require('vm');
 
-const html = fs.readFileSync(path.join(__dirname, '../renderer/tools/치료_액팅_기록_오류_확인_프로그램_언어분류.html'), 'utf8');
-const cut = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert(i >= 0 && j > i, `marker 없음: ${a}`); return html.slice(i, j); };
-const ctx = { console, ruleList: (k, dflt) => dflt }; vm.createContext(ctx); // 설정 > 규칙이 없는 상태(기본 목록)로 확인
-vm.runInContext([
-  cut('function excelDateToJSDate', 'function pad2'), 'function pad2(n){ return String(n).padStart(2,"0"); }',
-  'const WEEKDAY_CHARS = ["일","월","화","수","목","금","토"];',
-  cut('function msNormText', '// FMA·수지기능'),
-  cut('// 같은 환자·같은 시간대·같은 치료 유형이', '// 카톡 텍스트용'),
-  cut('function msExcelSerialToDate', '// 일부 한글 오피스'),
-  'this.parse = msParseScheduleSheet; this.ymd = msYmd; this.base = msBaseTherapistName; this.clean = msCleanTherapistHeader;',
-].join('\n'), ctx);
+// 파서는 core/otschedule.js로 옮겨졌다 — 예전에는 HTML에서 잘라 냈지만 이제 모듈을 바로 읽는다(설정 > 규칙이 없는 상태 = 기본 ERDT 담당 목록으로 확인)
+const O = require('../renderer/core/otschedule.js');
+const pad2 = (n) => String(n).padStart(2, '0');
+const ctx = { parse: (rows) => O.parseScheduleSheet(rows), ymd: (d) => (d instanceof Date && !isNaN(d) ? `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}` : null), base: O.msBaseTherapistName, clean: O.msCleanTherapistHeader };
 const parse = (rows) => ctx.parse(rows);
 // 치료사 이름 뒤 직종 표시(OT/PT/ST)는 이름이 아니다. A/B 조 표시는 기존대로 뗀다
 for (const [raw, want] of [['엄주용OT', '엄주용'], ['홍길동PT', '홍길동'], ['김가나ST', '김가나'], ['이승규B', '이승규'], ['김기범', '김기범']]) assert.strictEqual(ctx.base(raw), want, raw);

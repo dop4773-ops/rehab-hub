@@ -302,6 +302,14 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       const s = JSON.parse(r); if (!s.at) throw new Error('점검이 안 돌았어요'); if (s.files === 0) return '시간표 파일이 연결돼 있지 않아 건너뜀';
       if (s.items.some(x => !/^(nosheet|stale-title):/.test(x))) throw new Error('이상한 항목: ' + s.items.join(',')); return s;
     });
+    await step('환자 빠른 검색: 오늘 하루 일정(작업치료실·물리치료·기구 시간표 합침)', async () => {
+      const r = JSON.parse(await ev(`(async()=>{ const ymdOf=(d)=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        for(let i=0;i<25;i++){ const d=new Date(Date.now()-i*86400000), w=d.getDay(); if(w===0||w===6) continue; const date=ymdOf(d), p=await buildDayPlan(date); if(p.have.ot||p.have.pt||p.have.gi){
+          const name=[...p.pt.keys()].find(k=>p.ot.has(k.normalize('NFC'))&&(p.gi.has(k)||true)), plan=name?await dayPlanFor(name,date):null;
+          return JSON.stringify({date, ot:p.ot.size, pt:p.pt.size, gi:p.gi.size, have:p.have, sample:plan&&{name, n:plan.rows.length, kinds:[...new Set(plan.rows.map(x=>x.kind))], sorted:plan.rows.every((x,i,a)=>!i||a[i-1].startM<=x.startM)}}); } } return JSON.stringify({skip:'최근 25일 안에 평일 시트가 없어 건너뜀'}); })()`));
+      if (r.skip) return r.skip; if (r.have.ot && r.ot < 100) throw new Error('작업치료실 시간표에서 읽은 환자가 너무 적어요: ' + r.ot); if (r.have.pt && r.pt < 40) throw new Error('물리치료시간표 환자가 너무 적어요: ' + r.pt);
+      if (r.sample && (!r.sample.n || !r.sample.sorted)) throw new Error('하루 일정이 비었거나 시간순이 아니에요: ' + JSON.stringify(r.sample)); return r;
+    });
     await step('교차검증: 제외한 오류가 해결되면 제외명단에서도 자동으로 사라짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', EK='rehab_cross_exclude_v1', orig=localStorage.getItem(KEY), origEx=localStorage.getItem(EK), origFetch=w.fetch;
       try{ const t=w.__testHooks.issues().find(i=>i.source==='notx'); if(!t) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,''), out={};
         w.openExclModal(t); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);
