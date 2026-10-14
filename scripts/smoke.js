@@ -310,6 +310,12 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       if (r.skip) return r.skip; if (r.have.ot && r.ot < 100) throw new Error('작업치료실 시간표에서 읽은 환자가 너무 적어요: ' + r.ot); if (r.have.pt && r.pt < 40) throw new Error('물리치료시간표 환자가 너무 적어요: ' + r.pt);
       if (r.sample && (!r.sample.n || !r.sample.sorted)) throw new Error('하루 일정이 비었거나 시간순이 아니에요: ' + JSON.stringify(r.sample)); return r;
     });
+    await step('홈: 선생님별 할 일(교차검증+치료기록 QA 합침·카톡 글)', async () => {
+      const r = JSON.parse(await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); showView('home'); await sl(300); openWhoModal(); await sl(300); const m=document.getElementById('whoModal'), shown=m.classList.contains('show'), rows=[...document.querySelectorAll('#whoBody .who-row')];
+        const out={shown, rows:rows.length, bad:[]}; whoMerged.forEach((p,i)=>{ const sum=p.sources.reduce((a,s)=>a+s.count,0); if(sum!==p.total) out.bad.push(p.who+':합계 '+sum+'/'+p.total); if((p.text.match(/선생님 확인 부탁드려요/g)||[]).length!==1) out.bad.push(p.who+':머리말 수'); if(!p.text.trim().endsWith('수정했다고 알려 주세요.')) out.bad.push(p.who+':맺음'); if(/undefined|NaN|\\[object/.test(p.text)) out.bad.push(p.who+':이상한 글자'); });
+        out.people=whoMerged.length; out.top=whoMerged.slice(0,3).map(p=>p.who+' '+p.total+'('+p.sources.map(s=>s.label+s.count).join('/')+')'); out.copyBtn=!document.getElementById('whoCopyAll').disabled; document.getElementById('whoClose').click(); out.closed=!m.classList.contains('show'); return JSON.stringify(out); })()`));
+      if (!r.shown || !r.closed) throw new Error('창이 안 열리거나 안 닫혀요: ' + JSON.stringify(r)); if (r.bad.length) throw new Error('합친 결과가 이상해요: ' + r.bad.slice(0, 5).join(', ')); if (r.people && r.rows !== r.people) throw new Error('줄 수가 사람 수와 달라요'); return r;
+    });
     await step('교차검증: 제외한 오류가 해결되면 제외명단에서도 자동으로 사라짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', EK='rehab_cross_exclude_v1', orig=localStorage.getItem(KEY), origEx=localStorage.getItem(EK), origFetch=w.fetch;
       try{ const t=w.__testHooks.issues().find(i=>i.source==='notx'); if(!t) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,''), out={};
         w.openExclModal(t); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);

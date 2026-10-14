@@ -3398,6 +3398,8 @@ ${text}`,
     if(st.view) click(`#viewTabs [data-view-tab="${st.view}"]`);
     return true; }catch(e){ return false; } };
   // 환자 빠른 검색(Ctrl+K)이 읽는 결과 — 읽기 전용
+  // 홈의 「선생님별 할 일」이 읽는 통로 — 치료사별 오류·미액팅 건수와 카톡에 보낼 글. 읽기 전용.
+  window.__whoTasks = () => { try{ return thvGroup().filter(r => r.name && r.name !== RehabCore.therapistView.UNKNOWN && (r.errors.length + r.warns.length + r.missing.length + (r.typeMis||[]).length)).map(r => ({ who:r.name, count:r.errors.length + r.warns.length + r.missing.length, extra:(r.typeMis||[]).length, text:thvMessage(r) })); }catch(e){ return []; } };
   window.__qaApi = { errors: () => (state.issues||[]).filter(i=>i.severity==='오류').map(i=>({patientName:i.patientName,type:i.type,therapist:i.therapist})), missing: () => thvMissingEntries().map(x=>({name:x.name,type:x.type,timeSlot:x.timeSlot})) };
   function thvMissingTotal(){ return (msState.result||[]).filter(r=>!r.dc).reduce((s,r)=>s+Math.max(r.diff,0),0); } // 미액팅 탭 요약의 "미액팅" 숫자와 같은 식
   // ── 회복기재활 16개 초과 환자 명단 + 클릭하면 그 환자의 하루 액팅 미리보기 팝업 ──

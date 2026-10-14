@@ -706,6 +706,29 @@ async function dayPlanFor(name, date) {
 }
 window.__dayPlanFor = dayPlanFor;
 
+// ── 선생님별 할 일: 교차검증·치료기록 QA의 선생님별 확인 항목을 한 사람 기준으로 합쳐 보여 주고, 사람별·전체 카톡 글로 복사한다.
+let whoMerged = [];
+function collectWhoTasks() {
+  const src = [];
+  for (const [key, label] of [['cross', '교차검증'], ['acting', '치료기록 QA']]) { try { const fn = viewDoc(key)?.defaultView.__whoTasks; src.push({ key, label, list: fn ? fn() : [] }); } catch (e) { src.push({ key, label, list: [] }); } }
+  const d = new Date(), wd = '일월화수목금토'[d.getDay()];
+  whoMerged = RehabCore.whoTasks.merge(src, { date: `${d.getMonth() + 1}/${d.getDate()}(${wd})` });
+  return { merged: whoMerged, ready: src.map(s => [s.label, !!(viewDoc(s.key)?.defaultView.__whoTasks)]) };
+}
+function openWhoModal() {
+  const { merged, ready } = collectWhoTasks(), notReady = ready.filter(r => !r[1]).map(r => r[0]);
+  document.getElementById('whoBody').innerHTML = (notReady.length ? `<p class="fix-note">⚠ ${updEsc(notReady.join('·'))} 화면이 아직 열리지 않아 그 도구의 항목은 빠져 있어요. 화면을 한 번 열고 다시 눌러 주세요.</p>` : '')
+    + (merged.length ? merged.map((p, i) => `<div class="who-row"><div class="who-hd"><b>${updEsc(p.who)}</b><span class="pill err">${p.total}건</span>${p.sources.map(s => `<span class="who-src">${updEsc(s.label)} ${s.count}${s.extra ? ` · 종류 다름 ${s.extra}` : ''}</span>`).join('')}<span style="flex:1"></span><button class="btn" data-who-copy="${i}">📋 복사</button></div><pre class="who-txt">${updEsc(p.text)}</pre></div>`).join('') : '<p class="fix-note">지금은 확인할 선생님이 없어요 ✅</p>');
+  document.getElementById('whoCopyAll').disabled = !merged.length;
+  document.getElementById('whoModal').classList.add('show');
+}
+document.getElementById('whoClose').addEventListener('click', () => document.getElementById('whoModal').classList.remove('show'));
+document.getElementById('whoModal').addEventListener('click', async (e) => {
+  if (e.target.id === 'whoModal') { e.currentTarget.classList.remove('show'); return; }
+  const c = e.target.closest('[data-who-copy]'); if (c) { const p = whoMerged[+c.dataset.whoCopy]; showToast((await copyText(p.text)) ? `✅ ${updEsc(p.who)} 선생님 글을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)` : '⚠ 복사하지 못했어요', 3500); }
+});
+document.getElementById('whoCopyAll').addEventListener('click', async () => { const t = whoMerged.map(p => p.text).join('\n\n──────────\n\n'); showToast((await copyText(t)) ? `✅ ${whoMerged.length}명 글을 복사했어요 — 카톡에 붙여넣기` : '⚠ 복사하지 못했어요', 3500); });
+
 // ── 오늘 점검(한 번에) ─────────────────────────────────────
 // 파일 확인 → 화면 준비 → 인수인계 가져오기 → 교차검증 → 치료기록 QA 결과 읽기 → 결과를 한 창에 모아 보여 준다. 각 단계는 평소 버튼과 같은 함수를 부를 뿐이다.
 let dailyChecking = false;
@@ -1272,6 +1295,7 @@ document.addEventListener('click', async (e) => {
   const fp = e.target.closest('[data-files-pop]');
   if (fp) { chipMenu && chipMenu.dataset.for === 'files-pop' ? closeChipMenu() : openFilesPop(fp); return; }
   if (e.target.closest('[data-daily-check]')) { closeChipMenu(); runDailyCheck(); return; }
+  if (e.target.closest('[data-who-all]')) { openWhoModal(); return; }
   const ts = e.target.closest('[data-today-summary]');
   if (ts) { closeChipMenu(); const ok = await copyText(todaySummaryText()); showToast(ok ? '✔ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500); return; }
   const wp = e.target.closest('[data-who-plan]');
@@ -1456,6 +1480,7 @@ const GLOBAL_KEYS = [
   { id: 'patient-search', keys: 'Ctrl+K', label: '환자 빠른 검색', run: () => window.__openPatientSearch && window.__openPatientSearch() },
   { id: 'ps-write', keys: 'F2', label: '환자 빠른 검색: 검색창에 쓰기(검색창이 열려 있을 때)', run: () => window.__psFocus ? window.__psFocus() : false },
   { id: 'ho-refresh', keys: 'Ctrl+Shift+H', label: '인수인계 지금 다시 가져오기', run: () => refreshHandoverNow() },
+  { id: 'who-tasks', keys: 'Ctrl+Shift+U', label: '선생님별 할 일(카톡 글 복사)', run: () => openWhoModal() },
   { id: 'daily-check', keys: 'Ctrl+Shift+D', label: '오늘 점검 한 번에 실행', run: () => runDailyCheck() },
   { id: 'today-summary', keys: 'Ctrl+Shift+T', label: '오늘 요약 복사(카톡용)', run: async () => showToast((await copyText(todaySummaryText())) ? '✅ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500) },
 ];

@@ -3916,6 +3916,8 @@ function renderFixPlan(){
   }
   body.innerHTML=html;
 }
+// 홈의 「선생님별 할 일」이 읽는 통로 — 선생님별 수정 지시서 항목과 카톡에 보낼 글(환자 이름 가리기 설정을 따름). 읽기 전용.
+window.__whoTasks=()=>{ try{ const mask=(window.__rhSettings||{}).qaMaskNames!==false ? RehabCore.therapistView.maskName : null; return fixItemsToWhoMessages(buildFixItems(issues),{date:currentDateLabel(),mask}).map(m=>({who:m.who,count:m.count,text:m.text})); }catch(e){ return []; } };
 window.__openFixPlan=(who)=>{ fixState.who=who||''; document.getElementById('btnFixPlan').click(); };
 document.getElementById('btnFixPlan').addEventListener('click',()=>{ if(!issues.length&&!window.__lastStats){ alert('먼저 검증을 실행해 주세요.'); return; } renderFixPlan(); document.getElementById('fixModal').classList.add('show'); });
 document.getElementById('fixClose').addEventListener('click',()=>document.getElementById('fixModal').classList.remove('show'));
