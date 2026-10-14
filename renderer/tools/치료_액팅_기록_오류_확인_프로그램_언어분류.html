@@ -357,11 +357,8 @@
 .thv-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}.thv-bar select{margin-left:auto;border:1px solid var(--line);border-radius:9px;padding:5px 8px;font-size:12px}
 .cap-sum{font-size:13px;color:#43546d;margin-bottom:10px}.cap-sum b{color:#1f2d45}
 .cap-sum .bad{color:#d12f3b}.cap-sum .cap-ov{color:#d12f3b;font-weight:700}
-.cap-leg{font-size:11.5px;color:#5a6b86;margin:2px 0 8px;display:flex;gap:12px;flex-wrap:wrap}.cap-leg i{display:inline-block;width:14px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
-.cap-pv .g-cell{font-size:12.5px;padding:3px 6px;line-height:1.3}.cap-pv .g-head{font-size:12px;padding:5px 6px;position:static}.cap-pv .g-time{font-size:12px;position:static;white-space:nowrap}.cap-pv .g-time-del{color:#a85a00;background:#fff4df}
-.cap-pv .g-stack{display:flex;flex-direction:column;min-width:0}.cap-pv .g-stack .g-cell{flex:1;border-right:0}
-.cap-pv .g-rec{background:#dcefe3;color:#1f6a4d;font-weight:800}.cap-pv .g-oth{background:#f1f4f9;color:#7a8ba1;font-weight:600;border-style:dashed}
-.cap-pv .g-type small{display:block;font-size:10.5px;font-weight:600;color:#a85a00}
+.cap-pv .g-cell{font-size:12.5px;padding:3px 8px;line-height:1.3}.cap-pv .g-head{font-size:12px;padding:5px 6px;position:static}.cap-pv .g-cell.l{align-items:flex-start;text-align:left}
+.cap-pv .g-rec{background:#dcefe3;color:#1f6a4d;font-weight:800}.cap-pv .g-oth{background:#f4f6fa;color:#8a97ab;font-weight:600}.cap-pv .g-type{font-weight:700}
 .cap-da{margin-top:12px;padding:10px 12px;background:#fff4df;border:1px solid #f0c98a;border-radius:10px;font-size:12.5px;color:#7a4a00;line-height:1.7}
 .thv-row{border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:#fff;overflow:hidden}.thv-row.open{border-color:#9dbceb}
 .thv-hd{display:flex;align-items:center;gap:8px;padding:9px 13px;cursor:pointer}.thv-hd b{font-size:14px;min-width:56px}.thv-hd .pill{font-size:11px}.pill.miss{background:#eaf0ff;color:#4f6fb8}
@@ -541,7 +538,7 @@
         <div class="card-bd" id="capView" style="display:none;">
           <div class="thv-info" id="capInfo"></div>
           <div id="capList"></div>
-          <p class="thv-foot">※ 한 환자의 회복기재활 오더 액팅이 하루 16개를 넘으면 환자 명단으로 모아 보여줘요. 이름을 누르면 그 환자의 하루 액팅을 시간표 미리보기처럼(시간 줄 × 선생님 열) 모아서 볼 수 있어요. 오류 확인 목록에도 같은 건이 오류로 함께 들어 있어요.</p>
+          <p class="thv-foot">※ 한 환자의 회복기재활 오더 액팅이 하루 16개를 넘으면 환자 명단으로 모아 보여줘요. 이름을 누르면 그 환자의 하루 액팅을 시간 순서대로(시간 · 종류 · 치료사) 한 줄씩 보여줘요. 오류 확인 목록에도 같은 건이 오류로 함께 들어 있어요.</p>
         </div>
         <div class="card-bd" id="therapistView" style="display:none;">
           <div class="thv-info" id="thvInfo"></div>
@@ -712,7 +709,7 @@
     </div>
   </div>
   <div id="capModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(10,25,45,.55);align-items:center;justify-content:center;padding:20px;">
-    <div style="background:#fff;border-radius:18px;max-width:920px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35);">
+    <div style="background:#fff;border-radius:18px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35);">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);">
         <b id="capModalTitle" style="font-size:15px;color:#5b72b4;">회복기재활 액팅 미리보기</b>
         <button id="capModalClose" class="secondary" style="padding:5px 12px;font-size:12px;">닫기</button>
@@ -3493,38 +3490,22 @@ ${text}`,
       return `<div class="thv-row" data-cap="${msEscapeAttr(g.key)}"><div class="thv-hd" style="cursor:pointer"><b>${escapeHtml(g.name)}</b><span class="pill err">회복기재활 ${g.count}개</span><span class="thv-part">${[...g.by.entries()].map(([t,n]) => `${escapeHtml(t)} ${n}`).join(' · ')}</span>${hits ? `<span class="pill" style="background:#ffe9c7;color:#a85a00;">삭제된 시간에 액팅 ${hits}</span>` : ''}<span class="thv-sp"></span><span style="color:#5b72b4;font-size:12px;font-weight:700;">미리보기 ▸</span></div></div>`; }).join('')
       : '<div class="empty-state"><strong>회복기재활 액팅이 16개를 넘은 환자가 없어요 ✅</strong></div>';
   }
-  // 클릭한 환자의 하루 액팅을 "시간표 미리보기"와 같은 격자로 보여준다: 줄 = 액팅 시간(시간 순서), 열 = 선생님, 칸 = 그 시간에 한 오더
+  // 클릭한 환자의 하루 액팅을 시간 순서대로 한 줄씩(번호 · 시간 · 종류 · 치료사) 보여준다. 번호는 회복기재활만 세서 마지막 번호가 곧 개수다.
   function capOpen(key){
     const g = (state.capList||[]).find(x => x.key === key); if(!g) return;
-    const ths = [...new Set(g.day.map(x => x.therapist || '담당자 미상'))].sort((a,b) => g.day.filter(x => (x.therapist||'담당자 미상') === b).length - g.day.filter(x => (x.therapist||'담당자 미상') === a).length || a.localeCompare(b,'ko'));
-    const slots = []; // 같은 시작 시간끼리 한 줄
-    g.day.forEach(x => { let sl = slots.find(r => r.startM === x.startM && x.startM != null); if(!sl){ sl = { startM: x.startM, label: x.time.replace('~','~'), acts: [] }; slots.push(sl); } sl.acts.push(x); });
-    const cell = (sl, th) => {
-      const list = sl.acts.filter(x => (x.therapist || '담당자 미상') === th);
-      if(!list.length) return '<div class="g-cell g-empty"></div>';
-      return list.map(x => { const hit = g.ov ? g.ov.hits.filter(h => h.item === x) : [];
-        const cls = hit.length ? 'g-type' : x.recovery ? 'g-rec' : 'g-oth';
-        const tip = `${x.time} ${x.order}${hit.length ? ' · ' + hit.map(h => RehabRecoveryCap.delAddLine(h.entry)).join(' / ') : ''}`;
-        const note = hit.map(h => `<small>삭제 유지: ${escapeHtml(h.entry.deleted.treat)} 삭제 → ${escapeHtml(h.entry.added.treat)} 추가${h.entry.therapist ? '(' + escapeHtml(h.entry.therapist) + ')' : ''}</small>`).join('');
-        return `<div class="g-cell ${cls}" title="${msEscapeAttr(tip)}"><span>${escapeHtml(msSimplifyOrderName(x.order) || x.order)}</span>${note}</div>`; }).join('');
-    };
-    // 한 줄에 같은 선생님 액팅이 둘이면(예: 회복기재활 + 기구치료) 한 칸 안에 위아래로 쌓는다
-    const colsCss = `118px repeat(${ths.length},minmax(130px,1fr))`;
-    let html = `<div class="schedule-grid cap-pv" style="grid-template-columns:${colsCss};grid-auto-rows:minmax(34px,auto);"><div class="g-cell g-head">시간</div>`
-      + ths.map(t => `<div class="g-cell g-head">${escapeHtml(t)} <span style="opacity:.8">${g.day.filter(x => (x.therapist||'담당자 미상') === t).length}</span></div>`).join('');
-    slots.forEach(sl => {
-      const dels = sl.acts.some(x => g.ov && g.ov.hits.some(h => h.item === x));
-      html += `<div class="g-cell g-time${dels ? ' g-time-del' : ''}">${escapeHtml(sl.label)}</div>` + ths.map(t => {
-        const inner = cell(sl, t); const m = inner.match(/^<div class="g-cell g-empty"><\/div>$/);
-        return m ? inner : `<div class="g-stack">${inner}</div>`; }).join('');
+    const showNote = !!(g.ov && g.ov.hits.length);
+    let n = 0;
+    const cols = `44px 112px minmax(0,1fr) 92px${showNote ? ' minmax(0,1fr)' : ''}`;
+    let html = `<div class="schedule-grid cap-pv" style="grid-template-columns:${cols};grid-auto-rows:minmax(32px,auto);"><div class="g-cell g-head">번호</div><div class="g-cell g-head">시간</div><div class="g-cell g-head">종류</div><div class="g-cell g-head">치료사</div>${showNote ? '<div class="g-cell g-head">삭제 유지 내역(참고)</div>' : ''}`;
+    g.day.forEach(x => {
+      const hit = g.ov ? g.ov.hits.filter(h => h.item === x) : [], cls = hit.length ? 'g-type' : x.recovery ? 'g-rec' : 'g-oth';
+      const note = hit.map(h => `${escapeHtml(h.entry.deleted.treat)} 삭제 → ${escapeHtml(h.entry.added.treat)} 추가${h.entry.therapist ? '(' + escapeHtml(h.entry.therapist) + ')' : ''}`).join('<br>');
+      html += `<div class="g-cell ${cls}">${x.recovery ? ++n : ''}</div><div class="g-cell ${cls}">${escapeHtml(x.time)}</div><div class="g-cell ${cls} l">${escapeHtml(x.order)}</div><div class="g-cell ${cls}">${escapeHtml(x.therapist || '담당자 미상')}</div>${showNote ? `<div class="g-cell ${cls} l">${note}</div>` : ''}`;
     });
     html += '</div>';
-    const daBox = !delAddData ? '' : !g.mine.length ? '<div class="cap-da">삭제·추가 내역(삭제 유지)에 이 환자는 없어요.</div>'
-      : `<div class="cap-da"><b>삭제·추가 내역(삭제 유지) — 참고</b><br>${g.mine.map(e => `${g.ov && g.ov.hits.some(h => h.entry === e) ? '● 삭제된 시간에 액팅 있음' : '○ 액팅 없음'} · ${escapeHtml(RehabRecoveryCap.delAddLine(e))}`).join('<br>')}</div>`;
-    $('capModalTitle').textContent = `${g.name} · 회복기재활 액팅 ${g.count}개 (${RECOVERY_DAILY_MAX}개 초과)`;
-    $('capModalBody').innerHTML = `<div class="cap-sum">하루 액팅 <b>${g.day.length}개</b> 중 회복기재활 <b class="bad">${g.count}개</b> · 선생님 ${[...g.by.entries()].map(([t, c]) => `${escapeHtml(t)} ${c}개`).join(' · ')}</div>`
-      + `<div class="cap-leg"><span><i style="background:#dcefe3"></i>회복기재활</span><span><i style="background:#f1f4f9;border:1px solid #d5dce8"></i>그 밖의 액팅</span><span><i style="background:#ffe9c7"></i>삭제 유지된 시간에 한 액팅</span></div>`
-      + html + daBox;
+    $('capModalTitle').textContent = `${g.name} · 회복기재활 액팅 ${g.count}개`;
+    $('capModalBody').innerHTML = `<div class="cap-sum">회복기재활 <b class="bad">${g.count}개</b> <span style="color:#7a8ba1">· 하루 전체 액팅 ${g.day.length}개 중 · 번호는 회복기재활만 센 값</span></div>` + html
+      + (delAddData && !g.mine.length ? '<div class="cap-da">삭제·추가 내역(삭제 유지)에 이 환자는 없어요.</div>' : '');
     $('capModal').style.display = 'flex';
   }
   const capClose = () => { $('capModal').style.display = 'none'; };
