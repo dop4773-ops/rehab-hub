@@ -45,4 +45,13 @@ assert.strictEqual(S.isSyncDue({ mode: 'manual', now, lastSyncAt: 0 }), false);
 assert(S.isValidMode('30') && !S.isValidMode('7') && !S.isValidMode('constructor'), '잘못된 모드 값 방어');
 console.log('OK ⑤ 자동 동기화 주기 판단·잘못된 설정값 방어');
 
+// ⑥ 바뀌면 바로: 저장이 끝난 파일만(수정 후 8초) 읽는다
+assert.strictEqual(S.isSyncDue({ mode: 'instant', now, lastSyncAt: 0 }), false, '바로 모드는 주기가 아니라 안정 여부로 판단');
+assert(S.isValidMode('instant'));
+const scan = { matched: { a: { mtimeMs: 1000 }, b: { mtimeMs: 9000 } }, matchedAll: { c: [{ mtimeMs: 1000 }, { mtimeMs: 5000 }] } };
+assert.strictEqual(S.isStable(scan, ['a'], 10000), true, '9초 지남'); assert.strictEqual(S.isStable(scan, ['b'], 10000), false, '1초 전에 바뀜 — 아직 저장 중일 수 있음');
+assert.strictEqual(S.isStable(scan, ['a', 'b'], 20000), true); assert.strictEqual(S.isStable(scan, ['c'], 10000), false, '여러 파일 중 하나만 최근이어도 기다림'); assert.strictEqual(S.isStable(scan, ['c'], 14000), true);
+assert.strictEqual(S.isStable(scan, ['없는역할'], 10000), true, '없는 역할은 비어 있어 통과(호출 쪽이 stale인 역할만 넘김)'); assert.strictEqual(S.isStable(null, ['a'], 10000), false); assert.strictEqual(S.isStable(scan, ['b'], 10000, 500), true, '기준 시간 바꾸기');
+console.log('OK ⑥ 바뀌면 바로(저장 끝난 파일만)');
+
 console.log('ALL PASS');

@@ -5,7 +5,7 @@
   const KEY = 'rehab_settings_v1';
   const LEGACY = { syncMode: 'rehab_sync_mode', dataView: 'rehab_data_view_v1' }; // 예전에 따로 저장하던 값(처음 한 번만 옮겨옴)
   const DEFAULTS = {
-    syncMode: 'launch', checkSec: 30, notifyStale: true, notifyOneDrive: true,
+    syncMode: 'instant', syncModeChosen: false, checkSec: 30, notifyStale: true, notifyOneDrive: true,
     dataView: 'list', dataStaleFirst: true, dataHideUnused: false,
     homeLayout: 'workbench', sidebar: 'last', fontSize: 'normal', color: 'pastel', filesArea: 'collapsed',
     actingSeverity: 'error', grandStats: 'collapsed', grandTime: '09',
@@ -54,12 +54,12 @@
   function pinHash(pin) { let h1 = 0xdeadbeef, h2 = 0x41c6ce57; const s = 'rehab-rules|' + String(pin); for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36); }
   const HOURS = ['08', '09', '10', '11', '13', '14', '15', '16'];
   const ENUMS = {
-    syncMode: ['launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
+    syncMode: ['instant', 'launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
     dataView: ['list', 'matrix', 'board'], homeLayout: ['workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
     fontSize: ['small', 'normal', 'large'], color: ['pastel', 'vivid'], filesArea: ['collapsed', 'open'],
     actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS, exportToastAuto: ['10', '30', '60', '0'], psEnter: ['card', 'stay', 'goto'],
   };
-  const BOOLS = ['notifyStale', 'notifyOneDrive', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen', 'psRecent'];
+  const BOOLS = ['notifyStale', 'notifyOneDrive', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen', 'psRecent', 'syncModeChosen'];
   const ZOOM = { small: 0.92, normal: 1, large: 1.12 };
   const VIVID_FILTER = 'saturate(1.45)'; // "선명" 색감 — 파스텔 색을 그대로 두고 채도만 올린다
 
@@ -95,6 +95,8 @@
       if (r[k] != null && ENUMS[k].includes(v)) s[k] = v;
     }
     for (const k of BOOLS) if (typeof r[k] === 'boolean') s[k] = r[k];
+    // 예전 기본값(앱 실행 시)을 사용자가 직접 고르지 않았다면 새 기본값(바뀌면 바로)으로 한 번 옮긴다 — 기본 설정이 "파일을 덮어써도 버튼을 눌러야 반영"이라 오래된 내용으로 검사하기 쉬웠다
+    if (!s.syncModeChosen && s.syncMode === 'launch') s.syncMode = 'instant';
     if (typeof r.itdaCategory === 'string' && r.itdaCategory.trim()) s.itdaCategory = r.itdaCategory.trim().slice(0, 40);
     s.rules = normRules(r.rules);
     if (Array.isArray(r.rulesHistory)) s.rulesHistory = r.rulesHistory.filter(x => x && typeof x === 'object' && x.rules).slice(0, 10).map(x => ({ t: Number(x.t) || 0, rules: normRules(x.rules) }));

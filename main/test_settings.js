@@ -86,4 +86,11 @@ assert.strictEqual(S.parseImport('{"app":"other","settings":{}}').ok, false);
   const rt = S.parseImport(S.exportJson(S.normalize({ rulesTab: true, rulesPin: S.pinHash('1'), rulesSlots: { 2: { t: 5, rules: { stCodes: ['X1'] } } } }), [], 'x'));
   assert.ok(rt.ok && rt.settings.rulesTab && rt.settings.rulesSlots['2'].rules.stCodes[0] === 'X1' && rt.settings.rulesPin === S.pinHash('1'), '내보내기·가져오기에 이력·번호 칸·잠금도 같이 옮겨져요');
 }
+{ // 동기화 기본값: 「바뀌면 바로」. 예전 기본값(앱 실행 시)을 직접 고르지 않았다면 한 번 새 기본값으로 옮기고, 직접 고른 값은 건드리지 않는다
+  assert.strictEqual(S.normalize({}).syncMode, 'instant');
+  assert.strictEqual(S.normalize({ syncMode: 'launch' }).syncMode, 'instant', '저장돼 있던 예전 기본값은 새 기본값으로');
+  assert.strictEqual(S.normalize({ syncMode: 'launch', syncModeChosen: true }).syncMode, 'launch', '직접 고른 「앱 실행 시」는 유지');
+  assert.strictEqual(S.normalize({ syncMode: '10', syncModeChosen: true }).syncMode, '10'); assert.strictEqual(S.normalize({ syncMode: 'manual' }).syncMode, 'manual', '다른 값은 옮기지 않음');
+  assert.strictEqual(S.normalize({ syncMode: 'bogus' }).syncMode, 'instant');
+}
 console.log('settings: OK');

@@ -27,13 +27,21 @@
   };
 
   // 자동 동기화 주기(분). launch/manual은 주기 반영 없음(launch=앱 실행 때 한 번만, manual=사용자가 누를 때만).
-  const MODE_MINUTES = { launch: 0, manual: 0, '5': 5, '10': 10, '30': 30, '60': 60 };
+  const MODE_MINUTES = { instant: 0, launch: 0, manual: 0, '5': 5, '10': 10, '30': 30, '60': 60 };
   const isValidMode = (m) => Object.prototype.hasOwnProperty.call(MODE_MINUTES, m);
   function isSyncDue({ mode, now, lastSyncAt }) {
     const min = MODE_MINUTES[mode];
     return !!min && now - lastSyncAt >= min * 60000;
   }
 
-  root.RehabSync = { entrySig, roleSig, rolesSig, roleState, STATE_LABEL, MODE_MINUTES, isValidMode, isSyncDue };
+  // 바뀐 파일이 "다 저장된 뒤"인지: 수정 시각이 minAgeMs(기본 8초) 넘게 지났을 때만 읽는다(엑셀이 저장 중이거나 OneDrive가 받는 중인 파일을 읽지 않게)
+  function isStable(scan, roles, now, minAgeMs = 8000) {
+    if (!scan) return false;
+    return roles.every(r => {
+      const all = scan.matchedAll && scan.matchedAll[r], list = all && all.length ? all : [scan.matched && scan.matched[r]];
+      return list.filter(Boolean).every(e => now - e.mtimeMs >= minAgeMs);
+    });
+  }
+  root.RehabSync = { isStable, entrySig, roleSig, rolesSig, roleState, STATE_LABEL, MODE_MINUTES, isValidMode, isSyncDue };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.RehabSync;
 })(typeof window !== 'undefined' ? window : globalThis);

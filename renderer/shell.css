@@ -547,3 +547,7 @@ body:not(.home-wb) .wb-end{display:none}
 /* 홈 › 오늘 점검 결과 */
 .daily-sec{margin-top:10px}.daily-sec h4{margin:0 0 5px;font-size:13px;color:#2b3550}.daily-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 .env-sum b.warn{color:#b26a00}
+
+/* 도구 위 파일 띠 — 「파일 N/M」 목록 창의 묶음 줄 */
+.fp-row.grp{align-items:center;flex-wrap:nowrap}.fp-row.grp b{width:118px}.fp-cell{display:inline-flex;align-items:center;gap:5px;padding:2px 6px;border-radius:8px;background:#f6f8fc;margin-right:4px}
+.fp-cell em{font-style:normal;font-size:10.5px;font-weight:800;color:#5b72b4;min-width:24px}.fp-cell .w{color:var(--sub);font-size:11px;min-width:34px}

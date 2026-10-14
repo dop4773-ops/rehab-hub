@@ -112,6 +112,7 @@ let syncing = false;
 const settings = RehabSettings.load(localStorage);
 const settingListeners = []; // (key) => void — 설정 화면이 값이 바뀔 때 자기 표시를 고치려고 등록한다
 function setSetting(key, value) {
+  if (key === 'syncMode') settings.syncModeChosen = true; // 사용자가 직접 고른 값은 새 기본값으로 옮기지 않는다
   settings[key] = RehabSettings.normalize({ ...settings, [key]: value })[key];
   RehabSettings.save(localStorage, settings);
   applySetting(key);
@@ -278,6 +279,17 @@ async function syncTick() {
   try { await refreshScan(); } catch (e) { return; }
   await refreshOneDrive();
   const pending = fileRoles.some(r => r.key !== 'handover' && ['stale', 'error'].includes(roleStateOf(r.key)));
+  if (syncMode === 'instant') { // 바뀌면 바로: 바뀐 파일이 다 저장된 뒤(수정 후 8초 지남) 곧바로 반영한다. 읽기 오류로 남은 파일은 파일이 또 바뀔 때까지 다시 시도하지 않는다.
+    const stale = fileRoles.filter(r => r.key !== 'handover' && roleStateOf(r.key) === 'stale');
+    if (stale.length && RehabSync.isStable(lastScan, stale.map(r => r.key), Date.now())) {
+      await syncNow({ skipScan: true });
+      const done = stale.filter(r => roleStateOf(r.key) === 'latest');
+      if (done.length) showToast(`🔄 바뀐 파일을 바로 반영했어요 · ${updEsc(done.map(r => CHIP_NAME[r.key] || r.label).join(', '))}`, 5000);
+      return;
+    }
+    if (stale.length) setTimeout(syncTick, 6000); // 아직 저장 중이면 곧 다시 확인
+    renderAll(); return;
+  }
   if (pending && RehabSync.isSyncDue({ mode: syncMode, now: Date.now(), lastSyncAt })) await syncNow({ skipScan: true });
   else { renderAll(); notifyStale(); }
 }
@@ -987,6 +999,27 @@ function openChipMenu(chipEl) {
   chipMenu = m;
 }
 const fmtDateTime = (ms) => { const d = new Date(ms); return `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+// 층별로 쌍을 이루는 파일은 한 줄로 묶어 보여 준다(목록 창). 묶이지 않는 파일은 한 줄에 하나.
+const ROLE_GROUPS = [
+  { label: '전체시간표', roles: ['card3', 'card10'] }, { label: '물리치료시간표', roles: ['pt3', 'pt10'] }, { label: '기구시간표', roles: ['gi3', 'gi10'] },
+  { label: '매트·테이블현황', roles: ['mt3', 'mat10', 'table10'] },
+];
+const roleFloorLabel = (r) => (/10$/.test(r) ? '10F' : /3$/.test(r) ? '3F' : '');
+function toolFileRows(key) {
+  const roles = toolRoles(key), used = new Set(), rows = [];
+  for (const g of ROLE_GROUPS) { const rs = g.roles.filter(r => roles.includes(r)); if (rs.length > 1) { rs.forEach(r => used.add(r)); rows.push({ label: g.label, roles: rs }); } }
+  roles.filter(r => !used.has(r)).forEach(r => rows.push({ label: CHIP_NAME[r] || (roleDef(r) || {}).label || r, roles: [r] }));
+  return rows;
+}
+// 화면 안에서 직접 올린 파일도 "올라온 것"으로 센다(액팅 기록·일일통계)
+function roleLoaded(key, role) {
+  const i = roleInfo(role); if (i.entries.length) return true;
+  if (key === 'acting' && role === 'acting' && readToolSummary('acting')) return true;
+  if (key === 'acting' && role === 'dailyStats') { try { const q = document.querySelector('iframe[data-tool="acting"]').contentWindow.__dcSummary; return !!(q && q.ok); } catch (e) { return false; } }
+  return false;
+}
+const roleProblem = (role) => ['stale', 'error', 'updating'].includes(roleStateOf(role)) || (roleStateOf(role) === 'missing' && (roleDef(role) || {}).required);
+// 위쪽 띠는 한 줄로 간단하게: 상태 + 「파일 N/M ▾」 + 문제 있는 파일(그리고 이 화면의 핵심 입력 파일)만 칩으로. 전체 목록은 「파일 N/M」을 누르면 창으로 본다.
 function renderToolStrips() {
   for (const key of Object.keys(TOOLS)) {
     const el = document.querySelector(`[data-tool-status="${key}"]`);
@@ -995,14 +1028,35 @@ function renderToolStrips() {
     const o = syncOverview(roles);
     const hasHandover = TOOLS[key].targets.some(t => (t.roles || [t.role]).includes('handover'));
     const open = filesIsOpen(key);
+    const primary = TOOLS[key].primaryRoles || [], shown = roles.filter(r => roleProblem(r) || primary.includes(r));
+    const found = roles.filter(r => roleLoaded(key, r)).length, worst = roles.some(r => roleStateOf(r) === 'error') ? 'err' : roles.some(r => roleProblem(r)) ? 'stale' : 'ok';
     el.className = `tool-status ${o.cls}`;
     el.innerHTML = `<b>${o.cls === 'ok' ? '● 데이터 최신' : o.text}</b>`
       + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>`
-      + `<span class="chips">${roles.map(r => fileChip(r, key)).join('')}${hasHandover ? (() => { const hf = handoverFreshness(); return `<span class="fchip ${hf.cls === 'warn' ? 'stale' : hf.cls}" data-ho-refresh title="${hf.text} — 누르면 지금 다시 가져와요"><i></i>인수인계<small>${hf.at ? hf.age : '실시간'}</small></span>`; })() : ''}</span>`
+      + `<span class="chips"><span class="fchip ${worst} click" data-tool-files="${key}" title="이 화면이 쓰는 파일 전체 보기·바꾸기"><i></i>파일 ${found}/${roles.length}<small>▾</small></span>${shown.map(r => fileChip(r, key)).join('')}${hasHandover ? (() => { const hf = handoverFreshness(); return `<span class="fchip ${hf.cls === 'warn' ? 'stale' : hf.cls}" data-ho-refresh title="${hf.text} — 누르면 지금 다시 가져와요">` + `<i></i>인수인계<small>${hf.at ? hf.age : '없음'}</small></span>`; })() : ''}</span>`
       + `<span class="acts"><button class="btn${o.cls === 'ok' ? '' : ' primary'}" data-sync-now>🔄 불러오기</button>`
       + `<button class="btn" data-files-toggle="${key}">📂 직접 넣기 ${open ? '▴' : '▾'}</button></span>`;
     if (loadedTools.has(key)) applyFilesCollapse(key);
   }
+}
+// 「파일 N/M」 목록 창: 이 화면이 쓰는 파일을 묶음별로, 상태·수정 시각·다시 읽기·직접 고르기와 함께
+function openToolFilesPop(anchor, key) {
+  closeChipMenu();
+  const stl = (st) => (st === 'latest' ? 'ok' : st === 'stale' || st === 'updating' ? 'stale' : st === 'error' ? 'err' : 'off');
+  const cell = (r) => {
+    const i = roleInfo(r), st = i.state, loaded = roleLoaded(key, r), def = roleDef(r) || {}, manual = (lastScan && lastScan.manualRoles || []).includes(r);
+    const cls = loaded && st === 'missing' ? 'ok' : st === 'missing' && def.required ? 'err' : stl(st);
+    const label = loaded && st === 'missing' ? '직접 올림' : st === 'missing' ? (def.required ? '없음' : '선택 안 함') : RehabSync.STATE_LABEL[st].replace(/^[^\s]+\s/, '');
+    return `<span class="fp-cell"><em>${roleFloorLabel(r)}</em><span class="fp-st ${cls}">${updEsc(label)}</span><span class="w">${i.entries.length ? fmtTime(i.modified) + (manual ? ' · 직접' : '') : ''}</span>`
+      + (i.entries.length ? `<button class="btn" data-chip-resync="${r}" title="이 파일만 다시 읽기">↻</button>` : '') + `<button class="btn" data-manual-pick="${r}" title="파일 직접 고르기">📂</button></span>`;
+  };
+  const m = document.createElement('div'); m.className = 'chip-menu wide'; m.style.maxWidth = '720px'; m.style.minWidth = '640px';
+  m.innerHTML = toolFileRows(key).map(row => `<div class="fp-row grp"><b title="${updEsc(row.label)}">${updEsc(row.label)}</b>${row.roles.map(cell).join('')}</div>`).join('')
+    + '<div class="muted" style="font-size:11px;margin-top:6px;padding:0 4px">파일이 바뀌면 자동으로 알려 드려요 · 설정에서 「바뀌면 바로 반영」을 켜 둘 수 있어요</div>';
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect(), w = m.offsetWidth;
+  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+  chipMenu = m; chipMenu.dataset.for = 'tool-files-' + key;
 }
 
 function renderAll() { renderHome(); renderDataView(); }
@@ -1120,6 +1174,8 @@ document.getElementById('addFolderBtn').addEventListener('click', async () => {
 document.getElementById('dataScanBtn').addEventListener('click', () => syncNow({ statusEl: document.getElementById('dataStatus') }));
 // "지금 업데이트"/"데이터 업데이트" 버튼은 화면을 다시 그릴 때마다 새로 생기므로 위임으로 한 번만 연결한다.
 document.addEventListener('click', async (e) => {
+  const tf = e.target.closest('[data-tool-files]');
+  if (tf) { chipMenu && chipMenu.dataset.for === 'tool-files-' + tf.dataset.toolFiles ? closeChipMenu() : openToolFilesPop(tf, tf.dataset.toolFiles); return; }
   const fp = e.target.closest('[data-files-pop]');
   if (fp) { chipMenu && chipMenu.dataset.for === 'files-pop' ? closeChipMenu() : openFilesPop(fp); return; }
   if (e.target.closest('[data-daily-check]')) { closeChipMenu(); runDailyCheck(); return; }
