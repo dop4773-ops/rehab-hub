@@ -76,17 +76,18 @@ function delAddOverlaps(entries, items) {
 }
 // items: [{regNo, name, startM, time, therapist, ref}] — 이미 "회복기재활 오더"만 골라 넣는다. 환자(등록번호 없으면 이름)별로 세어 max를 넘는 환자를 돌려준다.
 // 시간순으로 줄 세워 (max+1)번째 액팅을 trigger로 한다(기준을 넘기게 한 액팅).
+const patientKey = (it) => regDigits(it.regNo) || 'n:' + nameKey(it.name); // 같은 환자 판단: 등록번호가 있으면 등록번호, 없으면 이름
 function findRecoveryOver(items, max = 15) {
   const by = new Map();
-  for (const it of items || []) { const k = regDigits(it.regNo) || 'n:' + nameKey(it.name); if (!by.has(k)) by.set(k, []); by.get(k).push(it); }
+  for (const it of items || []) { const k = patientKey(it); if (!by.has(k)) by.set(k, []); by.get(k).push(it); }
   const out = [];
   for (const list of by.values()) {
     if (list.length <= max) continue;
     const sorted = list.slice().sort((a, b) => (a.startM == null) - (b.startM == null) || a.startM - b.startM);
-    out.push({ name: sorted[0].name, regNo: sorted[0].regNo, count: sorted.length, items: sorted, trigger: sorted[max] });
+    out.push({ key: patientKey(sorted[0]), name: sorted[0].name, regNo: sorted[0].regNo, count: sorted.length, items: sorted, trigger: sorted[max] });
   }
   return out.sort((a, b) => b.count - a.count || nameKey(a.name).localeCompare(nameKey(b.name), 'ko'));
 }
-const api = { parseDelAddRows, delAddFor, delAddLine, delAddOverlaps, findRecoveryOver, parseTreat };
+const api = { parseDelAddRows, delAddFor, delAddLine, delAddOverlaps, findRecoveryOver, patientKey, parseTreat, rangeMin };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RehabRecoveryCap = api;
 })(typeof window !== 'undefined' ? window : globalThis);

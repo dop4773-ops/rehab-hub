@@ -43,6 +43,7 @@ assert.strictEqual(C.findRecoveryOver(mk(15, '1', '가')).length, 0);
 assert.strictEqual(C.findRecoveryOver([...mk(8, '1', '가'), ...mk(8, '1', '가-다른표기')]).length, 1, '등록번호가 같으면 이름 표기가 달라도 한 환자');
 assert.strictEqual(C.findRecoveryOver([...mk(8, '', '가'), ...mk(8, '', '나')]).length, 0, '이름이 다르면 합치지 않음');
 assert.strictEqual(C.findRecoveryOver(mk(16, '1', '가'), 20).length, 0, '기준 값 바꾸기');
+assert.strictEqual(C.patientKey({ regNo: '00123', name: 'a' }), '00123'.replace(/\D/g, '')); assert.strictEqual(C.patientKey({ regNo: '', name: '김 영옥A' }), 'n:김영옥A'); assert.strictEqual(o[0].key, 'n:다', '결과에 환자 키가 들어감'); assert.strictEqual(C.findRecoveryOver(mk(16, '7', '가'))[0].key, '7');
 // 시간을 못 읽는 줄은 뒤로
 o = C.findRecoveryOver([{ regNo: '1', name: '가', startM: null, ref: 'z' }, ...mk(15, '1', '가')]); assert.strictEqual(o[0].trigger.ref, 'z');
 console.log('recoverycap: OK');
