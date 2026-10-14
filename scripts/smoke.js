@@ -279,6 +279,17 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       const bad=is.filter(i=>!recs.some(r=>nk(r.name)===nk(i.patient)&&(!String(r.doctor||'').trim()||!String(r.therapist||'').trim()))).map(i=>i.patient);
       if(bad.length) throw new Error('RM·작성자가 비지 않은 환자가 잡혔어요: '+bad.join(','));
       return {nofield:is.length, sample:is.slice(0,3).map(i=>i.title+' / '+i.line), skip:w.document.getElementById('freshBox').innerText.slice(0,160)}; })()`));
+    await step('QA: 그날 물리치료시간표·기구시간표 읽기(실제 파일의 평일 시트)', async () => {
+      const r = await ev(`(async()=>{ await new Promise(r=>setTimeout(r,500)); const h=${W('acting')}.__testHooks, dp=h.debugPlan(); if(!dp.pt.length&&!dp.gi.length) return {skip:'파일이 연결돼 있지 않아 건너뜀'};
+        for(let i=0;i<25;i++){ const d=new Date(Date.now()-i*86400000), w=d.getDay(); if(w===0||w===6) continue; const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); const p=await h.buildDaily(ymd);
+          if(p.floors.pt.length||p.floors.gi.length) return {date:ymd, files:{pt:dp.pt.length,gi:dp.gi.length}, ...p}; } return {skip:'최근 25일 안에 평일 시트가 없어 건너뜀'}; })()`);
+      if (!r || r.skip) return r && r.skip;
+      const bad = [...r.ptNames, ...r.giNames].filter(n => !/^[가-힣]{2,5}[A-E]?$/.test(n));
+      if (bad.length) throw new Error('환자 이름이 이상하게 읽혔어요: ' + bad.slice(0, 8).join(','));
+      if (r.files.pt && r.pt < 40) throw new Error('물리치료시간표에서 읽은 환자가 너무 적어요: ' + r.pt);
+      if (r.files.gi && r.gi < 20) throw new Error('기구시간표에서 읽은 환자가 너무 적어요: ' + r.gi);
+      return { date: r.date, 물리치료환자: r.pt, 기구·전기환자: r.gi, 층: r.floors, 못읽은시트: r.unread };
+    });
     await step('교차검증: 제외한 오류가 해결되면 제외명단에서도 자동으로 사라짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', EK='rehab_cross_exclude_v1', orig=localStorage.getItem(KEY), origEx=localStorage.getItem(EK), origFetch=w.fetch;
       try{ const t=w.__testHooks.issues().find(i=>i.source==='notx'); if(!t) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,''), out={};
         w.openExclModal(t); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);

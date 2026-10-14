@@ -38,10 +38,10 @@ function slotMinutes(raw) {
 function compare(slots, act, { slotMin = SLOT_MIN } = {}) {
   const c = cat(act.order);
   const at = (slots || []).filter(s => act.startM != null && s.startM <= act.startM && act.startM < s.startM + slotMin);
-  if (!at.length) return { state: 'noSched', cat: c, sched: [] };
+  if (!at.length) return { state: 'noSched', cat: c, sched: [], at: [] };
   const sc = at.map(s => s.cat || cat(s.text)).filter(Boolean);
-  if (!c || !sc.length || sc.includes(c)) return { state: 'ok', cat: c, sched: sc };
-  return { state: 'other', cat: c, sched: sc };
+  if (!c || !sc.length || sc.includes(c)) return { state: 'ok', cat: c, sched: sc, at };
+  return { state: 'other', cat: c, sched: sc, at };
 }
 const api = { SLOT_MIN, cat, dayLabel, slotMinutes, compare };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;

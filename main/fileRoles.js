@@ -9,6 +9,8 @@ const FILE_ROLES = [
   { key: 'card10', label: '10F 환자전체시간표(원본)', required: true },
   { key: 'pt3', label: '3F 물리치료시간표', required: false },
   { key: 'pt10', label: '10F 물리치료시간표', required: false },
+  { key: 'gi3', label: '3F 기구시간표', required: false },
+  { key: 'gi10', label: '10F 기구시간표', required: false },
   { key: 'mt3', label: '3F 매트·테이블현황', required: true },
   { key: 'mat10', label: '10F 매트현황', required: true },
   { key: 'table10', label: '10F 테이블현황', required: true },
@@ -30,6 +32,7 @@ function guessFileRole(name) {
   // 먼저 판단해서 치료기록 QA의 토요일·공휴일 시간표 칸(satSchedule)으로 보낸다.
   if (/삭제\s*[·ㆍ_]?\s*추가\s*내역/.test(n)) return 'delAdd'; // 치료기록 QA의 회복기재활 16개 이상 오류에 참고로 쓴다
   if (/토요일|공휴일/.test(n) && /시간표/.test(n)) return 'satSchedule';
+  if (/기구\s*시간표/.test(n)) return is3 && !is10 ? 'gi3' : 'gi10'; // 기구·FES 시간표(1:다) — 치료기록 QA가 그날 스케줄 비교에 쓴다
   if (/전체시간표/.test(n)) return is3 && !is10 ? 'card3' : 'card10';
   if (/물리치료.*시간표|PT\s*시간표/i.test(n)) return (is3 && !is10) ? 'pt3' : 'pt10';
   if (/매트/.test(n) && /테이블/.test(n)) return 'mt3';
