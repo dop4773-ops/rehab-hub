@@ -74,6 +74,12 @@ function delAddOverlaps(entries, items) {
   hits.sort((a, b) => a.item.startM - b.item.startM);
   return { hits, rest: (entries || []).filter(e => !used.has(e)) };
 }
+// 대체로 추가된 치료의 시간대("11:25~11:55")에서 시작한 액팅이면 그 내역을 돌려준다(없으면 null)
+function addedAt(entries, startM) {
+  if (startM == null) return null;
+  for (const e of entries || []) { const rg = rangeMin(e.added && e.added.time); if (rg && startM >= rg[0] && startM < rg[1]) return e; }
+  return null;
+}
 // items: [{regNo, name, startM, time, therapist, ref}] — 이미 "회복기재활 오더"만 골라 넣는다. 환자(등록번호 없으면 이름)별로 세어 max를 넘는 환자를 돌려준다.
 // 시간순으로 줄 세워 (max+1)번째 액팅을 trigger로 한다(기준을 처음 넘긴 액팅). 정상 한도는 max개(기본 16)까지.
 const patientKey = (it) => regDigits(it.regNo) || 'n:' + nameKey(it.name); // 같은 환자 판단: 등록번호가 있으면 등록번호, 없으면 이름
@@ -88,6 +94,6 @@ function findRecoveryOver(items, max = 16) {
   }
   return out.sort((a, b) => b.count - a.count || nameKey(a.name).localeCompare(nameKey(b.name), 'ko'));
 }
-const api = { parseDelAddRows, delAddFor, delAddLine, delAddOverlaps, findRecoveryOver, patientKey, parseTreat, rangeMin };
+const api = { parseDelAddRows, delAddFor, delAddLine, delAddOverlaps, addedAt, findRecoveryOver, patientKey, parseTreat, rangeMin };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RehabRecoveryCap = api;
 })(typeof window !== 'undefined' ? window : globalThis);

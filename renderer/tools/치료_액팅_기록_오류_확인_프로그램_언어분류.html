@@ -9,6 +9,10 @@
   <script src="../vendor/xlsx.full.min.js"></script>
 <script src="../core/therapistview.js"></script>
 <script src="../core/ordertype.js"></script>
+<script src="../core/xlsx-reader.js"></script>
+<script src="../core/normalize.js"></script>
+<script src="../core/cards.js"></script>
+<script src="../core/cardsched.js"></script>
 <script src="../core/recoverycap.js"></script>
 <script src="../core/workstate.js"></script>
   <script src="../vendor/jszip.min.js"></script>
@@ -358,7 +362,9 @@
 .cap-sum{font-size:13px;color:#43546d;margin-bottom:10px}.cap-sum b{color:#1f2d45}
 .cap-sum .bad{color:#d12f3b}.cap-sum .cap-ov{color:#d12f3b;font-weight:700}
 .cap-pv .g-cell{font-size:12.5px;padding:3px 8px;line-height:1.3}.cap-pv .g-head{font-size:12px;padding:5px 6px;position:static}.cap-pv .g-cell.l{align-items:flex-start;text-align:left}
-.cap-pv .g-rec{background:#dcefe3;color:#1f6a4d;font-weight:800}.cap-pv .g-oth{background:#f4f6fa;color:#8a97ab;font-weight:600}.cap-pv .g-type{font-weight:700}
+.cap-pv .g-rec{background:#dcefe3;color:#1f6a4d;font-weight:800}.cap-pv .g-oth{background:#f4f6fa;color:#8a97ab;font-weight:600}.cap-pv .g-type{font-weight:700}.cap-pv .g-diff{background:#ece0fb;color:#5a3a96;font-weight:700}
+.cap-leg{font-size:11.5px;color:#5a6b86;margin:2px 0 8px;display:flex;gap:12px;flex-wrap:wrap}.cap-leg i{display:inline-block;width:14px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.cap-hint{font-size:12px;color:#8a97ab;margin:2px 0 6px}.cap-sum .cap-df b{color:#6b3fa0}
 .cap-da{margin-top:12px;padding:10px 12px;background:#fff4df;border:1px solid #f0c98a;border-radius:10px;font-size:12.5px;color:#7a4a00;line-height:1.7}
 .thv-row{border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:#fff;overflow:hidden}.thv-row.open{border-color:#9dbceb}
 .thv-hd{display:flex;align-items:center;gap:8px;padding:9px 13px;cursor:pointer}.thv-hd b{font-size:14px;min-width:56px}.thv-hd .pill{font-size:11px}.pill.miss{background:#eaf0ff;color:#4f6fb8}
@@ -538,7 +544,7 @@
         <div class="card-bd" id="capView" style="display:none;">
           <div class="thv-info" id="capInfo"></div>
           <div id="capList"></div>
-          <p class="thv-foot">※ 한 환자의 회복기재활 오더 액팅이 하루 16개를 넘으면 환자 명단으로 모아 보여줘요. 이름을 누르면 그 환자의 하루 액팅을 시간 순서대로(시간 · 종류 · 치료사) 한 줄씩 보여줘요. 오류 확인 목록에도 같은 건이 오류로 함께 들어 있어요.</p>
+          <p class="thv-foot">※ 한 환자의 회복기재활 오더 액팅이 하루 16개를 넘으면 환자 명단으로 모아 보여줘요. 이름을 누르면 그 환자의 하루 액팅을 시간 순서대로(시간 · 종류 · 치료사) 한 줄씩 보여줘요. 전체시간표를 올렸다면 기존 스케줄과 다른 치료는 보라색으로 표시해요. 오류 확인 목록에도 같은 건이 오류로 함께 들어 있어요.</p>
         </div>
         <div class="card-bd" id="therapistView" style="display:none;">
           <div class="thv-info" id="thvInfo"></div>
@@ -592,6 +598,10 @@
             </div>
             <input id="daFileInput" type="file" accept=".xlsx,.xls" style="display:none;" />
             <div id="daFileInfo" class="small" style="margin-top:6px;color:#7a8ba1;">올리지 않아도 회복기재활 16개 초과 검사는 그대로 동작합니다.</div>
+            <label for="cardFileInput" style="display:block;margin-top:12px;">환자 전체시간표(원본) 파일 (선택 · 3F·10F, 회복기재활 초과 환자의 액팅을 기존 스케줄과 비교해요)</label>
+            <input id="cardFileInput" type="file" accept=".xlsx,.xlsm" multiple style="display:none;" />
+            <button type="button" id="cardPickBtn" class="secondary" style="margin-top:6px;padding:8px 14px;font-size:12.5px;">📂 전체시간표 파일 올리기 (3F·10F 함께 선택 가능)</button>
+            <div id="cardFileInfo" class="small" style="margin-top:6px;color:#7a8ba1;">올리지 않으면 스케줄 비교는 건너뛰어요.</div>
           </div>
           <div class="field" style="margin-top:12px;">
             <label for="dcFileInput">일일통계 파일 업로드 (D/C 명단, 팀별 파일 여러 개 한 번에 선택 가능)</label>
@@ -686,6 +696,7 @@
               <li>황선용A / 김순자D처럼 이름 뒤 구분용 알파벳(A~E 등)은 액팅 기록에도 동일하게 남아 있어 그대로 이름으로 매칭합니다.</li>
               <li><b>시간 충돌</b>: CCRT/BETTER/COMCOG/ERDT 미니표의 오더가 "같은 치료사·같은 시간"에 메인 표에서는 다른 환자를 치료 중인 것으로 나오면, 그 치료사가 실제로는 그 시간에 미니표 환자를 볼 수 없었다는 뜻이므로 미액팅 집계에서 제외하고 미리보기 하단 칩에 보라색 취소선으로 따로 표시합니다.</li>
               <li><b>액팅 종류 다름</b>: 스케줄(시간표) 오더와 같은 시간대(60분 안)에 <b>다른 종류로 액팅</b>한 경우(예: 인지(CCRT)로 잡힌 시간에 특수작업치료로 액팅, 특수인데 연하치료로 액팅)입니다. 같은 종류끼리 먼저 짝을 지은 뒤 남은 것만 비교하고, 모르는 처방명이나 D/C 환자는 비교하지 않습니다. 미리보기에서는 주황색 칸(「특수→연하」처럼 표시), 목록형에서는 「액팅 종류 다름」 표시·필터, 카톡 공유용 텍스트에서는 「<액팅 종류 다름>」 구역으로 알려 주며 미액팅 합계에는 넣지 않습니다.</li>
+              <li><b>건너뛰는 칸</b>: 시간표 칸에 <b>단축근무</b>(임신기 단축근무 등 선생님 근무 일정 메모)가 적혀 있으면 환자 오더가 아니므로 특수로 보지 않고 집계에서 뺍니다. <b>CCRT의 TEST(평가)</b>는 기존 인지 오더와 똑같이 입력하므로 「액팅 종류 다름」 비교에서는 인지로 봅니다.</li>
               <li><b>D/C 명단</b>: 팀별 일일통계 파일을 함께 올리면, 그 안의 "회복기 D/C 명단"과 "비회복기 D/C 명단" 두 표 모두에서 오늘 날짜로 올라온 환자를 D/C로 인식해 미액팅 집계·합계·카톡 텍스트에서 자동으로 빠집니다. 다만 그 환자를 D/C로 적은 바로 그 담당 선생님 이름으로, D/C 명단의 "구분"이 가리키는 것과 같은 종류의 치료(구분 C = 전산화인지·평가, 구분 S = 작업특수)가 실제 액팅되어 있으면 "D/C인데 액팅있음"으로 표시합니다. (CCRT/BETTERCOG/COMCOG의 평가(TEST)가 D/C될 때는 구분을 C로 적는 관례를 반영했습니다.)</li>
               <li><b>미리보기</b>의 빨간 칸은 액팅 세션 시작 시간과 가장 가까운 예정 오더를 1:1로 짝지은 뒤, 짝을 찾지 못한 예정 오더를 후보로 표시한 <b>추정치</b>입니다. 실제로 어느 시간대가 빠졌는지는 "?" 표시나 상세보기에서 액팅 목록과 함께 확인해 주세요.</li>
             </ul>
@@ -1393,7 +1404,19 @@ ${text}`,
       const day = all.filter(x => RehabRecoveryCap.patientKey(x) === g.key).sort((a,b) => (a.startM == null) - (b.startM == null) || a.startM - b.startM);
       const by = new Map(); g.items.forEach(x => by.set(x.therapist || '담당자 미상', (by.get(x.therapist || '담당자 미상') || 0) + 1));
       const mine = delAddData ? RehabRecoveryCap.delAddFor(delAddData.entries, { regNo: g.regNo, name: g.name }) : [];
-      return { ...g, day, by, mine, ov: delAddData && mine.length ? RehabRecoveryCap.delAddOverlaps(mine, day) : null };
+      const ov = delAddData && mine.length ? RehabRecoveryCap.delAddOverlaps(mine, day) : null;
+      // 전체시간표(원본) 카드의 그 날 요일 스케줄과 비교: 스케줄에 없는 시간이거나 스케줄과 다른 종류의 치료면 sd에 담는다.
+      // 삭제·추가 내역으로 설명되는 액팅(삭제된 시간 / 대체로 추가된 시간)은 "스케줄과 다름"으로 보지 않는다.
+      let pd = null; try{ pd = msPrimaryDate(); }catch(e){}
+      const dow = RehabCore.cardSched.dayLabel(pd), card = cardPlan.get(cardKeyOf(g.regNo, '')) || cardPlan.get(cardKeyOf('', g.name)) || null;
+      day.forEach(x => {
+        x.cat = RehabCore.cardSched.cat(x.order);
+        const ab = RehabRecoveryCap.addedAt(mine, x.startM); // 대체로 추가된 시간대 + 같은 종류의 치료일 때만 "삭제·추가 내역으로 설명되는 액팅"
+        x.addedBy = ab && (!x.cat || RehabCore.cardSched.cat(ab.added.treat) === x.cat || !RehabCore.cardSched.cat(ab.added.treat)) ? ab : null;
+        x.sd = card && dow ? RehabCore.cardSched.compare(card.days[dow] || [], x) : null;
+        x.differs = !!(x.sd && x.sd.state !== 'ok' && !x.addedBy && !(ov && ov.hits.some(h => h.item === x)));
+      });
+      return { ...g, day, by, mine, ov, hasCard: !!(card && dow), differs: day.filter(x => x.differs).length };
     });
   }
   function recoveryCapIssues(list){
@@ -2081,6 +2104,7 @@ ${text}`,
       if(/^(10층|3층)\s*(ERDT|CCRT|COMCOG|BETTER)/i.test(s)) return { skip:true, marker:s }; // 토요일/공휴일 시간표의 "10층 ERDT" 표기
       if(MS_MINI_TITLE_RE.test(s)) return { skip:true, marker:s }; // "ERDT"/"CCRT"만 단독으로 적힌 칸은 환자가 아니라 해당 치료실 표시
       if(/^육아휴직/.test(s)) return { skip:true };
+      if(/단축\s*근무|단축|임신기|임산부/.test(s)) return { skip:true }; // 임신기 단축근무 등 선생님 근무 일정 메모 칸은 환자 오더가 아님(특수로 오인하지 않게)
       if(/퇴원|입원/.test(s) || /^\d+호/.test(s)) return { skip:true }; // 입퇴원 안내 등 관리용 메모 칸은 오더가 아님
       if(/^외래$/.test(s)) return { skip:true }; // "외래"만 단독으로 있는 칸은 환자명이 아닌 잔여 표시
       let lines = s.split('\n').map(x=>x.trim()).filter(Boolean);
@@ -2133,7 +2157,7 @@ ${text}`,
       // 전산화인지(CC/CCRT) 칸에 둘째 줄이 TEST이면 그 회차는 평가입니다("홍길동 CC\nTEST").
       const ccTest = (suffix==='CC'||suffix==='CCRT') && lines.length>1 && /^TEST\b/i.test(lines[1]);
       const type = ccTest ? '평가' : (suffix==='CC'||suffix==='CCRT') ? '전산화인지' : suffix==='R' ? '연하치료' : suffix==='TEST' ? '평가' : (suffix==='CT'||suffix==='CM'||suffix==='CB') ? '복잡' : '작업특수';
-      return { name, type, raw:s };
+      return { name, type, raw:s, ...(ccTest ? { ccrtTest:true } : {}) }; // CCRT의 TEST는 기존 인지 오더와 똑같이 입력하므로 종류 다름 비교에서는 인지로 본다
     }
 
     const timeRows = [];
@@ -2150,7 +2174,7 @@ ${text}`,
         timeRows.push({ row:r, label:c0, lunch:false });
         therapistCols.forEach(tc=>{
           const parsed = parseMainCell(rows[r][tc.col], tc.name);
-          if(parsed && !parsed.skip) entries.push({ name:parsed.name, type:parsed.type, source:'메인표', timeSlot:c0, row:r, col:tc.col, therapist:tc.name, raw:parsed.raw });
+          if(parsed && !parsed.skip) entries.push({ name:parsed.name, type:parsed.type, source:'메인표', timeSlot:c0, row:r, col:tc.col, therapist:tc.name, raw:parsed.raw, ...(parsed.ccrtTest ? { ccrtTest:true } : {}) });
           else if(parsed && parsed.marker){ const m = /(ERDT|CCRT|COMCOG|BETTER)/i.exec(parsed.marker); markers.push({ row:r, col:tc.col, therapist:tc.name, timeSlot:c0, kind:m[1].toUpperCase(), label:parsed.marker.replace(/\s+/g,' ') }); }
         });
       }
@@ -2242,7 +2266,7 @@ ${text}`,
           if(!s) continue;
           const { name, isTest } = msStripTestSuffix(s);
           if(!name) continue;
-          entries.push({ name, type: isTest ? '평가' : '전산화인지', source:sec.title, timeSlot: msNormText(rows[r2][sec.startCol]), row:r2, col:targetCol, therapist, raw:s });
+          entries.push({ name, type: isTest ? '평가' : '전산화인지', source:sec.title, timeSlot: msNormText(rows[r2][sec.startCol]), row:r2, col:targetCol, therapist, raw:s, ...(isTest ? { ccrtTest:true } : {}) });
         }
       }
     });
@@ -2562,6 +2586,45 @@ ${text}`,
       if(state.rows.length) analyze();
     }catch(err){ console.error(err); delAddData = null; info.textContent = `⚠ ${file.name}: 파일을 읽을 수 없어요.`; info.style.color = '#c0392b'; }
   }
+  // 환자 전체시간표(원본) 카드: 요일·시간대별 기존 스케줄(운동·작업치료 1:1, 기구·전기 1:다)을 읽어 둔다. 회복기재활 초과 환자의 액팅과 비교하는 데만 쓴다.
+  let cardPlan = new Map(), cardFileNames = []; // 환자 키(등록번호/이름) → {name, days:{요일:[{startM,text,cat}]}}
+  const cardKeyOf = (reg, name) => { const r = String(reg || '').replace(/\D/g, ''); return r || 'n:' + String(name || '').replace(/\s+/g, '').toUpperCase(); };
+  async function cardParseBook(book){
+    const out = [], RC = RehabCore;
+    for(const sh of book.sheets){
+      const cells = await RC.getSheetCells(book, sh.name); if(!cells || !cells.size) continue;
+      const blocks = RC.findCardBlocks(cells).filter(b => b.hasRegLabel);
+      for(const b of blocks){
+        const head = RC.readCardHead(cells, b); if(!head.name) continue;
+        const next = blocks.find(x => x.col === b.col && x.row > b.row), end = next ? next.row - 1 : b.row + 40;
+        const hdr = RC.findTimeHeader(cells, b, end); if(!hdr) continue;
+        const dc = RC.cardDayCols(cells, b, hdr.row, hdr.hasLocCol), days = {};
+        RC.cardRows(cells, b, hdr, dc, end).forEach(r => {
+          const m = RC.cardSched.slotMinutes(r.timeRaw); if(m == null) return;
+          Object.entries(r.texts).forEach(([d, t]) => { if(t) (days[d] = days[d] || []).push({ startM:m, text:t, cat:RC.cardSched.cat(t) }); });
+        });
+        out.push({ name:head.name, reg:head.reg, days });
+      }
+    }
+    return out;
+  }
+  async function cardHandleFiles(fileList){
+    const files = Array.from(fileList || []), info = $('cardFileInfo'); if(!files.length) return;
+    let bad = 0;
+    for(const file of files){
+      try{
+        const cards = await cardParseBook(await RehabCore.readWorkbookFile(file));
+        if(!cards.length){ bad++; continue; }
+        cards.forEach(c => { const v = { name:c.name, days:c.days }; cardPlan.set(cardKeyOf(c.reg, ''), v); if(!cardPlan.has(cardKeyOf('', c.name))) cardPlan.set(cardKeyOf('', c.name), v); });
+        if(!cardFileNames.includes(file.name)) cardFileNames.push(file.name);
+      }catch(err){ console.error(err); bad++; }
+    }
+    info.style.color = bad ? '#c0392b' : '#7a8ba1';
+    info.textContent = `${cardFileNames.length ? '✅ ' + cardFileNames.join(', ') + ' · 환자 ' + new Set([...cardPlan.values()]).size + '명 읽음' : ''}${bad ? ` ⚠ ${bad}개는 환자 카드를 찾지 못했어요` : ''}` || '올리지 않으면 스케줄 비교는 건너뛰어요.';
+    if(state.rows.length) analyze();
+  }
+  $('cardFileInput').addEventListener('change', e => { cardHandleFiles(e.target.files); e.target.value=''; });
+  $('cardPickBtn').addEventListener('click', () => $('cardFileInput').click());
   $('daFileInput').addEventListener('change', e => { if(e.target.files[0]) daHandleFile(e.target.files[0]); e.target.value=''; });
   $('daDropZone').addEventListener('click', () => $('daFileInput').click());
   $('daDropZone').addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); $('daDropZone').classList.add('drag'); });
@@ -2635,6 +2698,7 @@ ${text}`,
       const n = file.name;
       if(n.includes('일일통계')) dcFiles.push(file);
       else if(msIsDelAddName(n)) daHandleFile(file);
+      else if(/환자\s*전체시간표|전체시간표/.test(n)) cardHandleFiles([file]);
       else if(msIsScheduleFileName(n)) msHandleFile(file);
       else readFile(file);
     });
@@ -2650,6 +2714,7 @@ ${text}`,
       const n = file.name;
       if(n.includes('일일통계')) dcFiles.push(file);
       else if(msIsDelAddName(n)) daHandleFile(file);
+      else if(/환자\s*전체시간표|전체시간표/.test(n)) cardHandleFiles([file]);
       else if(msIsScheduleFileName(n)) msHandleFile(file);
     });
     if(dcFiles.length) msHandleDcFiles(dcFiles);
@@ -3463,7 +3528,7 @@ ${text}`,
     return out;
   }
   // 업데이트·재시작 뒤 "하던 화면"으로 돌아가기 위한 화면 상태(탭·오더 구분·검색어·심각도·미액팅 보기·치료사별 필터). 데이터가 준비되기 전에는 false → 셸이 다시 시도한다.
-  window.__testHooks = { msState, qaExclSave, qaExclRestore, qaIssues: () => state.issues }; // 점검 스크립트가 "제외한 미액팅 칸 저장·복원"을 확인하는 통로
+  window.__testHooks = { msState, qaExclSave, qaExclRestore, qaIssues: () => state.issues, parseSchedule: msParseScheduleSheet }; // 점검 스크립트가 "제외한 미액팅 칸 저장·복원"을 확인하는 통로
   window.__getWorkState = () => ({ view:(document.querySelector('#viewTabs .active')||{dataset:{}}).dataset.viewTab||'missing', scope:(document.querySelector('#orderScopeTabs .active')||{dataset:{}}).dataset.orderScope||'all', q:$('searchInput').value, sev:$('severityFilter').value, ms:(document.querySelector('.ms-view-tab.active')||{dataset:{}}).dataset.msView||'', mq:$('msSearchBox').value, thvPart, thvFilter });
   window.__setWorkState = (st) => { try{
     if(!st || !((state.dataRows||[]).length || msState.sched)) return false;
@@ -3487,24 +3552,34 @@ ${text}`,
     if(!(state.dataRows||[]).length){ $('capInfo').innerHTML = ''; box.innerHTML = '<div class="empty-state"><strong>액팅 기록 파일을 올리면 회복기재활 16개 초과 환자를 모아서 보여드려요.</strong></div>'; return; }
     $('capInfo').innerHTML = `회복기재활 액팅이 하루 ${RECOVERY_DAILY_MAX}개(정상 한도)를 넘은 환자 <b>${list.length}명</b> <span class="thv-sp"></span> 삭제·추가 내역: ${delAddData ? `<span class="thv-ok">올림 · 삭제 유지 ${delAddData.entries.length}건</span>` : '<span class="thv-warn">안 올림(선택 — 올리면 삭제된 시간의 액팅을 참고로 보여줘요)</span>'}`;
     box.innerHTML = list.length ? list.map(g => { const hits = g.ov ? g.ov.hits.length : 0;
-      return `<div class="thv-row" data-cap="${msEscapeAttr(g.key)}"><div class="thv-hd" style="cursor:pointer"><b>${escapeHtml(g.name)}</b><span class="pill err">회복기재활 ${g.count}개</span><span class="thv-part">${[...g.by.entries()].map(([t,n]) => `${escapeHtml(t)} ${n}`).join(' · ')}</span>${hits ? `<span class="pill" style="background:#ffe9c7;color:#a85a00;">삭제된 시간에 액팅 ${hits}</span>` : ''}<span class="thv-sp"></span><span style="color:#5b72b4;font-size:12px;font-weight:700;">미리보기 ▸</span></div></div>`; }).join('')
+      return `<div class="thv-row" data-cap="${msEscapeAttr(g.key)}"><div class="thv-hd" style="cursor:pointer"><b>${escapeHtml(g.name)}</b><span class="pill err">회복기재활 ${g.count}개</span><span class="thv-part">${[...g.by.entries()].map(([t,n]) => `${escapeHtml(t)} ${n}`).join(' · ')}</span>${hits ? `<span class="pill" style="background:#ffe9c7;color:#a85a00;">삭제된 시간에 액팅 ${hits}</span>` : ''}${g.differs ? `<span class="pill" style="background:#ece0fb;color:#6b3fa0;">전체시간표와 다름 ${g.differs}</span>` : ''}<span class="thv-sp"></span><span style="color:#5b72b4;font-size:12px;font-weight:700;">미리보기 ▸</span></div></div>`; }).join('')
       : '<div class="empty-state"><strong>회복기재활 액팅이 16개를 넘은 환자가 없어요 ✅</strong></div>';
   }
   // 클릭한 환자의 하루 액팅을 시간 순서대로 한 줄씩(번호 · 시간 · 종류 · 치료사) 보여준다. 번호는 회복기재활만 세서 마지막 번호가 곧 개수다.
+  // 색: 진한 초록 = 회복기재활 / 연한 회색 = 그 밖의 액팅 / 보라 = 전체시간표의 기존 스케줄과 다른 치료 / 주황 = 삭제·추가 내역(삭제 유지)과 겹침
   function capOpen(key){
     const g = (state.capList||[]).find(x => x.key === key); if(!g) return;
-    const showNote = !!(g.ov && g.ov.hits.length);
+    const noteOf = (x) => {
+      const hit = g.ov ? g.ov.hits.filter(h => h.item === x) : [], parts = [];
+      hit.forEach(h => parts.push(`삭제 유지: ${escapeHtml(h.entry.deleted.treat)} 삭제 → ${escapeHtml(h.entry.added.treat)} 추가${h.entry.therapist ? '(' + escapeHtml(h.entry.therapist) + ')' : ''}`));
+      if(x.addedBy && !hit.length) parts.push(`대체 추가 치료(${escapeHtml(x.addedBy.deleted.treat)} 삭제 → ${escapeHtml(x.addedBy.added.treat)})`);
+      if(x.differs) parts.push(x.sd.state === 'noSched' ? '전체시간표에 없는 시간' : `전체시간표는 ${escapeHtml(x.sd.sched.join('·'))}인 시간`);
+      return parts.join('<br>');
+    };
+    const rowsInfo = g.day.map(x => ({ x, note: noteOf(x) })), showNote = rowsInfo.some(r => r.note);
     let n = 0;
     const cols = `44px 112px minmax(0,1fr) 92px${showNote ? ' minmax(0,1fr)' : ''}`;
-    let html = `<div class="schedule-grid cap-pv" style="grid-template-columns:${cols};grid-auto-rows:minmax(32px,auto);"><div class="g-cell g-head">번호</div><div class="g-cell g-head">시간</div><div class="g-cell g-head">종류</div><div class="g-cell g-head">치료사</div>${showNote ? '<div class="g-cell g-head">삭제 유지 내역(참고)</div>' : ''}`;
-    g.day.forEach(x => {
-      const hit = g.ov ? g.ov.hits.filter(h => h.item === x) : [], cls = hit.length ? 'g-type' : x.recovery ? 'g-rec' : 'g-oth';
-      const note = hit.map(h => `${escapeHtml(h.entry.deleted.treat)} 삭제 → ${escapeHtml(h.entry.added.treat)} 추가${h.entry.therapist ? '(' + escapeHtml(h.entry.therapist) + ')' : ''}`).join('<br>');
+    let html = `<div class="schedule-grid cap-pv" style="grid-template-columns:${cols};grid-auto-rows:minmax(32px,auto);"><div class="g-cell g-head">번호</div><div class="g-cell g-head">시간</div><div class="g-cell g-head">종류</div><div class="g-cell g-head">치료사</div>${showNote ? '<div class="g-cell g-head">참고</div>' : ''}`;
+    rowsInfo.forEach(({ x, note }) => {
+      const explained = (g.ov && g.ov.hits.some(h => h.item === x)) || x.addedBy;
+      const cls = explained ? 'g-type' : x.differs ? 'g-diff' : x.recovery ? 'g-rec' : 'g-oth';
       html += `<div class="g-cell ${cls}">${x.recovery ? ++n : ''}</div><div class="g-cell ${cls}">${escapeHtml(x.time)}</div><div class="g-cell ${cls} l">${escapeHtml(x.order)}</div><div class="g-cell ${cls}">${escapeHtml(x.therapist || '담당자 미상')}</div>${showNote ? `<div class="g-cell ${cls} l">${note}</div>` : ''}`;
     });
     html += '</div>';
+    const legend = `<div class="cap-leg"><span><i style="background:#dcefe3"></i>회복기재활</span><span><i style="background:#f4f6fa;border:1px solid #d5dce8"></i>그 밖의 액팅</span><span><i style="background:#ece0fb"></i>전체시간표의 기존 스케줄과 다른 치료</span><span><i style="background:#ffe9c7"></i>삭제·추가 내역과 겹침</span></div>`;
     $('capModalTitle').textContent = `${g.name} · 회복기재활 액팅 ${g.count}개`;
-    $('capModalBody').innerHTML = `<div class="cap-sum">회복기재활 <b class="bad">${g.count}개</b> <span style="color:#7a8ba1">· 하루 전체 액팅 ${g.day.length}개 중 · 번호는 회복기재활만 센 값</span></div>` + html
+    $('capModalBody').innerHTML = `<div class="cap-sum">회복기재활 <b class="bad">${g.count}개</b> <span style="color:#7a8ba1">· 하루 전체 액팅 ${g.day.length}개 중 · 번호는 회복기재활만 센 값</span>${g.hasCard ? ` <span class="cap-df">· 전체시간표와 다른 액팅 <b>${g.differs}개</b></span>` : ''}</div>`
+      + (g.hasCard ? '' : '<div class="cap-hint">전체시간표(3F·10F)를 올리면 기존 스케줄과 다른 치료를 보라색으로 알려드려요.</div>') + legend + html
       + (delAddData && !g.mine.length ? '<div class="cap-da">삭제·추가 내역(삭제 유지)에 이 환자는 없어요.</div>' : '');
     $('capModal').style.display = 'flex';
   }

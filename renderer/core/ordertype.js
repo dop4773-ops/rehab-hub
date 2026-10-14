@@ -16,19 +16,20 @@ const toMin = (text) => { const m = String(text || '').match(/(\d{1,2}):(\d{2})/
 // 같은 시간대(기본 60분 안)에서 같은 종류끼리 먼저 짝을 지은 뒤(시간이 가까운 순), 남은 스케줄 오더와 남은 액팅이 같은 시간대이면 "스케줄은 A인데 B로 액팅"으로 본다.
 // 짝이 안 되는 나머지는 기존 미액팅/액팅초과 계산이 그대로 다룬다. 반환: [{entry, act, schedType, actType}]
 function findTypeMismatches(orderList, acts, { simplify, withinMin = 60 } = {}) {
-  const S = (orderList || []).filter(e => KNOWN.includes(e.type)).map(e => ({ e, m: toMin(e.timeSlot) }));
+  // CCRT 칸의 TEST(평가)는 기존 인지 오더와 똑같이 입력하므로 인지로 본다(ccrtTest 표시가 있는 칸)
+  const S = (orderList || []).filter(e => KNOWN.includes(e.type)).map(e => ({ e, m: toMin(e.timeSlot), t: e.ccrtTest ? '전산화인지' : e.type }));
   const A = (acts || []).map(a => ({ a, t: actType(a.orderName, simplify), m: toMin(a.start) })).filter(x => x.t);
   const sUsed = new Set(), aUsed = new Set();
   const near = (x, y) => (x == null || y == null ? Infinity : Math.abs(x - y));
   // 1) 같은 종류끼리: 같은 시간대(기본 60분 안)에서 시간 차가 작은 짝부터
   const same = [];
-  S.forEach((s, i) => A.forEach((x, j) => { if (s.e.type === x.t && near(s.m, x.m) <= withinMin) same.push([near(s.m, x.m), i, j]); }));
+  S.forEach((s, i) => A.forEach((x, j) => { if (s.t === x.t && near(s.m, x.m) <= withinMin) same.push([near(s.m, x.m), i, j]); }));
   same.sort((p, q) => p[0] - q[0]).forEach(([, i, j]) => { if (!sUsed.has(i) && !aUsed.has(j)) { sUsed.add(i); aUsed.add(j); } });
   // 2) 남은 것끼리: 같은 시간대면 종류가 다른 액팅
   const rest = [];
   S.forEach((s, i) => { if (!sUsed.has(i)) A.forEach((x, j) => { if (!aUsed.has(j)) rest.push([near(s.m, x.m), i, j]); }); });
   const out = [];
-  rest.sort((p, q) => p[0] - q[0]).forEach(([d, i, j]) => { if (d <= withinMin && !sUsed.has(i) && !aUsed.has(j)) { sUsed.add(i); aUsed.add(j); out.push({ entry: S[i].e, act: A[j].a, schedType: S[i].e.type, actType: A[j].t }); } });
+  rest.sort((p, q) => p[0] - q[0]).forEach(([d, i, j]) => { if (d <= withinMin && !sUsed.has(i) && !aUsed.has(j)) { sUsed.add(i); aUsed.add(j); out.push({ entry: S[i].e, act: A[j].a, schedType: S[i].t, actType: A[j].t }); } });
   return out.sort((p, q) => (toMin(p.entry.timeSlot) || 0) - (toMin(q.entry.timeSlot) || 0));
 }
 // "인지(CCRT) → 특수" 같은 짧은 표시

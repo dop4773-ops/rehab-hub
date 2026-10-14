@@ -37,6 +37,7 @@ const TOOLS = {
       { role: 'dailySchedule', selector: '#msFileInput' }, // 작업치료실 시간표(평일) — 화면에서 다시 올리지 않게 연결
       { role: 'satSchedule', selector: '#msSatFileInput' }, // 토요일·공휴일 시간표 — 같은 날짜 시트 자동 선택
       { role: 'dailyStats', selector: '#dcFileInput' },    // 1·2·3팀 이번 달 일일통계(여러 파일)
+      { roles: ['card3', 'card10'], selector: '#cardFileInput' }, // 환자 전체시간표(원본) — 회복기재활 초과 환자의 액팅을 기존 스케줄과 비교
       { role: 'delAdd', selector: '#daFileInput' },        // 평일 삭제·추가 내역(OT·PT 공통) — 회복기재활 16개 이상 오류에 참고로 표시
     ],
     readSummary: (w) => w.__actingSummary ? { count: w.__actingSummary.errorCount, label: '오류', ...w.__actingSummary } : null,
@@ -921,12 +922,12 @@ function renderSyncPill() {
 // 각 도구 화면 위의 파일 상태 띠 — 이 화면이 쓰는 파일이 올라와 있는지(색 칩), 마지막 동기화 일시, 불러오기·직접 넣기 버튼을 한 줄로 보여준다.
 // 도구 안의 큰 업로드 영역은 기본으로 접어 두고(아래 FILES_CSS), 필요한 파일이 없거나 사용자가 "직접 넣기"를 누르면 펼친다.
 const CHIP_NAME = { card3: '3F 시간표', card10: '10F 시간표', pt3: '3F 물리치료', pt10: '10F 물리치료', mt3: '3F 매트·테이블', mat10: '10F 매트', table10: '10F 테이블',
-  dailyStats: '일일통계', acting: '액팅 기록', status: '작업치료현황', dailySchedule: 'OT 시간표(평일)', satSchedule: 'OT 시간표(토·공)', pta: 'PTA 재원현황' };
+  dailyStats: '일일통계', delAdd: '삭제·추가 내역', acting: '액팅 기록', status: '작업치료현황', dailySchedule: 'OT 시간표(평일)', satSchedule: 'OT 시간표(토·공)', pta: 'PTA 재원현황' };
 const FILES_CSS = {
   rm: 'body.rh-collapsed .upload-grid,body.rh-collapsed .grand-pt-upload{display:none!important}'
     + 'body.rh-collapsed section.panel:has(.upload-grid)>.panel-head{display:none!important}body.rh-collapsed section.panel:has(.upload-grid)>.panel-body{padding:8px 18px!important}body.rh-collapsed #statusLine{margin:0!important}'
     + 'body.rh-collapsed .grand-ot-upload>:not(#grandHandoverStatus):not(#grandHandoverMatchSummary):not(#grandHandoverRefreshBtn){display:none!important}',
-  acting: 'body.rh-collapsed #dropZone,body.rh-collapsed #msDropZone,body.rh-collapsed #dcDropZone,body.rh-collapsed #dcFolderPickBtn,body.rh-collapsed label[for=dcFileInput]{display:none!important}',
+  acting: 'body.rh-collapsed #dropZone,body.rh-collapsed #msDropZone,body.rh-collapsed #dcDropZone,body.rh-collapsed #dcFolderPickBtn,body.rh-collapsed label[for=dcFileInput],body.rh-collapsed #daDropZone,body.rh-collapsed label[for=daFileInput],body.rh-collapsed label[for=cardFileInput],body.rh-collapsed #cardPickBtn{display:none!important}',
   cross: 'body.rh-collapsed #prepPanel:not(:has(.prep-badge.err)){display:none!important}body.rh-collapsed .toprow{grid-template-columns:1fr!important}',
 };
 const filesOpen = {}; // 사용자가 직접 펼침/접음을 정한 도구(없으면 자동 판단)

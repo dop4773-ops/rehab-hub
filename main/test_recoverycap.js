@@ -34,6 +34,7 @@ assert.deepStrictEqual(C.parseDelAddRows([]).entries, []); assert.deepStrictEqua
   const o3 = C.delAddOverlaps(ents, [{ startM: 700, ref: 'late' }]); assert.strictEqual(o3.hits.length, 0); assert.strictEqual(o3.rest.length, 2, '겹치는 액팅이 없으면 모두 rest');
   assert.strictEqual(C.delAddOverlaps([], its).hits.length, 0); assert.strictEqual(C.delAddOverlaps(null, null).rest.length, 0);
 }
+assert.strictEqual(C.addedAt([a], 11 * 60 + 30).name, '이종희', '대체 치료 시간(11:25~11:55) 안'); assert.strictEqual(C.addedAt([a], 12 * 60), null); assert.strictEqual(C.addedAt([a], null), null);
 // 16개 초과(17개부터)
 const mk = (n, reg, name, base = 480) => Array.from({ length: n }, (_, i) => ({ regNo: reg, name, startM: base + i * 15, time: `x${i}`, therapist: 'T' + i, ref: i }));
 let o = C.findRecoveryOver([...mk(16, '1', '가'), ...mk(17, '2', '나'), ...mk(20, '', '다')]);
