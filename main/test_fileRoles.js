@@ -8,7 +8,7 @@ const { guessFileRole, FILE_ROLES, isCurrentMonthStats } = require('./fileRoles'
 const REAL = [
   ['10F 환자전체시간표(원본).xlsx', 'card10'], ['3F 환자전체시간표(원본).xlsx', 'card3'],
   ['10F 매트현황.xlsx', 'mat10'], ['10F 테이블현황.xlsx', 'table10'], ['3F 매트,테이블현황.xlsx', 'mt3'],
-  ['작업치료현황.xlsx', 'status'], ['작업치료실 시간표.xlsx', 'dailySchedule'],
+  ['OT_PT_공통_평일_삭제추가내역_2026-10-15.xlsx', 'delAdd'], ['작업치료현황.xlsx', 'status'], ['작업치료실 시간표.xlsx', 'dailySchedule'],
 ];
 for (const [name, role] of REAL) assert.strictEqual(guessFileRole(name), role, name);
 console.log('OK 실제 파일', REAL.length, '개 전부 올바른 역할로 인식');
