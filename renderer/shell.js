@@ -253,7 +253,7 @@ async function syncNow({ statusEl = null, skipScan = false } = {}) {
     if (!skipScan) await refreshScan();
     const pending = fileRoles.map(r => r.key).filter(k => k !== 'handover' && ['stale', 'error'].includes(roleStateOf(k)));
     const ok = await applyRoles(pending);
-    lastSyncAt = Date.now();
+    lastSyncAt = Date.now(); refreshScheduleChecks();
     const foundCount = Object.keys(lastScan.matched).length;
     if (statusEl) {
       const failed = pending.length - ok.length;
@@ -278,6 +278,7 @@ async function syncTick() {
   if (syncing || !lastScan) return;
   try { await refreshScan(); } catch (e) { return; }
   await refreshOneDrive();
+  refreshScheduleChecks();
   const pending = fileRoles.some(r => r.key !== 'handover' && ['stale', 'error'].includes(roleStateOf(r.key)));
   if (syncMode === 'instant') { // 바뀌면 바로: 바뀐 파일이 다 저장된 뒤(수정 후 8초 지남) 곧바로 반영한다. 읽기 오류로 남은 파일은 파일이 또 바뀔 때까지 다시 시도하지 않는다.
     const stale = fileRoles.filter(r => r.key !== 'handover' && roleStateOf(r.key) === 'stale');
@@ -566,6 +567,10 @@ function renderHome() {
   { const h = syncHealthNow(); if (h.level === 'warn' || h.level === 'err') todos.push(todoHtml(h.level, '☁️', h.title, updEsc(h.detail), '<button class="btn" data-goto="data">데이터 준비 →</button>')); }
   if (errRoles.length) todos.push(todoHtml('err', '⚠️', `읽기 오류 ${errRoles.length}개`, errRoles.map(r => r.label).join(' · '), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
   if (staleRoles.length) todos.push(todoHtml('warn', '🔄', `업데이트 필요 ${staleRoles.length}개`, staleRoles.map(r => r.label).join(' · ') + ' — 파일이 바뀌었어요', '<button class="btn primary" data-sync-now>지금 업데이트</button>'));
+  if (scheduleChecks.items.length || scheduleChecks.robot.length) { // 시간표 파일 관리(오늘 시트 없음·낡은 제목 날짜·로봇재활 종료)
+    const lines = [...scheduleChecks.items.map(x => x.text), ...(scheduleChecks.robot.length ? [`로봇재활 종료일 확인: ${scheduleChecks.robot.slice(0, 5).map(x => `${x.name}(${x.left < 0 ? Math.abs(x.left) + '일 지남' : x.left === 0 ? '오늘 종료' : x.left + '일 뒤 종료'})`).join(', ')}${scheduleChecks.robot.length > 5 ? ' …' : ''}`] : [])];
+    todos.push(todoHtml('warn', '🗓️', `시간표 파일 확인 ${lines.length}건`, lines.slice(0, 3).map(updEsc).join(' · ') + (lines.length > 3 ? ' …' : ''), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
+  }
   { // 도구들이 읽은 자료의 규모가 평소와 크게 다를 때(양식이 바뀌었거나 파일이 일부만 읽혔을 수 있음) — 검사 결과를 믿기 전에 먼저 확인
     const sw = [];
     for (const key of Object.keys(TOOLS)) { try { const w = viewDoc(key)?.defaultView.__scaleWarn; if (w && w.count) w.items.forEach(t => sw.push(`${TOOLS[key].label}: ${t}`)); } catch (e) { /* 화면이 아직 로드 전 */ } }
@@ -619,6 +624,35 @@ function renderHome() {
   if (settings.homeLayout === 'workbench') renderWorkbench(summaries, { o, missReq });
 }
 
+// ── 시간표 파일 관리 점검: 날마다 사람이 복사해 만드는 시간표(물리치료·기구·작업치료실)에 오늘 시트가 있는지, 제목에 낡은 날짜가 남지 않았는지, 로봇재활 종료일이 임박/지났는지.
+// 파일을 바꿔 읽을 때만 다시 계산한다(읽은 파일은 이름+수정시각으로 기억해 두고 재사용).
+let scheduleChecks = { items: [], robot: [], at: 0, files: 0 }, scheduleSig = '';
+const schedBookCache = new Map();
+const SCHED_ROLES = [['pt10', '10층 물리치료시간표'], ['pt3', '3층 물리치료시간표'], ['gi10', '10층 기구시간표'], ['gi3', '3층 기구시간표'], ['dailySchedule', '작업치료실 시간표']];
+async function refreshScheduleChecks() {
+  if (!lastScan || typeof RehabCore === 'undefined' || !RehabCore.scheduleCheck) return;
+  const now = new Date(), today = RehabCore.scheduleCheck.ymdOf(now), sig = SCHED_ROLES.map(([r]) => RehabSync.roleSig(lastScan, r)).join('#') + '|' + today + '|' + (now.getHours() >= 9);
+  if (sig === scheduleSig) return; scheduleSig = sig;
+  try {
+    const DP = RehabCore.dailyPlan, SC = RehabCore.scheduleCheck, files = [], robotRows = [];
+    for (const [role, label] of SCHED_ROLES) {
+      if (!roleInfo(role).entries.length) continue;
+      for (const f of await getFilesForRole(role)) {
+        const ck = f.name + '|' + f.lastModified; let book = schedBookCache.get(ck); if (!book) { book = await RehabCore.readWorkbookFile(f); schedBookCache.set(ck, book); if (schedBookCache.size > 12) schedBookCache.delete(schedBookCache.keys().next().value); }
+        const names = book.sheets.map(s => s.name), titles = {};
+        for (const n of DP.sheetsForDate(names, today)) {
+          const cells = await RehabCore.getSheetCells(book, n); titles[n] = [];
+          for (let r = 1; r <= 40; r++) { const v = RehabCore.normalizeText(RehabCore.getCell(cells, r, 1)); if (/시간표/.test(v) && /(\d+\s*월|요일)/.test(v)) titles[n].push(v); }
+          if (role === 'pt10') { let maxRow = 0, maxCol = 0; for (const k of cells.keys()) { const rc = RehabCore.splitRef(k); if (rc) { maxRow = Math.max(maxRow, rc.row); maxCol = Math.max(maxCol, rc.col); } } robotRows.push(...SC.parseRobot({ get: (r, c) => RehabCore.normalizeText(RehabCore.getCell(cells, r, c)), maxRow, maxCol })); }
+        }
+        files.push({ label: label, sheetNames: names, titlesBySheet: titles });
+      }
+    }
+    scheduleChecks = { items: SC.checkSheets({ files, today, hour: now.getHours(), sheetsForDate: DP.sheetsForDate }), robot: SC.robotAlerts(robotRows, today, 3), at: Date.now(), files: files.length };
+    renderHome();
+  } catch (e) { console.error('시간표 파일 점검 실패', e); }
+}
+
 // ── 오늘 점검(한 번에) ─────────────────────────────────────
 // 파일 확인 → 화면 준비 → 인수인계 가져오기 → 교차검증 → 치료기록 QA 결과 읽기 → 결과를 한 창에 모아 보여 준다. 각 단계는 평소 버튼과 같은 함수를 부를 뿐이다.
 let dailyChecking = false;
@@ -637,7 +671,7 @@ function dailyInputs() {
   return {
     files: { reqFound: req.filter(r => matched[r.key]).length, reqTotal: req.length, missReq: lastScan ? names(req.filter(r => !matched[r.key])) : [],
       stale: lastScan ? names(local.filter(r => roleStateOf(r.key) === 'stale')) : [], err: lastScan ? names(local.filter(r => roleStateOf(r.key) === 'error')) : [] },
-    handover: handoverFreshness(), cross: readToolSummary('cross'), acting: readToolSummary('acting'), sync: syncHealthNow(), backup: backupStatus, now: Date.now(),
+    handover: handoverFreshness(), schedule: scheduleChecks, cross: readToolSummary('cross'), acting: readToolSummary('acting'), sync: syncHealthNow(), backup: backupStatus, now: Date.now(),
   };
 }
 function showDailyResult() {

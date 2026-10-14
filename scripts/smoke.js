@@ -297,6 +297,11 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         const log=JSON.parse(localStorage.getItem(FB)||'[]'), last=log[log.length-1]; if(log.length!==n0+1||last.type!=='exclude'||last.reason!=='정상 운영'||!last.cat) throw new Error('제외 기록이 안 남아요: '+JSON.stringify(last)); if(/환자|patient/.test(JSON.stringify(last))&&last.patient) throw new Error('환자 이름이 저장돼요');
         return {rows, last:{type:last.type,cat:last.cat,src:last.src}}; }
       finally{ if(keep==null) localStorage.removeItem(FB); else localStorage.setItem(FB,keep); if(keepEx==null) localStorage.removeItem(EK); else localStorage.setItem(EK,keepEx); await w.handleRun(); } })()`));
+    await step('홈: 시간표 파일 관리 점검(오늘 시트·제목 날짜·로봇재활 종료일)', async () => {
+      const r = await ev(`(async()=>{ scheduleSig=''; await refreshScheduleChecks(); await new Promise(r=>setTimeout(r,300)); return JSON.stringify({files:scheduleChecks.files, items:scheduleChecks.items.map(x=>x.kind+':'+x.file), robot:scheduleChecks.robot.length, at:scheduleChecks.at>0}); })()`);
+      const s = JSON.parse(r); if (!s.at) throw new Error('점검이 안 돌았어요'); if (s.files === 0) return '시간표 파일이 연결돼 있지 않아 건너뜀';
+      if (s.items.some(x => !/^(nosheet|stale-title):/.test(x))) throw new Error('이상한 항목: ' + s.items.join(',')); return s;
+    });
     await step('교차검증: 제외한 오류가 해결되면 제외명단에서도 자동으로 사라짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', EK='rehab_cross_exclude_v1', orig=localStorage.getItem(KEY), origEx=localStorage.getItem(EK), origFetch=w.fetch;
       try{ const t=w.__testHooks.issues().find(i=>i.source==='notx'); if(!t) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,''), out={};
         w.openExclModal(t); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);

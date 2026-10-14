@@ -46,5 +46,8 @@ assert.strictEqual(parseAttrib('', 'C:\\x'), null);
   // 읽기 실패·빈 파일·손상
   const bd = R.build({ env: { ...env, files: [{ path: f('현황.xlsx', 0).path, readable: false, error: 'EBUSY' }] }, scan: { matched: { status: f('현황.xlsx', 0) } }, roles: [roles[0]], now });
   assert.ok(bd.items.some(i => i.level === 'err' && /열 수 없어요/.test(i.title)));
+  const sc = R.build({ env, scan: { matched: {}, unmatched: [], errors: [] }, roles: [], now, schedule: { files: 4, items: [{ text: '작업치료실 시간표에 오늘(10/15) 날짜 시트가 없어요' }], robot: [{ name: '김명자', left: -7 }] } });
+  assert.ok(sc.items.some(i => i.group === '시간표 파일' && i.level === 'warn' && /날짜 시트가 없어요/.test(i.title))); assert.ok(sc.items.some(i => /로봇재활 종료일 확인: 김명자\(7일 지남\)/.test(i.title)));
+  assert.ok(R.build({ env, scan: { matched: {}, unmatched: [], errors: [] }, roles: [], now, schedule: { files: 4, items: [], robot: [] } }).items.some(i => i.group === '시간표 파일' && i.level === 'ok'));
   console.log('envCheck: OK');
 })().catch(e => { console.error(e); process.exit(1); });

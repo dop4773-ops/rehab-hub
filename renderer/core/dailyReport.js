@@ -28,6 +28,12 @@ function build(inp) {
   // 2) 인수인계
   if (handover) sec('handover', '인수인계', [L(handover.cls === 'ok' ? 'ok' : handover.cls === 'err' ? 'err' : 'warn', handover.text)]);
 
+  // 시간표 파일 관리(오늘 시트 없음·낡은 제목 날짜·로봇재활 종료일)
+  if (inp && inp.schedule && (inp.schedule.files || inp.schedule.items.length || inp.schedule.robot.length)) {
+    const ls = inp.schedule.items.map(x => L('warn', x.text)).concat(inp.schedule.robot.length ? [L('warn', `로봇재활 종료일 확인: ${inp.schedule.robot.slice(0, 5).map(x => `${x.name}(${x.left < 0 ? Math.abs(x.left) + '일 지남' : x.left === 0 ? '오늘 종료' : x.left + '일 뒤 종료'})`).join(', ')}`)] : []);
+    sec('schedule', '시간표 파일', ls.length ? ls : [L('ok', `오늘 시트·제목 날짜 정상 (${inp.schedule.files}개 파일 확인)`)]);
+  }
+
   // 3) 교차검증
   { const ls = [];
     if (!cross) ls.push(L('warn', '교차검증을 실행하지 못했어요 — 필수 파일이 모두 있는지 확인하세요'));

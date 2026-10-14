@@ -111,7 +111,7 @@ async function stRunEnvCheck() {
     const roles = await window.rehab.folders.fileRoles();
     const files = Object.entries(lastScan.matched || {}).map(([role, f]) => ({ role, path: f.path }));
     const env = await window.rehab.env.check(files);
-    const rep = RehabEnvReport.build({ env, scan: lastScan, roles });
+    const rep = RehabEnvReport.build({ env, scan: lastScan, roles, schedule: scheduleChecks });
     envText = rep.text;
     const ic = { ok: '✔', warn: '⚠', err: '✖', info: 'ℹ' };
     box.innerHTML = `<div class="env-sum"><b class="${rep.counts.err ? 'err' : rep.counts.warn ? 'warn' : 'ok'}">${rep.counts.err ? `문제 ${rep.counts.err}건` : rep.counts.warn ? `주의 ${rep.counts.warn}건` : '문제 없어요'}</b> · 정상 ${rep.counts.ok} · 주의 ${rep.counts.warn} · 문제 ${rep.counts.err}</div>` +

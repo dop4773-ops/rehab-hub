@@ -20,4 +20,9 @@ assert.strictEqual(r.level, 'err', '파일 구역의 OneDrive 꺼짐이 전체�
 assert.strictEqual(D.build({ ...base, acting: { count: 3, warnCount: 1 } }).level, 'err');
 assert.strictEqual(D.build({ ...base, handover: { cls: 'warn', text: '인수인계 3시간 전' } }).level, 'warn');
 assert.strictEqual(D.build({}).sections.length >= 3, true, '빈 입력도 안 깨짐');
+// 시간표 파일 관리 구역
+r = D.build({ ...base, schedule: { files: 5, items: [{ text: '3층 기구시간표 10.15목 시트 제목에 9월 2일이 그대로 남아 있어요' }], robot: [{ name: '김명자', left: -7 }, { name: '오상열', left: 0 }, { name: '임원식', left: 2 }] } });
+assert.ok(/시간표 파일: 3층 기구시간표/.test(r.text)); assert.ok(/로봇재활 종료일 확인: 김명자\(7일 지남\), 오상열\(오늘 종료\), 임원식\(2일 뒤 종료\)/.test(r.text)); assert.strictEqual(r.level, 'warn');
+r = D.build({ ...base, schedule: { files: 5, items: [], robot: [] } }); assert.ok(/오늘 시트·제목 날짜 정상 \(5개 파일 확인\)/.test(r.text)); assert.strictEqual(r.level, 'ok');
+assert.strictEqual(D.build({ ...base, schedule: { files: 0, items: [], robot: [] } }).sections.some(x => x.key === 'schedule'), false, '확인한 파일이 없으면 구역을 만들지 않음');
 console.log('dailyReport: OK');

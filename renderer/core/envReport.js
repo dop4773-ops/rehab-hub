@@ -11,7 +11,7 @@ const ageText = (mtimeMs, now) => {
 const osName = (e) => (e.platform === 'win32' ? `Windows ${e.release}` : e.platform === 'darwin' ? `macOS (Darwin ${e.release})` : `${e.platform} ${e.release}`);
 
 // 반환: {items:[{level:'ok'|'warn'|'err'|'info', group, title, detail}], counts:{ok,warn,err,info}, text}
-function build({ env, scan, roles, now = Date.now() }) {
+function build({ env, scan, roles, now = Date.now(), schedule = null }) {
   const items = [], add = (level, group, title, detail = '') => items.push({ level, group, title, detail });
   const e = env || {}, s = scan || { matched: {}, unmatched: [], errors: [], folders: [] };
 
@@ -59,6 +59,11 @@ function build({ env, scan, roles, now = Date.now() }) {
     else add('info', 'OneDrive', `연결 파일 ${oneDriveFiles}개가 OneDrive 폴더에 있어요`, '이 PC에서는 OneDrive 실행 여부를 확인할 수 없어요(Windows에서만 확인).');
   }
 
+  if (schedule && (schedule.files || schedule.items.length)) {
+    for (const x of schedule.items) add('warn', '시간표 파일', x.text);
+    if (schedule.robot && schedule.robot.length) add('warn', '시간표 파일', `로봇재활 종료일 확인: ${schedule.robot.slice(0, 5).map(r => `${r.name}(${r.left < 0 ? Math.abs(r.left) + '일 지남' : r.left === 0 ? '오늘 종료' : r.left + '일 뒤 종료'})`).join(', ')}`);
+    if (!schedule.items.length && !(schedule.robot && schedule.robot.length)) add('ok', '시간표 파일', `오늘 시트·제목 날짜 정상 (${schedule.files}개 파일 확인)`);
+  }
   const counts = { ok: 0, warn: 0, err: 0, info: 0 }; for (const i of items) counts[i.level]++;
   const mark = { ok: '✔', warn: '⚠', err: '✖', info: 'ℹ' };
   const text = `[환경 점검 ${new Date(now).toLocaleString('ko-KR')}] 문제 ${counts.err} · 주의 ${counts.warn} · 정상 ${counts.ok}\n` +
