@@ -802,6 +802,13 @@ function grandWhoSummary(whoTexts){
   return [...cnt.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko')).map(([n,c])=>`${n} ${c}`).join(' · ');
 }
 // updateGrandHandoverStatus()와 같은 매칭 로직을 스코프된(선택 RM) 환자 목록 기준으로 계산해
+// 인수인계 기록의 RM이 현재 환자의 RM과 다르게 적힌 경우(예: 환자는 RM9인데 한 치료사가 RM4로 기입)를 찾는다 — 이름이 같은 현재 환자가 한 명뿐일 때만.
+// 이런 기록은 "퇴원·전원 미반영"이 아니라 "RM 오기입 의심"이다(환자는 그대로 입원 중).
+function grandWrongRmPatient(rec){
+  const nk=normalizeGrandOtPatientKey(rec.name||''); if(!nk) return null;
+  const hits=allPatients.filter(p=>normalizeGrandOtPatientKey(p.name)===nk);
+  return hits.length===1&&normalizeGrandRm(hits[0].rm)!==normalizeGrandRm(rec.rm)?hits[0]:null;
+}
 // 등록 시점의 미반영·미작성 명단을 이름+담당치료사와 함께 스냅샷으로 저장한다.
 function grandArchiveComputeIssues(scoped,rm){
   const rmKey=normalizeGrandRm(rm);
@@ -816,8 +823,10 @@ function grandArchiveComputeIssues(scoped,rm){
     if(currentKeys.has(key)) return false;
     const stillHere=stillHereByKey.get(key);
     if(stillHere&&!profile.targetWards.includes(roomFloor(stillHere.room))) return false;
+    if(grandWrongRmPatient(x)) return false; // RM만 잘못 적은 기록은 아래 rmWrong으로 따로 본다
     return !grandIsOutpatient(x.name); // 외래 환자는 퇴원·전원 확인 대상이 아님
   });
+  const rmWrongList=records.filter(x=>!currentKeys.has(grandHandoverKey(x.rm,x.name))&&grandWrongRmPatient(x)).map(x=>({name:x.name,therapist:grandWhoLabel(x.name,{writers:grandHandoverEntries(x).map(e=>e.therapist)}),foundRm:x.rm,realRm:grandWrongRmPatient(x).rm}));
   const missing=scoped.filter(p=>!grandHandoverMap.has(grandHandoverKey(p.rm,p.name)));
   const matched=records.filter(x=>currentKeys.has(grandHandoverKey(x.rm,x.name)));
   const unmatchedList=unmatched.map(x=>({name:x.name,therapist:grandWhoLabel(x.name,{writers:grandHandoverEntries(x).map(e=>e.therapist)})}));
@@ -827,13 +836,14 @@ function grandArchiveComputeIssues(scoped,rm){
     const miss=[]; if(!normalizeText(e.goal)) miss.push('Goal'); if(!normalizeText(e.rounding)) miss.push('그랜드라운딩');
     if(miss.length) partialList.push({name:rec.name,therapist:grandWhoLabel(rec.name,{writers:[e.therapist],treatment:e.treatment}),treatment:e.treatment||'',missing:miss.join('+')});
   }
-  return {unmatched:unmatchedList,notWritten:[...notWrittenList,...partialList]};
+  return {unmatched:unmatchedList,notWritten:[...notWrittenList,...partialList],rmWrong:rmWrongList};
 }
 // 행마다 미반영/미작성을 각각 표시하지 않고, 둘 중 더 심각한 쪽 하나만 상태로 보여준다(미반영 > 미작성 > 정상).
 function grandArchiveStatusHtml(issues){
   const unreg=issues.notWritten.filter(x=>x.missing==='전체').length, partial=issues.notWritten.length-unreg;
   if(issues.unmatched.length) return `<span class="ga-badge red">🔴 미반영</span><span class="ga-status-detail">확인필요 ${issues.unmatched.length}건</span>`;
-  if(unreg||partial) return `<span class="ga-badge amber">🟡 ${unreg?'미등록':'미작성'}</span><span class="ga-status-detail">${[unreg?`미등록 ${unreg}명`:'',partial?`미작성 ${partial}건`:''].filter(Boolean).join(' · ')}</span>`;
+  const rmw=(issues.rmWrong||[]).length;
+  if(unreg||partial||rmw) return `<span class="ga-badge amber">🟡 ${unreg?'미등록':partial?'미작성':'RM 오기입'}</span><span class="ga-status-detail">${[unreg?`미등록 ${unreg}명`:'',partial?`미작성 ${partial}건`:'',rmw?`RM 오기입 ${rmw}건`:''].filter(Boolean).join(' · ')}</span>`;
   return `<span class="ga-badge green">🟢 정상</span><span class="ga-status-detail">&nbsp;</span>`;
 }
 function grandArchiveGroupHtml(cls,title,items,pillCls,pillText){
@@ -877,6 +887,7 @@ async function renderGrandArchiveList(){
         ${(()=>{ const who=grandWhoSummary([...issues.unmatched,...issues.notWritten].map(x=>(x.missing==='전체'&&grandWhoLabel(x.name)!=='확인 필요')?grandWhoLabel(x.name):grandWhoLabel(x.name,{writers:[x.therapist],treatment:x.treatment}))); return who?`<div class="ga-who">작성 확인 필요 치료사 · ${xmlEscape(who)}</div>`:''; })()}
         <div class="ga-detail-cols">
           ${grandArchiveGroupHtml('red','미반영 · 확인 필요 (전원·퇴원 가능)',issues.unmatched,'unsure','확인필요(퇴원·전원)')}
+          ${(issues.rmWrong||[]).length?grandArchiveGroupHtml('amber','RM 오기입 의심 (환자는 입원 중)',issues.rmWrong.map(x=>({name:x.name,therapist:x.therapist,treatment:`환자 RM ${x.realRm||'-'} · 기록엔 ${x.foundRm||'-'}`})),'unsure','RM 확인'):''}
           ${grandArchiveGroupHtml('amber','미등록 (인수인계 기록 없음)',issues.notWritten.filter(x=>x.missing==='전체'),'missing','미등록')}
           ${grandArchiveGroupHtml('amber','미작성 (Goal · 그랜드라운딩 비어 있음)',issues.notWritten.filter(x=>x.missing!=='전체'),'missing','')}
         </div>
@@ -1615,7 +1626,9 @@ function updateGrandHandoverStatus(){
   const current=allPatients.filter(p=>p.category!=='외래'&&(rm==='ALL'||normalizeGrandRm(p.rm)===rmKey));
   const currentKeys=new Set(current.map(p=>grandHandoverKey(p.rm,p.name)));
   const matched=records.filter(x=>currentKeys.has(grandHandoverKey(x.rm,x.name)));
-  const unmatched=records.filter(x=>!currentKeys.has(grandHandoverKey(x.rm,x.name))&&!grandIsOutpatient(x.name)); // 외래 환자는 퇴원·전원 확인 대상이 아님
+  const notCurrent=records.filter(x=>!currentKeys.has(grandHandoverKey(x.rm,x.name)));
+  const wrongRm=notCurrent.filter(x=>grandWrongRmPatient(x)); // 환자는 다른 RM으로 입원 중 — 이 기록의 RM 오기입 의심
+  const unmatched=notCurrent.filter(x=>!wrongRm.includes(x)&&!grandIsOutpatient(x.name)); // 외래 환자는 퇴원·전원 확인 대상이 아님
   const missing=current.filter(p=>!grandHandoverMap.has(grandHandoverKey(p.rm,p.name)));
   const missingClassified=missing.map(p=>({p,...grandHandoverMissingDetail(p)}));
   const writersOf=(rec)=>grandHandoverEntries(rec).map(e=>e.therapist);
@@ -1625,13 +1638,13 @@ function updateGrandHandoverStatus(){
   const rmMismatch=missingClassified.filter(x=>x.type==='rmMismatch');
   const empty=matched.filter(x=>!grandHandoverHasAnyContent(x));
   const partial=grandHandoverPartialItems(matched);
-  const hasWarn=unmatched.length||missing.length||partial.length;
+  const hasWarn=unmatched.length||wrongRm.length||missing.length||partial.length;
   st.className=`grand-handover-status ${hasWarn?'warn':'ok'}`;
   st.textContent=`${grandHandoverFileName} · ${grandHandoverSheetName||'인수인계'} · ${rm==='ALL'?'전체 RM':rm} · 인수인계 ${records.length}명 / 현재 환자 ${matched.length}명 매칭 · 치료행 ${matched.reduce((n,x)=>n+grandHandoverEntries(x).length,0)}건`;
   const groups=[
     grandHandoverGroupHtml('unmatched','미반영 · 확인 필요 (퇴원·전원 가능)',unmatched.map(x=>withT(x.name,grandWhoLabel(x.name,{writers:writersOf(x)})))),
     grandHandoverGroupHtml('notwritten','미등록 (인수인계 기록 없음)',notWritten),
-    grandHandoverGroupHtml('rmmismatch','RM 오기입 의심',rmMismatch.map(x=>`${withT(x.p.name,grandWhoLabel(x.p.name,{writers:writersOf(grandHandoverData(x.p)||{})}))} (환자 RM: ${x.p.rm||'-'} · 인수인계엔 ${x.foundRm||'-'}로 기입됨)`)),
+    grandHandoverGroupHtml('rmmismatch','RM 오기입 의심',[...wrongRm.map(x=>`${withT(x.name,grandWhoLabel(x.name,{writers:writersOf(x)}))} (환자 RM: ${grandWrongRmPatient(x).rm||'-'} · 이 기록은 ${x.rm||'-'}로 기입됨)`),...rmMismatch.map(x=>`${withT(x.p.name,grandWhoLabel(x.p.name,{writers:writersOf(grandHandoverData(x.p)||{})}))} (환자 RM: ${x.p.rm||'-'} · 인수인계엔 ${x.foundRm||'-'}로 기입됨)`)]),
     grandHandoverGroupHtml('empty','매칭됐지만 전체 공란 (미작성)',empty.map(x=>withT(x.name,grandWhoLabel(x.name,{writers:writersOf(x)})))),
     grandHandoverGroupHtml('partial','치료별 일부 미작성',partial.map(x=>`${withT(x.name,grandWhoLabel(x.name,{writers:[x.therapist],treatment:x.treatment}))} (${normalizeText(x.treatment)||'인수인계'} · ${x.missing} 미작성)`) /* 괄호엔 치료 종류만 — 담당자명은 앞의 한 곳(작업치료현황 기준)에서만 보여준다 */),
   ].join('');
