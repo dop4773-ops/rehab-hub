@@ -566,6 +566,12 @@ function renderHome() {
   { const h = syncHealthNow(); if (h.level === 'warn' || h.level === 'err') todos.push(todoHtml(h.level, '☁️', h.title, updEsc(h.detail), '<button class="btn" data-goto="data">데이터 준비 →</button>')); }
   if (errRoles.length) todos.push(todoHtml('err', '⚠️', `읽기 오류 ${errRoles.length}개`, errRoles.map(r => r.label).join(' · '), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
   if (staleRoles.length) todos.push(todoHtml('warn', '🔄', `업데이트 필요 ${staleRoles.length}개`, staleRoles.map(r => r.label).join(' · ') + ' — 파일이 바뀌었어요', '<button class="btn primary" data-sync-now>지금 업데이트</button>'));
+  { // 도구들이 읽은 자료의 규모가 평소와 크게 다를 때(양식이 바뀌었거나 파일이 일부만 읽혔을 수 있음) — 검사 결과를 믿기 전에 먼저 확인
+    const sw = [];
+    for (const key of Object.keys(TOOLS)) { try { const w = viewDoc(key)?.defaultView.__scaleWarn; if (w && w.count) w.items.forEach(t => sw.push(`${TOOLS[key].label}: ${t}`)); } catch (e) { /* 화면이 아직 로드 전 */ } }
+    if (cross && cross.anomalies && cross.anomalies.length) cross.anomalies.forEach(t => sw.push(`교차검증: ${t}`));
+    if (sw.length) todos.push(todoHtml('warn', '⚠️', `자료가 평소와 달라요 ${sw.length}건`, sw.slice(0, 3).map(updEsc).join(' · ') + (sw.length > 3 ? ' …' : ''), '<button class="btn" data-goto="data">데이터 준비 →</button>'));
+  }
   if (cross && cross.count) {
     const cats = cross.cats ? Object.keys(CROSS_CAT_LABEL).filter(k => cross.cats[k]).map(k => `${CROSS_CAT_LABEL[k]} ${cross.cats[k]}`).join(' · ') : '';
     todos.push(todoHtml('warn', '🔍', `교차검증 불일치 ${cross.count}건`, cats || '자세한 내용은 교차검증 화면에서 확인하세요', `<button class="btn" data-open-fixplan>🛠 수정 지시서</button><button class="btn purple" data-goto="cross">열기 →</button>` + itda(`[교차검증] 불일치 ${cross.count}건 발견 — 재활치료부 앱에서 확인`)));

@@ -75,6 +75,27 @@ console.log('OK ⑤ 확인함 정리·보관 일수');
   assert.deepStrictEqual(H.summarizeByWho(hist, { days: 2, today: '2026-10-10' }).find(x => x.who === '김A').issues, 1, '기간 밖(3일 전)은 빼요');
   assert.strictEqual(H.summarizeByWho({ v: 1, snaps: [] }, {}).length, 0);
 }
+// 검사별 정확도 현황
+{
+  const srcs = { statusBook: true, cards: true, grids: true, handover: true, ptaBook: true };
+  const day = (n) => Date.parse('2026-10-10T12:00:00') - n * 86400000;
+  const iss = (patient, cat, source) => ({ category: cat, source, title: 't', patient, room: '1', floor: 3, line: 'x', detail: {} });
+  const snapOf = (n, list, s = srcs) => H.makeSnapshot(list, s, day(n), null);
+  let hist = { v: 1, snaps: [] };
+  // 4일 전: A,B,C → 3일 전: A,B,C,D(새) → 2일 전: A,B(C 해결, 3일째 계속이던 건 아님: C는 2일 만에 해결),D → 1일 전: A,B,E(새), D 해결 → 오늘: A,B,E
+  const A = iss('가', 'location', 'grid'), B = iss('나', 'location', 'grid'), C = iss('다', 'handover', 'nowriter'), D = iss('라', 'handover', 'nowriter'), E = iss('마', 'handover', 'nowriter');
+  hist = H.addSnapshot(hist, snapOf(4, [A, B, C])); hist = H.addSnapshot(hist, snapOf(3, [A, B, C, D])); hist = H.addSnapshot(hist, snapOf(2, [A, B, D])); hist = H.addSnapshot(hist, snapOf(1, [A, B, E])); hist = H.addSnapshot(hist, snapOf(0, [A, B, E]));
+  const fb = [{ t: day(0), type: 'exclude', cat: 'handover', src: 'nowriter', reason: '퇴원 예정 · 8/12 퇴원' }, { t: day(1), type: 'exclude', cat: 'handover', src: 'nowriter', reason: '퇴원 예정' }, { t: day(0), type: 'ack', cat: 'location', src: 'grid' }, { t: day(40), type: 'exclude', cat: 'location', src: 'grid', reason: '옛날' }];
+  const q = H.summarizeQuality(hist, fb, { today: '2026-10-10' }), by = Object.fromEntries(q.map(x => [x.group, x]));
+  assert.strictEqual(by['location|grid'].openNow, 2); assert.strictEqual(by['location|grid'].chronicOpen, 2, '5일째 계속(3일 이상)'); assert.strictEqual(by['location|grid'].resolved, 0); assert.strictEqual(by['location|grid'].resolveRate, 0, '해결 0 / (0+2)');
+  const w = by['handover|nowriter']; assert.strictEqual(w.openNow, 1); assert.strictEqual(w.newCount, 2, 'D(3일 전)·E(1일 전)가 새로 생김 — C는 첫 기록부터 있어서 새 건이 아님');
+  assert.strictEqual(w.resolved, 2, 'C(2일 만에)·D(2일 만에) 해결'); assert.strictEqual(w.resolveMedian, 2); assert.strictEqual(w.chronicOpen, 0); assert.strictEqual(w.resolveRate, 1);
+  assert.strictEqual(w.fbExclude, 2); assert.deepStrictEqual(w.reasons, [['퇴원 예정', 2]], '제외 사유는 첫 토막으로 묶음'); assert.strictEqual(by['location|grid'].fbAck, 1); assert.strictEqual(by['location|grid'].fbExclude, 0, '30일 밖 기록은 뺀다');
+  assert.deepStrictEqual(H.summarizeQuality({ v: 1, snaps: [] }, [], { today: '2026-10-10' }), [], '이력이 없으면 비어 있음');
+  // 그날 검사하지 않은 분류는 해결로 세지 않는다
+  let h2 = { v: 1, snaps: [] }; h2 = H.addSnapshot(h2, snapOf(2, [C])); h2 = H.addSnapshot(h2, snapOf(1, [], { ...srcs, handover: false })); h2 = H.addSnapshot(h2, snapOf(0, [], srcs));
+  const q2 = H.summarizeQuality(h2, [], { today: '2026-10-10' }); assert.strictEqual((q2.find(x => x.group === 'handover|nowriter') || { resolved: 0 }).resolved, 1, '검사 안 한 날(1일 전)은 건너뛰고, 검사한 오늘 없어졌으니 해결 1');
+}
 // 자료 규모 이상 감지
 {
   const srcs = { statusBook: true, cards: true, grids: true, handover: true, ptaBook: true };

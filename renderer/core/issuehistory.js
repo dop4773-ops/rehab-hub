@@ -109,13 +109,43 @@ function detectAnomalies(history, snap, { lookback = 5 } = {}) {
   }
   return out;
 }
+// 검사별 정확도 현황(실사용 기준): 최근 days일 동안 (분류|세부 검사)별로 — 지금 열려 있는 건, 3일 이상 계속되는 건, 새로 생긴 건, 해결된 건(과 해결까지 걸린 날 중앙값), 사용자가 「제외」·「확인함」한 횟수와 제외 사유 TOP3.
+// 해결 비율 = 해결 / (해결 + 3일 이상 계속 중) — 낮고 계속 건이 많으면 현장에서 안 고치는 규칙이거나 노이즈일 가능성이 크다는 신호다(진짜 오탐 여부는 제외 사유로 판단).
+// history = {snaps:[...]} · feedback = [{t, type:'exclude'|'restore'|'ack'|'unack', cat, src, reason}]
+function summarizeQuality(history, feedback, { today = dayOf(Date.now()), days = 30 } = {}) {
+  const snaps = ((history && history.snaps) || []).filter(s => dayDiff(s.day, today) < days && s.day <= today);
+  const groups = new Map(), gk = (key) => { const p = String(key).split('|'); return p[0] + '|' + (p[1] || ''); };
+  const get = (g) => { if (!groups.has(g)) groups.set(g, { group: g, cat: g.split('|')[0], src: g.split('|')[1] || '', openNow: 0, chronicOpen: 0, newCount: 0, resolved: 0, resolveDays: [], fbExclude: 0, fbAck: 0, reasons: new Map() }); return groups.get(g); };
+  // 분류마다 "그 분류를 마지막으로 검사한 날"의 결과와 비교한다(검사 안 한 날은 건너뛴다 — 파일이 빠진 날을 해결로 오해하지 않게)
+  const run = new Map(), lastKeys = new Map();
+  for (const s of snaps) {
+    const byCat = new Map(); for (const k of Object.keys(s.keys)) { const c = s.keys[k][0]; if (!byCat.has(c)) byCat.set(c, new Set()); byCat.get(c).add(k); }
+    for (const c of s.cats) {
+      const cur = byCat.get(c) || new Set(), prevSet = lastKeys.get(c);
+      if (prevSet) {
+        for (const k of cur) { if (!prevSet.has(k)) { get(gk(k)).newCount++; run.set(k, { len: 1 }); } else { const r = run.get(k) || { len: 1 }; r.len++; run.set(k, r); } }
+        for (const k of prevSet) if (!cur.has(k)) { const r = run.get(k) || { len: 1 }, g = get(gk(k)); g.resolved++; g.resolveDays.push(r.len); run.delete(k); }
+      } else for (const k of cur) run.set(k, { len: 1 });
+      lastKeys.set(c, cur);
+    }
+  }
+  const last = snaps[snaps.length - 1];
+  if (last) for (const k of Object.keys(last.keys)) { const g = get(gk(k)); g.openNow++; if ((run.get(k) || { len: 1 }).len >= 3) g.chronicOpen++; }
+  for (const f of feedback || []) {
+    if (!f || !f.t || dayDiff(dayOf(f.t), today) >= days) continue;
+    const g = get((f.cat || '?') + '|' + (f.src || ''));
+    if (f.type === 'exclude') { g.fbExclude++; const r = String(f.reason || '').split(' · ')[0].trim(); if (r) g.reasons.set(r, (g.reasons.get(r) || 0) + 1); } else if (f.type === 'ack') g.fbAck++;
+  }
+  return [...groups.values()].map(g => ({ ...g, resolveMedian: g.resolveDays.length ? median(g.resolveDays) : null, reasons: [...g.reasons].sort((a, b) => b[1] - a[1]).slice(0, 3), resolveRate: g.resolved + g.chronicOpen ? g.resolved / (g.resolved + g.chronicOpen) : null }))
+    .sort((a, b) => b.openNow - a.openNow || b.resolved - a.resolved || a.group.localeCompare(b.group));
+}
 // 확인함 표시는 그 불일치가 해결되면(검사한 분류에서 사라지면) 자동으로 지운다
 function pruneAck(ack, snap) {
   const out = {};
   for (const [k, v] of Object.entries(ack || {})) { const cat = k.split('|')[0]; if (!snap.cats.includes(cat) || snap.keys[k]) out[k] = v; }
   return out;
 }
-const api = { issueKey, keyIssues, evaluatedCats, makeSnapshot, addSnapshot, compareIssueHistory: compare, summarizeByWho, pruneAck, detectAnomalies, ISSUE_HISTORY_CATS: CATS };
+const api = { issueKey, keyIssues, evaluatedCats, makeSnapshot, addSnapshot, compareIssueHistory: compare, summarizeByWho, summarizeQuality, pruneAck, detectAnomalies, ISSUE_HISTORY_CATS: CATS };
 root.RehabCore = Object.assign(root.RehabCore || {}, api);
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

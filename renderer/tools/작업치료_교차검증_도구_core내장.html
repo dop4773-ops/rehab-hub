@@ -809,7 +809,7 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
 <script src="../core/workstate.js"></script>
 <script src="../core/issuehistory.js"></script>
 <script>
-const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, fixItemsToWhoMessages, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, summarizeByWho, pruneAck, detectAnomalies, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
+const { ZipArchive, decodeXml, getAttr, colToNum, numToCol, splitRef, parseSharedStrings, parseWorksheet, normalizePartTarget, readWorkbookFile, getSheetCells, getCell, normalizeText, excelTimeToHHMM, parseStylesXml, getSheetBoldRefs, normKey, normDoctor, roomDigits, regDigits, hasTreatment, findCardBlocks, readCardHead, findTimeHeader, cardDayCols, cardRows, buildScheduleData, parseEvalMainNames, parseEvalMainOccurrences, normLoc, timeStart, parseSaturdayScheduleSheet, parseStatusSheet, parsePtaSheet, parseHandoverSheet, handoverListFromLiveRecords, buildHandoverIndex, collectGridEntries, buildFixItems, fixItemsToText, fixItemsToWhoMessages, FIX_GROUPS, FIX_GROUP_ORDER, makeSnapshot, addSnapshot, compareIssueHistory, summarizeByWho, summarizeQuality, pruneAck, detectAnomalies, keyIssues, ISSUE_HISTORY_CATS, attachRefs } = RehabCore; // renderer/core 공통 모듈
 /* ======================================================================
    XLSX 최소 판독기 (외부 라이브러리 없이 자체 구현) — 기존 로직 그대로 유지
    ====================================================================== */
@@ -3956,7 +3956,9 @@ document.getElementById('fixPrint').addEventListener('click',()=>{
    불일치 이력 추적 (core/issuehistory.js) — 날마다 마지막 검증 결과를 localStorage에 남기고 이전 날짜와 비교한다.
    검증 결과(환자 이름·불일치 문구)만 저장하고 원본 파일은 건드리지 않는다. 저장이 안 되는 환경이면 조용히 건너뜀.
    ====================================================================== */
-const HIST_KEY='rehab_cross_history_v1', ACK_KEY='rehab_cross_ack_v1', EXCL_KEY='rehab_cross_exclude_v1';
+const HIST_KEY='rehab_cross_history_v1', ACK_KEY='rehab_cross_ack_v1', EXCL_KEY='rehab_cross_exclude_v1', FB_KEY='rehab_cross_feedback_v1';
+// 사용자가 「제외」·「확인함」한 일을 따로 남긴다(제외 기록은 문제가 해결되면 지워지므로) — 「검사별 정확도 현황」이 "이 검사가 얼마나 예외로 빠지는지"를 보는 재료. 환자 이름은 저장하지 않는다.
+function fbLog(type, cat, src, reason){ try{ const log=histLoad(FB_KEY,[]); log.push({t:Date.now(), type, cat:cat||'', src:src||'', reason:reason||''}); histSave(FB_KEY, log.slice(-500)); }catch(e){} }
 const histLoad=(k,def)=>{ try{ const o=JSON.parse(localStorage.getItem(k)); return o||def; }catch(e){ return def; } };
 const histSave=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } };
 const CAT_KO={count:'개수',location:'위치',therapist:'치료사',handover:'인수인계',eval:'평가메인',room:'PTA 대조'};
@@ -3982,7 +3984,7 @@ function histBadgesHtml(i){
 function toggleAck(issue){
   if(!issue.hist||!histState) return;
   const ack=histState.ack; if(ack[issue.hist.key]) delete ack[issue.hist.key]; else ack[issue.hist.key]={t:Date.now()};
-  issue.hist.acked=!!ack[issue.hist.key]; histSave(ACK_KEY,ack); applyFilters(); renderDetail(); renderHistBox();
+  fbLog(ack[issue.hist.key]?'ack':'unack', issue.category, issue.source||issue.field, ''); issue.hist.acked=!!ack[issue.hist.key]; histSave(ACK_KEY,ack); applyFilters(); renderDetail(); renderHistBox();
 }
 /* ── 제외: 알고 있는 예외 불일치를 사유와 함께 결과에서 뺀다(찾아낸 전체는 allDetected에 그대로 있고, 화면·건수·지시서가 보는 issues에서만 빠진다) ── */
 const STAT_OF={count:'countProblems',location:'locProblems',therapist:'therProblems',handover:'handoverProblems',eval:'evalProblems',room:'roomProblems'};
@@ -4018,7 +4020,7 @@ document.getElementById('exclReason').addEventListener('input',e=>{ document.get
 document.getElementById('exclReason').addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!document.getElementById('exclOk').disabled) document.getElementById('exclOk').click(); });
 document.getElementById('exclOk').addEventListener('click',()=>{
   const i=exclTarget, reason=document.getElementById('exclReason').value.trim(); if(!i||!i.hist||!reason) return;
-  exclMap[i.hist.key]={t:Date.now(), reason, patient:i.patient, room:i.room||'', floor:i.floor||'', cat:i.category, title:i.title, line:i.line};
+  exclMap[i.hist.key]={t:Date.now(), reason, patient:i.patient, room:i.room||'', floor:i.floor||'', cat:i.category, src:i.source||i.field||'', title:i.title, line:i.line}; fbLog('exclude', i.category, i.source||i.field, reason);
   histSave(EXCL_KEY,exclMap); closeExclModal(); refreshAfterExclusion();
 });
 ['exclClose','exclCancel'].forEach(id=>document.getElementById(id).addEventListener('click',closeExclModal));
@@ -4028,7 +4030,7 @@ function renderExclList(){
   body.innerHTML=entries.length?`<p class="fix-note">제외한 불일치는 목록·건수·수정 지시서에서 빠져 있어요. 문제가 해결돼 사라지면 이 기록도 자동으로 정리돼요.</p>`+entries.map(([k,v])=>`<div class="excl-row"><div class="m"><b>${esc(v.patient)}</b> ${v.floor?v.floor+'F ':''}${esc(v.room?v.room+'호 ':'')}· ${esc(CAT_KO[v.cat]||v.cat)} · ${esc(v.title)}<div class="sub">${esc(v.line)}</div><div class="why">📝 ${esc(v.reason)}<span style="color:var(--muted)"> · ${new Date(v.t).toLocaleDateString('ko-KR')}</span></div></div><button class="btn sm" data-restore="${esc(k)}">제외 해제</button></div>`).join(''):'<p class="fix-note">제외한 항목이 없어요.</p>';
 }
 document.getElementById('exclBtn').addEventListener('click',()=>{ renderExclList(); document.getElementById('exclListModal').classList.add('show'); });
-document.getElementById('exclListBody').addEventListener('click',e=>{ const b=e.target.closest('[data-restore]'); if(!b) return; delete exclMap[b.dataset.restore]; histSave(EXCL_KEY,exclMap); refreshAfterExclusion(); });
+document.getElementById('exclListBody').addEventListener('click',e=>{ const b=e.target.closest('[data-restore]'); if(!b) return; { const v=exclMap[b.dataset.restore]||{}; fbLog('restore', v.cat, v.src, ''); } delete exclMap[b.dataset.restore]; histSave(EXCL_KEY,exclMap); refreshAfterExclusion(); });
 document.getElementById('exclListClose').addEventListener('click',()=>document.getElementById('exclListModal').classList.remove('show'));
 document.getElementById('exclListModal').addEventListener('click',e=>{ if(e.target.id==='exclListModal') e.currentTarget.classList.remove('show'); });
 const exclRowsCsv=()=>excludedIssues.length?['',['[제외한 항목]'],['구분','층','환자명','병실','제목','내용','제외 사유'],...excludedIssues.map(i=>[CAT_KO[i.category]||i.category,i.floor?i.floor+'F':'',i.patient,i.room||'',i.title,i.line,(exclMap[i.hist.key]||{}).reason||''])]:[];
@@ -4055,6 +4057,10 @@ function openHistModal(){
     const nw=issues.filter(i=>i.hist&&i.hist.isNew); h+=`<div class="fix-grp">🆕 새로 생긴 것 <small>${nw.length}건 — 목록에서 "새로 생김" 버튼으로도 볼 수 있어요</small></div>`;
     h+=nw.slice(0,30).map(i=>`<div class="res-item"><b>${esc(i.patient)}</b>${i.floor?i.floor+'F ':''}${esc(i.room?i.room+'호 ':'')}· ${esc(CAT_KO[i.category]||i.category)} · ${esc(i.title)}</div>`).join('')+(nw.length>30?`<div style="color:var(--muted);font-size:12px">…외 ${nw.length-30}건</div>`:'');
   } else h+='<p class="fix-note">오늘이 첫 기록이라 비교할 이전 결과가 없어요. 검증을 실행한 날마다 마지막 결과가 저장돼요(최대 90일).</p>';
+  const SRC_KO={grid:'매트·테이블 대조',schedule:'평일시간표 위치',nowriter:'시간표 담당 미작성',notype:'치료 기록 없음',notx:'Tx 미작성',nofield:'RM·작성자 미작성',therapist:'담당 치료사',doctor:'주치의',orphan:'근거 없음',excess:'작성자 수 초과',discharge:'퇴원·외래 카드',erdt:'ERDT 횟수',missing:'누락',extra:'초과',dup:'이름 중복',noeval:'평가메인(현황판)',mismatch:'불일치',rm:'주치의(RM)',ptaonly:'PTA에만 있음',nopta:'PTA에 없음',lang:'언어 횟수',sot:'SOT 횟수',rdt:'RDT 횟수',ccrt:'CCRT 횟수',sat:'토요일'};
+  const q=summarizeQuality(hist,histLoad(FB_KEY,[]),{days:30});
+  h+=`<div class="fix-grp">📊 검사별 정확도 현황 <small>최근 30일 · 어떤 검사가 실제로 고쳐지고, 어떤 검사가 계속 남는지·예외로 빠지는지 보여 줘요</small></div>`;
+  h+=q.length?`<table class="hist-table"><thead><tr><th>검사</th><th>지금 열림</th><th>3일↑ 계속</th><th>새로 생김</th><th>해결됨</th><th>해결까지(중앙)</th><th>해결 비율</th><th>제외</th><th>확인함</th></tr></thead><tbody>${q.slice(0,16).map(x=>`<tr><td><b>${esc(CAT_KO[x.cat]||x.cat)}</b>${x.src?' · '+esc(SRC_KO[x.src]||x.src):''}</td><td>${x.openNow}</td><td${x.chronicOpen&&x.openNow&&x.chronicOpen/x.openNow>=0.6?' style="color:#c0392b;font-weight:800"':''}>${x.chronicOpen}</td><td>${x.newCount}</td><td>${x.resolved}</td><td>${x.resolveMedian==null?'-':x.resolveMedian+'일'}</td><td>${x.resolveRate==null?'-':Math.round(x.resolveRate*100)+'%'}</td><td>${x.fbExclude||'-'}${x.reasons.length?` <small style="color:var(--muted)">${esc(x.reasons.map(r=>r[0]+' '+r[1]).join(' · '))}</small>`:''}</td><td>${x.fbAck||'-'}</td></tr>`).join('')}</tbody></table><p class="fix-note" style="margin-top:6px">읽는 법: <b>3일↑ 계속</b>이 열림의 60% 넘으면 빨갛게 표시돼요 — 현장에서 안 고치는 항목이거나 규칙이 시끄러운 것일 수 있어요. 그럴 땐 「제외」 사유(예: 퇴원 예정·정상 운영)를 남겨 두면 어떤 검사가 예외로 빠지는지 여기서 볼 수 있어요. 해결 비율 = 해결 ÷ (해결 + 3일↑ 계속).</p>`:'<p class="fix-note">이력이 쌓이면(2일째부터) 보여 드려요.</p>';
   const wsum=summarizeByWho(hist,{days:30}).slice(0,10);
   h+=`<div class="fix-grp">👥 담당자별 반복 <small>최근 30일 · 담당을 알 수 있는 불일치만 · 같은 불일치가 서로 다른 3일 이상 나오면 "반복"이에요</small></div>`;
   h+=wsum.length?`<table class="hist-table"><thead><tr><th>담당</th><th>불일치(서로 다른 건)</th><th>반복</th><th>나온 날</th><th>주요 분류</th></tr></thead><tbody>${wsum.map(w=>`<tr><td><b>${esc(w.who)}</b></td><td>${w.issues}</td><td>${w.repeated?`<b style="color:var(--red)">${w.repeated}</b>`:'0'}</td><td>${w.days}일</td><td>${Object.entries(w.cats).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([c,n])=>`${esc(CAT_KO[c]||c)} ${n}`).join(' · ')}</td></tr>`).join('')}</tbody></table>`:'<p class="fix-note">담당자별 기록은 이 버전부터 쌓이기 시작해요. 며칠 검증을 실행하면 여기에 나타납니다.</p>';

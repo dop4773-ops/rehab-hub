@@ -211,6 +211,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
     .grand-controls select,.grand-controls input[type=date]{font-size:13px !important;padding:6px 10px !important;min-height:0 !important;}
     .grand-controls-priority .field:first-child select{min-width:260px !important;}
     .btn{font-size:12.5px !important;padding:7px 12px !important;}
+.scale-warn{background:#fff4df;border:1px solid #f0c98a;border-radius:10px;padding:8px 12px;margin:8px 0;color:#7a4a00;font-size:12.5px;display:flex;flex-direction:column;gap:2px}.scale-warn b{color:#a85a00}.scale-warn span{font-weight:500}
 </style>
 <style>
 /* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
@@ -286,6 +287,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
         </div>
       </div>
       <div id="statusLine" class="status-line"></div>
+      <div id="scaleWarn" class="scale-warn" style="display:none"></div>
     </div>
   </section>
 
@@ -409,6 +411,7 @@ main{max-width:1680px;margin:18px auto 36px;padding:0 18px}
     </div>
   </section>
 </main>
+<script src="../core/scaleguard.js"></script>
 <script src="../core/xlsx-reader.js"></script>
 <script src="../core/normalize.js"></script>
 <script src="../core/treatment.js"></script>
@@ -642,6 +645,10 @@ function updateAfterLoad(){
   // 데스크톱 앱 홈 대시보드가 이 화면의 요약(환자 수)을 읽기 위한 훅. top-level let은 window에 안 붙어서
   // iframe.contentWindow로 직접 못 읽기 때문에 명시적으로 저장한다. 화면 자체 로직에는 영향 없음.
   window.__rmSummary = { patientCount: allPatients.length, floor10Count: allPatients.filter(p=>p.floor===10).length, floor3Count: allPatients.filter(p=>p.floor===3).length };
+  // 읽은 환자 수가 평소와 크게 다르면 알린다(양식이 바뀌었거나 파일이 일부만 읽혔을 수 있어요). 요일 종류(평일/토요일)별로 따로 비교한다.
+  try{ const dv=document.getElementById('grandDateInput')?.value||'', wd=dv?new Date(dv+'T00:00:00').getDay():new Date().getDay(), kind=(wd===6||wd===0)?'sat':'wd';
+    const items=RehabCore.scaleGuard.check(localStorage,'grand-'+kind,{patients:allPatients.length,floor10:window.__rmSummary.floor10Count,floor3:window.__rmSummary.floor3Count},{labels:{patients:'전체 환자',floor10:'10F 환자',floor3:'3F 환자'},units:{patients:'명',floor10:'명',floor3:'명'}});
+    window.__scaleWarn={count:items.length,items:items.map(i=>i.text)}; const el=document.getElementById('scaleWarn'); el.style.display=items.length?'block':'none'; el.innerHTML=items.length?'<b>⚠ 자료가 평소와 달라요</b>'+items.map(i=>'<span>'+i.text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</span>').join(''):''; }catch(e){ console.error(e); }
   try{ setTimeout(()=>window.parent.__onToolSummary&&window.parent.__onToolSummary(),0); }catch(e){} // 셸이 홈·상단 띠를 바로 갱신하도록 알림
 }
 function defaultDay(){ const d=new Date().getDay(); return d===1?'월요일':d===2?'화요일':d===3?'수요일':d===4?'목요일':d===5?'금요일':'토요일/공휴일'; }

@@ -290,6 +290,13 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       if (r.files.gi && r.gi < 20) throw new Error('기구시간표에서 읽은 환자가 너무 적어요: ' + r.gi);
       return { date: r.date, 물리치료환자: r.pt, 기구·전기환자: r.gi, 층: r.floors, 못읽은시트: r.unread };
     });
+    await step('교차검증: 이력 창의 검사별 정확도 현황·제외 기록 남기기', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)), FB='rehab_cross_feedback_v1', keep=localStorage.getItem(FB), EK='rehab_cross_exclude_v1', keepEx=localStorage.getItem(EK);
+      try{ d.getElementById('histOpen').click(); await sl(400); const tb=[...d.querySelectorAll('#histModalBody .hist-table')][0], rows=tb?tb.querySelectorAll('tbody tr').length:0, txt=d.getElementById('histModalBody').innerText; d.getElementById('histClose').click();
+        if(/undefined|NaN|\\[object/.test(txt)) throw new Error('이상한 글자'); if(!/검사별 정확도 현황/.test(txt)) throw new Error('정확도 현황이 안 보여요');
+        const n0=(JSON.parse(localStorage.getItem(FB)||'[]')).length; w.openExclModal(w.__testHooks.issues()[0]); const r=d.getElementById('exclReason'); r.value='정상 운영'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);
+        const log=JSON.parse(localStorage.getItem(FB)||'[]'), last=log[log.length-1]; if(log.length!==n0+1||last.type!=='exclude'||last.reason!=='정상 운영'||!last.cat) throw new Error('제외 기록이 안 남아요: '+JSON.stringify(last)); if(/환자|patient/.test(JSON.stringify(last))&&last.patient) throw new Error('환자 이름이 저장돼요');
+        return {rows, last:{type:last.type,cat:last.cat,src:last.src}}; }
+      finally{ if(keep==null) localStorage.removeItem(FB); else localStorage.setItem(FB,keep); if(keepEx==null) localStorage.removeItem(EK); else localStorage.setItem(EK,keepEx); await w.handleRun(); } })()`));
     await step('교차검증: 제외한 오류가 해결되면 제외명단에서도 자동으로 사라짐', async () => await ev(`(async()=>{ const w=${W('cross')}, d=w.document, sl=ms=>new Promise(r=>setTimeout(r,ms)); const KEY='rehab_handover_cache_v1', EK='rehab_cross_exclude_v1', orig=localStorage.getItem(KEY), origEx=localStorage.getItem(EK), origFetch=w.fetch;
       try{ const t=w.__testHooks.issues().find(i=>i.source==='notx'); if(!t) return 'Tx 미작성 항목이 없어 건너뜀'; const recs=JSON.parse(orig).records, nk=s=>String(s||'').replace(/\\s+/g,''), out={};
         w.openExclModal(t); const r=d.getElementById('exclReason'); r.value='점검용'; r.dispatchEvent(new Event('input')); d.getElementById('exclOk').click(); await sl(300);
