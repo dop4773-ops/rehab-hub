@@ -203,8 +203,8 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
       const items = await ev(`(async()=>{ const w=${W('cross')}, R=w.RehabCore, N=R.normalizeText, hk=w.__testHooks, st=hk.state();
         const grid=[st.mat10Book,st.table10Book,st.mt3Book].filter(Boolean);
         const read=async(book,sheet,ref)=>{ const c=book&&await R.getSheetCells(book,sheet); return c?N(c.get(ref)||''):null; };
-        const out=[]; for(const i of hk.issues()){ if(!i.refs) continue; const d=i.detail||{}; const it={kind:d.kind,patient:i.patient,floor:i.floor,d:{expected:d.expected,source:d.source,statusRoom:d.statusRoom,cardRoom:d.cardRoom,vals:d.vals,loc:d.loc,cardLoc:d.cardLoc,scheduleLoc:d.scheduleLoc,gridNames:d.gridNames},refs:[]};
-          for(const r of i.refs) for(const cell of r.cells){ let v=null; if(r.group==='status') v=await read(st.statusBook,r.sheet,cell); else if(r.group==='card') v=await read((r.floor||i.floor)===3?st.card3Book:st.card10Book,r.sheet,cell); else for(const b of grid){ v=await read(b,r.sheet,cell); if(v) break; } it.refs.push({group:r.group,sheet:r.sheet,cell,value:v,isStatusSheet:r.sheet===hk.statusSheet()}); }
+        const out=[]; for(const i of hk.issues()){ if(!i.refs) continue; const d=i.detail||{}; const it={kind:d.kind,patient:i.patient,floor:i.floor,d:{expected:d.expected,field:d.field,source:d.source,statusRoom:d.statusRoom,cardRoom:d.cardRoom,vals:d.vals,loc:d.loc,cardLoc:d.cardLoc,scheduleLoc:d.scheduleLoc,gridNames:d.gridNames},refs:[]};
+          for(const r of i.refs) for(const cell of r.cells){ let v=null; if(r.group==='status') v=await read(st.statusBook,r.sheet,cell); else if(r.group==='card') v=await read((r.floor||i.floor)===3?st.card3Book:st.card10Book,r.sheet,cell); else for(const b of grid){ v=await read(b,r.sheet,cell); if(v) break; } const isSt=r.sheet===hk.statusSheet(); let hdr=null; if(r.group==='status'&&isSt){ hdr=[]; const col=/^[A-Z]+/.exec(cell)[0]; for(let q=1;q<=6;q++) hdr.push(await read(st.statusBook,r.sheet,col+q)); } it.refs.push({group:r.group,sheet:r.sheet,cell,value:v,isStatusSheet:isSt,hdr}); }
           out.push(it); } return {items:out,total:hk.issues().length}; })()`);
       const nk = (v) => String(v == null ? '' : v).replace(/[\s·ㆍ\-\(\)\[\]{}.,\/\\]/g, '').toUpperCase(), first = (v) => nk(String(v).split('\n')[0]);
       const dr = (v) => String(v == null ? '' : v).match(/\d{3,4}/)?.[0] || '', dc = (v) => { const m = /(\d+)/.exec(String(v)); return m ? 'RM' + m[1] : String(v).toUpperCase(); };
@@ -213,7 +213,12 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         checked++; const v = r.value, nameOk = nk(v) === nk(it.patient) || first(v) === nk(it.patient);
         if (v == null) { bad(it.kind + ':칸을 읽지 못함'); continue; }
         if (r.group === 'status' && r.isStatusSheet) { // 현황판 칸
-          if (it.kind === 'count' && it.d.source !== 'outpatient' && parseInt(v, 10) !== it.d.expected) bad('count:현황 횟수 칸');
+          if (it.kind === 'count' && it.d.source !== 'outpatient') {
+            const cnt = String(v).trim() === '' ? 0 : parseInt(v, 10); // 현황의 횟수 칸이 비어 있으면 0회(예: 언어 칸이 빈 환자)
+            if (cnt !== it.d.expected) bad('count:현황 횟수 칸');
+            const fld = String(it.d.field || '').toUpperCase(); // 그 칸이 정말 그 항목의 열인지(머리글)도 본다 — 빈 칸이라 값만으로는 열이 틀려도 통과하기 때문
+            if (fld && r.hdr && !r.hdr.some(h => String(h || '').replace(/\s+/g, '').toUpperCase() === fld)) bad('count:현황 횟수 칸 열 머리글');
+          }
           if (it.kind === 'room_mismatch' && dr(v) !== dr(it.d.statusRoom)) bad('room_mismatch:현황 병실 칸');
           if (it.kind === 'room_rm') { const x = (it.d.vals || []).find(q => q.name === '현황판'); if (x && dc(v) !== x.value) bad('room_rm:현황 진료과 칸'); }
           if (it.kind === 'discharge_stillactive' && v !== '퇴원') bad('discharge_stillactive:퇴원 칸');
