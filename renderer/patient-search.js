@@ -78,15 +78,16 @@
     if (!results.length) { body.innerHTML = '<div class="ps-hint">일치하는 환자가 없어요. 그랜드라운딩에 시간표가 올라와 있어야 이름이 검색돼요.</div>'; return; }
     sel = Math.min(sel, results.length - 1);
     const p = results[sel], d = detail(p), kinds = (p.kinds || []).map(k => `${k[0]} ${k[1]}`).join(' · ');
-    const hoLines = d.ho.slice(0, 6).map(r => `<div class="ps-li"><b>${esc(String(r.type || '').toUpperCase())}</b> ${esc(r.therapist || '-')} <span class="muted">· 주치의 ${esc(r.doctor || '-')} · ${esc(String(r.modified || '').slice(5, 10).replace('-', '/') || '-')}</span></div>`).join('') || '<div class="ps-li muted">인수인계 기록이 없어요</div>';
-    const crossLines = d.cross.slice(0, 5).map(i => `<div class="ps-li"><span class="ps-cat">${esc(CROSS_CAT_LABEL[i.category] || i.category)}</span> ${esc(i.title)} <span class="muted">${esc(i.line || '')}</span></div>`).join('') || '<div class="ps-li ps-ok">✔ 교차검증 이상 없음</div>';
+    const hoLines = d.ho.slice(0, 3).map(r => `<div class="ps-li"><b>${esc(String(r.type || '').toUpperCase())}</b> ${esc(r.therapist || '-')} <span class="muted">· 주치의 ${esc(r.doctor || '-')} · ${esc(String(r.modified || '').slice(5, 10).replace('-', '/') || '-')}</span></div>`).join('') || '<div class="ps-li muted">인수인계 기록이 없어요</div>';
+    const crossLines = d.cross.slice(0, 3).map(i => `<div class="ps-li"><span class="ps-cat">${esc(CROSS_CAT_LABEL[i.category] || i.category)}</span> ${esc(i.title)} <span class="muted">${esc(i.line || '')}</span></div>`).join('') || '<div class="ps-li ps-ok">✔ 교차검증 이상 없음</div>';
     const qaLines = d.qa ? (`${d.qa.errors.length ? `<div class="ps-li"><span class="ps-cat bad">오류 ${d.qa.errors.length}</span> ${esc(d.qa.errors.slice(0, 3).map(x => x.type).join(' · '))}</div>` : ''}${d.qa.missing.length ? `<div class="ps-li"><span class="ps-cat warn">미액팅 ${d.qa.missing.length}</span> ${esc(d.qa.missing.slice(0, 3).map(x => `${x.timeSlot || ''} ${x.type || ''}`.trim()).join(' · '))}</div>` : ''}${!d.qa.errors.length && !d.qa.missing.length ? '<div class="ps-li ps-ok">✔ 치료기록 확인할 것 없음</div>' : ''}`) : '<div class="ps-li muted">치료기록 QA 화면을 한 번 열어 파일을 올리면 여기에 보여요</div>';
     body.innerHTML = `<div class="ps-list">${results.map((r, i) => `<button type="button" class="ps-row${i === sel ? ' on' : ''}" data-ps-i="${i}"><b>${esc(r.name)}</b><span>${esc([r.room ? r.room + '호' : '', r.floor ? r.floor + 'F' : '', r.category, r.rm].filter(Boolean).join(' · '))}</span></button>`).join('')}</div>`
       + `<div class="ps-detail"><div class="ps-name">${esc(p.name)}<small>${esc([p.room ? p.room + '호' : '', p.floor ? p.floor + 'F' : '', p.category, p.rm ? '주치의 ' + p.rm : ''].filter(Boolean).join(' · '))}</small></div>${kinds ? `<div class="ps-kinds">담당 치료사 · ${esc(kinds)}</div>` : ''}`
       + `<div class="ps-acts"><button class="btn primary" data-ps-go="${d.cross.length ? 'cross' : 'grand'}">${d.cross.length ? '교차검증에서 보기' : '그랜드라운딩에서 보기'} ↵</button>${d.cross.length ? '<button class="btn" data-ps-go="grand">그랜드라운딩</button>' : ''}<button class="btn" data-ps-go="handover">인수인계</button>${d.qa && d.qa.errors.length ? '<button class="btn" data-ps-go="qaerr">QA 오류</button>' : ''}${d.qa && d.qa.missing.length ? '<button class="btn" data-ps-go="qamiss">미액팅</button>' : ''}</div>`
-      + `<div class="ps-sec">인수인계 <small>${d.ho.length}건</small></div>${hoLines}<div class="ps-sec">교차검증 <small>${d.cross.length}건</small></div>${crossLines}<div class="ps-sec">치료기록 QA</div>${qaLines}`
-      + `<div class="ps-sec">오늘 일정 <small id="psDayHint">작업치료실·물리치료·기구 시간표</small></div><div id="psDay"><div class="ps-li muted">불러오는 중…</div></div>`
-      + `<div class="ps-cardsec" id="psCard"></div></div>`;
+      + `<div class="ps-two"><div class="ps-main"><div class="ps-cardsec" id="psCard"></div></div><div class="ps-side">`
+      + `<div class="ps-sec" style="margin-top:0">오늘 일정 <small id="psDayHint">작업치료실·물리치료·기구 시간표</small></div><div id="psDay"><div class="ps-li muted">불러오는 중…</div></div>`
+      + `<div class="ps-sec">인수인계 <small>${d.ho.length}건</small></div>${hoLines}${d.ho.length > 3 ? `<div class="ps-li muted">외 ${d.ho.length - 3}건</div>` : ''}<div class="ps-sec">교차검증 <small>${d.cross.length}건</small></div>${crossLines}${d.cross.length > 3 ? `<div class="ps-li muted">외 ${d.cross.length - 3}건</div>` : ''}<div class="ps-sec">치료기록 QA</div>${qaLines}`
+      + `</div></div></div>`;
     fillDay(p); fillCard(p);
   }
   // 오늘 하루 일정: 셸이 그날 작업치료실·물리치료·기구 시간표에서 이 환자의 하루를 시간순으로 모아 준다(시트가 없으면 이유를 알려 줌)
@@ -112,18 +113,28 @@
     const api = toolFn('cross', '__cardApi');
     if (!api) { box.innerHTML = '<div class="ps-cardhead">전체시간표 카드</div><div class="ps-cardnone">교차검증 화면이 준비되면 카드가 보여요.</div>'; return; }
     box.innerHTML = '<div class="ps-cardhead">전체시간표 카드</div><div class="ps-cardnone">불러오는 중…</div>';
-    const d = await api(p.name, p.floor);
+    const d = await api(p.name, p.floor, TODAY_DAY());
     if (my !== cardToken || !ov || !ov.querySelector('#psCard')) return;
     if (!d) { box.innerHTML = '<div class="ps-cardhead">전체시간표 카드</div><div class="ps-cardnone">전체시간표에서 이 환자의 카드를 찾지 못했어요(외래·퇴원·시간표 미연결일 수 있어요).</div>'; return; }
     cardNow = d;
     box.innerHTML = `<div class="ps-cardhead">📇 ${esc(d.floor)}F 전체시간표 카드 <span class="muted" style="font-weight:600">· ${esc(d.sheet)} 시트</span><button type="button" class="btn" data-ps-big>⤢ 크게</button></div><div class="ps-cardwrap" data-ps-big><div class="ps-cardzoom">${d.html}</div></div>`;
-    const wrap = box.querySelector('.ps-cardwrap'), z = box.querySelector('.ps-cardzoom'); z.style.zoom = Math.min(1, (wrap.clientWidth - 10) / d.width);
+    const wrap = box.querySelector('.ps-cardwrap'), z = box.querySelector('.ps-cardzoom'); z.style.zoom = Math.min(1, (wrap.clientWidth - 10) / d.width); markToday(z, d.today);
+  }
+  // 전체시간표 카드에 "오늘 요일 열"과 "지금(또는 다음) 치료 칸"을 칠한다 — 칸 주소(data-ref)로 찾는다. 토요일은 '토요일/공휴일' 열, 일요일은 표시 없음.
+  const TODAY_DAY = () => ['', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일/공휴일'][new Date().getDay()] || null;
+  function markToday(root, t) {
+    if (!t || !root) return;
+    const col = t.col, now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
+    root.querySelectorAll('td[data-ref]').forEach(td => { const m = /^([A-Z]+)(\d+)$/.exec(td.dataset.ref); if (m && m[1] === col && +m[2] >= +/\d+/.exec(t.hdr)[0] && +m[2] <= t.last) td.classList.add(td.dataset.ref === t.hdr ? 'ps-today-h' : 'ps-today'); });
+    // 진행 중(시작 후 35분 안)인 칸, 없으면 다음 칸
+    const rows = t.rows.filter(r => r.startM != null).sort((a, b) => a.startM - b.startM), cur = rows.filter(r => nowM >= r.startM && nowM < r.startM + 35).pop() || rows.find(r => r.startM > nowM);
+    const c = cur && root.querySelector(`td[data-ref="${cur.ref}"]`); if (c) c.classList.add('ps-nowcell');
   }
   function openBig() {
     if (!cardNow || document.querySelector('.ps-big')) return;
     const b = document.createElement('div'); b.className = 'ps-big'; window.__psBig = true;
     b.innerHTML = `<div class="ps-bigbox"><h3>📇 ${esc(cardNow.title)}<kbd>Esc</kbd><button type="button" class="btn" data-ps-bigclose>닫기</button></h3><div class="ps-bigzoom">${cardNow.html}</div></div>`;
-    document.body.appendChild(b);
+    document.body.appendChild(b); markToday(b, cardNow.today);
     const box = b.querySelector('.ps-bigbox'), z = b.querySelector('.ps-bigzoom'), head = b.querySelector('h3');
     z.style.zoom = Math.max(0.3, Math.min(1.4, (window.innerWidth * 0.94 - 60) / cardNow.width, (window.innerHeight * 0.94 - head.offsetHeight - 60) / cardNow.height));
     b.addEventListener('click', (e) => { if (e.target.closest('[data-ps-bigclose]')) { closeBig(); input && input.focus(); } });

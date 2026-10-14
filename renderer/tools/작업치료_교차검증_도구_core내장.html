@@ -3691,7 +3691,7 @@ async function cardRenderData(card, hlFn){
   const c0=card.headCol, nextTop=findCardBlocks(cells).filter(b=>b.col===c0&&b.row>card.headRow).map(b=>b.row)[0];
   const height=Math.min(nextTop?nextTop-card.headRow:26,40), hl=hlFn?hlFn(cells,c0,height):new Set();
   const out=RehabCore.renderRegion(view,cells,{r0:card.headRow,c0,rows:height,cols:23,hl});
-  return {html:out.html,width:out.width,height:out.height,hl,title:`${card.floor}F ${card.name} 카드 (${card.sheet} 시트)`};
+  return {html:out.html,width:out.width,height:out.height,hl,cells,c0,rowsN:height,title:`${card.floor}F ${card.name} 카드 (${card.sheet} 시트)`};
 }
 // 토요일&공휴일 칸 중 토요일 시간표에서 확인하는 치료(작업·연하·인지·연하전기)가 적힌 칸
 const satCardHighlights=(card)=>(cells,c0,height)=>{
@@ -4077,7 +4077,11 @@ handoverLiveFetchPromise=fetchHandoverLive(); // 페이지를 열면 곧바로 �
 // 검증 스크립트(scripts/golden.js)가 화면 데이터를 읽는 통로(CSP가 eval을 막음). 읽기 전용.
 // 환자 빠른 검색(Ctrl+K)이 읽는 이슈 목록 — 읽기 전용
 // 환자 빠른 검색(Ctrl+K)이 쓰는 전체시간표 카드(엑셀 원본 그대로, 읽기 전용) — 없으면 null
-window.__cardApi=async(name,floor)=>{ try{ const card=cardFinder&&cardFinder(String(name||'').replace(/\s*\(외래\)\s*$/,'').trim(), floor?+floor:null); if(!card) return null; const d=await cardRenderData(card,null); return {html:d.html,width:d.width,height:d.height,title:d.title,sheet:card.sheet,floor:card.floor}; }catch(e){ return null; } };
+window.__cardApi=async(name,floor,day)=>{ try{ const card=cardFinder&&cardFinder(String(name||'').replace(/\s*\(외래\)\s*$/,'').trim(), floor?+floor:null); if(!card) return null; const d=await cardRenderData(card,null);
+  // 오늘 요일 열(day: '수요일' 등)의 칸 주소와 시간 줄 — 환자 빠른 검색이 "오늘 열·지금 시각" 표시를 칠하는 데 쓴다
+  let today=null; if(day){ const blk={row:card.headRow,col:d.c0}, end=card.headRow+d.rowsN-1, hdr=findTimeHeader(d.cells,blk,end), dc=hdr&&cardDayCols(d.cells,blk,hdr.row,hdr.hasLocCol), col=dc&&dc[day];
+    if(col){ const L=numToCol(col), all=cardRows(d.cells,blk,hdr,dc,end); today={ col:L, hdr:L+hdr.row, last:all.length?all[all.length-1].row:hdr.row, rows:all.filter(r=>r.texts[day]).map(r=>{ const t=timeStart(r.timeRaw), m=/^(\d{1,2}):(\d{2})$/.exec(t||''); return { ref:L+r.row, startM:m?(+m[1])*60+(+m[2]):null }; }) }; } }
+  return {html:d.html,width:d.width,height:d.height,title:d.title,sheet:card.sheet,floor:card.floor,today}; }catch(e){ return null; } };
 // 업데이트·재시작 뒤 "하던 화면"으로 돌아가기 위한 화면 상태(검색어·층·분류·정렬). 결과가 준비되기 전에는 false를 돌려줘 셸이 다시 시도한다.
 window.__getWorkState=()=>({ q:document.getElementById('searchInput').value, floor:(document.querySelector('.floor-row2.active')||{dataset:{}}).dataset.floor||'all', cat:(document.querySelector('#catSeg .active')||{dataset:{}}).dataset.cat||'all', change:currentChange, sort:document.getElementById('sortSelect').value, hideAck:!!document.getElementById('hideAck').checked });
 window.__setWorkState=(st)=>{ try{ if(!st||!issues||!issues.length||!histState) return false;
