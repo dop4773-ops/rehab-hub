@@ -458,6 +458,18 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
 <style>
 /* 데스크톱 앱 통합: 잇다(itda)와 같은 Pretendard Variable 폰트를 로컬 파일로 로드(다른 두 화면과 공유) */
 @font-face{font-family:"Pretendard Variable";src:url("../fonts/PretendardVariable.woff2") format("woff2-variations"),url("../fonts/PretendardVariable.woff2") format("woff2");font-weight:45 920;font-style:normal;font-display:swap;}
+
+/* ===== 콤팩트 배치(미리보기 브랜치): 위쪽은 두 줄, 목록은 한 줄 행, 상세는 스크롤 없이 ===== */
+.header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.header>div:first-child{display:flex;align-items:baseline;gap:10px}.header .sub{margin:0}.header .displayModeBar{margin:0 0 0 6px}.header .header-actions{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.menuwrap{position:relative;display:inline-block}.hmenu{display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:30;background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(40,60,100,.15)}.hmenu.open{display:block}.hmenu .hbtn{display:block;width:100%;text-align:left;border:0;background:transparent;margin:0}.hmenu .hbtn:hover{background:#f3f6fb}.hmenu .info{font-size:11px;color:var(--muted);padding:5px 10px;border-top:1px solid #eef1f6;margin-top:3px}
+.toprow .panel{padding:8px 12px !important}.topline{margin-bottom:4px !important;justify-content:space-between}.topline .histbox{margin:0 0 0 auto;font-size:12px}
+.result-nums .n.problem{display:none}.subrow{display:none !important}
+.listsub .csel{border:1px solid #cbd6e4;border-radius:8px;padding:3px 6px;font-size:11.5px;background:#fff;color:#44546e;max-width:150px}.listsub{flex-wrap:wrap;gap:6px 8px !important}.listsub .hint{display:none}
+.issuecard{display:flex !important;align-items:center;gap:8px;padding:6px 10px !important}.issuecard .row1{flex:0 0 auto;flex-wrap:nowrap !important;gap:6px;align-items:center}.issuecard .row1 .time{display:none}.issuecard .row1 .pname{flex:0 1 auto;max-width:96px}
+.issuecard .row2{flex:1;min-width:0;margin-top:0 !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px;color:var(--muted)}
+.issuebundle .issuecard{padding:4px 8px !important}
+.detailpanel .dhead{padding-right:0 !important}.dctl{margin-left:auto;display:flex;align-items:center;gap:5px}.dctl .ib{width:28px;height:28px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#4c5b70;padding:0}.dctl .ib:hover{background:#f3f6fb}.dctl .pos{font-size:12px;color:var(--muted);font-weight:700;padding:0 2px;white-space:nowrap}
+.cardsec{margin-top:8px !important}.cv-crop{max-height:min(40vh,360px);overflow:auto}.detailpanel .verdictbox{margin:6px 0 !important}
 </style>
 </head>
 <body>
@@ -1007,7 +1019,7 @@ let previewStore={10:{mat:[],table:[]}, 3:{mat:[],table:[]}}, previewCards={10:[
 let previewSaturday={occs:[], weekdayCode:new Map()};
 let previewWeekdayErdt={erdt:[], ccrt:[]};
 let previewDischarged=new Set();
-const PAGE_SIZE=8;
+let PAGE_SIZE=8; // 목록 높이에 맞춰 자동으로 바뀐다(fitMain)
 const PAGE_SIZE_PATIENT=6;
 
 function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -2835,6 +2847,12 @@ document.querySelectorAll('.cat-chip').forEach(chip=>{
 document.getElementById('searchInput').addEventListener('input', ()=>{ currentPage=1; applyFilters(); });
 document.getElementById('sortSelect').addEventListener('change', ()=>{ applyFilters(); });
 
+// 목록 한 페이지에 스크롤 없이 들어가는 만큼만 담는다 — 한 줄 행 약 34px, 묶음은 머리글+항목 줄 수만큼(CSS px 추정)
+function pageSlices(){
+  const il=document.getElementById('issueList'), avail=Math.max(260,(il&&il.clientHeight)||0)-6, h=r=>r.length>1?44+33*r.length:36;
+  const out=[]; let i=0; while(i<listRows.length){ let j=i, used=0; while(j<listRows.length && (j===i || used+h(listRows[j])<=avail)){ used+=h(listRows[j]); j++; } out.push([i,j]); i=j; }
+  return out.length?out:[[0,0]];
+}
 let listRows=[];
 // 묶음 기준: 같은 환자(·층)의 ① 평가메인 누락 2종 ② 위치 항목 전부 ③ 같은 치료(SOT/RDT…)의 치료사 다름+시간표 담당 미작성. 2건 이상일 때만 묶는다. 묶음은 맨 처음 항목 자리에 모인다.
 function bundleKeyOf(i){
@@ -2868,6 +2886,7 @@ function syncCatChips(){ // 선택된 분류 카드 표시 + 0건 카드는 흐�
 function fitMain(){ // 목록·상세가 창 높이에 딱 맞게(페이지 전체가 아니라 목록·상세 안에서 스크롤)
   const m=document.getElementById('mainSplitWrap'); if(!m||m.offsetParent===null||window.innerWidth<=900) return;
   m.style.height=Math.max(420, window.innerHeight-(m.getBoundingClientRect().top+window.scrollY)-14)+'px';
+  if(filteredIssues.length&&currentView==='type'&&document.getElementById('issueList').clientHeight>200){ const k=pageSlices().length+'|'+pageSlices().map(x=>x[1]).join(','); if(k!==window.__psKey){ window.__psKey=k; renderList(); } }
 }
 window.addEventListener('resize',fitMain);
 try{ new ResizeObserver(fitMain).observe(document.querySelector('.toprow')); }catch(e){}
@@ -2914,10 +2933,9 @@ function renderList(){
     return;
   }
 
-  const totalPages=Math.max(1, Math.ceil(listRows.length/PAGE_SIZE));
+  const slices=pageSlices(), totalPages=slices.length;
   if(currentPage>totalPages) currentPage=totalPages;
-  const start=(currentPage-1)*PAGE_SIZE;
-  const pageRows=listRows.slice(start, start+PAGE_SIZE);
+  const [ps,pe]=slices[currentPage-1]; const pageRows=listRows.slice(ps,pe);
   box.innerHTML = pageRows.map(r=>r.length>1?bundleHtml(r):issueCardHtml(r[0])).join('');
   renderPager(totalPages);
 }
@@ -3041,6 +3059,19 @@ function openDetail(id){
   document.querySelectorAll('.issuecard').forEach(el=>el.classList.toggle('selected', el.dataset.id===id));
   renderDetail();
 }
+
+// 키보드: ↑↓ 이전·다음 문제, X 제외, C 확인함, Esc 상세 닫기 (입력칸·창이 열려 있으면 무시)
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const t=e.target&&e.target.tagName; if(/^(INPUT|TEXTAREA|SELECT)$/.test(t||'')) return;
+  if(document.querySelector('.modal-overlay.show')||document.getElementById('displayModeSeg')&&document.querySelector('#displayModeSeg .active')&&document.querySelector('#displayModeSeg .active').dataset.mode==='preview') return;
+  const issue=selectedIssueId&&issues.find(i=>i.id===selectedIssueId);
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ if(!filteredIssues.length) return; e.preventDefault(); stepDetail(e.key==='ArrowDown'?1:-1); return; }
+  if(!issue) return;
+  if(e.key==='x'||e.key==='X'){ e.preventDefault(); openExclModal(issue); }
+  else if(e.key==='c'||e.key==='C'){ e.preventDefault(); toggleAck(issue); }
+  else if(e.key==='Escape'){ closeDetail(); }
+});
 function closeDetail(){
   selectedIssueId=null;
   document.querySelectorAll('.issuecard').forEach(el=>el.classList.remove('selected'));
@@ -3430,24 +3461,16 @@ function renderDetail(){
   const headTagCls = issue.category;
   const headTagText = headV ? headV.label : issue.title;
   panel.innerHTML = `
-    <button class="dclose" id="dCloseBtn">✕</button>
     <div class="dhead">
       <span class="dname">${esc(issue.patient)}</span>
       ${headChipsHtml(issue)}
       <span class="dtag ${headTagCls}">${headTagText}</span>${histBadgesHtml(issue)}
+      <span class="dctl"><button class="ib" id="dPrev" title="이전 문제 (↑)">‹</button><span class="pos">${posText}</span><button class="ib" id="dNext" title="다음 문제 (↓)">›</button><button class="ib" id="dExcl" title="이 불일치를 결과에서 빼고 사유를 남깁니다 (X) — 제외한 항목에서 되돌릴 수 있어요">🚫</button><button class="ib" id="dAck" title="이미 알고 있는 불일치로 표시합니다 (C). 해결되면 자동으로 사라져요.">${issue.hist&&issue.hist.acked?'↺':'✓'}</button></span>
     </div>
     <div class="dsub">${esc(issue.line)}</div>
     ${bodyHtml}
     <div class="cardsec" id="cardSec"></div>
-    <div class="dnav">
-      <button class="btn sm" id="dPrev">← 이전 문제</button>
-      <button class="btn sm" id="dExcl" title="이 불일치를 결과에서 빼고 사유를 남깁니다(제외한 항목에서 되돌릴 수 있어요)">🚫 제외…</button>
-      <button class="btn sm" id="dAck" title="이미 알고 있는 불일치로 표시합니다. 해결되면 자동으로 사라져요.">${issue.hist&&issue.hist.acked?'✓ 확인함 해제':'✓ 확인함 표시'}</button>
-      <span class="pos">${posText}</span>
-      <button class="btn sm" id="dNext">다음 문제 →</button>
-    </div>
   `;
-  document.getElementById('dCloseBtn').addEventListener('click', closeDetail);
   document.getElementById('dPrev').addEventListener('click', ()=> stepDetail(-1));
   document.getElementById('dAck').addEventListener('click', ()=> toggleAck(issue));
   document.getElementById('dExcl').addEventListener('click', ()=> openExclModal(issue));
@@ -3555,6 +3578,16 @@ function polishVerdicts(root){
     el.innerHTML=`<div class="vb-head">판정</div>${parts.map(p=>`<div class="vb-line">${p}</div>`).join('')}`;
   });
 }
+// 카드는 관련 칸 주변만 보이게 잘라 보여 준다(상세가 스크롤 없이 한 화면에 들어가도록). 전체는 「크게 보기」.
+function cropCardToHighlight(box){
+  try{
+    const wrap=box.querySelector('#cvWrap'); if(!wrap) return;
+    wrap.classList.add('cv-crop');
+    const hl=box.querySelector('td.cv-hl'); if(!hl){ wrap.scrollTop=0; return; }
+    const z=parseFloat((box.querySelector('#cvZoom')||{style:{}}).style.zoom)||1;
+    wrap.scrollTop=Math.max(0, hl.offsetTop*z - 60);
+  }catch(e){ /* 자르기 실패는 무시(전체가 스크롤로 보임) */ }
+}
 async function renderCardSection(issue){
   const box=document.getElementById('cardSec'); if(!box) return; const my=++cardSecToken; cardShown=null;
   const card=cardFinder && cardFinder(String(issue.patient||'').replace(/\s*\(외래\)\s*$/,'').trim(), issue.floor); // 이름 뒤 "(외래)" 표시는 떼고 찾는다
@@ -3570,7 +3603,7 @@ async function renderCardSection(issue){
       +`<div class="cv-wrap" id="cvWrap"><div class="cv-zoom" id="cvZoom">${out.html}</div></div>`
       +(hl.size?'':`<div class="cv-none" style="margin-top:6px">${issue.category==='location'&&issue.time?`카드에서 <b>${esc(issue.time)}</b> 시간의 치료위치(${esc((issue.detail||{}).loc||'')}) 기록을 찾지 못했어요.`:'이 항목은 카드 안에서 칠할 칸이 없어 카드만 보여드려요.'}</div>`);
     fitCardZoom();
-    const first=box.querySelector('td.cv-hl'); if(first && first.scrollIntoView) { /* 카드 안에서 첫 강조 칸은 그대로 두고 화면은 움직이지 않는다 */ }
+    cropCardToHighlight(box);
   }catch(e){ console.error(e); box.innerHTML=head()+`<div class="cv-none">카드를 그리지 못했어요: ${esc(e.message||String(e))}</div>`; }
 }
 window.addEventListener('resize',fitCardZoom);
@@ -3589,7 +3622,7 @@ function stepDetail(dir){
   let idx=filteredIssues.findIndex(i=>i.id===selectedIssueId);
   if(idx<0) idx=0; else idx=(idx+dir+filteredIssues.length)%filteredIssues.length;
   const target=filteredIssues[idx];
-  const neededPage=Math.floor(Math.max(0,listRows.findIndex(r=>r.includes(target)))/PAGE_SIZE)+1;
+  const ri=Math.max(0,listRows.findIndex(r=>r.includes(target))), neededPage=Math.max(1,pageSlices().findIndex(([a,b])=>ri>=a&&ri<b)+1);
   if(neededPage!==currentPage && currentView==='type'){ currentPage=neededPage; renderList(); }
   openDetail(target.id);
 }
@@ -3845,7 +3878,7 @@ function renderHistBox(){
   if(!cmp.baseline){ box.innerHTML='🕘 오늘이 첫 기록이에요. 내일부터 "어제 이후 새로 생긴 것 / 해결된 것"을 알려드려요. <button class="hl" id="histOpen">이력 보기</button>'; bar.style.display='none'; }
   else {
     const d=cmp.baseline.day.slice(5).replace('-','/');
-    box.innerHTML=`🕘 <b>${d}</b> 이후 — <b class="res">✅ 해결됨 ${nRes}</b>${nAck?` · 확인함 ${nAck}`:''} <span style="color:var(--muted)">(새로 생김·계속은 위 「변화」 버튼의 숫자)</span>${cmp.skipped.length?` <span style="color:var(--muted)">(자료 구성이 달라 비교 못 한 분류: ${cmp.skipped.map(c=>CAT_KO[c]).join(', ')})</span>`:''} <button class="hl" id="histOpen">해결된 것·이력 보기</button>`;
+    box.innerHTML=`🕘 <b>${d}</b> 이후 — <b class="res">✅ 해결됨 ${nRes}</b>${nAck?` · 확인함 ${nAck}`:''}${cmp.skipped.length?` <span style="color:var(--muted)">(자료 구성이 달라 비교 못 한 분류: ${cmp.skipped.map(c=>CAT_KO[c]).join(', ')})</span>`:''} <button class="hl" id="histOpen">해결된 것·이력 보기</button>`;
     bar.style.display='flex';
     document.getElementById('changeSeg').innerHTML=[['all','전체'],['new',`🆕 새로 생김 ${nNew}`],['cont',`계속 ${nCont}`]].map(([k,l])=>`<button data-c="${k}" class="${currentChange===k?'active':''}">${l}</button>`).join('');
   }
@@ -3898,5 +3931,40 @@ window.__setWorkState=(st)=>{ try{ if(!st||!issues||!issues.length||!histState) 
   return true; }catch(e){ return false; } };
 window.__issuesApi=()=>issues.map(i=>({patient:i.patient,room:i.room,category:i.category,title:i.title,line:i.line}));
 window.__testHooks={ issues:()=>issues, listRows:()=>listRows.map(r=>r.map(i=>i.id)), state:()=>state, statusSheet:()=>(window.__statusSheetName||''), inputs:()=>crossInputs, anomalies:()=>crossAnomalies };
+
+/* ===== 콤팩트 배치 초기화 ===== */
+(function compactLayout(){
+  const $=id=>document.getElementById(id), hdr=document.querySelector('.header'), acts=hdr&&hdr.querySelector('.header-actions'); if(!hdr||!acts) return;
+  const mkMenu=(btnId, label, items, info)=>{ const w=document.createElement('span'); w.className='menuwrap'; w.innerHTML=`<button class="hbtn" id="${btnId}" type="button">${label}</button><div class="hmenu" id="${btnId}Pop"></div>`; const pop=w.querySelector('.hmenu'); items.forEach(el=>{ if(el) pop.appendChild(el); }); if(info){ const d=document.createElement('div'); d.className='info'; d.textContent=info; pop.appendChild(d); } w.querySelector('button').addEventListener('click',e=>{ e.stopPropagation(); document.querySelectorAll('.hmenu.open').forEach(x=>{ if(x!==pop) x.classList.remove('open'); }); pop.classList.toggle('open'); }); pop.addEventListener('click',()=>pop.classList.remove('open')); return w; };
+  const pin=acts.querySelector('span.hbtn'); const infoTxt=pin?pin.textContent.replace('📌','').trim():''; if(pin) pin.remove();
+  const exp=mkMenu('btnExportMenu','⬇ 내보내기 ▾',[$('btnCopy'),$('btnExcel'),$('btnPrint')]);
+  const more=mkMenu('btnMoreMenu','⋯',[$('btnCriteria')],infoTxt);
+  acts.appendChild(exp); acts.appendChild(more);
+  document.addEventListener('click',()=>document.querySelectorAll('.hmenu.open').forEach(x=>x.classList.remove('open')));
+  // 화면 전환 토글(목록/미리보기)은 제목 줄로, 변화 요약·못 본 것 경고는 같은 줄로
+  const dm=document.querySelector('.displayModeBar'); if(dm) hdr.insertBefore(dm, acts);
+  const topline=document.querySelector('.topline'), hb=$('histBox'); if(topline&&hb) topline.appendChild(hb);
+  // 층·변화·세부 출처는 목록 위 한 줄의 작은 선택칸으로(원래 버튼은 숨기고 그대로 눌러 준다)
+  const ls=document.querySelector('.listsub'); if(!ls) return;
+  const mk=(id)=>{ const e=document.createElement('select'); e.id=id; e.className='csel'; ls.insertBefore(e, ls.firstChild); return e; };
+  const cSrc=mk('cSrc'), cChange=mk('cChange'), cFloor=mk('cFloor');
+  const SEGS=['fieldSeg','locSourceSeg','handoverSourceSeg','roomSourceSeg'];
+  window.syncCompact=function(){
+    const fb=[...document.querySelectorAll('#floorList .floor-row2')];
+    cFloor.innerHTML=fb.map(b=>`<option value="${b.dataset.floor}">${b.dataset.floor==='all'?'층 전체':b.dataset.floor+'F'} · ${b.querySelector('.fl-num').textContent}</option>`).join('');
+    const af=fb.find(b=>b.classList.contains('active')); if(af) cFloor.value=af.dataset.floor;
+    const cb=[...document.querySelectorAll('#changeSeg button')]; cChange.style.display=cb.length?'':'none';
+    cChange.innerHTML=cb.map(b=>`<option value="${b.dataset.c}">변화 · ${b.textContent.trim()}</option>`).join(''); const ac=cb.find(b=>b.classList.contains('active')); if(ac) cChange.value=ac.dataset.c;
+    const seg=SEGS.map($).find(x=>x&&getComputedStyle(x).display!=='none'); cSrc.style.display=seg?'':'none';
+    if(seg){ const bs=[...seg.querySelectorAll('button')]; cSrc.innerHTML=bs.map((b,i)=>`<option value="${i}">${b.textContent.trim()}</option>`).join(''); const i=bs.findIndex(b=>b.classList.contains('active')); cSrc.value=String(Math.max(0,i)); cSrc.dataset.seg=seg.id; }
+  };
+  cFloor.addEventListener('change',()=>{ const b=document.querySelector(`#floorList .floor-row2[data-floor="${cFloor.value}"]`); if(b) b.click(); window.syncCompact(); });
+  cChange.addEventListener('change',()=>{ const b=document.querySelector(`#changeSeg [data-c="${cChange.value}"]`); if(b) b.click(); window.syncCompact(); });
+  cSrc.addEventListener('change',()=>{ const seg=$(cSrc.dataset.seg); const b=seg&&seg.querySelectorAll('button')[+cSrc.value]; if(b) b.click(); window.syncCompact(); });
+  const _af=applyFilters; applyFilters=function(){ _af.apply(this,arguments); window.syncCompact(); };
+  const mo=new MutationObserver(()=>window.syncCompact());
+  ['floorList','changeSeg',...SEGS].forEach(id=>{ const e=$(id); if(e) mo.observe(e,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']}); });
+  window.syncCompact();
+})();
 </script>
 </body></html>
