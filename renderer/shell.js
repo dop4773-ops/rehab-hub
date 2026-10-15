@@ -1487,7 +1487,7 @@ const focusIn = (v, id) => () => { const el = viewDoc(v)?.getElementById(id); if
 const GLOBAL_KEYS = [
   ...NAV_ORDER.map((v, i) => ({ id: `nav:${v}`, keys: `Ctrl+${i + 1}`, label: `${document.querySelector(`.nav-item[data-nav=${v}] .nl`).textContent.trim()} 화면으로 이동`, run: () => showView(v) })),
   { id: 'sidebar', keys: 'Ctrl+\\', label: '사이드바 접기/펼치기', run: () => sidebarBtn.click() },
-  { id: 'help', keys: 'F1', label: '도움말 열기', run: () => window.__openHelp && window.__openHelp() },
+  { id: 'help', keys: 'F1', label: '이 화면 도움말(작은 팝업)', run: () => window.__openHelp && window.__openHelp() },
   { id: 'patient-search', keys: 'Ctrl+K', label: '환자 빠른 검색', run: () => window.__openPatientSearch && window.__openPatientSearch() },
   { id: 'ps-write', keys: 'F2', label: '환자 빠른 검색: 검색창에 쓰기(검색창이 열려 있을 때)', run: () => window.__psFocus ? window.__psFocus() : false },
   { id: 'ho-refresh', keys: 'Ctrl+Shift+H', label: '인수인계 지금 다시 가져오기', run: () => refreshHandoverNow() },

@@ -141,15 +141,38 @@ function render() {
     + (shown.length ? shown.map((s) => `<section class="card hp-sec" id="hp-${s.id}"><h3>${esc(s.title)}<small>${esc(s.sub)}</small></h3>${s.html}</section>`).join('') : '<div class="card hp-none"><p class="muted">찾는 말이 없어요. 다른 말로 검색해 보세요.</p></div>')
     + '<p class="hp-foot">그래도 막히면 만든 사람에게 화면 캡처와 함께 알려 주세요. 설정 › 업데이트·정보에서 현재 버전과 오류 기록 위치를 볼 수 있습니다.</p>';
 }
-// 도움말 화면 열기(section = 맨 위 목차의 id 또는 도구 키)
+// 도움말 열기: 기본은 「지금 보고 있는 화면」의 도움말만 작은 팝업으로 보여 준다(F1·상단 ❓·각 화면 위 「❓ 사용법」). 전체는 사이드바 「도움말」이나 팝업 안의 「전체 도움말」에서.
+const VIEW_SEC = { home: 'home', data: 'data', rm: 'rm', acting: 'acting', cross: 'cross', handover: 'handover', report: 'report', backup: 'report', settings: 'report' };
+let pop = null;
+function closePop() { if (pop) { pop.remove(); pop = null; } }
+function openPop(id) {
+  closePop();
+  const sec = SECTIONS.find((x) => x[0] === id) || SECTIONS[0]; const html = sec[3] == null ? keysHtml() : sec[3];
+  pop = document.createElement('div'); pop.className = 'hp-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', '도움말');
+  pop.innerHTML = `<div class="hp-pop-h"><b>❓ ${esc(sec[1])}</b><small>${esc(sec[2])}</small><button type="button" class="hp-x" data-help-close aria-label="닫기">✕</button></div><div class="hp-pop-b hp-sec">${html}</div>`
+    + `<div class="hp-pop-f"><button type="button" class="btn" data-help-page="${id}">📖 전체 도움말 · 용어 풀이</button><span>Esc로 닫기</span></div>`;
+  document.body.appendChild(pop);
+}
+// section: 도움말 칸 id 또는 도구 키(없으면 지금 화면). 도움말 화면이 이미 열려 있으면 그 칸으로 이동한다.
 window.__openHelp = function (section) {
-  q = ''; showView('help'); render();
+  const v = (document.querySelector('.view.active') || {}).dataset ? document.querySelector('.view.active').dataset.view : '';
+  const id = section && section !== 'here' && section !== 'start' ? section : (VIEW_SEC[v] || 'start');
+  if (v === 'help') { const el = document.getElementById('hp-' + id); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+  openPop(id);
+};
+window.__openHelpPage = function (section) {
+  closePop(); q = ''; showView('help'); render();
   if (section) setTimeout(() => { const el = document.getElementById('hp-' + section); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 30);
 };
+window.__helpPopOpen = () => !!pop;
 window.__renderHelp = render;
 document.addEventListener('input', (e) => { if (e.target && e.target.id === 'helpSearch') { q = e.target.value; render(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pop) { closePop(); e.stopPropagation(); } }, true);
 document.addEventListener('click', (e) => {
+  const pg = e.target.closest('[data-help-page]'); if (pg) { window.__openHelpPage(pg.dataset.helpPage); return; }
+  if (e.target.closest('[data-help-close]')) { closePop(); return; }
   const g = e.target.closest('[data-help-go]'); if (g) { e.preventDefault(); const el = document.getElementById('hp-' + g.dataset.helpGo); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
-  const b = e.target.closest('[data-help]'); if (b) window.__openHelp(b.dataset.help);
+  const b = e.target.closest('[data-help]'); if (b) { e.stopPropagation(); window.__openHelp(b.dataset.help); return; }
+  if (pop && !e.target.closest('.hp-pop')) closePop();
 });
 })();

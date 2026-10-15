@@ -90,8 +90,7 @@ const sheet = (rows) => { const o = {}; rows.forEach((r, i) => r.forEach((v, j) 
   
 // ⑤ 인수인계 주치의 대조: 환자의 기록이 여러 건(치료사·종류별)일 때 맨 위 한 건만 보지 않고, 카드와 다른 주치의가 하나라도 있으면 잡는다(오창수 사례)
 {
-  const c2 = { console, ...require('../renderer/core/normalize.js') }; vm.createContext(c2);
-  vm.runInContext(grab('function buildDoctorChecks', '// 평일시간표(원본)와 표 레이아웃') + '\nthis.check=buildDoctorChecks;', c2);
+  const c2 = { check: require('../renderer/core/crosschecks.js').buildDoctorChecks }; // 화면에서 core/crosschecks.js로 옮긴 함수
   const card = { 오창수: { doctor: 'RM4', floor: 3, room: '703' }, 김가나: { doctor: 'RM6', floor: 10, room: '1001' }, 박다라: { doctor: 'RM9', floor: 10, room: '1002' } };
   const find = (n) => card[n] || null;
   const list = [
