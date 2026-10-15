@@ -12,6 +12,8 @@
     "release:win": "electron-builder --win nsis --x64 --publish always",
     "postrelease:win": "node scripts/set-release-notes.js && npm run rebuild",
     "test": "node scripts/run-tests.js",
+    "smoke": "node scripts/smoke.js",
+    "smoke:empty": "node scripts/smoke-empty.js",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3 && node scripts/postinstall-electron-fix.js"
   },
