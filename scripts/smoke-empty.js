@@ -40,13 +40,13 @@ let failed = 0;
 
     // 도구 화면: 파일이 없어도 상태 띠가 있고, 도움말·직접 넣기 버튼이 동작해야 한다
     for (const k of ['rm', 'acting', 'cross']) {
-      await step(`${k}: 상태 띠 · 직접 넣기 접힘/펼침 · ❓ 팝업`, async () => {
+      await step(`${k}: 상태 띠 · 직접 넣기 접힘/펼침 · 상단 ❓ 팝업`, async () => {
         await nav(k); await sleep(1500);
         const r = JSON.parse(await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); const st=document.querySelector('[data-tool-status=${k}]'); const doc=document.querySelector('iframe[data-tool=${k}]').contentDocument;
           const hasStrip=!!st&&st.innerText.length>0, collapsed0=doc.body.classList.contains('rh-collapsed');
           st.querySelector('[data-files-toggle]').click(); await sl(300); const opened=!doc.body.classList.contains('rh-collapsed');
           st.querySelector('[data-files-toggle]').click(); await sl(300); const closedAgain=doc.body.classList.contains('rh-collapsed');
-          document.querySelector('[data-tool-status=${k}] [data-help]').click(); await sl(200); const pop=!!document.querySelector('.hp-pop'); const title=pop?document.querySelector('.hp-pop-h b').textContent:''; document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(100);
+          document.getElementById('topbarHelpBtn').click(); await sl(200); const pop=!!document.querySelector('.hp-pop'); const title=pop?document.querySelector('.hp-pop-h b').textContent:''; document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sl(100);
           return JSON.stringify({hasStrip,collapsed0,opened,closedAgain,pop,title,popClosed:!document.querySelector('.hp-pop')}); })()`));
         expect(r.hasStrip && r.collapsed0 && r.opened && r.closedAgain && r.pop && r.popClosed, JSON.stringify(r)); return r.title;
       });

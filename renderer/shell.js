@@ -1161,7 +1161,7 @@ function renderToolStrips() {
       + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>`
       + `<span class="chips"><span class="fchip ${worst} click" data-tool-files="${key}" title="이 화면이 쓰는 파일 전체 보기·바꾸기"><i></i>파일 ${found}/${roles.length}<small>▾</small></span>${shown.map(r => fileChip(r, key)).join('')}${hasHandover ? (() => { const hf = handoverFreshness(); return `<span class="fchip ${hf.cls === 'warn' ? 'stale' : hf.cls}" data-ho-refresh title="${hf.text} — 누르면 지금 다시 가져와요">` + `<i></i>인수인계<small>${hf.at ? hf.age : '없음'}</small></span>`; })() : ''}</span>`
       + `<span class="acts"><button class="btn${o.cls === 'ok' ? '' : ' primary'}" data-sync-now>🔄 불러오기</button>`
-      + `<button class="btn" data-files-toggle="${key}">📂 직접 넣기 ${open ? '▴' : '▾'}</button><button class="btn" data-help="${key}" title="이 화면 사용법 · 용어 풀이">❓ 사용법</button></span>`;
+      + `<button class="btn" data-files-toggle="${key}">📂 직접 넣기 ${open ? '▴' : '▾'}</button></span>`;
     if (loadedTools.has(key)) applyFilesCollapse(key);
   }
 }
@@ -1352,9 +1352,10 @@ document.getElementById('topbarSettingsBtn').addEventListener('click', () => sho
 // ── 업데이트(GitHub Releases) ─────────────────────────────
 let updaterMode = 'manual';
 // 설정 > 업데이트·정보 화면과 오른쪽 아래 안내(토스트)는 연차관리 앱과 같은 모양·흐름으로 맞췄다
-function setUpdateStatus(text, isError) {
+function setUpdateStatus(text, isError, hint, detail) {
   const el = document.getElementById('updaterStatus');
-  el.textContent = text; el.classList.toggle('error', !!isError);
+  el.textContent = text; el.classList.toggle('error', !!isError); el.title = detail || '';
+  if (hint) { const h = document.createElement('div'); h.className = 'upd-hint'; h.textContent = hint; el.appendChild(h); } // 해결 안내는 한 줄 따로(붉은 글씨 길이를 줄인다)
 }
 function onUpdaterStatus(s) {
   const progress = document.getElementById('updProgress'), installBtn = document.getElementById('updaterInstallBtn'), notes = document.getElementById('updNotes');
@@ -1371,7 +1372,7 @@ function onUpdaterStatus(s) {
   else if (s.status === 'auto-install-pending') setUpdateStatus(`v${s.version} 준비 완료. 잠시 후 자동으로 다시 시작합니다.`);
   else if (s.status === 'updated') setUpdateStatus(`v${s.version}(으)로 업데이트되었습니다. ✅`);
   else if (s.status === 'dev-mode') setUpdateStatus(s.message);
-  else if (s.status === 'error') setUpdateStatus('업데이트 확인 실패: ' + s.message, true);
+  else if (s.status === 'error') setUpdateStatus('업데이트 실패 — ' + s.message, true, s.hint, s.detail);
 }
 // 오른쪽 아래 안내: 자동 설치 카운트다운 / 받는 중 / 설치 준비 완료 / 업데이트 완료
 // 지금 설치 — 다시 켜면 사라지는 작업(직접 올린 파일 등)이 있으면 먼저 경고한다(work-resume.js)
@@ -1437,7 +1438,7 @@ window.rehab.exportFiles.onFailed((info) => showExportToast(info, true));
 document.getElementById('updaterCheckBtn').addEventListener('click', async () => {
   setUpdateStatus('업데이트를 확인하는 중...');
   const r = await window.rehab.updater.checkNow();
-  if (r.status === 'dev-mode' || r.status === 'error') setUpdateStatus(r.message || '업데이트 확인에 실패했습니다.', r.status === 'error');
+  if (r.status === 'dev-mode' || r.status === 'error') setUpdateStatus(r.status === 'error' ? '업데이트 실패 — ' + (r.message || '확인하지 못했어요') : (r.message || ''), r.status === 'error', r.hint, r.detail);
 });
 document.getElementById('updaterInstallBtn').addEventListener('click', () => installNow());
 document.getElementById('updaterOpenLogBtn').addEventListener('click', async () => { const r = await window.rehab.updater.openLog(); if (r) setUpdateStatus(r); });

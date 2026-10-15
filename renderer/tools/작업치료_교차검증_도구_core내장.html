@@ -470,6 +470,9 @@ table.cv-xl td.cv-hl{outline:3px solid #e0a800;outline-offset:-3px;box-shadow:in
 .issuebundle .issuecard{padding:4px 8px !important}
 .detailpanel .dhead{padding-right:0 !important}.dctl{margin-left:auto;display:flex;align-items:center;gap:5px}.dctl .ib{width:28px;height:28px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#4c5b70;padding:0}.dctl .ib:hover{background:#f3f6fb}.dctl .pos{font-size:12px;color:var(--muted);font-weight:700;padding:0 2px;white-space:nowrap}
 .cardsec{margin-top:8px !important}.cv-crop{max-height:min(40vh,360px);overflow:auto}.detailpanel .verdictbox{margin:6px 0 !important}
+
+.listsub .floor-list{display:flex !important;flex-direction:row !important;gap:4px;align-items:center;flex-wrap:nowrap}.listsub .floor-list .lab{display:none}.listsub .floor-row2{padding:2px 9px !important;gap:5px !important;border-radius:999px !important}.listsub .floor-row2 .fl-name,.listsub .floor-row2 .fl-num{font-size:11.5px !important}
+.listhead .cnt{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -2772,7 +2775,7 @@ function renderDashboard(stats, floorCount){
   });
   document.getElementById('chipRoomBreak').innerHTML = state.ptaBook ? `<span>병실 ${roomCounts.mismatch}</span><span>PTA에 없음 ${roomCounts.nopta}</span><span>RM ${roomCounts.rm}</span><span>PTA에만 ${roomCounts.ptaonly}</span>` : '<span>PTA 재원현황 파일 없음</span>';
 
-  const f10=(floorCount[10]||0), f3=(floorCount[3]||0), fAll=f10+f3;
+  const f10=(floorCount[10]||0), f3=(floorCount[3]||0), fAll=Math.max(f10+f3, issues.length); // 전체는 층을 알 수 없는 항목(토요일 시트 등)까지 포함
   document.getElementById('floorAllNum').textContent=fAll+'건';
   document.getElementById('floorAllNum').className='fl-num '+(fAll?'some':'zero');
   document.getElementById('floor10Num').textContent=f10+'건';
@@ -2907,7 +2910,7 @@ function applyFilters(){
   list=sortIssues(list, document.getElementById('sortSelect').value);
   listRows=bundleRows(list); filteredIssues=listRows.flat(); // 같은 원인일 수 있는 항목은 목록에서 한 묶음으로 보여 준다(검사·건수·제외·이력은 항목 하나하나 그대로)
   const nb=listRows.filter(r=>r.length>1).length;
-  document.getElementById('listCount').textContent = `전체 ${list.length}건${nb?` · 묶음 ${nb}개`:''}`;
+  document.getElementById('listCount').textContent = `${list.length}건${nb?` · 묶음 ${nb}개`:''}`;
   renderList(); fitMain();
 }
 function renderList(){
@@ -3947,23 +3950,22 @@ window.__testHooks={ issues:()=>issues, listRows:()=>listRows.map(r=>r.map(i=>i.
   // 층·변화·세부 출처는 목록 위 한 줄의 작은 선택칸으로(원래 버튼은 숨기고 그대로 눌러 준다)
   const ls=document.querySelector('.listsub'); if(!ls) return;
   const mk=(id)=>{ const e=document.createElement('select'); e.id=id; e.className='csel'; ls.insertBefore(e, ls.firstChild); return e; };
-  const cSrc=mk('cSrc'), cChange=mk('cChange'), cFloor=mk('cFloor');
+  const cSrc=mk('cSrc'), cChange=mk('cChange');
+  const vs=$('viewSeg'); if(vs) vs.style.display='none'; // 「환자별」 보기는 묶음 표시로 대신해서 화면에서 뺐다
+  const fl=$('floorList'); if(fl) ls.insertBefore(fl, ls.firstChild); // 층별 오류 개수는 목록 위에 그대로 보인다(전체 · 10F · 3F)
+  const so=$('sortSelect'); if(so){ so.classList.add('csel'); ls.appendChild(so); so.style.marginLeft='auto'; }
   const SEGS=['fieldSeg','locSourceSeg','handoverSourceSeg','roomSourceSeg'];
   window.syncCompact=function(){
-    const fb=[...document.querySelectorAll('#floorList .floor-row2')];
-    cFloor.innerHTML=fb.map(b=>`<option value="${b.dataset.floor}">${b.dataset.floor==='all'?'층 전체':b.dataset.floor+'F'} · ${b.querySelector('.fl-num').textContent}</option>`).join('');
-    const af=fb.find(b=>b.classList.contains('active')); if(af) cFloor.value=af.dataset.floor;
     const cb=[...document.querySelectorAll('#changeSeg button')]; cChange.style.display=cb.length?'':'none';
     cChange.innerHTML=cb.map(b=>`<option value="${b.dataset.c}">변화 · ${b.textContent.trim()}</option>`).join(''); const ac=cb.find(b=>b.classList.contains('active')); if(ac) cChange.value=ac.dataset.c;
     const seg=SEGS.map($).find(x=>x&&getComputedStyle(x).display!=='none'); cSrc.style.display=seg?'':'none';
     if(seg){ const bs=[...seg.querySelectorAll('button')]; cSrc.innerHTML=bs.map((b,i)=>`<option value="${i}">${b.textContent.trim()}</option>`).join(''); const i=bs.findIndex(b=>b.classList.contains('active')); cSrc.value=String(Math.max(0,i)); cSrc.dataset.seg=seg.id; }
   };
-  cFloor.addEventListener('change',()=>{ const b=document.querySelector(`#floorList .floor-row2[data-floor="${cFloor.value}"]`); if(b) b.click(); window.syncCompact(); });
   cChange.addEventListener('change',()=>{ const b=document.querySelector(`#changeSeg [data-c="${cChange.value}"]`); if(b) b.click(); window.syncCompact(); });
   cSrc.addEventListener('change',()=>{ const seg=$(cSrc.dataset.seg); const b=seg&&seg.querySelectorAll('button')[+cSrc.value]; if(b) b.click(); window.syncCompact(); });
   const _af=applyFilters; applyFilters=function(){ _af.apply(this,arguments); window.syncCompact(); };
   const mo=new MutationObserver(()=>window.syncCompact());
-  ['floorList','changeSeg',...SEGS].forEach(id=>{ const e=$(id); if(e) mo.observe(e,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']}); });
+  ['changeSeg',...SEGS].forEach(id=>{ const e=$(id); if(e) mo.observe(e,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']}); });
   window.syncCompact();
 })();
 </script>

@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { readEntries, appendEntry, normalizeReleases, parseChangelog, repoInfoOf } = require('./updateLog');
+const { explain: explainUpdateError } = require('./updateErrors');
 
 function settingsPath(app) { return path.join(app.getPath('userData'), 'update-settings.json'); }
 function loadMode(app) {
@@ -88,7 +89,8 @@ function initUpdater(app, ipcMain, getMainWindow) {
     sendStatus('available', { version: u.version, releaseNotes: notes, auto: getMode() === 'auto' });
   });
   autoUpdater.on('update-not-available', () => { log('not-available', { version: app.getVersion() }); sendStatus('not-available'); });
-  autoUpdater.on('error', (err) => { log('error', { message: err?.message || '알 수 없는 오류' }); sendStatus('error', { message: err?.message || '알 수 없는 오류가 발생했습니다.' }); });
+  // 실패는 원문(영어·헤더·주소가 길게 붙음) 대신 정확한 사유 한 문장 + 해결 안내로 보여 주고, 원문은 기록 파일에만 남긴다
+  autoUpdater.on('error', (err) => { const x = explainUpdateError(err); log('error', { message: x.reason, detail: x.detail }); sendStatus('error', { message: x.reason, hint: x.hint, detail: x.detail }); });
   autoUpdater.on('download-progress', (p) => sendStatus('downloading', { percent: Math.round(p.percent), auto: getMode() === 'auto' }));
 
   // ── 설치 전 작업 보호 ─────────────────────────────────────────
@@ -158,7 +160,7 @@ function initUpdater(app, ipcMain, getMainWindow) {
       nextSource = '수동'; await autoUpdater.checkForUpdates(); nextSource = '자동';
       return { status: 'checked' };
     } catch (err) {
-      return { status: 'error', message: err?.message || '업데이트 확인에 실패했습니다.' };
+      const x = explainUpdateError(err); return { status: 'error', message: x.reason, hint: x.hint, detail: x.detail };
     }
   });
 
