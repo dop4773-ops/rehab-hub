@@ -402,6 +402,7 @@ function showView(key) {
   if (key === 'settings') renderSettingsView();
   if (key === 'report') renderReportView();
   if (key === 'backup') refreshBackup();
+  if (key === 'help' && window.__renderHelp) window.__renderHelp();
 }
 
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => showView(n.dataset.nav)));
@@ -1021,7 +1022,8 @@ function renderDataView() {
   const stale = lastScan ? roles.filter(r => roleStateOf(r.key) === 'stale') : [];
   if (stale.length) {
     const min = RehabSync.MODE_MINUTES[syncMode];
-    banner.innerHTML = `<div class="sync-banner"><b>⚠ 새로운 데이터 발견</b> · ` + stale.map(r => { const i = roleInfo(r.key); return `${r.label} — 파일 ${fmtTime(i.modified)} (마지막 반영 ${i.reflectedAt ? fmtTime(i.reflectedAt) : '없음'})`; }).join(' / ')
+    const detail = stale.map(r => { const i = roleInfo(r.key); return `${r.label} — 파일 ${fmtTime(i.modified)} (마지막 반영 ${i.reflectedAt ? fmtTime(i.reflectedAt) : '없음'})`; }).join('\n');
+    banner.innerHTML = `<div class="sync-banner" title="${updEsc(detail)}"><b>⚠ 새로운 데이터 발견</b> · ` + stale.slice(0, 3).map(r => r.label).join(' · ') + (stale.length > 3 ? ` 외 ${stale.length - 3}개` : '') + ` (${stale.length}개 · 마우스를 올리면 파일별 시각)`
       + ` &nbsp;${min ? `자동 동기화(${min}분 주기)가 켜져 있어 곧 반영됩니다. ` : ''}<button class="btn primary" data-sync-now>지금 업데이트</button></div>`;
   } else {
     const bad = lastScan ? roles.filter(r => roleStateOf(r.key) === 'error' || (roleStateOf(r.key) === 'missing' && r.required)) : [];
@@ -1058,11 +1060,12 @@ function renderSyncPill() {
 }
 
 // 각 도구 화면 위의 파일 상태 띠 — 이 화면이 쓰는 파일이 올라와 있는지(색 칩), 마지막 동기화 일시, 불러오기·직접 넣기 버튼을 한 줄로 보여준다.
-// 도구 안의 큰 업로드 영역은 기본으로 접어 두고(아래 FILES_CSS), 필요한 파일이 없거나 사용자가 "직접 넣기"를 누르면 펼친다.
+// 도구 안의 큰 업로드 영역은 기본으로 접어 두고(아래 FILES_CSS), 사용자가 "직접 넣기"를 누르면 펼친다.
 const CHIP_NAME = { card3: '3F 시간표', card10: '10F 시간표', pt3: '3F 물리치료', pt10: '10F 물리치료', gi3: '3F 기구', gi10: '10F 기구', mt3: '3F 매트·테이블', mat10: '10F 매트', table10: '10F 테이블',
   dailyStats: '일일통계', delAdd: '삭제·추가 내역', acting: '액팅 기록', status: '작업치료현황', dailySchedule: 'OT 시간표(평일)', satSchedule: 'OT 시간표(토·공)', pta: 'PTA 재원현황' };
 const FILES_CSS = {
   rm: 'body.rh-collapsed .upload-grid,body.rh-collapsed .grand-pt-upload{display:none!important}'
+    + 'body.rh-collapsed{counter-reset:stp}body.rh-collapsed .panel-head h2 .step{counter-increment:stp;font-size:0!important}body.rh-collapsed .panel-head h2 .step::before{content:counter(stp);font-size:13px}' // 업로드 칸을 접으면 1번이 안 보이니 남은 단계 번호를 1부터 다시 센다
     + 'body.rh-collapsed section.panel:has(.upload-grid)>.panel-head{display:none!important}body.rh-collapsed section.panel:has(.upload-grid)>.panel-body{padding:8px 18px!important}body.rh-collapsed #statusLine{margin:0!important}'
     + 'body.rh-collapsed .grand-ot-upload>:not(#grandHandoverStatus):not(#grandHandoverMatchSummary):not(#grandHandoverRefreshBtn){display:none!important}',
   acting: 'body.rh-collapsed #dropZone,body.rh-collapsed #msDropZone,body.rh-collapsed #dcDropZone,body.rh-collapsed #dcFolderPickBtn,body.rh-collapsed label[for=dcFileInput],body.rh-collapsed #daDropZone,body.rh-collapsed label[for=daFileInput],body.rh-collapsed label[for=cardFileInput],body.rh-collapsed #cardPickBtn,body.rh-collapsed label[for=ptFileInput],body.rh-collapsed #ptPickBtn,body.rh-collapsed #giPickBtn{display:none!important}',
@@ -1070,10 +1073,9 @@ const FILES_CSS = {
 };
 const filesOpen = {}; // 사용자가 직접 펼침/접음을 정한 도구(없으면 자동 판단)
 const primaryRolesOf = (key) => TOOLS[key].primaryRoles || toolRoles(key).filter(r => (roleDef(r) || {}).required);
-// 자동 판단: 꼭 필요한 파일이 없거나 읽기 오류가 있고, 도구에도 직접 올린 분석 결과가 없으면 펼쳐서 바로 넣을 수 있게 한다
+// 기본은 접어 둔다(파일이 없어도 — 상태 띠의 빨간 칩과 「직접 넣기」 버튼으로 알 수 있다). 설정에서 「항상 펼침」을 고르거나 직접 누르면 펼친다.
 const filesIsOpen = (key) => (key in filesOpen) ? filesOpen[key]
-  : settings.filesArea === 'open' ? true
-  : primaryRolesOf(key).some(r => ['missing', 'error'].includes(roleStateOf(r))) && !readToolSummary(key);
+  : settings.filesArea === 'open';
 function applyFilesCollapse(key) {
   const doc = viewDoc(key); if (!doc || !doc.body || !FILES_CSS[key]) return;
   if (!doc.getElementById('rh-collapse-css')) { const st = doc.createElement('style'); st.id = 'rh-collapse-css'; st.textContent = FILES_CSS[key]; doc.head.appendChild(st); }
@@ -1159,7 +1161,7 @@ function renderToolStrips() {
       + `<span class="when">${lastSyncAt ? '마지막 동기화 ' + fmtDateTime(lastSyncAt) : '아직 동기화 전'}</span>`
       + `<span class="chips"><span class="fchip ${worst} click" data-tool-files="${key}" title="이 화면이 쓰는 파일 전체 보기·바꾸기"><i></i>파일 ${found}/${roles.length}<small>▾</small></span>${shown.map(r => fileChip(r, key)).join('')}${hasHandover ? (() => { const hf = handoverFreshness(); return `<span class="fchip ${hf.cls === 'warn' ? 'stale' : hf.cls}" data-ho-refresh title="${hf.text} — 누르면 지금 다시 가져와요">` + `<i></i>인수인계<small>${hf.at ? hf.age : '없음'}</small></span>`; })() : ''}</span>`
       + `<span class="acts"><button class="btn${o.cls === 'ok' ? '' : ' primary'}" data-sync-now>🔄 불러오기</button>`
-      + `<button class="btn" data-files-toggle="${key}">📂 직접 넣기 ${open ? '▴' : '▾'}</button></span>`;
+      + `<button class="btn" data-files-toggle="${key}">📂 직접 넣기 ${open ? '▴' : '▾'}</button><button class="btn" data-help="${key}" title="이 화면 사용법 · 용어 풀이">❓ 사용법</button></span>`;
     if (loadedTools.has(key)) applyFilesCollapse(key);
   }
 }
@@ -1479,12 +1481,13 @@ document.querySelectorAll('input[name=updMode]').forEach(r => r.addEventListener
 // Alt를 두 번 누르거나 길게 누르면 전체 단축키 + 지금 보는 화면의 단축키를 보여 준다(잇다와 같은 방식).
 const NAV_ORDER = ['home', 'data', 'rm', 'acting', 'cross', 'handover', 'report', 'backup', 'settings'];
 const currentView = () => document.querySelector('.view.active')?.dataset.view;
-const viewDoc = (v) => (['home', 'data', 'report', 'settings', 'backup'].includes(v) ? document : document.querySelector(`iframe[data-tool="${v}"]`)?.contentDocument);
+const viewDoc = (v) => (['home', 'data', 'report', 'settings', 'backup', 'help'].includes(v) ? document : document.querySelector(`iframe[data-tool="${v}"]`)?.contentDocument);
 const clickIn = (v, id) => () => viewDoc(v)?.getElementById(id)?.click();
 const focusIn = (v, id) => () => { const el = viewDoc(v)?.getElementById(id); if (el) { el.focus(); el.select && el.select(); } };
 const GLOBAL_KEYS = [
   ...NAV_ORDER.map((v, i) => ({ id: `nav:${v}`, keys: `Ctrl+${i + 1}`, label: `${document.querySelector(`.nav-item[data-nav=${v}] .nl`).textContent.trim()} 화면으로 이동`, run: () => showView(v) })),
   { id: 'sidebar', keys: 'Ctrl+\\', label: '사이드바 접기/펼치기', run: () => sidebarBtn.click() },
+  { id: 'help', keys: 'F1', label: '도움말 열기', run: () => window.__openHelp && window.__openHelp() },
   { id: 'patient-search', keys: 'Ctrl+K', label: '환자 빠른 검색', run: () => window.__openPatientSearch && window.__openPatientSearch() },
   { id: 'ps-write', keys: 'F2', label: '환자 빠른 검색: 검색창에 쓰기(검색창이 열려 있을 때)', run: () => window.__psFocus ? window.__psFocus() : false },
   { id: 'ho-refresh', keys: 'Ctrl+Shift+H', label: '인수인계 지금 다시 가져오기', run: () => refreshHandoverNow() },

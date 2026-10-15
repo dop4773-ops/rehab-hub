@@ -1706,7 +1706,7 @@ ${text}`,
     $('treatmentErrorCount').textContent = treatmentErrorCount.toLocaleString('ko-KR');
     $('timeCount').textContent = timeCount.toLocaleString('ko-KR');
     const scopeText = orderScopeLabel();
-    $('resultSubtitle').textContent = `${state.fileName} · ${state.sheetName} · ${scopeText} 기준 총 ${scopedTotal.toLocaleString('ko-KR')}건 검사 완료`;
+    $('resultSubtitle').textContent = [state.fileName, state.sheetName].filter(Boolean).length ? `${[state.fileName, state.sheetName].filter(Boolean).join(' · ')} · ${scopeText} 기준 총 ${scopedTotal.toLocaleString('ko-KR')}건 검사 완료` : '';
 
     const detected = Object.entries(state.headerMap)
       .sort((a,b) => a[1]-b[1])

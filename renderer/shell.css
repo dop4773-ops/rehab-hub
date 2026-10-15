@@ -568,3 +568,12 @@ body:not(.home-wb) .wb-end{display:none}
 
 .ps-cardwrap td.ps-today,.ps-bigbox td.ps-today{background-image:linear-gradient(rgba(111,148,227,.16),rgba(111,148,227,.16)) !important}.ps-cardwrap td.ps-today-h,.ps-bigbox td.ps-today-h{background-image:linear-gradient(rgba(59,100,184,.35),rgba(59,100,184,.35)) !important;font-weight:800}
 .ps-cardwrap td.ps-nowcell,.ps-bigbox td.ps-nowcell{outline:3px solid #3b64b8;outline-offset:-3px;font-weight:800}
+
+/* ── 도움말 ─────────────────────────────────────────── */
+#helpBody{max-width:900px;margin:0 auto;padding-bottom:40px}.hp-top{display:flex;align-items:center;gap:14px;margin-bottom:10px}.hp-top h2{margin:0;font-size:18px;color:var(--navy)}.hp-top input{flex:1;max-width:380px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font:inherit;font-size:13px}
+.hp-toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}.hp-toc a{font-size:12px;font-weight:700;color:var(--navy);background:#fff;border:1px solid var(--border);border-radius:99px;padding:4px 11px;text-decoration:none}.hp-toc a:hover{background:#eef3fb}
+.hp-sec{margin-bottom:12px;font-size:13px;line-height:1.65}.hp-sec h3{margin:0 0 8px;font-size:15px;color:var(--text)}.hp-sec h3 small{margin-left:10px;font-size:12px;font-weight:600;color:var(--muted)}.hp-sec ul,.hp-sec ol{margin:6px 0;padding-left:20px}.hp-sec li{margin:4px 0}.hp-sec p{margin:6px 0}
+.hp-note{background:#f3f7fd;border-radius:8px;padding:8px 12px;color:var(--sub);font-size:12.5px}.hp-foot{color:var(--muted);font-size:12px;text-align:center}
+.hp-dl{margin:6px 0}.hp-dl dt{font-weight:800;margin-top:10px;color:var(--navy)}.hp-dl dd{margin:2px 0 0}
+.hp-tbl{border-collapse:collapse;width:100%;margin:6px 0}.hp-tbl td{border-top:1px solid var(--border);padding:6px 8px;vertical-align:top}.hp-tbl td:first-child{white-space:nowrap;font-weight:700}.hp-keys td:last-child{text-align:right;white-space:nowrap}.hp-keys kbd{background:#eef2f8;border:1px solid var(--border);border-radius:6px;padding:1px 8px;font:inherit;font-size:12px}
+.hp-sub{margin-top:12px;font-size:11.5px;font-weight:800;color:var(--muted)}.hp-sw{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:7px;vertical-align:-1px}

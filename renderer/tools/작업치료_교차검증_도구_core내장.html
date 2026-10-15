@@ -3137,9 +3137,8 @@ const HANDOVER_VERDICT={
   nowriter:  {label:'시간표 담당 미작성', cls:'horphan', cvar:'--record'},
 };
 function handoverVerdictOf(issue){ return HANDOVER_VERDICT[issue.source] || null; }
+// 세부 판정(이름 불일치·시간표 담당 미작성 등)은 글자로 구분하고, 색은 위쪽 칸(개수·위치·치료사·인수인계·평가메인·PTA 대조)과 같은 종류 색으로 통일한다
 function catColorVar(cat, issue){
-  if(cat==='location' && issue){ const v=locVerdictOf(issue); if(v) return v.cls==='vname'?'--count':v.cls==='vrecord'?'--record':'--loc'; }
-  if(cat==='handover' && issue){ const v=handoverVerdictOf(issue); if(v) return v.cvar; }
   return cat==='count'?'--count':cat==='location'?'--loc':cat==='handover'?'--handover':cat==='eval'?'--eval':cat==='room'?'--room':'--ther';
 }
 const EVAL_BADGE_LABEL={missing:'평가메인 누락', extra:'평가메인 초과', dup:'이름 중복', noeval:'평가메인 누락(현황판)'};
@@ -3160,7 +3159,7 @@ function excessRow2Html(d){
 function issueCardHtml(i){
   const sel = i.id===selectedIssueId ? ' selected' : '';
   const v = i.category==='location' ? locVerdictOf(i) : i.category==='handover' ? handoverVerdictOf(i) : null;
-  const tagCls = v ? v.cls : i.category;
+  const tagCls = i.category;
   const tagText = cardBadgeText(i);
   const row2 = (i.detail && i.detail.kind==='handover_excess') ? excessRow2Html(i.detail) : esc(i.line);
   return `<div class="issuecard${sel}${i.hist&&i.hist.acked?' acked':''}" data-id="${i.id}">
@@ -3624,7 +3623,7 @@ function renderDetail(){
   }
 
   const headV = issue.category==='location' ? locVerdictOf(issue) : issue.category==='handover' ? handoverVerdictOf(issue) : null;
-  const headTagCls = headV ? headV.cls : issue.category;
+  const headTagCls = issue.category;
   const headTagText = headV ? headV.label : issue.title;
   panel.innerHTML = `
     <button class="dclose" id="dCloseBtn">✕</button>
