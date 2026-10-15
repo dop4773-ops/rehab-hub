@@ -839,7 +839,7 @@ function renderWorkbench(sm, ctx) {
     if (hf.cls !== 'ok') left.push(['ho', `인수인계 ${hf.at ? hf.age : '못 가져옴'}`]);
     if (bk && bk.level !== 'ok' && bk.level !== 'off') left.push(['backup', '백업 확인']);
     document.getElementById('wbEnd').innerHTML = `<b class="${left.length ? 'warn' : 'ok'}">${new Date().getHours() >= 15 ? '퇴근 전' : '오늘'} ${left.length ? `남은 것 ${left.length}` : '✅ 모두 확인했어요'}</b>`
-      + left.map(([k, t]) => k === 'ho' ? `<button class="wb-endchip" data-ho-refresh title="누르면 지금 다시 가져와요">${updEsc(t)}</button>` : `<button class="wb-endchip" data-goto="${k}">${updEsc(t)}</button>`).join(''); }
+      + (left.length ? '<span class="wb-endnote">— 왼쪽 「오늘 할 일」에서 바로 처리하세요</span>' : ''); } // 같은 항목을 칩으로 또 보여 주던 것을 없앴다(오늘 할 일과 겹침)
   // 도구 타일: 핵심 숫자 · 추세/증감 · 바로 하는 일
   const dl = tr.hasPrev && tr.delta ? `<span class="${tr.delta > 0 ? 'up' : 'dn'}">${tr.delta > 0 ? '▲' : '▼'}${Math.abs(tr.delta)}</span>` : '';
   const hoT = handoverModifiedToday();

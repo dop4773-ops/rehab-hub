@@ -199,6 +199,7 @@ const msgs = []; const add = (t, m) => { const k = t + ' ' + String(m).slice(0, 
         w.document.getElementById('btnExcel').click(); for(let i=0;i<50&&!document.getElementById('export-toast');i++) await sl(100); const back=!!document.getElementById('export-toast'); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); return {closedByEsc,hidden,back}; })()`);
       if (!esc.closedByEsc || !esc.hidden || !esc.back) throw new Error('저장 안내 Esc/끄기 동작이 이상해요: ' + JSON.stringify(esc));
       return { files: files.length, esc, ...r }; });
+    await step('교차검증: 목록 묶음은 항목을 하나도 빼거나 더하지 않음(같은 환자·같은 종류끼리만)', async () => await ev(`(()=>{ const w=${W('cross')}, H=w.__testHooks, is=H.issues(), rows=H.listRows(), flat=rows.flat(), byId=Object.fromEntries(is.map(i=>[i.id,i])); const sameSet=flat.length===is.length&&new Set(flat).size===is.length&&is.every(i=>flat.includes(i.id)); const mixed=rows.filter(r=>r.length>1&&(new Set(r.map(id=>byId[id].patient)).size>1||new Set(r.map(id=>byId[id].category)).size>1)).length; if(!sameSet||mixed) throw new Error(JSON.stringify({sameSet,mixed,is:is.length,flat:flat.length})); return JSON.stringify({issues:is.length,rows:rows.length,bundles:rows.filter(r=>r.length>1).length}); })()`));
     await step('교차검증: 칸 주소가 실제 원본 칸을 가리키는지(읽기만)', async () => {
       // 화면에서는 "이슈별 칸 주소와 그 칸의 실제 값"만 모아 오고, 맞는지는 여기(Node)에서 판정한다
       const items = await ev(`(async()=>{ const w=${W('cross')}, R=w.RehabCore, N=R.normalizeText, hk=w.__testHooks, st=hk.state();
