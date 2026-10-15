@@ -1,4 +1,4 @@
-// help.js — 도움말 화면(사이드바 「도움말」 · 상단 ❓ · F1 · 각 화면 위쪽 ❓). 처음 쓰는 사람도 볼 수 있게
+// help.js — 도움말 화면(상단 ❓ · F1 · 각 화면 위쪽 ❓ 팝업의 「전체 도움말」). 처음 쓰는 사람도 볼 수 있게
 // 시작하기 · 화면별 안내 · 용어 풀이 · 색 읽는 법 · 단축키 · 자주 묻는 문제를 한곳에 모았다. 단축키 표는 실제 설정(shell.js의 표)에서 만든다.
 'use strict';
 (function () {
@@ -141,7 +141,7 @@ function render() {
     + (shown.length ? shown.map((s) => `<section class="card hp-sec" id="hp-${s.id}"><h3>${esc(s.title)}<small>${esc(s.sub)}</small></h3>${s.html}</section>`).join('') : '<div class="card hp-none"><p class="muted">찾는 말이 없어요. 다른 말로 검색해 보세요.</p></div>')
     + '<p class="hp-foot">그래도 막히면 만든 사람에게 화면 캡처와 함께 알려 주세요. 설정 › 업데이트·정보에서 현재 버전과 오류 기록 위치를 볼 수 있습니다.</p>';
 }
-// 도움말 열기: 기본은 「지금 보고 있는 화면」의 도움말만 작은 팝업으로 보여 준다(F1·상단 ❓·각 화면 위 「❓ 사용법」). 전체는 사이드바 「도움말」이나 팝업 안의 「전체 도움말」에서.
+// 도움말 열기: 기본은 「지금 보고 있는 화면」의 도움말만 작은 팝업으로 보여 준다(F1·상단 ❓·각 화면 위 「❓ 사용법」). 전체는 팝업 안의 「전체 도움말」에서.
 const VIEW_SEC = { home: 'home', data: 'data', rm: 'rm', acting: 'acting', cross: 'cross', handover: 'handover', report: 'report', backup: 'report', settings: 'report' };
 let pop = null;
 function closePop() { if (pop) { pop.remove(); pop = null; } }
