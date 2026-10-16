@@ -39,6 +39,8 @@ body{margin:0;font-family:"Pretendard Variable",-apple-system,BlinkMacSystemFont
 #sidebar.collapsed .nav-item{justify-content:center;padding:10px 0;font-size:16px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;color:var(--sidebar-text);margin-bottom:2px}
 .nav-item .chev{margin-left:auto;font-size:9px;opacity:.6}
+.nav-item[hidden]{display:none}
+.st-navtog{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px}.st-navtog label{display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
 .nav-item:hover{background:var(--sidebar-hover);color:#fff}
 .nav-item.active{background:var(--blue);color:#fff}
 .nav-item.active .chev{opacity:.9}

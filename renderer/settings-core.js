@@ -14,7 +14,9 @@
     exportToast: true, exportToastAuto: '30', exportToastCloseOnOpen: true,
     psEnter: 'card', psRecent: true,
     qaTherapistTab: true, qaTabCounts: true, qaMaskNames: true, qaStartTab: 'missing',
+    navHidden: [], // 사이드바에서 숨길 메뉴(홈·설정은 못 숨김)
   };
+  const NAV_HIDEABLE = ['data', 'rm', 'acting', 'cross', 'sub', 'handover', 'report', 'backup'];
   // 병원 사정에 따라 바뀌는 규칙(사람 이름·오더 코드·회차별 병동). 화면 도구의 기본값과 같아야 하며(test_settings가 확인), 설정 > 규칙에서 바꾼다.
   const RULE_DEFAULTS = {
     erdtTherapists: ['이승규', '김봉선', '김기범', '성지현'],
@@ -98,6 +100,7 @@
     // 예전 기본값(앱 실행 시)을 사용자가 직접 고르지 않았다면 새 기본값(바뀌면 바로)으로 한 번 옮긴다 — 기본 설정이 "파일을 덮어써도 버튼을 눌러야 반영"이라 오래된 내용으로 검사하기 쉬웠다
     if (!s.syncModeChosen && s.syncMode === 'launch') s.syncMode = 'instant';
     if (typeof r.itdaCategory === 'string' && r.itdaCategory.trim()) s.itdaCategory = r.itdaCategory.trim().slice(0, 40);
+    if (Array.isArray(r.navHidden)) s.navHidden = NAV_HIDEABLE.filter(k => r.navHidden.includes(k));
     s.rules = normRules(r.rules);
     if (Array.isArray(r.rulesHistory)) s.rulesHistory = r.rulesHistory.filter(x => x && typeof x === 'object' && x.rules).slice(0, 10).map(x => ({ t: Number(x.t) || 0, rules: normRules(x.rules) }));
     if (r.rulesSlots && typeof r.rulesSlots === 'object') for (const k of ['1', '2', '3']) if (r.rulesSlots[k] && r.rulesSlots[k].rules) s.rulesSlots[k] = { t: Number(r.rulesSlots[k].t) || 0, rules: normRules(r.rulesSlots[k].rules) };
@@ -125,6 +128,6 @@
     return { ok: true, settings: normalize(o.settings), folders };
   }
 
-  root.RehabSettings = { KEY, DEFAULTS, RULE_DEFAULTS, RULE_LABELS, cleanRuleList, normRules, rulesDiff, pinHash, ENUMS, ZOOM, VIVID_FILTER, normalize, load, save, normKeys, keysFromEvent, findConflict, RESERVED, exportJson, parseImport };
+  root.RehabSettings = { KEY, DEFAULTS, NAV_HIDEABLE, RULE_DEFAULTS, RULE_LABELS, cleanRuleList, normRules, rulesDiff, pinHash, ENUMS, ZOOM, VIVID_FILTER, normalize, load, save, normKeys, keysFromEvent, findConflict, RESERVED, exportJson, parseImport };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.RehabSettings;
 })(typeof window !== 'undefined' ? window : globalThis);

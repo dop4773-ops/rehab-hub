@@ -18,6 +18,7 @@ stq('#stTabs').addEventListener('click', (e) => { const b = e.target.closest('bu
 
 // 컨트롤 ↔ 설정 값
 function stRefreshControls() {
+  stRenderNavToggles();
   stAll('[data-set]').forEach(el => {
     const key = el.dataset.set, v = String(settings[key]);
     if (el.classList.contains('st-seg')) stAll('button', el).forEach(b => b.classList.toggle('on', b.dataset.v === v));
@@ -25,6 +26,15 @@ function stRefreshControls() {
     else if (document.activeElement !== el) el.value = v;
   });
 }
+// 사이드바 메뉴 켜고 끄기: 체크 = 보임. 홈·설정은 목록에 없다(항상 보임)
+function stRenderNavToggles() {
+  const box = stq('#stNavToggles'); if (!box) return;
+  box.innerHTML = RehabSettings.NAV_HIDEABLE.map(k => `<label><input type="checkbox" data-nav-toggle="${k}"${settings.navHidden.includes(k) ? '' : ' checked'}> ${updEsc(stq(`.nav-item[data-nav=${k}] .nl`)?.textContent.trim() || k)}</label>`).join('');
+}
+stq('#stNavToggles')?.addEventListener('change', (e) => {
+  const k = e.target.dataset.navToggle; if (!k) return;
+  setSetting('navHidden', e.target.checked ? settings.navHidden.filter(x => x !== k) : [...settings.navHidden, k]);
+});
 const stPanel = stq('.st-panel');
 stPanel.addEventListener('change', (e) => {
   const el = e.target.closest('[data-set]'); if (!el) return;

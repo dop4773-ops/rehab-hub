@@ -93,6 +93,14 @@ const TOOLS = {
     reportExportBtnId: 'reportCrossExportBtn', toolExportBtnId: 'btnExcel',
   },
 };
+TOOLS.sub = {
+  label: '대체치료',
+  page: 'tools/익일시간표.html',
+  primaryRoles: ['status', 'card10', 'card3'],
+  // 이 도구는 파일 칸 하나(#fileInput)에 여러 파일을 한꺼번에 받아 스스로 종류를 알아본다
+  targets: [{ roles: ['status', 'card10', 'card3', 'mat10', 'table10', 'mt3', 'dailySchedule'], selector: '#fileInput' }],
+  readSummary: () => null, // 홈 요약·보고서에 올릴 숫자는 없다
+};
 // 홈 화면 "오늘 확인할 항목" 표시 순서(오류/불일치를 먼저 보여준다) — TOOLS 순서와는 별개로 관리.
 
 let fileRoles = [];
@@ -406,6 +414,12 @@ function showView(key) {
 }
 
 document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => showView(n.dataset.nav)));
+// 설정 > 사이드바 메뉴: 숨긴 메뉴는 목록에서만 빼고(화면·단축키·홈 바로가기는 그대로), 보고 있던 화면을 숨기면 홈으로 간다
+function applyNavHidden() {
+  document.querySelectorAll('.nav-item').forEach(n => { n.hidden = settings.navHidden.includes(n.dataset.nav); });
+  if (settings.navHidden.includes(document.querySelector('.view.active')?.dataset.view)) showView('home');
+}
+applyNavHidden();
 
 // 사이드바 접기/펼치기(접으면 아이콘만 남음, 상태는 이 PC에 기억)
 const SIDEBAR_KEY = 'rehab_sidebar_collapsed_v1';
@@ -1480,7 +1494,7 @@ document.querySelectorAll('input[name=updMode]').forEach(r => r.addEventListener
 // ── 단축키 ─────────────────────────────────────────────────
 // Ctrl(맥은 ⌘)+키. 도구 화면은 iframe이라 키 이벤트가 셸까지 안 올라오므로, 로드될 때마다 같은 처리기를 달아 준다.
 // Alt를 두 번 누르거나 길게 누르면 전체 단축키 + 지금 보는 화면의 단축키를 보여 준다(잇다와 같은 방식).
-const NAV_ORDER = ['home', 'data', 'rm', 'acting', 'cross', 'handover', 'report', 'backup', 'settings'];
+const NAV_ORDER = ['home', 'data', 'rm', 'acting', 'cross', 'handover', 'sub', 'report', 'backup', 'settings'];
 const currentView = () => document.querySelector('.view.active')?.dataset.view;
 const viewDoc = (v) => (['home', 'data', 'report', 'settings', 'backup', 'help'].includes(v) ? document : document.querySelector(`iframe[data-tool="${v}"]`)?.contentDocument);
 const clickIn = (v, id) => () => viewDoc(v)?.getElementById(id)?.click();
@@ -1601,6 +1615,7 @@ function applySetting(key) {
     case 'dataView': dataViewDefault = dataViewMode = settings.dataView; renderDataView(); break;
     case 'dataStaleFirst': case 'dataHideUnused': renderDataView(); break;
     case 'sidebar': setSidebar(sidebarStart()); break;
+    case 'navHidden': applyNavHidden(); break;
     case 'fontSize': applyZoom(); break;
     case 'color': applyColor(); break;
     case 'homeLayout': applyHomeLayout(); break;

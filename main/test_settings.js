@@ -94,3 +94,9 @@ assert.strictEqual(S.parseImport('{"app":"other","settings":{}}').ok, false);
   assert.strictEqual(S.normalize({ syncMode: 'bogus' }).syncMode, 'instant');
 }
 console.log('settings: OK');
+
+// ⑩ 사이드바 메뉴 숨기기: 숨길 수 있는 메뉴만 남기고(홈·설정·모르는 값 제외), 기본은 아무것도 안 숨김
+assert.deepStrictEqual(S.DEFAULTS.navHidden, []);
+assert.deepStrictEqual(S.normalize({ navHidden: ['sub', 'home', 'settings', 'zzz', 'rm'] }).navHidden, ['rm', 'sub']);
+assert.deepStrictEqual(S.normalize({ navHidden: 'sub' }).navHidden, []);
+console.log('사이드바 메뉴 숨기기 점검 통과');
