@@ -30,5 +30,14 @@ assert.strictEqual(H.sheetFor(names, '2026-10-19'), '', '아직 안 만든 날�
 const T = ['이정홍 TEST', '장재복A\r\nTEST', '김영미 ST\r\nT-3', '이종철A Test', '박란영 ST'];
 assert.strictEqual(H.testState(T, '이정홍'), 'ok'); assert.strictEqual(H.testState(T, '장재복A'), 'ok', '줄바꿈 뒤 TEST');
 assert.strictEqual(H.testState(T, '이종철A'), 'ok', '대소문자 무관'); assert.strictEqual(H.testState(T, '김영미'), 'notest', '이름은 있는데 TEST 없음');
-assert.strictEqual(H.testState(T, '정도운'), 'missing'); assert.strictEqual(H.testState(['이 정홍TEST'], '이정홍'), 'ok', '공백 무시');
+assert.strictEqual(H.testState(T, '정도운'), 'missing');
+// 정확한 이름 비교: 조 표시(B)·더 긴 이름·앞 글자가 붙은 이름은 다른 사람
+assert.strictEqual(H.nameIn('김영미B TEST', '김영미'), false, '김영미B는 김영미가 아님');
+assert.strictEqual(H.nameIn('김영미B TEST', '김영미B'), true); assert.strictEqual(H.nameIn('김영미 TEST', '김영미B'), false, '조 표시가 없으면 김영미B가 아님');
+assert.strictEqual(H.nameIn('김영미TEST', '김영미'), true, '이름 바로 뒤 TEST'); assert.strictEqual(H.nameIn('김영미ST\r\nT-3', '김영미'), true);
+assert.strictEqual(H.nameIn('김영미숙 TEST', '김영미'), false, '더 긴 이름'); assert.strictEqual(H.nameIn('박김영미 TEST', '김영미'), false, '앞 글자가 붙은 이름');
+assert.strictEqual(H.nameIn('이종철ATest', '이종철'), false); assert.strictEqual(H.nameIn('이종철ATest', '이종철A'), true);
+assert.strictEqual(H.nameIn('김영미 ST', '김 영미'), true, '공백 무시'); assert.strictEqual(H.nameIn('김영미B', '김영미'), false);
+assert.strictEqual(H.testState(['김영미B TEST', '김영미 ST'], '김영미'), 'notest', '김영미B의 TEST는 김영미의 것이 아님');
+assert.strictEqual(H.testState(['김영미B TEST'], '김영미'), 'missing');
 console.log('test_homeboard OK');

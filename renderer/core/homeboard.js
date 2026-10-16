@@ -31,12 +31,24 @@
     return { total: inp.length, adm, dis, ending, soon: ending.filter(e => e.left <= 14).length };
   }
   // 평가(TEST) 표시 대조: 작업치료실 시간표의 그날 시트(「10월16일(금)」)를 찾고, 환자 이름이 든 칸에 "TEST"가 적혀 있는지 본다.
-  // ponytail: 이름은 글자 포함 비교라 「김영미」가 「김영미B」 칸에도 걸린다(조 표시 구분은 하지 않음) — 동명이인이 늘면 정확히 비교
   // 시트 이름의 (요일)이 날짜의 요일과 다르면 작년 시트라서 건너뛴다(12월31일 (수) 같은 해 넘어가는 이름)
   const sheetFor = (sheetNames, iso) => { const [y, m, d] = iso.split('-').map(Number), wk = '일월화수목금토'[new Date(y, m - 1, d).getDay()]; let hit = ''; for (const n of sheetNames) { const x = /^\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(?:\(\s*([일월화수목금토])\s*\))?/.exec(n); if (x && +x[1] === m && +x[2] === d && (!x[3] || x[3] === wk)) hit = n; } return hit; };
-  const testState = (texts, name) => { const hits = texts.filter(t => t.replace(/\s+/g, '').includes(String(name).replace(/\s+/g, ''))); return !hits.length ? 'missing' : hits.some(t => /test/i.test(t)) ? 'ok' : 'notest'; };
+  // 칸 글에 그 환자 이름이 "정확히" 있는지: 앞이 한글이면 다른 이름(박김영미), 뒤가 한글이면 더 긴 이름(김영미숙).
+  // 조 표시(김영미B)는 다른 환자 — 이름 바로 뒤의 영문 한 글자는 TEST·ST·SM으로 이어지지 않으면 조 표시로 본다(「김영미TEST」는 김영미, 「김영미B TEST」는 김영미B).
+  const nameIn = (text, name) => {
+    const t = String(text), n = String(name).replace(/\s+/g, ''); if (!n) return false;
+    for (let at = t.indexOf(n); at >= 0; at = t.indexOf(n, at + 1)) {
+      if (at > 0 && /[가-힣]/.test(t[at - 1])) continue;
+      const rest = t.slice(at + n.length);
+      if (/^[가-힣]/.test(rest)) continue;
+      if (/[가-힣]$/.test(n) && /^[A-Z]/.test(rest) && !/^(test|st|sm)/i.test(rest)) continue; // 영문 대문자가 바로 붙었는데 코드가 아님 = 조 표시(다른 환자)
+      return true;
+    }
+    return false;
+  };
+  const testState = (texts, name) => { const hits = texts.filter(t => nameIn(t, name)); return !hits.length ? 'missing' : hits.some(t => /test/i.test(t)) ? 'ok' : 'notest'; };
   const md = (n) => { const o = mdOf(n); return `${o.m}/${o.d}`; };
-  const api = { serialOf, wardOf, dischargeOf, summarize, sheetFor, testState, md };
+  const api = { serialOf, wardOf, dischargeOf, summarize, sheetFor, nameIn, testState, md };
   root.RehabCore = Object.assign(root.RehabCore || {}, { homeboard: api });
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
