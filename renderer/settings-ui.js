@@ -35,6 +35,12 @@ stq('#stNavToggles')?.addEventListener('change', (e) => {
   const k = e.target.dataset.navToggle; if (!k) return;
   setSetting('navHidden', e.target.checked ? settings.navHidden.filter(x => x !== k) : [...settings.navHidden, k]);
 });
+// 대체치료: 메신저 DB 위치 자동 찾기·직접 선택(설정 값 messengerDb에 저장)
+stq('#msgFind')?.addEventListener('click', async () => {
+  const msg = stq('#msgFindMsg'); msg.textContent = '찾는 중…';
+  try { const f = await window.rehab.messenger.detect(); if (f.length) { setSetting('messengerDb', f[0].path); stRefreshControls(); msg.textContent = '✔ 찾았어요: ' + f[0].path; } else msg.textContent = '✕ 못 찾았어요 — 「파일 선택…」으로 직접 골라 주세요.'; } catch (e) { msg.textContent = '✕ 찾지 못했어요.'; }
+});
+stq('#msgPick')?.addEventListener('click', async () => { const p = await window.rehab.messenger.chooseDb(); if (p) { setSetting('messengerDb', p); stRefreshControls(); stq('#msgFindMsg').textContent = '✔ 선택했어요.'; } });
 const stPanel = stq('.st-panel');
 stPanel.addEventListener('change', (e) => {
   const el = e.target.closest('[data-set]'); if (!el) return;

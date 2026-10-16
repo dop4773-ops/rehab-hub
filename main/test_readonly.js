@@ -21,6 +21,7 @@ const ALLOWED = {
   'main/exportSaver.js': /settingsFile/,                   // 파일 저장 위치 설정(앱 데이터 폴더)
   'main/stateBackup.js': /tmp|fileOf/,                       // 중요 기록 사본(앱 데이터 폴더의 state-backup.json) — 임시 파일에 쓴 뒤 바꿔 끼움
   'main/envCheck.js': /\bf\b/,                             // 환경 점검: 앱 데이터·내보내기 폴더에 쓸 수 있는지 임시 파일을 만들었다 바로 지움(연결한 원본 폴더는 건드리지 않음)
+  'main/messenger/reader.js': /rmSync\(dir,|, target\)|\$\{target\}-wal/, // 메신저 DB 읽기: 원본은 읽기만 하고, 꺼져 있을 때는 임시 폴더로 복사한 사본만 읽은 뒤 그 임시 폴더를 지움(원본 불변은 test_messengerOutings가 확인)
   'main/updateLog.js': /file\b/,                           // 업데이트 기록(앱 데이터 폴더의 update-log.json)
 };
 const mainFiles = walk(path.join(root, 'main')).filter(f => f.endsWith('.js') && !/\/test_/.test(f.split(path.sep).join('/')));

@@ -14,6 +14,7 @@
     exportToast: true, exportToastAuto: '30', exportToastCloseOnOpen: true,
     psEnter: 'card', psRecent: true,
     qaTherapistTab: true, qaTabCounts: true, qaMaskNames: true, qaStartTab: 'missing',
+    messengerDb: '', // 대체치료가 외진·외박·외출을 읽을 메신저 DB(messenger.db) 위치 — 비우면 자동으로 찾는다
     navHidden: [], // 사이드바에서 숨길 메뉴(홈·설정은 못 숨김)
   };
   const NAV_HIDEABLE = ['data', 'rm', 'acting', 'cross', 'sub', 'handover', 'report', 'backup'];
@@ -100,6 +101,7 @@
     // 예전 기본값(앱 실행 시)을 사용자가 직접 고르지 않았다면 새 기본값(바뀌면 바로)으로 한 번 옮긴다 — 기본 설정이 "파일을 덮어써도 버튼을 눌러야 반영"이라 오래된 내용으로 검사하기 쉬웠다
     if (!s.syncModeChosen && s.syncMode === 'launch') s.syncMode = 'instant';
     if (typeof r.itdaCategory === 'string' && r.itdaCategory.trim()) s.itdaCategory = r.itdaCategory.trim().slice(0, 40);
+    if (typeof r.messengerDb === 'string') s.messengerDb = r.messengerDb.trim().slice(0, 500);
     if (Array.isArray(r.navHidden)) s.navHidden = NAV_HIDEABLE.filter(k => r.navHidden.includes(k));
     s.rules = normRules(r.rules);
     if (Array.isArray(r.rulesHistory)) s.rulesHistory = r.rulesHistory.filter(x => x && typeof x === 'object' && x.rules).slice(0, 10).map(x => ({ t: Number(x.t) || 0, rules: normRules(x.rules) }));

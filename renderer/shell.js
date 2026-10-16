@@ -372,6 +372,21 @@ const SCHEDULES_BRIDGE = {
   delete: (id) => window.rehab.schedules.delete(id),
 };
 
+// 대체치료 화면이 메신저의 외진·외박·외출을 읽는 다리(읽기 전용). DB 위치는 설정 값, 비었으면 자동으로 찾은 첫 번째.
+let messengerAutoPath; // undefined=아직 안 찾음, ''=못 찾음
+async function messengerDbPath() {
+  if (settings.messengerDb) return settings.messengerDb;
+  if (messengerAutoPath === undefined) { try { const f = await window.rehab.messenger.detect(); messengerAutoPath = f.length ? f[0].path : ''; } catch (e) { messengerAutoPath = ''; } }
+  return messengerAutoPath;
+}
+const MESSENGER_BRIDGE = {
+  outings: async (date) => {
+    const p = await messengerDbPath();
+    if (!p) return { ok: false, code: 'NOT_FOUND', message: '메신저 DB(messenger.db)를 찾지 못했어요. 설정 › 도구별 › 대체치료에서 위치를 골라 주세요.' };
+    return window.rehab.messenger.outings(p, date);
+  },
+};
+
 // ── 사이드바 / 화면 전환 ───────────────────────────────────
 // 파일 자동 채움·홈 요약·보고서가 필요 없는 화면(인수인계 화면)은 TOOLS 대신 여기에 둔다.
 const VIEWER_PAGES = { handover: 'tools/인수인계.html' };
@@ -386,6 +401,7 @@ function ensureToolLoaded(key) {
     loadedTools.add(key);
     iframe.addEventListener('load', async () => {
       iframe.contentWindow.__schedulesApi = SCHEDULES_BRIDGE;
+      iframe.contentWindow.__messengerApi = MESSENGER_BRIDGE;
       applyFilesCollapse(key);
       iframe.contentWindow.__itdaApi = { grandEvents: () => window.rehab.itda.grandEvents(settings.itdaCategory) }; // 그랜드라운딩 일정 불러오기(읽기 전용)
       pushSettingsToTool(iframe);

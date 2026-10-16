@@ -310,6 +310,7 @@ body.side-off .right{display:none}
         <summary>외진·외박·외출 명단 붙여넣기</summary>
         <textarea id="awayText" spellcheck="false" placeholder="예)&#10;[외박] 김OO 박OO&#10;외진 이OO 10:30~12:00&#10;최OO 외출 14시"></textarea>
         <div class="mini"><button id="awayAdd" class="primary">명단 적용</button><button id="awayClear">전부 해제</button></div>
+        <div class="mini"><button id="awayMsgBtn" title="메신저의 외출·외박 명단을 읽어 와요(읽기만 해요)">🔗 메신저에서 불러오기</button></div>
         <div class="note2" id="awayMsg">줄마다 이름·종류(외진/외박/외출)·시간을 읽어요. 시간이 없으면 하루 종일, 있으면 그 시간 칸만 비워요.</div>
       </details>
     </div>
@@ -1225,13 +1226,39 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function applyAway(st, entries) {
     st.away = st.away || {};
     entries.forEach(function (e) {
-      var cur = st.away[e.name] || (st.away[e.name] = { kind: e.kind, ranges: [] });
+      var cur = st.away[e.name] || (st.away[e.name] = { kind: e.kind, ranges: [], src: e.src });
       cur.kind = cur.kind || e.kind;
       if (e.from == null) cur.ranges = null;                          // 시간이 없으면 하루 종일
       else if (cur.ranges) cur.ranges.push([e.from, e.to]);
     });
   }
   function removeAway(st, name) { if (st.away) delete st.away[name]; }
+  // 메신저에서 불러온 표시만 지운다(다시 불러올 때 취소·삭제된 건이 남지 않게). 직접 붙여넣은 것은 그대로 둔다.
+  function clearMessengerAway(st) { Object.keys(st.away || {}).forEach(function (n) { if (st.away[n].src === 'msg') delete st.away[n]; }); }
+  // 메신저 시각 글자("13:00" · "1300" · "오후 1시 30분") → 분. 읽을 수 없으면 null
+  function clockMin(text) {
+    var t = String(text || '').trim(), m = t.match(/(\d{1,2})\s*:\s*(\d{2})/);
+    if (m) return +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null;
+    m = t.match(/^(\d{2})(\d{2})$/); if (m) return +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null;
+    m = t.match(/(오전|오후)\s*(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?/); if (m) return ((+m[2] % 12) + (m[1] === '오후' ? 12 : 0)) * 60 + (+m[3] || 0);
+    return null;
+  }
+  // 메신저 외출·외박 행(그 날짜에 유효한 것) → 외진·외박·외출 표시. known = 평일시간표에 있는 환자 이름표.
+  // 외박은 하루 종일, 나가는 시각만 있으면 그때부터 하루 끝까지, 시각이 없거나 못 읽으면 하루 종일로 본다.
+  // 이름이 시간표에 같으면 그대로, "이영호"처럼 글자(A·B)만 빠진 경우는 후보가 딱 하나일 때만 잇고 여럿이면 확인용으로 따로 돌려준다.
+  function awayFromMessenger(rows, known) {
+    var entries = [], ambiguous = [], skipped = 0, names = Object.keys(known || {});
+    (rows || []).forEach(function (r) {
+      var nm = String(r.patient || '').replace(/\s+/g, ''), hit = known[nm] ? nm : null;
+      if (!hit) { var c = names.filter(function (k) { return k.replace(/[A-Z]$/, '') === nm && k !== nm; }); if (c.length === 1) hit = c[0]; else if (c.length > 1) { ambiguous.push({ patient: nm, candidates: c, kind: r.category }); return; } }
+      if (!hit) { skipped++; return; }
+      var text = String(r.category || '') + ' ' + String(r.reason || ''), kind = /외진/.test(text) ? '외진' : /외박/.test(text) ? '외박' : /외출/.test(text) ? '외출' : (String(r.category || '').trim() || '외출');
+      var from = null, to = null;
+      if (kind !== '외박') { var a = clockMin(r.departureText), b = clockMin(r.returnText); if (a != null) { from = a; to = b != null && b > a ? b : 24 * 60; } }
+      entries.push({ name: hit, kind: kind, from: from, to: to, src: 'msg' });
+    });
+    return { entries: entries, ambiguous: ambiguous, skipped: skipped };
+  }
 
   /* ---------- 배치 점검: 규칙을 어긴 배치(직접 넣은 것·엑셀에서 불러온 것 포함) 찾기 ---------- */
   // 반환: [{ id, kind, text }]  kind: cap · half · erdt · exclude · ordinary · cross · busy
@@ -1374,7 +1401,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     parseItem: parseItem, typeWord: typeWord, locText: locText,
     parseGenhwang: parseGenhwang, parseCardFile: parseCardFile, buildCardIndex: buildCardIndex,
     newState: newState, isAbsent: isAbsent, toggleAbsent: toggleAbsent,
-    isGone: isGone, isPast: isPast, parseAway: parseAway, applyAway: applyAway, removeAway: removeAway, absentItems: absentItems, goneItems: goneItems, isFreed: isFreed, isOpen: isOpen, toggleGone: toggleGone, toggleFreed: toggleFreed, unplacedItems: unplacedItems, slotCells: slotCells,
+    isGone: isGone, isPast: isPast, parseAway: parseAway, applyAway: applyAway, removeAway: removeAway, clearMessengerAway: clearMessengerAway, awayFromMessenger: awayFromMessenger, clockMin: clockMin, absentItems: absentItems, goneItems: goneItems, isFreed: isFreed, isOpen: isOpen, toggleGone: toggleGone, toggleFreed: toggleFreed, unplacedItems: unplacedItems, slotCells: slotCells,
     eligibility: eligibility, candidateSlotsForItem: candidateSlotsForItem, eligibleItemsForSlot: eligibleItemsForSlot,
     locSuggestions: locSuggestions, placeItem: placeItem, unplace: unplace, sanitize: sanitize,
     autoPlaceSameTime: autoPlaceSameTime, autoPlaceChangeTime: autoPlaceChangeTime, autoPlaceAll: autoPlaceAll, autoOrder: autoOrder, clearPlacements: clearPlacements,
@@ -1768,6 +1795,24 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     reloadMat();
     render();
     maybeAutoImportDay();
+    loadMessengerAway(true);
+  }
+
+  /* ---------- 메신저에서 외진·외박·외출 불러오기(rehab-hub 안에서만: __messengerApi) ---------- */
+  var msgSeq = 0;
+  function loadMessengerAway(auto) {
+    var api = window.__messengerApi, msg = $('#awayMsg'), date = S.st && S.st.date, seq = ++msgSeq;
+    if (!api) { if (!auto) msg.textContent = '메신저 연동은 재활치료부 앱 안에서만 돼요. 지금은 위 칸에 붙여넣어 주세요.'; return; }
+    if (!S.gen || !date) return;
+    if (!auto) msg.textContent = '메신저에서 읽는 중…';
+    api.outings(date).then(function (r) {
+      if (seq !== msgSeq || S.st.date !== date) return; // 그 사이 날짜를 바꿨으면 버린다
+      if (!r.ok) { if (!auto || r.code !== 'NOT_FOUND') msg.textContent = '⚠ ' + r.message; return; }
+      var res = Core.awayFromMessenger(r.rows, S.names);
+      Core.clearMessengerAway(S.st); Core.applyAway(S.st, res.entries); changed();
+      var extra = (res.ambiguous.length ? ' · 이름이 같은 사람이 여럿이라 못 이은 ' + res.ambiguous.map(function (a) { return a.patient + '(' + a.candidates.join('/') + ')'; }).join(', ') + ' — 직접 붙여넣어 주세요' : '') + (res.skipped ? ' · 시간표에 없는 환자 ' + res.skipped + '명은 건너뜀' : '');
+      $('#awayMsg').textContent = '🔗 메신저에서 ' + res.entries.length + '명 불러왔어요 (' + date.slice(5).replace('-', '/') + ')' + extra;
+    }, function () { if (!auto) msg.textContent = '⚠ 메신저를 읽지 못했어요.'; });
   }
 
   /* ---------- 시작 ---------- */
@@ -2332,6 +2377,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('#awayMsg').textContent = r.entries.length + '명을 적용했어요.' + (r.unknown.length ? ' 못 알아본 이름: ' + r.unknown.join(', ') + ' (평일시간표(원본)에 없는 이름이에요)' : '');
     $('#awayText').value = '';
   });
+  $('#awayMsgBtn').addEventListener('click', function () { loadMessengerAway(false); });
   $('#awayClear').addEventListener('click', function () { S.st.away = {}; changed(); $('#awayMsg').textContent = '외진·외박·외출 표시를 모두 풀었어요.'; });
   $('#btnResetAuto').addEventListener('click', function () { Core.clearPlacements(S.st, true); changed(); });
   $('#btnResetAll').addEventListener('click', function () {

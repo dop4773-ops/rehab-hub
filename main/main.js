@@ -4,6 +4,7 @@ const path = require('path');
 const { registerSchemePrivileges, registerProtocolHandler, shellUrl } = require('./protocol');
 const { registerFoldersIpc } = require('./ipc/folders.ipc');
 const { registerItdaIpc } = require('./ipc/itda.ipc');
+const { registerMessengerIpc } = require('./ipc/messenger.ipc');
 const { registerSchedulesIpc } = require('./ipc/schedules.ipc');
 const { registerBackupIpc } = require('./ipc/backup.ipc');
 const { registerExportIpc } = require('./ipc/export.ipc');
@@ -75,6 +76,7 @@ if (!gotLock) {
     registerProtocolHandler();
     registerFoldersIpc();
     registerItdaIpc();
+    registerMessengerIpc();
     registerSchedulesIpc();
     registerBackupIpc();
     registerExportIpc(() => mainWindow);

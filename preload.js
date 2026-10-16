@@ -38,6 +38,11 @@ contextBridge.exposeInMainWorld('rehab', {
     resetLog: () => ipcRenderer.invoke('backup:resetLog'),
     open: (kind) => ipcRenderer.invoke('backup:open', kind),
   },
+  messenger: { // 대체치료의 외진·외박·외출 불러오기(메신저 DB 읽기 전용)
+    detect: () => ipcRenderer.invoke('messenger:detect'),
+    chooseDb: () => ipcRenderer.invoke('messenger:chooseDb'),
+    outings: (dbPath, date) => ipcRenderer.invoke('messenger:outings', dbPath, date),
+  },
   itda: {
     installed: () => ipcRenderer.invoke('itda:installed'),
     grandEvents: (category) => ipcRenderer.invoke('itda:grandEvents', category),
