@@ -416,7 +416,7 @@ function ensureToolLoaded(key) {
     iframe.addEventListener('load', async () => {
       iframe.contentWindow.__schedulesApi = SCHEDULES_BRIDGE;
       iframe.contentWindow.__messengerApi = MESSENGER_BRIDGE;
-      if (key === 'sub') { iframe.contentWindow.__cardApi = CARD_BRIDGE; ensureToolLoaded('cross'); } // 카드를 바로 보여 줄 수 있게 교차검증 화면을 미리 준비
+      if (key === 'sub') { iframe.contentWindow.__cardApi = CARD_BRIDGE; iframe.contentWindow.__dayExtApi = DAYEXT_BRIDGE; ensureToolLoaded('cross'); } // 카드를 바로 보여 줄 수 있게 교차검증 화면을 미리 준비
       applyFilesCollapse(key);
       iframe.contentWindow.__itdaApi = { grandEvents: () => window.rehab.itda.grandEvents(settings.itdaCategory) }; // 그랜드라운딩 일정 불러오기(읽기 전용)
       pushSettingsToTool(iframe);
@@ -881,12 +881,13 @@ function cellsToRows(cells) { // 셀 지도 → SheetJS 모양 2차원 배열(�
 }
 const slotStartM = (t) => { const m = /(\d{1,2})[:.](\d{2})/.exec(String(t || '')); return m ? +m[1] * 60 + +m[2] : null; };
 async function buildDayPlan(date) {
-  const DP = RehabCore.dailyPlan, wd = DP.weekdayChar(date), plan = { date, ot: new Map(), pt: new Map(), gi: new Map(), have: { ot: false, pt: false, gi: false }, missing: [] };
+  const DP = RehabCore.dailyPlan, wd = DP.weekdayChar(date), plan = { date, ot: new Map(), pt: new Map(), gi: new Map(), have: { ot: false, pt: false, gi: false }, missing: [], floors: { pt: [], gi: [] }, ptE: [], giE: [] };
   const nk = (n) => String(n || '').replace(/\s+/g, '').normalize('NFC');
   const sheetsOf = async (role, label, fn) => {
     for (const f of await getFilesForRole(role)) {
       const book = await bookOf(f), names = DP.sheetsForDate(book.sheets.map(s => s.name), date);
       if (!names.length) { plan.missing.push(label); continue; }
+      const fm = /^(pt|gi)(\d+)$/.exec(role); if (fm && !plan.floors[fm[1]].includes(+fm[2])) plan.floors[fm[1]].push(+fm[2]); // 어느 층의 그날 시트가 있었는지(대체치료가 카드 대신 그날 시간표를 쓸 층)
       for (const n of names) { const cells = await RehabCore.getSheetCells(book, n); if (cells && cells.size) fn(cells); }
     }
   };
@@ -898,16 +899,31 @@ async function buildDayPlan(date) {
   const ptE = [], giE = [];
   for (const role of ['pt10', 'pt3']) await sheetsOf(role, role === 'pt10' ? '10층 물리치료시간표' : '3층 물리치료시간표', (cells) => ptE.push(...DP.parsePtGrid(grid(cells), wd)));
   for (const role of ['gi10', 'gi3']) await sheetsOf(role, role === 'gi10' ? '10층 기구시간표' : '3층 기구시간표', (cells) => giE.push(...DP.parseGiGrid(grid(cells), wd)));
+  plan.ptE = ptE; plan.giE = giE;
   plan.pt = DP.toMap(ptE, () => '운동'); plan.gi = DP.toMap(giE, (e) => e.kind); plan.have.pt = ptE.length > 0; plan.have.gi = giE.length > 0;
   return plan;
 }
+// 그날 시간표 묶음(읽은 것은 파일이 바뀔 때까지 기억해 둔다)
+async function planOf(date) {
+  const sig = [...SCHED_ROLES.map(([r]) => RehabSync.roleSig(lastScan, r)), JSON.stringify(settings.rules.erdtTherapists)].join('#') + '|' + date;
+  let c = dayPlanCache.get(date); if (!c || c.sig !== sig) { c = { sig, plan: await buildDayPlan(date) }; dayPlanCache.set(date, c); }
+  return c.plan;
+}
+// 대체치료가 「옮길 자리에 이 환자의 물리치료·기구·전기가 있는지」 보려고 가져가는 그날 시간표: 이름별 [{startM, kind:'PT'|'기구'|'전기', who, loc}] + 시트가 있는 층
+async function dayExtFor(date) {
+  if (!lastScan || typeof RehabCore === 'undefined' || !RehabCore.dailyPlan) return { ok: false, message: '파일을 아직 읽지 못했어요.' };
+  const p = await planOf(date), names = {}, key = (n) => String(n || '').replace(/\s+/g, '').normalize('NFC');
+  const add = (n, o) => { const k = key(n); (names[k] = names[k] || []).push(o); };
+  for (const e of p.ptE) add(e.name, { startM: e.startM, kind: 'PT', who: e.therapist || '', loc: e.bed || '' });
+  for (const e of p.giE) add(e.name, { startM: e.startM, kind: e.kind, who: '', loc: e.station || '' });
+  return { ok: true, date, have: { pt: p.have.pt, gi: p.have.gi }, floors: p.floors, missing: [...new Set(p.missing)].filter(m => /물리치료|기구/.test(m)), names };
+}
+const DAYEXT_BRIDGE = { get: (date) => dayExtFor(date) };
 // 한 환자의 그날 일정 → {date, rows:[{startM, kind:'OT'|'PT'|'GI', label, who, loc}], have, missing}. 시트가 없거나 환자가 없으면 rows가 비어 있다.
 async function dayPlanFor(name, date) {
   if (!lastScan || typeof RehabCore === 'undefined' || !RehabCore.otSchedule) return null;
   date = date || RehabCore.scheduleCheck.ymdOf(new Date());
-  const sig = [...SCHED_ROLES.map(([r]) => RehabSync.roleSig(lastScan, r)), JSON.stringify(settings.rules.erdtTherapists)].join('#') + '|' + date;
-  let c = dayPlanCache.get(date); if (!c || c.sig !== sig) { c = { sig, plan: await buildDayPlan(date) }; dayPlanCache.set(date, c); }
-  const p = c.plan, DP = RehabCore.dailyPlan, nm = String(name || '').replace(/\s*\(외래\)\s*$/, '').trim(), key = nm.replace(/\s+/g, '').normalize('NFC'), rows = [];
+  const p = await planOf(date), DP = RehabCore.dailyPlan, nm = String(name || '').replace(/\s*\(외래\)\s*$/, '').trim(), key = nm.replace(/\s+/g, '').normalize('NFC'), rows = [];
   const base = key.replace(/[A-E]$/, ''), otHit = p.ot.get(key) || (() => { const ks = [...p.ot.keys()].filter(k => k.replace(/[A-E]$/, '') === base); return ks.length === 1 ? p.ot.get(ks[0]) : []; })();
   for (const e of otHit) rows.push({ startM: e.startM, kind: 'OT', label: OT_TYPE_LABEL[e.cat] || e.cat, who: e.therapist || '', loc: e.loc });
   for (const e of DP.lookup(p.pt, nm) || []) rows.push({ startM: e.startM, kind: 'PT', label: e.test ? '운동치료(TEST)' : '운동치료', who: e.therapist, loc: e.bed });

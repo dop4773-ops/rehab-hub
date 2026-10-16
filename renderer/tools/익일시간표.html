@@ -379,6 +379,7 @@ body.emb #drop{display:none!important}
       <span id="wkWarn" class="warn"></span>
     </div>
     <div class="bar-r">
+      <span class="mini-note" id="extNote"></span>
       <span class="mini-note" id="matNote"></span>
       <button id="btnText" class="bt" title="카톡에 보낼 문구(선생님별)와 병동에 보낼 문구(병동별)를 만들어요">📋 문구</button>
       <button id="btnXlsx" class="bt" title="그 날짜 시트만 든 새 엑셀로 저장해요(원본은 안 바뀌어요)">📥 엑셀</button>
@@ -966,6 +967,33 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function cardFor(cards, name) { return cards[name] || null; }
 
+  /* ---------- 그날 물리치료·기구시간표(rehab-hub이 넘겨 줌) ----------
+     st.ext = { names: { 이름: [{ startM, kind: 'PT'|'기구'|'전기', who, loc }] }, floors: { pt: [층…], gi: [층…] }, missing: [시트 이름…] }
+     전체시간표(원본)는 요일 기본값이라 그날그날 바뀐 운동·기구·전기가 없다 — 그날 시트가 있는 층의 환자는 카드 대신 이걸로 겹침을 본다. 시간표 한 칸은 30분. */
+  var EXT_DUR = 30;
+  function extLookup(ext, name) {
+    if (!ext || !ext.names) return null;
+    var n = String(name || '').replace(/\s+/g, '');
+    if (ext.names[n]) return ext.names[n];
+    var base = n.replace(/[A-E]$/, ''), hit = Object.keys(ext.names).filter(function (k) { return k.replace(/[A-E]$/, '') === base; });
+    return hit.length === 1 ? ext.names[hit[0]] : null; // 구분 알파벳은 이름이 하나뿐일 때만 뗀다
+  }
+  // 카드의 운동/기구/전기 칸을 그날 시간표로 대신해도 되는가(그 종류의 그날 시트가 환자 층에 있거나, 시간표에 이 이름이 있을 때)
+  function extCovers(ext, kind, floor, name) {
+    var f = ext && ext.floors && ext.floors[kind];
+    return !!(f && f.length && ((floor && f.indexOf(floor) >= 0) || extLookup(ext, name)));
+  }
+  // 이 환자의 그날 시간표 칸 중 hm부터 30분과 겹치는 것
+  function extAt(st, name, hm) {
+    var list = extLookup(st && st.ext, name); if (!list || !hm) return [];
+    var t = hmToMin(hm);
+    return list.filter(function (e) { return e.startM != null && t < e.startM + EXT_DUR && e.startM < t + EXT_DUR; });
+  }
+  function extPick(es) { // 겹치는 칸이 여럿이면 가장 못 옮기는 것부터: 물리치료 > 기구 > 전기
+    return ['PT', '기구', '전기'].map(function (k) { return es.filter(function (e) { return e.kind === k; })[0]; }).filter(Boolean)[0] || null;
+  }
+  function extWhy(e) { return e.kind === 'PT' ? '그날 물리치료시간표에 운동치료가 있어요' + (e.who ? '(' + e.who + ')' : '') : '그날 기구시간표에 ' + e.kind + ' 치료가 있어요' + (e.loc ? '(' + e.loc + ')' : ''); }
+
   // 아이템 rec 가 시간 row(dr)로 이동 가능한지
   function eligibility(gen, st, cards, rec, dr) {
     if (rec.kind === 'block') return { ok: true, mode: 'free' };
@@ -974,10 +1002,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var rows = patientRows(gen, st, nm, rec.id);
     if (rows[dr]) return { ok: false, mode: 'busy', why: '이미 이 시간에 다른 치료가 있어요' };
     var cd = cardFor(cards, nm);
-    if (!cd) return { ok: true, mode: 'nocard' };
     var hm = gen.cells[rec.id].hm;
     var tr = gen.timeRows.filter(function (t) { return t.row === dr; })[0];
+    var ex = extPick(extAt(st, nm, tr && tr.hm)); // 그날 물리치료·기구시간표의 이 환자 칸
+    if (ex) {
+      if (ex.kind === 'PT') return { ok: false, mode: 'busy', why: extWhy(ex), src: 'day' };
+      if (ex.kind === '기구') return { ok: false, mode: 'ask', askTx: '기구', src: 'day', why: extWhy(ex) + '(기구는 옮길 수 있어요 — 확인 후 직접)', swapName: '기구', swapFrom: tr.hm, swapTo: hm };
+      return { ok: true, mode: 'swap', swapName: '전기치료', swapFrom: tr.hm, swapTo: hm, src: 'day' };
+    }
+    if (!cd) return { ok: true, mode: 'nocard' };
     var ent = cd.sched[st.wd] && cd.sched[st.wd][tr.hm];
+    var fl = parseInt(cd.floor, 10);
+    if (ent && ((/운동치료/.test(ent.tx) && extCovers(st.ext, 'pt', fl, nm)) || ((/기구/.test(ent.tx) || (/전기치료/.test(ent.tx) && !/연하전기/.test(ent.tx))) && extCovers(st.ext, 'gi', fl, nm)))) ent = null; // 그날 시간표에 이 칸이 없다 = 오늘은 안 함
     if (!ent) return { ok: true, mode: 'free' };
     if (ASK_RE.test(ent.tx)) return { ok: false, mode: 'ask', askTx: ent.tx, why: '그 시간에 ' + ent.tx + ' 치료가 있어요(기구는 옮길 수 있어요 — 확인 후 직접)', swapName: ent.tx.replace(/\(.*\)$/, '').trim() + (/\(/.test(ent.tx) ? '(' + (ent.tx.match(/\(([^)]*)\)/) || [0, ''])[1] + ')' : ''), swapFrom: tr.hm, swapTo: hm };
     if (SWAP_RE.test(ent.tx)) return { ok: true, mode: 'swap', swapName: ent.tx.replace(/\(.*\)$/, '').trim(), swapFrom: tr.hm, swapTo: hm };
@@ -1432,7 +1468,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (kind !== 'ERDT' && cfg.noOrdinaryRoles.indexOf(co.role) >= 0) out.push({ id: id, kind: 'ordinary', text: who + ' → ' + where + ': ' + co.role + '님은 일반 치료를 받지 않아요' });
       if (recoveryOf(rec, cfg, cards) === 'non' && halfOf(rec.hm) !== halfOf(dst.hm)) out.push({ id: id, kind: 'half', text: who + ' → ' + where + ': 비회복기 환자는 ' + HALF_LABEL[halfOf(rec.hm)] + ' 안에서만 옮길 수 있어요' });
       var pf = patientFloor(gen, cards, rec); if (pf && co.floor !== pf) out.push({ id: id, kind: 'cross', text: who + ' → ' + where + ': 환자 층(' + pf + ')과 다른 층 선생님이에요' });
-      if (rec.kind === 'item' && p.dr !== rec.r && !p.swap) { var rows = patientRows(gen, st, rec.item.name, id); if (rows[p.dr]) out.push({ id: id, kind: 'busy', text: who + ' → ' + where + ': 그 시간에 이 환자의 다른 치료가 있어요' }); }
+      if (rec.kind === 'item' && p.dr !== rec.r && !p.swap) { var exh = extPick(extAt(st, rec.item.name, dst.hm)); if (exh && exh.kind === 'PT') out.push({ id: id, kind: 'busy', text: who + ' → ' + where + ': ' + extWhy(exh) }); var rows = patientRows(gen, st, rec.item.name, id); if (rows[p.dr]) out.push({ id: id, kind: 'busy', text: who + ' → ' + where + ': 그 시간에 이 환자의 다른 치료가 있어요' }); }
       var cap = capOf(gen, cfg, co);
       if (cap < Infinity && !seenCap[co.c]) { var ld = loadOf(gen, st, co); if (ld > cap) { seenCap[co.c] = true; out.push({ id: id, kind: 'cap', text: co.name + ' 선생님: 대체를 받아 하루 ' + ld + '타임이에요(한도 ' + cap + '타임)' }); } } // 대체로 받은 칸이 있는 선생님만 본다
     });
@@ -2007,11 +2043,31 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('#wdLabel').textContent = '(' + WD[wd] + ')';
     $('#wkWarn').textContent = (wd === 0 || wd === 6) ? '※ 평일만 지원해요 (토/일은 월요일 기준으로 보여줘요)' : '';
     S.st = loadState(dateStr);
+    S.st.ext = (S.ext && S.ext.date === dateStr) ? S.ext : null;
     S.selected = null;
     reloadMat();
     render();
     maybeAutoImportDay();
     loadMessengerAway(true);
+    loadDayExt();
+  }
+
+  /* ---------- 그날 물리치료·기구시간표로 겹침 확인(rehab-hub 안에서만: __dayExtApi) ---------- */
+  var extSeq = 0;
+  function loadDayExt() {
+    var api = window.__dayExtApi, note = $('#extNote'), date = S.st && S.st.date, seq = ++extSeq;
+    if (!note) return;
+    note.textContent = ''; note.title = '';
+    if (!api || !date) return;
+    api.get(date).then(function (r) {
+      if (seq !== extSeq || !S.st || S.st.date !== date) return; // 그 사이 날짜를 바꿨으면 버린다
+      if (!r || !r.ok) { S.ext = null; S.st.ext = null; return; }
+      S.ext = { date: date, names: r.names, floors: r.floors, missing: r.missing }; S.st.ext = S.ext;
+      var n = r.floors.pt.length + r.floors.gi.length;
+      note.textContent = !n ? '⚠ 물리치료·기구 시트 없음 — 카드로만 확인' : (r.missing.length ? '⚠ 일부 시트 없음 — 그 층은 카드 기준' : '✓ 물리치료·기구 겹침 확인');
+      note.title = !n ? '물리치료·기구시간표에 ' + date.slice(5).replace('-', '/') + ' 시트가 없어서 전체시간표(원본) 카드로만 겹침을 봐요.' : '그날 시트: 물리치료 ' + (r.floors.pt.join('·') || '없음') + '층, 기구 ' + (r.floors.gi.join('·') || '없음') + '층 — 환자가 그 시간에 다른 치료가 있는지 확인해요.' + (r.missing.length ? '\n시트가 없는 파일: ' + r.missing.join(', ') + ' (그 층 환자는 카드 기준)' : '');
+      render();
+    }).catch(function () { });
   }
 
   /* ---------- 메신저에서 외진·외박·외출 불러오기(rehab-hub 안에서만: __messengerApi) ---------- */
@@ -2419,7 +2475,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         right += '<div class="note2">' + (ls.hasMat ? '추천은 매트·테이블 현황(' + st.date.slice(5).replace('-', '/') + ' 시트)에서 그 시간에 비어 있는 자리 중 번호가 가까운 순이에요.' : '매트·테이블 현황을 넣으면 그날의 실제 빈 자리로 추천해요. 지금은 평일시간표(원본)의 번호 기준이에요.') + '</div>';
       }
     }
-    if (el.mode === 'ask') right += '<div class="askbox"><b>⚠ 기구를 옮겨야 넣을 수 있는 자리예요</b><br>이 시간(' + slot.hm + ')에 환자는 <b>' + esc(el.askTx) + '</b> 치료가 잡혀 있어요(전체시간표 기준). 기구는 1:다 치료라 시간을 옮길 수 있어요 → <b>' + slot.hm + '의 기구를 원래 치료 시간 ' + el.swapTo + '로 옮기면</b> 환자 시간이 겹치지 않아요.<br><span class="note2">단, ' + el.swapTo + '에 기구 자리가 비어 있는지는 기구시간표에서 직접 확인해 주세요. 확인했으면 아래 체크를 켠 채로 넣으면 카톡 문구에 「기구 시간변경」이 같이 적혀요(자동으로 옮기지는 않아요).</span></div>';
+    if (el.mode === 'ask') right += '<div class="askbox"><b>⚠ 기구를 옮겨야 넣을 수 있는 자리예요</b><br>이 시간(' + slot.hm + ')에 환자는 <b>' + esc(el.askTx) + '</b> 치료가 잡혀 있어요(' + (el.src === 'day' ? '그날 기구시간표 기준' : '전체시간표 기준') + '). 기구는 1:다 치료라 시간을 옮길 수 있어요 → <b>' + slot.hm + '의 기구를 원래 치료 시간 ' + el.swapTo + '로 옮기면</b> 환자 시간이 겹치지 않아요.<br><span class="note2">단, ' + el.swapTo + '에 기구 자리가 비어 있는지는 기구시간표에서 직접 확인해 주세요. 확인했으면 아래 체크를 켠 채로 넣으면 카톡 문구에 「기구 시간변경」이 같이 적혀요(자동으로 옮기지는 않아요).</span></div>';
     if (el.mode === 'swap' || el.mode === 'ask') {
       right += '<div class="line"><label><input type="checkbox" id="mSwap" ' + (M.swapOn ? 'checked' : '') + '> ' + (el.mode === 'ask' ? '기구 옮김' : '교환') + '</label><span>' + el.swapFrom + '의 </span><input type="text" id="mSwapName" value="' + esc(M.swapName) + '" size="8"><span> → ' + el.swapTo + '로 이동 (카톡 문구에 같이 적혀요)</span></div><div class="note2">그 시간에 환자는 ' + esc(el.swapName) + '(이)가 잡혀 있어서, 서로 시간을 맞바꾸는 경우예요. 맞바꾼 치료의 새 시간은 해당 시간표에서 따로 확인해 주세요.</div>';
     }
@@ -2514,7 +2570,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var wd = ds ? wdOf(ds) : 1;
     var st = Core.importDaySheet(S.gen, ws, S.cards, wd >= 1 && wd <= 5 ? wd : 1);
     st.date = ds || S.st.date;
-    st.cfg = S.cfg; S.st = st; S.selected = null;
+    st.cfg = S.cfg; st.ext = S.ext && S.ext.date === st.date ? S.ext : null; S.st = st; S.selected = null;
     reloadMat();
     $('#date').value = st.date; $('#wdLabel').textContent = '(' + WD[wdOf(st.date)] + ')';
     changed();
@@ -2692,7 +2748,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('#btnResetAuto').addEventListener('click', function () { Core.clearPlacements(S.st, true); changed(); });
   $('#btnResetAll').addEventListener('click', function () {
     if (!confirm('이 날짜의 연차 선택과 배치를 모두 지울까요?')) return;
-    S.st = Core.newState(S.st.date, S.st.wd); S.selected = null; changed();
+    S.st = Core.newState(S.st.date, S.st.wd); S.st.ext = S.ext && S.ext.date === S.st.date ? S.ext : null; S.selected = null; changed();
   });
   $('#date').addEventListener('change', function (e) { if (e.target.value) setDate(e.target.value); });
   $('#goneAdd').addEventListener('click', addGone);
