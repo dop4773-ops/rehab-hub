@@ -15,10 +15,10 @@ assert.strictEqual(n.shortcuts, true); assert.strictEqual(n.grandTime, '13'); as
 assert.notStrictEqual(S.normalize({}).keymap, S.DEFAULTS.keymap); // 기본값 객체를 공유하지 않는다
 
 // ② 저장/불러오기 왕복, 예전 키에서 한 번 옮겨오기
-const o = {}; S.save(mem(o), S.normalize({ dataView: 'board', homeLayout: 'classic', homeLayoutChosen: true }));
-assert.strictEqual(S.load(mem(o)).dataView, 'board'); assert.strictEqual(S.load(mem(o)).homeLayout, 'classic');
+const o = {}; S.save(mem(o), S.normalize({ dataView: 'list', dataViewChosen: true, homeLayout: 'classic', homeLayoutChosen: true }));
+assert.strictEqual(S.load(mem(o)).dataView, 'list'); assert.strictEqual(S.load(mem(o)).homeLayout, 'classic');
 const legacy = S.load(mem({ rehab_sync_mode: '30', rehab_data_view_v1: 'board' }));
-assert.strictEqual(legacy.syncMode, '30'); assert.strictEqual(legacy.dataView, 'board');
+assert.strictEqual(legacy.syncMode, '30'); assert.strictEqual(legacy.dataView, 'matrix', '예전에 따로 저장하던 보기 값은 새 한 장 표 기본으로');
 assert.deepStrictEqual(S.load(mem({ rehab_settings_v1: '{깨진' })), S.DEFAULTS);
 
 // ③ 단축키 표기·입력
@@ -111,5 +111,8 @@ console.log('화면 크기 점검 통과');
   assert.strictEqual(S.normalize({ homeLayout: 'workbench' }).homeLayout, 'board', '고른 적 없는 작업대 → 현황판');
   assert.strictEqual(S.normalize({ homeLayout: 'workbench', homeLayoutChosen: true }).homeLayout, 'workbench', '직접 고른 작업대는 유지');
   assert.strictEqual(S.normalize({ homeLayout: 'compact' }).homeLayout, 'compact');
+    assert.strictEqual(S.normalize({ dataView: 'list' }).dataView, 'matrix', '고른 적 없으면 새 기본(표)');
+  assert.strictEqual(S.normalize({ dataView: 'list', dataViewChosen: true }).dataView, 'list', '직접 고른 목록은 유지');
+  assert.strictEqual(S.normalize({ dataView: 'board', dataViewChosen: true }).dataView, 'matrix', '없어진 보드형은 표로');
   console.log('홈 현황판 기본값 점검 통과');
 }

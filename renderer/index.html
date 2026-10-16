@@ -146,18 +146,25 @@
     </section>
 
     <section class="view" data-view="data">
-      <div class="card">
-        <div class="data-head">
+      <div class="dp" id="dp">
+        <div class="dp-top">
           <h2>📦 데이터 준비</h2>
           <div class="chips" id="dataChips"></div>
           <span class="when" id="dataStatus"></span>
-          <span class="seg" id="dataViewSeg"><button type="button" data-dv="list">☰ 목록형</button><button type="button" data-dv="matrix">▤ 층별 표</button><button type="button" data-dv="board">▦ 보드형</button></span>
-          <button class="btn" id="dataViewDefault" type="button"></button>
-          <button class="btn" data-goto="settings">폴더·동기화 설정 →</button>
+          <span class="sp"></span>
+          <button class="btn" data-goto="settings">폴더·동기화 설정</button>
           <button class="btn primary" id="dataScanBtn">🔄 지금 업데이트</button>
         </div>
         <div id="dataBanner"></div>
-        <div id="dataFileList"></div>
+        <div class="dp-feats" id="dataFeats"></div>
+        <div id="dataAttn"></div>
+        <div class="card dp-files">
+          <h4>전체 파일 <small id="dataCount"></small><span class="seg" id="dataViewSeg"><button type="button" data-dv="matrix">▤ 표</button><button type="button" data-dv="list">☰ 목록</button></span></h4>
+          <div id="dataFileList"></div>
+          <div class="dp-det" id="dataDetail"></div>
+          <div class="dp-leg"><span><i class="dot ok"></i>폴더 자동 동기화</span><span>📌 직접 고름(보라색 줄)</span><span><i class="dot live"></i>실시간</span><span><i class="dot warn"></i>파일이 바뀌어 반영 필요</span><span><i class="dot none"></i>없음(점선)</span></div>
+        </div>
+        <div class="dp-two"><div class="card" id="dataManual"></div><div class="card" id="dataActs"></div></div>
       </div>
     </section>
 

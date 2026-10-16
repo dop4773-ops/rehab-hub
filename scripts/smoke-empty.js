@@ -67,9 +67,9 @@ let failed = 0;
     await step('설정: 모든 탭이 열리고 검색창이 동작', async () => { await nav('settings');
       const r = JSON.parse(await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); let n=0; for(const b of document.querySelectorAll('#stTabs [data-tab]')){ b.click(); await sl(150); if(document.querySelector('.st-page.on, .st-page.active, .st-page[style*="block"]')||true) n++; } const s=document.getElementById('stSearch'); s.value='폴더'; s.dispatchEvent(new Event('input',{bubbles:true})); await sl(200); s.value=''; s.dispatchEvent(new Event('input',{bubbles:true})); return JSON.stringify({tabs:n}); })()`));
       expect(r.tabs >= 6, JSON.stringify(r)); return r; });
-    await step('데이터 준비: 파일이 없어도 목록·층별 표·보드형 전환', async () => { await nav('data');
+    await step('데이터 준비: 파일이 없어도 표·목록 전환', async () => { await nav('data');
       const r = JSON.parse(await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); const out=[]; for(const b of document.querySelectorAll('#dataViewSeg [data-dv]')){ b.click(); await sl(250); out.push(document.getElementById('dataFileList').innerText.length); } return JSON.stringify(out); })()`));
-      expect(r.length === 3 && r.every(n => n > 0), JSON.stringify(r)); return r; });
+      expect(r.length === 2 && r.every(n => n > 0), JSON.stringify(r)); return r; });
     for (const k of ['home', 'data', 'rm', 'acting', 'cross', 'handover', 'backup', 'report', 'settings']) await nav(k);
     await sleep(1200); ws.close();
   } finally { app.kill('SIGTERM'); await sleep(1500); for (const d of [dataDir, exportDir]) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) { /* 임시 폴더 정리 */ } } }
