@@ -642,3 +642,7 @@ body.home-board .wb-memo{display:flex}
 .bd-bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px;padding:9px 14px}.bd-bar>b{font-size:12.5px;margin-right:4px;color:var(--navy)}
 .bd-bar .sp{margin-left:auto;display:flex;gap:6px}.bd-bar .sp .btn{padding:4px 12px;font-size:11.5px}
 @media (max-width:1150px){.bd-grid{grid-template-columns:1fr}.bd-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.bd-names{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;flex:1;min-width:0}.bd-names b{font-weight:700}
+.bd-mk{font-style:normal;font-size:10.5px;font-weight:800;border-radius:50%;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;margin-left:3px;vertical-align:1px}
+.bd-mk.g{background:#e6f4ee;color:var(--green)}.bd-mk.r{background:#fdeaec;color:var(--red)}.bd-mk.o{background:#fff3dc;color:var(--orange)}
+.bd-warn{color:var(--red)}

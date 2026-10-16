@@ -582,7 +582,7 @@ function renderAwayHome() {
   el.innerHTML = head + day('today', '오늘', MSG_AWAY.today) + day('tomorrow', '내일', MSG_AWAY.tomorrow);
 }
 // ── 홈 현황판(설정 > 화면 > 홈 화면 배치 > 현황판): 재원·입퇴원·회복기 종료 임박(작업치료현황) + 잇다(부재·평가 예정) + 메신저(외출) ──
-const BOARD = { sig: '', list: null, err: '', itda: null, itdaAt: 0, loading: false, gubun: '', ward: '', more: false, moveMore: false };
+const BOARD = { marks: null, markKey: '', otSig: '', otBook: null, sheetTexts: {}, sig: '', list: null, err: '', itda: null, itdaAt: 0, loading: false, gubun: '', ward: '', more: false, moveMore: false };
 async function loadBoardStatus() { // 작업치료현황 파일이 바뀐 때만 다시 읽는다(파일 서명 비교)
   if (BOARD.loading || !lastScan) return;
   const sig = RehabSync.roleSig(lastScan, 'status') || '';
@@ -599,9 +599,28 @@ async function loadBoardItda(force) { // 잇다: 부재(구글캘린더)·평가
   if (!force && Date.now() - BOARD.itdaAt < 60 * 1000) return;
   BOARD.itdaAt = Date.now();
   try { BOARD.itda = await window.rehab.itda.homeInfo(); } catch (e) { BOARD.itda = { ok: false, message: '잇다를 읽지 못했어요.' }; }
-  renderBoard();
+  renderBoard(); checkEvalMarks();
 }
-const loadBoard = (force) => { if (settings.homeLayout === 'board') { loadBoardStatus(); loadBoardItda(force); } };
+// 평가 예정 환자가 그날 작업치료실 시간표에 TEST로 표시돼 있는지 — 잇다 평가 일정 × 시간표 시트. 파일·일정이 바뀐 때만 다시 계산한다
+async function checkEvalMarks() {
+  const itda = BOARD.itda && BOARD.itda.ok ? BOARD.itda : null; if (!itda || !lastScan) return;
+  const sig = RehabSync.roleSig(lastScan, 'dailySchedule') || '', key = `${sig}|${BOARD.itdaAt}`;
+  if (key === BOARD.markKey || BOARD.marking) return;
+  BOARD.marking = true; BOARD.markKey = key;
+  const marks = {}, H = RehabCore.homeboard;
+  try {
+    if (sig && sig !== BOARD.otSig) { BOARD.otSig = sig; BOARD.otBook = null; BOARD.sheetTexts = {}; BOARD.otBook = await RehabCore.readWorkbookFile((await getFilesForRole('dailySchedule'))[0]); }
+    const names = BOARD.otBook ? BOARD.otBook.sheets.map(s => s.name) : [];
+    for (const e of itda.evals) {
+      const sheet = H.sheetFor(names, e.date);
+      if (!sheet) { e.names.forEach(n => { marks[`${e.date}|${n}`] = 'nosheet'; }); continue; }
+      if (!BOARD.sheetTexts[sheet]) BOARD.sheetTexts[sheet] = [...(await RehabCore.getSheetCells(BOARD.otBook, sheet)).values()].map(String);
+      e.names.forEach(n => { marks[`${e.date}|${n}`] = H.testState(BOARD.sheetTexts[sheet], n); });
+    }
+  } catch (err) { itda.evals.forEach(e => e.names.forEach(n => { marks[`${e.date}|${n}`] = 'nosheet'; })); }
+  BOARD.marks = marks; BOARD.marking = false; renderBoard();
+}
+const loadBoard = (force) => { if (settings.homeLayout === 'board') { loadBoardStatus(); loadBoardItda(force); checkEvalMarks(); } };
 function renderBoard() {
   const el = document.getElementById('homeBoard'); if (!el || settings.homeLayout !== 'board') return;
   const H = RehabCore.homeboard, now = new Date(), todayISO = isoOf(now), tomoISO = isoOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
@@ -655,9 +674,13 @@ function renderBoard() {
   const mvHtml = mv.length ? mvShown.map(x => `<div class="bd-r"><span class="bd-tag ${x.c}">${E(x.k)}</span><b>${E(nm(x.n))}</b><small>${E(x.w)}</small><span class="bd-t2">${E(x.t)}</span></div>`).join('')
       + (mv.length > 7 ? `<button class="btn bd-more" data-bd-moremv>${BOARD.moveMore ? '접기 ▴' : `${mv.length - 7}건 더 보기 ▾`}</button>` : '')
     : `<div class="muted bd-empty">${st || away ? '오늘·내일 입퇴원·외출이 없어요' : '불러오는 중…'}</div>`;
-  // 6) 평가 예정(잇다 "평가" 카테고리)
+  // 6) 평가 예정(잇다 "평가" 카테고리) + 시간표 TEST 표시 대조(checkEvalMarks)
+  const MARK = { ok: ['g', '✓', 'TEST 표시됨'], notest: ['r', '⚠', '시간표에 TEST 표시가 없어요'], missing: ['o', '?', '그날 시간표에서 이름을 못 찾았어요'] };
+  const markBad = BOARD.marks ? Object.values(BOARD.marks).filter(v => v === 'notest' || v === 'missing').length : 0;
   const evHtml = !settings.itda ? '<div class="muted bd-empty">잇다 연동이 꺼져 있어요</div>' : !itda ? `<div class="muted bd-empty">${E(BOARD.itda ? BOARD.itda.message : '불러오는 중…')}</div>`
-    : itda.evals.length ? itda.evals.slice(0, 7).map(e => { const d = new Date(e.date + 'T00:00:00'); return `<div class="bd-r"><small class="bd-dt">${d.getMonth() + 1}/${d.getDate()}(${wd(d)})</small><b>${E(e.names.map(nm).join(', '))}</b><span class="bd-tag">${E(e.test)}</span></div>`; }).join('')
+    : itda.evals.length ? itda.evals.slice(0, 7).map(e => { const d = new Date(e.date + 'T00:00:00');
+        return `<div class="bd-r"><small class="bd-dt">${d.getMonth() + 1}/${d.getDate()}(${wd(d)})</small><span class="bd-names">${e.names.map(n => { const m = BOARD.marks && BOARD.marks[`${e.date}|${n}`]; return `<b>${E(nm(n))}</b>${m && MARK[m] ? `<i class="bd-mk ${MARK[m][0]}" title="${MARK[m][2]}">${MARK[m][1]}</i>` : ''}`; }).join(' ')}</span><span class="bd-tag">${E(e.test)}</span></div>`; }).join('')
+      + `<div class="bd-sub">${markBad ? `<b class="bd-warn">TEST 표시 확인 ${markBad}건</b> · ` : ''}✓ 시간표에 TEST 표시됨 · ⚠ 표시 없음 · ? 시간표에 이름 없음 · 표시가 없으면 그날 시트가 아직 안 만들어진 거예요</div>`
       : '<div class="muted bd-empty">3주 안에 평가 일정이 없어요</div>';
   // 7) 확인 필요 한 줄(눌러서 해당 화면으로)
   const left = [];

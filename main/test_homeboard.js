@@ -22,4 +22,13 @@ assert.strictEqual(r.ending[0].left, -2); assert.strictEqual(r.ending[0].ward, '
 assert.strictEqual(r.soon, 3);
 assert.deepStrictEqual(r.adm.map(e => e.name + e.off), ['d0', 'e1']);
 assert.deepStrictEqual(r.dis.map(e => e.name + e.off), ['f0', 'g1'], '오늘·내일 퇴원 예정만');
+// 평가(TEST) 표시 대조
+const names = ['12월31일 (수)', '10월6일(화)', '10월13일 (화)', '10월16일(금)', '1월6일(화)'];
+assert.strictEqual(H.sheetFor(names, '2026-10-13'), '10월13일 (화)', '날짜 사이 공백 허용');
+assert.strictEqual(H.sheetFor(names, '2026-10-06'), '10월6일(화)'); assert.strictEqual(H.sheetFor(names, '2026-12-31'), '', '12/31 (수)는 2025년 시트 — 2026-12-31은 목요일'); assert.strictEqual(H.sheetFor(names, '2025-12-31'), '12월31일 (수)');
+assert.strictEqual(H.sheetFor(names, '2026-10-19'), '', '아직 안 만든 날짜'); assert.strictEqual(H.sheetFor(names, '2026-01-06'), '1월6일(화)', '1월과 10월 구분');
+const T = ['이정홍 TEST', '장재복A\r\nTEST', '김영미 ST\r\nT-3', '이종철A Test', '박란영 ST'];
+assert.strictEqual(H.testState(T, '이정홍'), 'ok'); assert.strictEqual(H.testState(T, '장재복A'), 'ok', '줄바꿈 뒤 TEST');
+assert.strictEqual(H.testState(T, '이종철A'), 'ok', '대소문자 무관'); assert.strictEqual(H.testState(T, '김영미'), 'notest', '이름은 있는데 TEST 없음');
+assert.strictEqual(H.testState(T, '정도운'), 'missing'); assert.strictEqual(H.testState(['이 정홍TEST'], '이정홍'), 'ok', '공백 무시');
 console.log('test_homeboard OK');
