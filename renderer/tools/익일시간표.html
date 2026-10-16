@@ -236,15 +236,43 @@ body.side-off .right{display:none}
 .xrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}.xrow .note2{flex:1;min-width:140px}
 .nowbox{display:inline-flex;align-items:center;gap:8px;font-size:12px}.nowbox label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:600;color:#33445c}.nowbox input[type=time]{padding:3px 6px;font-size:12px}
 #grid tr.pastrow td,#grid tr.pastrow th{opacity:.45;filter:grayscale(.6)}#grid tr.pastrow td{cursor:default}
+
+/* ===== 한 화면 레이아웃(스크롤은 표·오른쪽 패널 안에서만) ===== */
+html,body{height:100%}
+body{display:flex;flex-direction:column;overflow:hidden}
+#drop{overflow:auto;margin-top:14px}
+#app.on{flex:1;min-height:0;align-items:stretch;padding:8px 10px;grid-template-rows:minmax(0,1fr)}
+.left{display:flex;flex-direction:column;min-height:0}
+.toolbar{margin-bottom:6px;gap:6px;flex:none}
+.toolbar .datebox{display:inline-flex;align-items:center;gap:6px}.toolbar input[type=date]{padding:4px 8px}.toolbar #wdLabel{font-weight:800;color:var(--ink)}
+.toolbar button{padding:5px 10px}.toolbar .tabs button{padding:5px 12px}
+.daybar{display:inline-flex;margin:0;padding:3px 9px;font-size:11.5px}.daybar .mini-note{display:none}
+.gridwrap{flex:1;min-height:0;max-height:none}
+#grid th,#grid td{height:40px}
+.legend{flex:none;margin:6px 2px 0;font-size:11px;gap:12px}
+.right{position:static;max-height:none;height:100%;min-height:0;overflow:auto}
+footer{display:none}
+body.emb .top{display:none}
+.halfrow{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px}.halfrow .sw{width:9px;height:18px;border-radius:3px;flex:none}.halfrow b{min-width:48px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}.seg button{border:0;border-radius:0;padding:3px 10px;font-size:11.5px;background:#fff}.seg button.on{background:#5b72b4;color:#fff}
+.tabsx{display:flex;gap:6px;margin-bottom:8px}.tabsx button{padding:5px 14px}.tabsx button.on{background:#5b72b4;color:#fff;border-color:#5b72b4}
+/* 이동 전·후: 원래 자리는 흐리게, 옮겨 간 자리는 진하게 */
+.otp-src{opacity:.5!important;text-decoration:line-through!important;background:#e4e7ee!important;outline:2px dashed #9aa3b5!important;outline-offset:-2px}
+.otp-src::after{content:" 변경 전";text-decoration:none;display:inline-block;font-size:10px;font-weight:700;color:#6a7383}
+.otp-dst{background:#fff1a8!important;font-weight:800!important;color:#1c2230!important;outline:3px solid #e8590c!important;outline-offset:-3px}
+.otp-dst::after{content:" ▶ 변경 후";display:inline-block;font-size:10px;font-weight:800;color:#c2410c}
+.ctable td.otp-src,.ctable td.otp-dst{position:relative}
+.cardbox{border:1px solid var(--line);border-radius:10px;overflow:auto;margin-bottom:10px;background:#fff}
+.cardhead{padding:6px 10px;font-size:12px;font-weight:700;color:var(--navy);background:#f3f7fd;border-bottom:1px solid var(--line)}
+.cardwrap{padding:6px;overflow:auto;max-height:46vh}
+@media (max-width:1100px){body{overflow:auto;height:auto}#app.on{display:block}.right{height:auto}}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="brand"><span class="logo">🗓</span><div><div class="bt">재활치료부 업무 통합 시스템</div><div class="bs">작업치료 · 익일 시간표 미리보기</div></div></div>
-  <div class="datebox"><input type="date" id="date"><span id="wdLabel"></span></div>
   <div class="filechips" id="fchips"></div>
   <div class="grow"></div>
-  <button id="btnDay" title="엑셀에서 이미 만들어 둔 날짜 시트를 불러와 미리보기·카톡 문구를 만들어요" style="display:none">저장된 날짜 시트 불러오기</button>
   <button id="btnFiles">파일 다시 선택</button>
   <input type="file" id="fileInput" multiple accept=".xlsx,.xlsm" style="display:none">
 </header>
@@ -261,29 +289,34 @@ body.side-off .right{display:none}
 <main id="app">
   <section class="left">
     <div class="toolbar">
-      <div class="tabs" id="floorTabs">
-        <button data-f="all" class="on">전체</button><button data-f="10F">10F</button><button data-f="3F">3F</button>
+      <span class="datebox"><input type="date" id="date"><span id="wdLabel"></span></span>
+      <button id="btnDay" title="엑셀에서 이미 만들어 둔 날짜 시트를 불러와 미리보기를 만들어요" style="display:none">📄 날짜 시트 불러오기</button>
+      <div class="daybar none" id="dayBar" style="display:none"></div>
+      <div class="tabs" id="teamTabs">
+        <button data-t="all" class="on">전체</button><button data-t="1팀">1팀</button><button data-t="2팀">2팀</button><button data-t="3팀">3팀</button>
       </div>
       <span id="wkWarn" class="warn"></span>
-      <span class="nowbox"><label title="오늘 갑자기 생긴 변경: 이미 지난 시간은 고정하고 지금 이후 시간만 대체해요"><input type="checkbox" id="optNow"> 당일 변경 모드</label><input type="time" id="nowTime" step="300" style="display:none"><span class="mini-note" id="nowHint"></span></span>
       <span class="grow"></span>
-      <span class="mini-note" id="matNote"></span><span id="sideMini" class="sidemini" title="누르면 패널을 펴요"></span><button id="btnSide" title="오른쪽 패널 접기/펼치기">패널 접기 ▶</button>
+      <span class="mini-note" id="matNote"></span>
+      <button id="btnText" class="primary" title="카톡에 보낼 문구(선생님별)와 병동에 보낼 문구(병동별)를 만들어요">📋 카톡·병동 문구</button>
+      <button id="btnXlsx" class="primary" title="그 날짜 시트만 든 새 엑셀로 저장해요(원본은 안 바뀌어요)">📥 엑셀 내보내기</button>
+      <span id="sideMini" class="sidemini" title="누르면 패널을 펴요"></span><button id="btnSide" title="오른쪽 패널 접기/펼치기">패널 접기 ▶</button>
     </div>
-    <div class="daybar none" id="dayBar" style="display:none"></div>
+    <div class="gridwrap"><table id="grid"></table></div>
     <div class="legend">
-      <span><i style="background:var(--yellow)"></i>빈 시간(노란칸)</span>
-      <span><i style="background:var(--cand)"></i>지금 넣을 수 있는 칸 (숫자=가능 인원, 누르면 명단)</span>
+      <span><i style="background:var(--yellow)"></i>빈 시간</span>
+      <span><i style="background:var(--cand)"></i>넣을 수 있는 칸(숫자=가능 인원)</span>
       <span><i style="background:#cc66ff"></i>연차자 색 = 그 선생님 대신 들어간 치료</span>
       <span><i style="background:var(--manual)"></i>직접 넣은 치료</span>
       <span><i style="background:var(--hold)"></i>HOLD(못 넣은 치료)</span>
       <span><i style="background:repeating-linear-gradient(135deg,#fff7a8 0 4px,#ffe97a 4px 8px)"></i>비운 칸(퇴원/결석)</span>
     </div>
-    <div class="gridwrap"><table id="grid"></table></div>
   </section>
   <aside class="right">
     <div class="card">
-      <h3>연차 / 휴가 선생님 <small>눌러서 선택 · <b class="ebadge">E</b> = 연하전기(ERDT) 담당</small></h3>
+      <h3>연차 / 휴가 / 반차 선생님 <small>눌러서 선택 · <b class="ebadge">E</b> = 연하전기(ERDT) 담당</small></h3>
       <div id="absentChips"></div>
+      <div id="halfBox"></div>
     </div>
     <div class="card">
       <h3>자동 배치 <button class="gear" id="btnPrio" title="우선순위·규칙 설정">⚙ 우선순위·규칙</button></h3>
@@ -313,13 +346,6 @@ body.side-off .right{display:none}
         <div class="mini"><button id="awayMsgBtn" title="메신저의 외출·외박 명단을 읽어 와요(읽기만 해요)">🔗 메신저에서 불러오기</button></div>
         <div class="note2" id="awayMsg">줄마다 이름·종류(외진/외박/외출)·시간을 읽어요. 시간이 없으면 하루 종일, 있으면 그 시간 칸만 비워요.</div>
       </details>
-    </div>
-    <div class="card">
-      <h3>카톡 문구 <button class="primary" id="btnCopy">복사</button><button id="btnWard" title="병동에 보낼 문구: 병동별로 묶고 병실 번호를 붙여요">🏥 병동 전달문구 복사</button></h3>
-      <div class="opts"><label><input type="checkbox" id="optDate"> 맨 위에 날짜 넣기</label></div>
-      <textarea id="sum" spellcheck="false"></textarea>
-      <div class="note2">※ 칸을 바꾸면 문구가 새로 만들어져요(직접 고친 내용은 덮어써져요).</div>
-      <div class="xrow"><button id="btnXlsx" class="primary">📥 엑셀 날짜 시트로 내보내기</button><span class="note2">새 파일로 저장 · 색·테두리 그대로 · 붙여넣기용(원본은 안 바뀌어요)</span></div>
     </div>
   </aside>
 </main>
@@ -559,7 +585,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var n = 0;
     gen.timeRows.forEach(function (tr) {
       var rec = gen.cells[tr.row + '|' + co.c];
-      if (rec && (rec.kind === 'item' || rec.kind === 'block') && !isFreed(st, rec)) n++;
+      if (rec && (rec.kind === 'item' || rec.kind === 'block') && !isFreed(st, rec) && !absentAt(st, co.c, rec.hm)) n++; // 쉬는 시간대 치료는 이 선생님이 하지 않으니 세지 않는다
     });
     Object.keys(st.place).forEach(function (id) { if (id !== excludeId && st.place[id].dc === co.c) n++; });
     return n;
@@ -737,14 +763,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var PALETTE = ['#CC66FF', '#C7C2A1', '#FF99CC', '#7FD1C7', '#9FB4FF', '#FFB366', '#B6E36B', '#E0A3FF'];
 
   function newState(dateStr, weekday) {
-    return { date: dateStr, wd: weekday, absent: [], absentOrder: [], pins: {}, cfg: null, colors: {}, place: {}, freed: {}, gone: {}, away: {}, now: null };
+    return { date: dateStr, wd: weekday, absent: [], half: {}, absentOrder: [], pins: {}, cfg: null, colors: {}, place: {}, freed: {}, gone: {}, away: {}, now: null };
   }
   function isAbsent(st, c) { return st.absent.indexOf(c) >= 0; }
+  // 반차: 연차 선생님에게 오전/오후만 쉬는 표시(st.half[c] = 'AM'|'PM', 없으면 종일). 쉬는 시간대에만 "없는 선생님"이고 나머지 시간은 평소처럼 일해요.
+  function absentAt(st, c, hm) { return isAbsent(st, c) && (!st.half || !st.half[c] || st.half[c] === halfOf(hm)); }
+  function setHalf(st, c, half) { st.half = st.half || {}; if (half === 'AM' || half === 'PM') st.half[c] = half; else delete st.half[c]; }
+  function halfLabel(st, c) { var h = st.half && st.half[c]; return h === 'AM' ? '오전 반차' : h === 'PM' ? '오후 반차' : ''; }
   function toggleAbsent(st, c) {
     var i = st.absent.indexOf(c);
     if (i >= 0) {
       st.absent.splice(i, 1);
       st.absentOrder = (st.absentOrder || []).filter(function (x) { return x !== c; });
+      if (st.half) delete st.half[c];
       // 해당 열의 배치 해제
       Object.keys(st.place).forEach(function (id) { if (id.split('|')[1] == c) delete st.place[id]; });
     } else {
@@ -763,6 +794,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var out = [];
     st.absent.forEach(function (c) {
       gen.timeRows.forEach(function (tr) {
+        if (!absentAt(st, c, tr.hm)) return;
         var rec = gen.cells[tr.row + '|' + c];
         if (!rec) return;
         if (rec.kind === 'item' && isGone(st, rec)) return;
@@ -776,6 +808,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var out = [];
     st.absent.forEach(function (c) {
       gen.timeRows.forEach(function (tr) {
+        if (!absentAt(st, c, tr.hm)) return;
         var rec = gen.cells[tr.row + '|' + c];
         if (rec && rec.kind === 'item' && isGone(st, rec)) out.push(rec);
       });
@@ -818,7 +851,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (rec.kind !== 'item' || rec.item.name !== name) return;
       if (id === excludeId) return;
       if (isFreed(st, rec)) return;
-      if (isAbsent(st, rec.c)) {
+      if (absentAt(st, rec.c, rec.hm)) {
         if (st.place[id]) rows[st.place[id].dr] = true; // 옮겨진 곳
         else rows[rec.r] = true;                          // 미배치(HOLD) — 원래 자리 유지
       } else rows[rec.r] = true;
@@ -856,7 +889,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     Object.keys(gen.cells).forEach(function (id) {
       var rec = gen.cells[id];
       if (!isOpen(st, rec)) return;
-      if (isAbsent(st, rec.c)) return;
+      if (absentAt(st, rec.c, rec.hm)) return;
       if (isPast(st, rec.hm)) return;
       if (used[id]) return;
       out.push(rec);
@@ -1033,7 +1066,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     Object.keys(gen.cells).forEach(function (id) {
       var rec = gen.cells[id];
       if (rec.r !== dr || rec.kind !== 'item' || !rec.item.loc || id === excludeId) return;
-      if (isFreed(st, rec) || isAbsent(st, rec.c)) return; // 옮겨 갔거나 HOLD로 남은 칸은 점유 안 함
+      if (isFreed(st, rec) || absentAt(st, rec.c, rec.hm)) return; // 옮겨 갔거나 HOLD로 남은 칸은 점유 안 함
       var l = normLoc(rec.item.loc); if (!l) return;
       if (locFloor(rec.item.loc, gen.colSet[rec.c].floor) === floor && normName(rec.item.name) !== own) used[l] = used[l] || rec.item.name;
     });
@@ -1111,9 +1144,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function sanitize(gen, st) {
     Object.keys(st.place).forEach(function (id) {
       var rec = gen.cells[id], p = st.place[id];
-      var ok = rec && (rec.kind === 'item' || rec.kind === 'block') && isAbsent(st, rec.c) && !(rec.kind === 'item' && isGone(st, rec));
+      var ok = rec && (rec.kind === 'item' || rec.kind === 'block') && absentAt(st, rec.c, rec.hm) && !(rec.kind === 'item' && isGone(st, rec));
       var dst = gen.cells[p.dr + '|' + p.dc];
-      ok = ok && dst && isOpen(st, dst) && !isAbsent(st, p.dc);
+      ok = ok && dst && isOpen(st, dst) && !absentAt(st, p.dc, dst.hm);
       if (!ok) delete st.place[id];
     });
     var seen = {};
@@ -1299,6 +1332,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var th = gen.colSet[c];
       var holds = [], moves = [];
       gen.timeRows.forEach(function (tr) {
+        if (!absentAt(st, c, tr.hm)) return;
         var rec = gen.cells[tr.row + '|' + c];
         if (!rec || (rec.kind !== 'item' && rec.kind !== 'block')) return;
         if (rec.kind === 'item' && isGone(st, rec)) return;
@@ -1331,7 +1365,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       holds.sort(function (a, b) { return a.t - b.t; });
       moves.sort(function (a, b) { return a.t - b.t; });
       if (!holds.length && !moves.length) return;
-      lines.push('* ' + th.name + ' 선생님 변경사항');
+      lines.push('* ' + th.name + ' 선생님' + (halfLabel(st, c) ? '(' + halfLabel(st, c) + ')' : '') + ' 변경사항');
       holds.concat(moves).forEach(function (x) { lines.push(x.text); });
     });
     return lines.join('\n');
@@ -1345,6 +1379,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (st.now != null) head += ' (' + pad(Math.floor(st.now / 60)) + ':' + pad(st.now % 60) + ' 이후 치료만)';
     st.absent.forEach(function (c) {
       gen.timeRows.forEach(function (tr) {
+        if (!absentAt(st, c, tr.hm)) return;
         var rec = gen.cells[tr.row + '|' + c];
         if (!rec || rec.kind !== 'item' || isGone(st, rec)) return;
         var p = st.place[rec.id]; if (isPast(st, rec.hm) && !p) return;
@@ -1377,13 +1412,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     gen.cols.forEach(function (co) {
       var f = rgbOf(cellAt(dayWs, 4, co.c));
       var nm = norm(valAt(dayWs, 4, co.c));
-      if (nm === co.name && f && f !== co.hdrFill) { st.absent.push(co.c); st.colors[co.c] = '#' + f; }
+      if (nm === co.name && f && f !== co.hdrFill) {
+        st.absent.push(co.c); st.colors[co.c] = '#' + f;
+        // 반차: 머리글 색이 칠해진 열에서 오전 줄만(또는 오후 줄만) 같은 색이면 그 시간대만 쉬는 걸로 본다
+        var am = [0, 0], pm = [0, 0];
+        gen.timeRows.forEach(function (tr) { var b = halfOf(tr.hm) === 'AM' ? am : pm; b[1]++; if (rgbOf(cellAt(dayWs, tr.row, co.c)) === f) b[0]++; });
+        var amF = am[1] && am[0] >= am[1] * 0.8, pmF = pm[1] && pm[0] >= pm[1] * 0.8, amN = !am[0], pmN = !pm[0];
+        if (amF && pmN) st.half[co.c] = 'AM'; else if (pmF && amN) st.half[co.c] = 'PM';
+      }
     });
     // 날짜 시트에서 원본과 달라진 칸 (연차 열 제외)
     var news = [];
     gen.timeRows.forEach(function (tr) {
       gen.cols.forEach(function (co) {
-        if (isAbsent(st, co.c)) return;
+        if (absentAt(st, co.c, tr.hm)) return;
         var cell = cellAt(dayWs, tr.row, co.c);
         var text = norm(cell && cell.v);
         if (!text) return;
@@ -1438,7 +1480,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     setXLSX: setXLSX, DAYS: DAYS, PALETTE: PALETTE,
     parseItem: parseItem, typeWord: typeWord, locText: locText,
     parseGenhwang: parseGenhwang, parseCardFile: parseCardFile, buildCardIndex: buildCardIndex,
-    newState: newState, isAbsent: isAbsent, toggleAbsent: toggleAbsent,
+    newState: newState, isAbsent: isAbsent, absentAt: absentAt, setHalf: setHalf, halfLabel: halfLabel, toggleAbsent: toggleAbsent,
     isGone: isGone, isPast: isPast, buildWardSummary: buildWardSummary, roomOf: roomOf, wardOf: wardOf, parseAway: parseAway, applyAway: applyAway, removeAway: removeAway, clearMessengerAway: clearMessengerAway, awayFromMessenger: awayFromMessenger, clockMin: clockMin, absentItems: absentItems, goneItems: goneItems, isFreed: isFreed, isOpen: isOpen, toggleGone: toggleGone, toggleFreed: toggleFreed, unplacedItems: unplacedItems, slotCells: slotCells,
     eligibility: eligibility, candidateSlotsForItem: candidateSlotsForItem, eligibleItemsForSlot: eligibleItemsForSlot,
     locSuggestions: locSuggestions, placeItem: placeItem, unplace: unplace, sanitize: sanitize,
@@ -1584,6 +1626,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       for (var r = firstRow; r <= lastRow; r++) {
         var hm = (gen.timeRows.filter(function (t) { return t.row === r; })[0] || {}).hm, rec = gen.cells[r + '|' + c], ref = co.label + r;
         if (hm && Core.isPast(st, hm)) continue; // 당일 변경: 이미 지난 시간은 건드리지 않는다
+        if (hm ? !Core.absentAt(st, c, hm) : (st.half && st.half[c])) continue; // 반차: 쉬는 시간대(오전/오후)만 칠한다
         fill(ref, rgb); info.filled++;
         if (rec && (rec.kind === 'item' || rec.kind === 'block')) {
           var moved = !!st.place[rec.id], gone = rec.kind === 'item' && Core.isGone(st, rec);
@@ -1594,7 +1637,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // 3) 비워진 칸(퇴원·결석·외진·직접 비움)의 글자·채움 지우기 — 단, 대체 치료가 들어갈 칸은 아래에서 다시 채운다
     gen.timeRows.forEach(function (tr) {
       gen.cols.forEach(function (co) {
-        if (st.absent.indexOf(co.c) >= 0 || co.off || Core.isPast(st, tr.hm)) return;
+        if (Core.absentAt(st, co.c, tr.hm) || co.off || Core.isPast(st, tr.hm)) return;
         var rec = gen.cells[tr.row + '|' + co.c]; if (!rec || (rec.kind !== 'item' && rec.kind !== 'block')) return;
         if (Core.isFreed(st, rec)) { var ref = co.label + tr.row; clearCell(edit.cell(ref)); fill(ref, null); info.freed++; }
       });
@@ -1670,7 +1713,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  var S = { genWb: null, gen: null, c10: null, c3: null, cards: {}, st: null, selected: null, floor: 'all', dayBuf: null, dayNames: null, started: false, names: {}, cfg: null, mats: {}, matInfo: null };
+  var S = { genWb: null, gen: null, c10: null, c3: null, cards: {}, st: null, selected: null, team: 'all', dayBuf: null, dayNames: null, started: false, names: {}, cfg: null, mats: {}, matInfo: null };
   // 규칙 설정(우선순위·ERDT·층 규칙)은 이 PC에 저장한다
   function loadCfg() { try { var raw = localStorage.getItem('otPreview:cfg'); if (raw) { var o = JSON.parse(raw); if (o && o.v >= 2) return o; } } catch (e) { } return null; } // v2 = 직급 제외·한도·회복기 규칙이 생긴 뒤 형식(이전 저장값은 기본값으로)
   function saveCfg() { try { S.cfg.v = 2; localStorage.setItem('otPreview:cfg', JSON.stringify(S.cfg)); } catch (e) { } }
@@ -1798,7 +1841,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function wdOf(dateStr) { var d = new Date(dateStr + 'T00:00:00'); return d.getDay(); } // 0..6
   function skey() { return 'otPreview:' + S.st.date; }
   function save() {
-    try { localStorage.setItem(skey(), JSON.stringify({ absent: S.st.absent, absentOrder: S.st.absentOrder, pins: S.st.pins, away: S.st.away, now: S.st.now, colors: S.st.colors, place: S.st.place, freed: S.st.freed, gone: S.st.gone })); } catch (e) { }
+    try { localStorage.setItem(skey(), JSON.stringify({ absent: S.st.absent, absentOrder: S.st.absentOrder, pins: S.st.pins, away: S.st.away, half: S.st.half, colors: S.st.colors, place: S.st.place, freed: S.st.freed, gone: S.st.gone })); } catch (e) { }
   }
   function loadState(dateStr) {
     var wd = wdOf(dateStr);
@@ -1809,7 +1852,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (raw) {
         var o = JSON.parse(raw);
         st.absent = (o.absent || []).filter(function (c) { return S.gen.colSet[c] && !S.gen.colSet[c].off; });
-        st.colors = o.colors || {}; st.freed = o.freed || {}; st.gone = o.gone || {}; st.away = o.away || {}; st.pins = o.pins || {}; st.now = o.now != null ? o.now : null;
+        st.colors = o.colors || {}; st.freed = o.freed || {}; st.gone = o.gone || {}; st.away = o.away || {}; st.pins = o.pins || {}; st.now = null; st.half = o.half || {}; // 당일 변경 모드는 화면에서 뺐다(예전에 켜 둔 값은 무시)
         st.absentOrder = (o.absentOrder || []).filter(function (c) { return st.absent.indexOf(c) >= 0; });
         st.absent.forEach(function (c) { if (st.absentOrder.indexOf(c) < 0) st.absentOrder.push(c); });
         st.place = {};
@@ -1875,16 +1918,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   function descOf(rec) { return rec.kind === 'block' ? rec.text.trim() : rec.item.name + (rec.item.type ? ' ' + rec.item.type : ''); }
 
-  function nowMin() { var d = new Date(); return d.getHours() * 60 + Math.floor(d.getMinutes() / 5) * 5; }
-  function hhmm(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
-  function renderNowMode() {
-    var st = S.st, on = st.now != null, today = ymd(new Date()) === st.date;
-    $('#optNow').checked = on; $('#nowTime').style.display = on ? '' : 'none'; if (on) $('#nowTime').value = hhmm(st.now);
-    $('#nowHint').textContent = !on && today ? '※ 오늘 날짜예요 — 갑작스러운 변경이면 「당일 변경 모드」를 켜세요(지난 시간은 고정돼요)' : (on ? '지난 시간(회색)은 옮기지도 넣지도 않아요 · 카톡 문구에 「' + hhmm(st.now) + ' 이후 치료만」이 붙어요' : '');
-  }
   function render() {
     if (!S.st) return;
-    renderGrid(); renderPanels(); renderSummary(); renderDayBar(); renderNowMode();
+    renderGrid(); renderPanels(); renderDayBar();
   }
 
   function destMap() {
@@ -1895,7 +1931,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function renderGrid() {
     var gen = S.gen, st = S.st;
-    var cols = gen.cols.filter(function (co) { return S.floor === 'all' || co.floor === S.floor; });
+    var cols = gen.cols.filter(function (co) { return S.team === 'all' || co.team === S.team; });
     var dm = destMap();
     // 후보 계산
     var candMap = {}, hasUnplaced = Core.unplacedItems(gen, st).length > 0;
@@ -1922,7 +1958,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var ab = Core.isAbsent(st, co.c);
       var cls = (ab ? 'abs ' : '') + (co.off ? 'off' : '');
       var bg = ab ? 'background:' + st.colors[co.c] : (co.hdrFill ? 'background:#' + co.hdrFill : '');
-      return '<th class="' + cls + '" data-col="' + co.c + '" style="' + bg + '" title="' + (co.off ? '휴직' : '눌러서 연차/휴가 표시') + '">' + esc(co.name) + (ab ? '<small>연차/휴가</small>' : (co.off ? '<small>휴직</small>' : '')) + '</th>';
+      return '<th class="' + cls + '" data-col="' + co.c + '" style="' + bg + '" title="' + (co.off ? '휴직' : '눌러서 연차/휴가 표시') + '">' + esc(co.name) + (ab ? '<small>' + (Core.halfLabel(st, co.c) || '연차/휴가') + '</small>' : (co.off ? '<small>휴직</small>' : '')) + '</th>';
     }).join('') + '</tr>';
 
     var body = '';
@@ -1932,15 +1968,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       cols.forEach(function (co) { body += cellHTML(tr, co, dm, candMap); });
       body += '</tr>';
     });
-    var cg = '<colgroup><col style="width:58px">' + cols.map(function () { return '<col style="width:88px">'; }).join('') + '</colgroup>';
-    $('#grid').style.width = (58 + cols.length * 88) + 'px';
+    var wrapW = $('.gridwrap').clientWidth || 1000, cw = Math.max(76, Math.min(112, Math.floor((wrapW - 58 - 2) / Math.max(cols.length, 1)))); // 칸 너비: 보이는 열 수에 맞춰 늘이고 줄인다(팀 탭이면 스크롤 없이)
+    var cg = '<colgroup><col style="width:58px">' + cols.map(function () { return '<col style="width:' + cw + 'px">'; }).join('') + '</colgroup>';
+    $('#grid').style.width = (58 + cols.length * cw) + 'px';
     $('#grid').innerHTML = cg + '<thead>' + g1 + g2 + '</thead><tbody>' + body + '</tbody>';
   }
 
   function cellHTML(tr, co, dm, candMap) {
     var gen = S.gen, st = S.st;
     var id = tr.row + '|' + co.c, rec = gen.cells[id];
-    var ab = Core.isAbsent(st, co.c);
+    var ab = Core.absentAt(st, co.c, tr.hm);
     if (co.off) return '<td class="off"></td>';
     if (ab) {
       var bg = 'background:' + st.colors[co.c];
@@ -1996,6 +2033,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }).join('') + '</div>';
     }).join('');
 
+    $('#halfBox').innerHTML = st.absent.map(function (c) {
+      var h = (st.half || {})[c] || '';
+      return '<div class="halfrow"><span class="sw" style="background:' + st.colors[c] + '"></span><b>' + esc(gen.colSet[c].name) + '</b><span class="seg">' + [['', '종일'], ['AM', '오전 반차'], ['PM', '오후 반차']].map(function (x) { return '<button data-hc="' + c + '" data-half="' + x[0] + '" class="' + (h === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</span></div>';
+    }).join('');
     // 통계
     var items = Core.absentItems(gen, st), un = Core.unplacedItems(gen, st);
     var same = 0, chg = 0;
@@ -2052,7 +2093,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (!S.dayBuf || !S.st) { bar.style.display = 'none'; return; }
     var md = S.st.date.slice(5).replace('-', '/'); S.dayMatch = daySheetFor(S.st.date);
     bar.style.display = ''; bar.className = 'daybar' + (S.dayMatch ? '' : ' none');
-    bar.innerHTML = S.dayMatch ? '📄 작업치료실 시간표에 <b>' + md + '</b> 시트(' + esc(S.dayMatch) + ')가 있어요 <button id="btnDayLoad">이 시트에서 다시 불러오기</button><span class="mini-note">연차·넣어 둔 배치를 가져오고, 못 넣은 치료(HOLD)만 남겨요</span>' : '📄 작업치료실 시간표에 ' + md + ' 시트가 아직 없어요 — 연차 선생님을 직접 고르세요.';
+    bar.innerHTML = S.dayMatch ? '📄 <b>' + md + '</b> 시트 있음 <button id="btnDayLoad" title="작업치료실 시간표의 ' + esc(S.dayMatch) + ' 시트에서 연차·넣어 둔 배치를 다시 불러와요(못 넣은 치료(HOLD)만 남아요)">다시 불러오기</button>' : '📄 ' + md + ' 시트 아직 없음 — 연차 선생님을 직접 고르세요';
   }
   function maybeAutoImportDay() {
     if (!S.dayBuf || !S.st || !S.gen) return;
@@ -2076,11 +2117,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var typeTxt = cfg.prio.type.map(function (k) { return Core.KIND_LABEL[k]; }).join(' › ');
     $('#prioSum').innerHTML = '<b>순서</b> ' + cfg.prio.by.map(function (k) { return BY_LABEL[k]; }).join(' → ') + '<br><b>치료 종류</b> ' + esc(typeTxt) + ' · 시간은 ' + (cfg.prio.time === 'late' ? '늦은 것' : '이른 것') + ' 먼저<br><b>층</b> 같은 층 우선' + (cfg.crossFloor === 'last' ? ' · 다른 층은 마지막에' : ' · 다른 층은 자동에서 안 씀') + ' · <b>ERDT</b> ' + nE + '명만(' + esc(cfg.erdtRoles.join('·')) + ')';
   }
-  function renderSummary() {
-    if (!S.st) return;
-    $('#sum').value = Core.buildSummary(S.gen, S.st, { withDate: $('#optDate').checked, cards: S.cards }) || '(아직 변경사항이 없어요)';
-  }
-
   /* ---------- 변경 공통 ---------- */
   function changed() { Core.sanitize(S.gen, S.st); save(); render(); }
 
@@ -2091,15 +2127,42 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function dateText(serial) { if (typeof serial !== 'number') return ''; var d = XLSX.SSF.parse_date_code(serial); return d ? d.y + '.' + d.m + '.' + d.d : ''; }
 
+  // 전체시간표 카드를 그대로 보여 주고(재활치료부 앱 안에서는 엑셀 원본 서식 그대로), 변경 전 칸은 흐리게·변경 후 칸은 진하게 칠한다
+  function cardSection(cd, name, srcHm, dstHm) {
+    return '<div class="meta">📇 전체시간표 카드 · ' + esc(cd.floor) + ' ' + esc(cd.sheet) + (cd.made ? ' · 작성일 ' + dateText(cd.made) : '') + ' · ' + Core.DAYS[S.st.wd - 1] + '요일 열 · <b style="color:#6a7383">흐린 칸 = 변경 전</b> · <b style="color:#c2410c">노란 칸 = 변경 후</b></div><div class="cardbox"><div class="cardwrap" id="cardWrap">' + cardTableHTML(cd, S.st.wd, srcHm, dstHm) + '</div></div>';
+  }
+  function markCard(root, d, srcHm, dstHm) {
+    var col = d.today && d.today.col; if (!col) return;
+    root.querySelectorAll('tr').forEach(function (tr) {
+      var hm = null, target = null;
+      tr.querySelectorAll('td[data-ref]').forEach(function (td) {
+        var m = /^([A-Z]+)\d+$/.exec(td.getAttribute('data-ref') || ''); if (!m) return;
+        if (m[1] === col) target = td;
+        if (!hm) { var t = (td.textContent || '').match(/^\s*(\d{1,2}):(\d{2})/); if (t) hm = ('0' + t[1]).slice(-2) + ':' + t[2]; }
+      });
+      if (!hm || !target) return;
+      if (hm === srcHm) target.classList.add('otp-src'); else if (hm === dstHm) target.classList.add('otp-dst');
+    });
+  }
+  function fillRealCard(cd, name, srcHm, dstHm) {
+    if (!window.__cardApi || !M) return;
+    var key = M.cardKey = name + '|' + srcHm + '|' + dstHm;
+    window.__cardApi(name, parseInt(cd.floor, 10), Core.DAYS[S.st.wd - 1] + '요일').then(function (d) {
+      var wrap = $('#cardWrap'); if (!d || !wrap || !M || M.cardKey !== key) return;
+      wrap.innerHTML = '<div class="cardzoom">' + d.html + '</div>';
+      var z = wrap.firstChild; z.style.zoom = Math.min(1, (wrap.clientWidth - 12) / d.width);
+      markCard(z, d, srcHm, dstHm);
+    });
+  }
   function cardTableHTML(cd, wd, srcHm, dstHm) {
     var hmList = cd.times.slice();
     S.gen.timeRows.forEach(function (t) { if (hmList.indexOf(t.hm) < 0) hmList.push(t.hm); });
     hmList.sort(function (a, b) { return Core.hmToMin(a) - Core.hmToMin(b); });
     var h = '<table class="ctable"><thead><tr><th>시간</th><th>치료위치</th>' + Core.DAYS.map(function (d, i) { return '<th class="' + (i + 1 === wd ? 'wd' : '') + '">' + d + '</th>'; }).join('') + '</tr></thead><tbody>';
     hmList.forEach(function (hm) {
-      var cls = hm === srcHm ? 'src' : (hm === dstHm ? 'dst' : '');
-      h += '<tr class="' + cls + '"><td class="t">' + hm + (cls ? '<div class="tagrow" style="color:' + (cls === 'src' ? '#2f6fed' : '#14946a') + '">' + (cls === 'src' ? '이동 전' : '이동 후') + '</div>' : '') + '</td><td>' + esc(cd.locs[hm] || '') + '</td>';
-      for (var d = 1; d <= 5; d++) { var e = cd.sched[d][hm]; h += '<td class="' + (d === wd ? 'wd' : '') + '">' + (e ? esc(e.tx) : '') + '</td>'; }
+      var cls = hm === srcHm ? 'otp-src' : (hm === dstHm ? 'otp-dst' : '');
+      h += '<tr><td class="t">' + hm + '</td><td>' + esc(cd.locs[hm] || '') + '</td>';
+      for (var d = 1; d <= 5; d++) { var e = cd.sched[d][hm]; h += '<td class="' + (d === wd ? 'wd ' + cls : '') + '">' + (e ? esc(e.tx) : (d === wd && cls === 'otp-dst' ? '&nbsp;' : '')) + '</td>'; }
       h += '</tr>';
     });
     return h + '</tbody></table>';
@@ -2138,7 +2201,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }).join('');
     var right = '<h4>' + esc(descOf(rec)) + ' <span style="font-weight:400;color:var(--muted)">· ' + esc(gen.colSet[rec.c].name) + ' 선생님 ' + rec.hm + ' → ' + esc(th.name) + ' 선생님 ' + slot.hm + '</span></h4>';
     if (cd) {
-      right += '<div class="meta">전체시간표(원본) · ' + esc(cd.floor) + ' ' + esc(cd.sheet) + (cd.made ? ' · 작성일 ' + dateText(cd.made) : '') + ' · ' + Core.DAYS[S.st.wd - 1] + '요일 기준</div>' + cardTableHTML(cd, st.wd, rec.hm, slot.hm);
+      right += cardSection(cd, it.name, rec.hm, slot.hm);
     } else if (it) {
       right += '<div class="meta warn">전체시간표(원본)에서 이 환자를 찾지 못했어요. 다른 치료와 겹치는지 직접 확인해 주세요.</div>';
     } else {
@@ -2168,6 +2231,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       '<div class="mbody"><div class="mlist">' + left + '</div><div class="mdetail">' + right + '</div></div>' +
       '<div class="mfoot"><span class="grow">넣으면 초록색으로 표시돼요. 나중에 칸을 눌러 취소할 수 있어요.</span><button data-close="1">취소</button><button class="primary" data-confirm="1">이 시간에 넣기</button></div>';
     openModal(html);
+    if (cd && it) fillRealCard(cd, it.name, rec.hm, slot.hm);
   }
 
   /* ---------- 우선순위·규칙 창 ---------- */
@@ -2223,9 +2287,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var cd = rec.item ? S.cards[rec.item.name] : null;
     M = { mode: 'placed', srcId: srcId };
     var right = '<h4>' + esc(descOf(rec)) + '</h4><div class="meta">' + esc(gen.colSet[rec.c].name) + ' 선생님 ' + rec.hm + ' → <b>' + esc(dst.name) + ' 선생님 ' + timeOf(p.dr) + '</b>' + (p.loc ? ' (' + esc(p.loc) + ')' : '') + (p.swap ? '<br>교환: ' + p.swap.from + ' ' + esc(p.swap.name) + ' → ' + p.swap.to : '') + '</div>';
-    if (cd) right += cardTableHTML(cd, st.wd, rec.hm, timeOf(p.dr));
+    if (cd) right += cardSection(cd, rec.item.name, rec.hm, timeOf(p.dr));
     var html = '<div class="mhead"><h2>넣은 치료 확인</h2><button data-close="1">닫기 ✕</button></div><div class="mbody single"><div class="mdetail">' + right + '</div></div><div class="mfoot"><span class="grow"></span><button class="danger" data-unplace="' + srcId + '">배치 취소 (HOLD로 되돌리기)</button><button data-close="1">닫기</button></div>';
     openModal(html);
+    if (cd) fillRealCard(cd, rec.item.name, rec.hm, timeOf(p.dr));
   }
 
   function openFreeModal(id) {
@@ -2275,6 +2340,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (t === $('#mback')) { closeModal(); return; }
       var b;
       if ((b = t.closest('[data-close]'))) { closeModal(); return; }
+      if (M && M.mode === 'text') {
+        if ((b = t.closest('[data-ttab]'))) { M.tab = b.getAttribute('data-ttab'); renderTextModal(); return; }
+        if (t.closest('[data-textcopy]')) { copyText($('#textOut').value, $('#textOut')); return; }
+      }
       if (M && M.mode === 'place') {
         if ((b = t.closest('[data-pick]'))) { M.sel = b.getAttribute('data-pick'); M.loc = null; M.swapName = null; M.swapOn = true; renderPlaceModal(); return; }
         if ((b = t.closest('[data-sug]'))) { M.loc = b.getAttribute('data-sug'); var inp = $('#mLoc'); if (inp) inp.value = M.loc; $$('[data-sug]').forEach(function (x) { x.classList.toggle('on', x === b); }); return; }
@@ -2326,6 +2395,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (chk) { var cel = document.querySelector('#grid td[data-src="' + chk.getAttribute('data-chk') + '"]'); if (cel) { cel.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' }); cel.classList.add('flash'); setTimeout(function () { cel.classList.remove('flash'); }, 1600); } return; }
     var pinb = t.closest('[data-pin]');
     if (pinb) { var pid = pinb.getAttribute('data-pin'); S.st.pins = S.st.pins || {}; if (S.st.pins[pid]) delete S.st.pins[pid]; else S.st.pins[pid] = true; save(); render(); return; }
+    var hb = t.closest('[data-hc]');
+    if (hb) { Core.setHalf(S.st, +hb.getAttribute('data-hc'), hb.getAttribute('data-half')); changed(); return; }
     var unaway = t.closest('[data-unaway]');
     if (unaway) { Core.removeAway(S.st, unaway.getAttribute('data-unaway')); changed(); return; }
     var hrow = t.closest('[data-hold]');
@@ -2359,14 +2430,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (tg.id === 'pErdtExtra') { applyCfg(function (c) { c.erdtExtra = tg.value.split(/[,，\s]+/).map(function (x) { return x.trim(); }).filter(Boolean); }); return; }
     }
     if (e.target.id === 'mSwap' && M) M.swapOn = e.target.checked;
-    if (e.target.id === 'optDate') renderSummary();
+    if (e.target.id === 'optDate' && M && M.mode === 'text') { S.withDate = e.target.checked; renderTextModal(); }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('#mback').classList.contains('on')) closeModal(); });
 
-  $('#floorTabs').addEventListener('click', function (e) {
-    var b = e.target.closest('button[data-f]'); if (!b) return;
-    S.floor = b.getAttribute('data-f');
-    $$('#floorTabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
+  $('#teamTabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-t]'); if (!b) return;
+    S.team = b.getAttribute('data-t');
+    $$('#teamTabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
     render();
   });
   function needAbsent() { if (!S.st.absent.length) { toast('먼저 연차/휴가 선생님을 선택하세요'); return true; } return false; }
@@ -2406,8 +2477,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     } catch (e) { console.error(e); toast('엑셀을 만들지 못했어요: ' + e.message); }
     btn.disabled = false; btn.textContent = old;
   });
-  $('#optNow').addEventListener('change', function (e) { S.st.now = e.target.checked ? nowMin() : null; changed(); });
-  $('#nowTime').addEventListener('change', function (e) { var m = (e.target.value || '').match(/^(\d{1,2}):(\d{2})$/); if (m) { S.st.now = +m[1] * 60 + +m[2]; changed(); } });
   $('#awayAdd').addEventListener('click', function () {
     var r = Core.parseAway($('#awayText').value, S.names);
     if (!r.entries.length) { $('#awayMsg').textContent = '읽은 이름이 없어요. 평일시간표(원본)에 있는 이름인지 확인해 주세요.' + (r.unknown.length ? ' (못 알아본 말: ' + r.unknown.join(', ') + ')' : ''); return; }
@@ -2434,20 +2503,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     function fallback() { ta.select(); try { document.execCommand('copy'); toast('복사했어요 — 카톡에 붙여넣으세요'); } catch (e) { toast('복사하지 못했어요. 직접 선택해서 복사해 주세요'); } }
     if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(function () { toast('복사했어요 — 카톡에 붙여넣으세요'); }, fallback); else fallback();
   }
-  // 병동 전달문구: 병동별로 묶고 병실 번호를 붙인 문구를 미리 보고 복사한다(병실은 환자 전체시간표 카드에서 읽는다)
-  $('#btnWard').addEventListener('click', function () {
-    var txt = Core.buildWardSummary(S.gen, S.st, S.cards);
-    if (!txt) { toast('병동에 알릴 변경사항이 아직 없어요'); return; }
-    var missing = (txt.match(/\[병실 확인 필요\]/g) || []).length;
-    openModal('<h3>🏥 병동 전달문구</h3><div class="note2">병동별로 묶고 병실 번호를 붙였어요.' + (missing ? ' <b>병실을 못 찾은 환자는 맨 아래 「병실 확인 필요」에 모았어요.</b>' : '') + '</div><textarea id="wardTxt" spellcheck="false" style="width:100%;height:340px"></textarea><div class="mini"><button class="primary" id="wardCopy">복사</button><button data-close>닫기</button></div>');
-    $('#wardTxt').value = txt;
-    $('#wardCopy').addEventListener('click', function () { copyText($('#wardTxt').value, $('#wardTxt')); });
-  });
-  $('#btnCopy').addEventListener('click', function () {
-    var ta = $('#sum'); var txt = ta.value;
-    function fallback() { ta.select(); try { document.execCommand('copy'); toast('복사했어요 — 카톡에 붙여넣으세요'); } catch (e) { toast('복사하지 못했어요. 직접 선택해서 복사해 주세요'); } }
-    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(function () { toast('복사했어요 — 카톡에 붙여넣으세요'); }, fallback); else fallback();
-  });
+  // 카톡 문구(선생님별)와 병동 전달문구(병동별·병실 포함)를 한 창에서 탭으로 보고 복사한다
+  function openTextModal(tab) { M = { mode: 'text', tab: tab || 'chat' }; renderTextModal(); }
+  function renderTextModal() {
+    var ward = M.tab === 'ward', txt = ward ? Core.buildWardSummary(S.gen, S.st, S.cards) : Core.buildSummary(S.gen, S.st, { withDate: !!S.withDate, cards: S.cards });
+    var missing = ward && /\[병실 확인 필요\]/.test(txt || '');
+    openModal('<div class="mhead"><h2>📋 카톡·병동 문구</h2><button data-close="1">닫기 ✕</button></div><div class="mdetail" style="max-height:none">' +
+      '<div class="tabsx"><button data-ttab="chat" class="' + (ward ? '' : 'on') + '">카톡 문구 · 선생님별</button><button data-ttab="ward" class="' + (ward ? 'on' : '') + '">🏥 병동 전달문구 · 병동별</button></div>' +
+      (ward ? '<div class="note2">병동별로 묶고 병실 번호를 붙였어요.' + (missing ? ' <b>병실을 못 찾은 환자는 맨 아래 「병실 확인 필요」에 모았어요.</b>' : '') + '</div>' : '<div class="opts"><label><input type="checkbox" id="optDate"' + (S.withDate ? ' checked' : '') + '> 맨 위에 날짜 넣기</label><span class="note2">이름 앞에 병실이 붙어요</span></div>') +
+      '<textarea id="textOut" spellcheck="false" style="width:100%;height:46vh;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:13px;line-height:1.55"></textarea></div>' +
+      '<div class="mfoot"><span class="grow">칸을 바꾸면 문구는 이 창을 다시 열 때 새로 만들어져요.</span><button data-close="1">닫기</button><button class="primary" data-textcopy="1">📋 복사</button></div>');
+    $('#textOut').value = txt || '(아직 변경사항이 없어요)';
+  }
+  $('#btnText').addEventListener('click', function () { if (!S.st) return; openTextModal('chat'); });
   $('#btnPick').addEventListener('click', function () { $('#fileInput').click(); });
   $('#btnFiles').addEventListener('click', function () { $('#fileInput').click(); });
   $('#btnDay').addEventListener('click', openDayPicker);
@@ -2459,6 +2527,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   ['dragleave', 'drop'].forEach(function (ev) { window.addEventListener(ev, function (e) { e.preventDefault(); if (ev === 'drop' || e.target === document.documentElement) $('#drop').classList.remove('over'); }); });
   window.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) handleFiles(Array.prototype.slice.call(e.dataTransfer.files)); });
 
+  try { if (window.parent !== window) document.body.classList.add('emb'); } catch (e) { document.body.classList.add('emb'); }
   renderNeed(); applySide();
   $('#date').value = defaultDate();
   window.__otp = { S: S, handleBuffer: handleBuffer, startApp: startApp, render: render, setDate: setDate, renderNeed: renderNeed };

@@ -387,6 +387,18 @@ const MESSENGER_BRIDGE = {
   },
 };
 
+// 대체치료 화면의 「전체시간표 카드(엑셀 원본 서식 그대로)」 — 교차검증 화면이 이미 읽어 둔 시간표에서 그려 온다.
+// 교차검증 화면이 아직 안 열렸으면 뒤에서 열어 두고, 파일을 다 읽을 때까지 잠깐 기다린다(없는 환자면 null).
+const CARD_BRIDGE = async (name, floor, day) => {
+  ensureToolLoaded('cross');
+  for (let i = 0; i < 25; i++) {
+    const w = document.querySelector('iframe[data-tool="cross"]')?.contentWindow;
+    if (w && typeof w.__cardApi === 'function') { const r = await w.__cardApi(name, floor, day); if (r) return r; if (i >= 4) return null; }
+    await new Promise(r => setTimeout(r, 600));
+  }
+  return null;
+};
+
 // ── 사이드바 / 화면 전환 ───────────────────────────────────
 // 파일 자동 채움·홈 요약·보고서가 필요 없는 화면(인수인계 화면)은 TOOLS 대신 여기에 둔다.
 const VIEWER_PAGES = { handover: 'tools/인수인계.html' };
@@ -402,6 +414,7 @@ function ensureToolLoaded(key) {
     iframe.addEventListener('load', async () => {
       iframe.contentWindow.__schedulesApi = SCHEDULES_BRIDGE;
       iframe.contentWindow.__messengerApi = MESSENGER_BRIDGE;
+      if (key === 'sub') { iframe.contentWindow.__cardApi = CARD_BRIDGE; ensureToolLoaded('cross'); } // 카드를 바로 보여 줄 수 있게 교차검증 화면을 미리 준비
       applyFilesCollapse(key);
       iframe.contentWindow.__itdaApi = { grandEvents: () => window.rehab.itda.grandEvents(settings.itdaCategory) }; // 그랜드라운딩 일정 불러오기(읽기 전용)
       pushSettingsToTool(iframe);

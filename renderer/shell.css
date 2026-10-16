@@ -597,3 +597,6 @@ body:not(.home-wb) .wb-end{display:none}
 .wb-away .n .k-외박{background:#fdf3e4;border-color:#f0dcb8}.wb-away .n .k-외진{background:#eaf3fd;border-color:#c9def5}.wb-away .n .more{border:0;background:transparent;color:var(--sub)}
 .ps-away{margin-left:6px;font-style:normal;font-size:10.5px;font-weight:800;color:#b9770e;background:#fdf3e4;border-radius:99px;padding:0 7px}
 .ps-away-line{margin:6px 0 2px;font-size:12px;padding:5px 9px;border-radius:8px;background:#fdf3e4;border:1px solid #f0dcb8}.ps-away-line small{margin-left:6px;color:var(--sub)}
+/* 대체치료: 위쪽 띠가 두 줄이 되어도 화면 밖으로 밀리지 않게, 남는 높이를 화면이 나눠 쓴다 */
+.view[data-view=sub].active{display:flex;flex-direction:column;height:calc(100vh - 96px)}
+.view[data-view=sub] .tool-frame{flex:1;height:auto;min-height:0}
