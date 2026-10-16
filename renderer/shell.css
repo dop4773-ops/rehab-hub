@@ -589,3 +589,11 @@ body:not(.home-wb) .wb-end{display:none}
 .hp-pop-f{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}.hp-pop-f .btn{font-size:11.5px;padding:3px 10px}
 
 #updaterStatus.error{font-weight:700}#updaterStatus .upd-hint{margin-top:3px;font-size:12px;font-weight:500;color:var(--sub)}
+
+/* 홈: 메신저 외진·외박·외출(오늘·내일) · 환자 검색의 외출·외박 표시 */
+.wb-away-h{display:flex;align-items:center;gap:6px;margin:10px 0 4px;font-size:12px}.wb-away-h small{color:var(--sub);flex:1}.wb-away-h .btn{padding:2px 9px;font-size:11px}
+.wb-away{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:12px;margin-bottom:5px}.wb-away .d{font-weight:800;width:30px}.wb-away .c{color:var(--sub);font-size:11.5px}
+.wb-away .n{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px}.wb-away .n span{border:1px solid var(--border);border-radius:99px;padding:1px 8px;background:#f6f8fc;white-space:nowrap}.wb-away .n i{font-style:normal;color:var(--sub);margin-left:4px;font-size:11px}
+.wb-away .n .k-외박{background:#fdf3e4;border-color:#f0dcb8}.wb-away .n .k-외진{background:#eaf3fd;border-color:#c9def5}.wb-away .n .more{border:0;background:transparent;color:var(--sub)}
+.ps-away{margin-left:6px;font-style:normal;font-size:10.5px;font-weight:800;color:#b9770e;background:#fdf3e4;border-radius:99px;padding:0 7px}
+.ps-away-line{margin:6px 0 2px;font-size:12px;padding:5px 9px;border-radius:8px;background:#fdf3e4;border:1px solid #f0dcb8}.ps-away-line small{margin-left:6px;color:var(--sub)}

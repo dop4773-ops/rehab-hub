@@ -421,7 +421,7 @@ function showView(key) {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.dataset.view === key));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.nav === key));
   ensureToolLoaded(key);
-  if (key === 'home') { renderHome(); loadHomeGrandEvent(); }
+  if (key === 'home') { renderHome(); loadHomeGrandEvent(); loadMessengerAway(false); }
   if (key === 'data') renderDataView();
   if (key === 'settings') renderSettingsView();
   if (key === 'report') renderReportView();
@@ -530,6 +530,38 @@ async function applyHomeGrandEvent(i = 0) {
 }
 const chipHtml = (cls, text, small = '') => `<span class="chip ${cls}"><i></i>${text}${small ? `<small>${small}</small>` : ''}</span>`;
 const todoHtml = (cls, icon, title, detail, buttons) => `<div class="todo ${cls}"><span class="ic">${icon}</span><div class="tx"><b>${title}</b><div class="muted">${detail}</div></div><span class="bt">${buttons}</span></div>`;
+// ── 메신저 외진·외박·외출(오늘·내일): 홈 요약 + 환자 빠른 검색. 읽기 전용, 1분에 한 번만 읽는다 ──
+const MSG_AWAY = { at: 0, today: null, tomorrow: null, error: '', loading: false };
+let msgAwayReveal = false; // 홈에서 이름 보기(기본은 가림)
+const isoOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+async function loadMessengerAway(force) {
+  if (MSG_AWAY.loading) { if (force) MSG_AWAY.again = true; return; } // 읽는 중에 설정이 바뀌면 끝난 뒤 한 번 더 읽는다
+  if (!force && Date.now() - MSG_AWAY.at < 60 * 1000) return;
+  MSG_AWAY.loading = true; MSG_AWAY.at = Date.now();
+  const d = new Date(), t1 = isoOf(d), t2 = isoOf(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)), M = RehabCore.messengerAway;
+  try {
+    const a = await MESSENGER_BRIDGE.outings(t1), b = a.ok ? await MESSENGER_BRIDGE.outings(t2) : a;
+    if (a.ok && b.ok) { MSG_AWAY.today = { date: t1, ...M.summarize(a.rows) }; MSG_AWAY.tomorrow = { date: t2, ...M.summarize(b.rows) }; MSG_AWAY.error = ''; }
+    else { MSG_AWAY.today = MSG_AWAY.tomorrow = null; MSG_AWAY.error = (a.ok ? b : a).message || '메신저를 읽지 못했어요.'; }
+  } catch (e) { MSG_AWAY.today = MSG_AWAY.tomorrow = null; MSG_AWAY.error = '메신저를 읽지 못했어요.'; }
+  MSG_AWAY.loading = false;
+  renderAwayHome(); window.__psRefresh?.();
+  if (MSG_AWAY.again) { MSG_AWAY.again = false; loadMessengerAway(true); }
+}
+window.__loadAway = () => loadMessengerAway(false);
+// 환자 이름(시간표의 "이영호A" 형태 포함)에 해당하는 오늘·내일 외출·외박 [{when,kind,time,loose}]
+window.__awayFor = (name) => ['today', 'tomorrow'].flatMap((k) => MSG_AWAY[k] ? RehabCore.messengerAway.matchName(MSG_AWAY[k].items, name).map((x) => ({ when: k === 'today' ? '오늘' : '내일', kind: x.kind, time: x.time, loose: x.loose })) : []);
+function renderAwayHome() {
+  const el = document.getElementById('wbAway'); if (!el) return;
+  const head = `<div class="wb-away-h"><b>🚶 외진·외박·외출</b><small>메신저</small>${MSG_AWAY.today ? `<button class="btn" data-away-reveal>${msgAwayReveal ? '이름 가리기' : '이름 보기'}</button>` : ''}</div>`;
+  if (!MSG_AWAY.today) { el.innerHTML = head + `<div class="muted" style="font-size:12px;padding:2px 2px 4px">${MSG_AWAY.at ? updEsc(MSG_AWAY.error || '불러오는 중…') : '불러오는 중…'}</div>`; return; }
+  const nm = (n) => msgAwayReveal ? n : RehabCore.therapistView.maskName(n);
+  const line = (label, s) => {
+    const total = s.items.length, cnt = RehabCore.messengerAway.KINDS.filter(k => s.counts[k]).map(k => `${k} ${s.counts[k]}`).join(' · ');
+    return `<div class="wb-away"><span class="d">${label}</span>${total ? `<span class="c">${cnt}</span>` : '<span class="muted">없음</span>'}<div class="n">${s.items.slice(0, 8).map(x => `<span class="k-${x.kind}">${updEsc(nm(x.name))}${x.time ? `<i>${updEsc(x.time)}</i>` : ''}</span>`).join('')}${total > 8 ? `<span class="more">외 ${total - 8}명</span>` : ''}</div></div>`;
+  };
+  el.innerHTML = head + line('오늘', MSG_AWAY.today) + line('내일', MSG_AWAY.tomorrow);
+}
 const fmtDay = (iso) => { const d = new Date(iso + 'T00:00:00'), t = new Date(); t.setHours(0, 0, 0, 0); const wd = d.toLocaleDateString('ko-KR', { weekday: 'short' }); return d.getTime() === t.getTime() ? `오늘(${wd})` : `${d.getMonth() + 1}/${d.getDate()}(${wd})`; };
 const CROSS_CAT_LABEL = { count: '개수', location: '위치', therapist: '치료사', handover: '인수인계', eval: '평가메인', room: 'PTA 대조' };
 
@@ -852,6 +884,7 @@ function renderWorkbench(sm, ctx) {
   document.getElementById('wbEvents').innerHTML = homeGrandEvents.length
     ? homeGrandEvents.map((ev, i) => `<div class="wb-ev"><b>${fmtDay(ev.date)} ${updEsc(ev.rm || ev.title)}${ev.wards ? ' · ' + updEsc(ev.wards.replace(',', '·')) + '병동' : ''}</b><small>${updEsc(settings.grandTime)}시</small><button class="btn${i ? '' : ' primary'}" data-grand-apply="${i}" title="회차·RM·요일을 맞춰서 그랜드라운딩 열기">${i ? '적용' : '적용·열기'}</button></div>`).join('')
     : `<div class="muted" style="padding:6px 2px;font-size:12px">${settings.itda ? '오늘 이후 그랜드라운딩 일정이 없어요' : '잇다 연동이 꺼져 있어요(설정 › 잇다 연동)'}</div>`;
+  renderAwayHome();
   const steps = [
     ['파일 최신', ctx.o.cls === 'ok' && !ctx.missReq.length ? 'ok' : ctx.o.cls === 'busy' ? 'now' : 'bad', ctx.o.cls === 'ok' ? '모든 파일이 최신이에요' : ctx.o.text],
     ['교차검증 실행', cross ? 'ok' : 'now', cross ? `실행됨 · 불일치 ${cross.count}건` : '아직 실행 전이에요'],
@@ -1335,6 +1368,7 @@ document.addEventListener('click', async (e) => {
   const fp = e.target.closest('[data-files-pop]');
   if (fp) { chipMenu && chipMenu.dataset.for === 'files-pop' ? closeChipMenu() : openFilesPop(fp); return; }
   if (e.target.closest('[data-daily-check]')) { closeChipMenu(); runDailyCheck(); return; }
+  if (e.target.closest('[data-away-reveal]')) { msgAwayReveal = !msgAwayReveal; renderAwayHome(); return; }
   if (e.target.closest('[data-who-all]')) { openWhoModal(); return; }
   const ts = e.target.closest('[data-today-summary]');
   if (ts) { closeChipMenu(); const ok = await copyText(todaySummaryText()); showToast(ok ? '✔ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500); return; }
@@ -1632,6 +1666,7 @@ function applySetting(key) {
     case 'dataStaleFirst': case 'dataHideUnused': renderDataView(); break;
     case 'sidebar': setSidebar(sidebarStart()); break;
     case 'navHidden': applyNavHidden(); break;
+    case 'messengerDb': messengerAutoPath = undefined; loadMessengerAway(true); break;
     case 'fontSize': applyZoom(); break;
     case 'color': applyColor(); break;
     case 'homeLayout': applyHomeLayout(); break;
@@ -1662,7 +1697,7 @@ function applySetting(key) {
   applyZoom(); applyColor(); applyHomeLayout();
   { const memo = document.getElementById('wbMemo'); try { memo.value = localStorage.getItem('rehab_home_memo_v1') || ''; } catch (e) { /* 기억 못 해도 동작 */ } memo.addEventListener('input', () => { try { localStorage.setItem('rehab_home_memo_v1', memo.value); } catch (e) { /* 저장 실패해도 화면은 그대로 */ } }); }
   renderHome();
-  loadHomeGrandEvent();
+  loadHomeGrandEvent(); loadMessengerAway(false);
   // 교차검증 화면을 아직 한 번도 안 열었어도, 화면 밖에서 미리 로드해둬야 "자동 불러오기"가
   // 그 도구까지 채워줄 수 있다(loadedTools에 들어있는 도구만 동기화 때 갱신 대상이 됨).
   ensureToolLoaded('cross');

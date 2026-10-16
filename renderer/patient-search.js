@@ -40,6 +40,10 @@
     return { ho, cross, qa };
   }
 
+  // 메신저의 오늘·내일 외출·외박(설정 연동이 꺼져 있거나 못 읽으면 아무것도 안 보인다)
+  const awayHits = (name) => (typeof window.__awayFor === 'function' ? window.__awayFor(name) : []);
+  const awayBadge = (name) => { const h = awayHits(name).filter(x => x.when === '오늘')[0]; return h ? `<em class="ps-away">${esc(h.kind)} 중${h.loose ? '?' : ''}</em>` : ''; };
+  const awayLine = (name) => { const hs = awayHits(name); return hs.length ? `<div class="ps-away-line">🚶 ${hs.map(h => `<b>${esc(h.when)} ${esc(h.kind)}</b>${h.time ? ' ' + esc(h.time) : ''}${h.loose ? ' <span class="muted">(이름이 같은 다른 환자일 수 있어요)</span>' : ''}`).join(' · ')}<small>메신저</small></div>` : ''; };
   let ov = null, results = [], sel = 0, input = null;
   const isOpen = () => !!ov;
   // 검색창에 쓰기 단축키(설정 > 단축키, 기본 F2): 어디를 눌러 놓았든 검색창으로 돌아가 바로 글을 쓸 수 있게(쓰던 글은 선택되어 덮어써진다). 검색창이 닫혀 있으면 false(= 할 일 없음)
@@ -81,8 +85,8 @@
     const hoLines = d.ho.slice(0, 3).map(r => `<div class="ps-li"><b>${esc(String(r.type || '').toUpperCase())}</b> ${esc(r.therapist || '-')} <span class="muted">· 주치의 ${esc(r.doctor || '-')} · ${esc(String(r.modified || '').slice(5, 10).replace('-', '/') || '-')}</span></div>`).join('') || '<div class="ps-li muted">인수인계 기록이 없어요</div>';
     const crossLines = d.cross.slice(0, 3).map(i => `<div class="ps-li"><span class="ps-cat">${esc(CROSS_CAT_LABEL[i.category] || i.category)}</span> ${esc(i.title)} <span class="muted">${esc(i.line || '')}</span></div>`).join('') || '<div class="ps-li ps-ok">✔ 교차검증 이상 없음</div>';
     const qaLines = d.qa ? (`${d.qa.errors.length ? `<div class="ps-li"><span class="ps-cat bad">오류 ${d.qa.errors.length}</span> ${esc(d.qa.errors.slice(0, 3).map(x => x.type).join(' · '))}</div>` : ''}${d.qa.missing.length ? `<div class="ps-li"><span class="ps-cat warn">미액팅 ${d.qa.missing.length}</span> ${esc(d.qa.missing.slice(0, 3).map(x => `${x.timeSlot || ''} ${x.type || ''}`.trim()).join(' · '))}</div>` : ''}${!d.qa.errors.length && !d.qa.missing.length ? '<div class="ps-li ps-ok">✔ 치료기록 확인할 것 없음</div>' : ''}`) : '<div class="ps-li muted">치료기록 QA 화면을 한 번 열어 파일을 올리면 여기에 보여요</div>';
-    body.innerHTML = `<div class="ps-list">${results.map((r, i) => `<button type="button" class="ps-row${i === sel ? ' on' : ''}" data-ps-i="${i}"><b>${esc(r.name)}</b><span>${esc([r.room ? r.room + '호' : '', r.floor ? r.floor + 'F' : '', r.category, r.rm].filter(Boolean).join(' · '))}</span></button>`).join('')}</div>`
-      + `<div class="ps-detail"><div class="ps-name">${esc(p.name)}<small>${esc([p.room ? p.room + '호' : '', p.floor ? p.floor + 'F' : '', p.category, p.rm ? '주치의 ' + p.rm : ''].filter(Boolean).join(' · '))}</small></div>${kinds ? `<div class="ps-kinds">담당 치료사 · ${esc(kinds)}</div>` : ''}`
+    body.innerHTML = `<div class="ps-list">${results.map((r, i) => `<button type="button" class="ps-row${i === sel ? ' on' : ''}" data-ps-i="${i}"><b>${esc(r.name)}</b><span>${esc([r.room ? r.room + '호' : '', r.floor ? r.floor + 'F' : '', r.category, r.rm].filter(Boolean).join(' · '))}</span>${awayBadge(r.name)}</button>`).join('')}</div>`
+      + `<div class="ps-detail"><div class="ps-name">${esc(p.name)}<small>${esc([p.room ? p.room + '호' : '', p.floor ? p.floor + 'F' : '', p.category, p.rm ? '주치의 ' + p.rm : ''].filter(Boolean).join(' · '))}</small></div>${awayLine(p.name)}${kinds ? `<div class="ps-kinds">담당 치료사 · ${esc(kinds)}</div>` : ''}`
       + `<div class="ps-acts"><button class="btn primary" data-ps-go="${d.cross.length ? 'cross' : 'grand'}">${d.cross.length ? '교차검증에서 보기' : '그랜드라운딩에서 보기'} ↵</button>${d.cross.length ? '<button class="btn" data-ps-go="grand">그랜드라운딩</button>' : ''}<button class="btn" data-ps-go="handover">인수인계</button>${d.qa && d.qa.errors.length ? '<button class="btn" data-ps-go="qaerr">QA 오류</button>' : ''}${d.qa && d.qa.missing.length ? '<button class="btn" data-ps-go="qamiss">미액팅</button>' : ''}</div>`
       + `<div class="ps-two"><div class="ps-main"><div class="ps-cardsec" id="psCard"></div></div><div class="ps-side">`
       + `<div class="ps-sec" style="margin-top:0">오늘 일정 <small id="psDayHint">작업치료실·물리치료·기구 시간표</small></div><div id="psDay"><div class="ps-li muted">불러오는 중…</div></div>`
@@ -153,6 +157,7 @@
     if (ov) { input.focus(); input.select(); return; }
     ov = document.createElement('div'); ov.className = 'ps-overlay'; window.__psOpen = true;
     ov.innerHTML = '<div class="ps-card" role="dialog" aria-label="환자 빠른 검색"><div class="ps-top"><span>🔎</span><input type="text" class="ps-input" placeholder="환자 이름 또는 병실 번호" autocomplete="off" spellcheck="false"><kbd>Esc</kbd><button type="button" class="btn" data-ps-close>닫기</button></div><div class="ps-body"></div><div class="ps-foot">↑↓ 환자 선택 · Enter ' + (ENTER_HINT[settings.psEnter] || ENTER_HINT.card) + ' · ' + keyLabel(effKeys({ id: 'ps-write', keys: 'F2' })) + ' 검색창에 쓰기 · Esc 또는 닫기 버튼으로 닫기</div></div>';
+    window.__loadAway?.();
     document.body.appendChild(ov); input = ov.querySelector('.ps-input'); results = []; sel = 0; render(); input.focus();
     input.addEventListener('input', () => { results = search(input.value); sel = 0; render(); });
     input.addEventListener('keydown', (e) => {
@@ -169,5 +174,6 @@
       const g = e.target.closest('[data-ps-go]'); if (g && results[sel]) go(g.dataset.psGo, results[sel]);
     });
   }
+  window.__psRefresh = () => { if (ov && input && input.value.trim()) render(); };
   window.__openPatientSearch = open; window.__psClose = close; window.__psFocus = focusInput; window.__psIsOpen = isOpen;
 })();
