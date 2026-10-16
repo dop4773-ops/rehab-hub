@@ -89,22 +89,24 @@
       + `<div class="ps-detail"><div class="ps-name">${esc(p.name)}<small>${esc([p.room ? p.room + '호' : '', p.floor ? p.floor + 'F' : '', p.category, p.rm ? '주치의 ' + p.rm : ''].filter(Boolean).join(' · '))}</small></div>${awayLine(p.name)}${kinds ? `<div class="ps-kinds">담당 치료사 · ${esc(kinds)}</div>` : ''}`
       + `<div class="ps-acts"><button class="btn primary" data-ps-go="${d.cross.length ? 'cross' : 'grand'}">${d.cross.length ? '교차검증에서 보기' : '그랜드라운딩에서 보기'} ↵</button>${d.cross.length ? '<button class="btn" data-ps-go="grand">그랜드라운딩</button>' : ''}<button class="btn" data-ps-go="handover">인수인계</button>${d.qa && d.qa.errors.length ? '<button class="btn" data-ps-go="qaerr">QA 오류</button>' : ''}${d.qa && d.qa.missing.length ? '<button class="btn" data-ps-go="qamiss">미액팅</button>' : ''}</div>`
       + `<div class="ps-two"><div class="ps-main"><div class="ps-cardsec" id="psCard"></div></div><div class="ps-side">`
-      + `<div class="ps-sec" style="margin-top:0">오늘 일정 <small id="psDayHint">작업치료실·물리치료·기구 시간표</small></div><div id="psDay"><div class="ps-li muted">불러오는 중…</div></div>`
+      + `<div class="ps-sec ps-dayhd" style="margin-top:0"><span class="ps-daysw" role="tablist"><button type="button" data-ps-day="today" class="${dayWhich === 'today' ? 'on' : ''}">오늘</button><button type="button" data-ps-day="tomorrow" class="${dayWhich === 'tomorrow' ? 'on' : ''}">내일</button></span> 일정 <small id="psDayHint">작업치료실·물리치료·기구 시간표</small></div><div id="psDay"><div class="ps-li muted">불러오는 중…</div></div>`
       + `<div class="ps-sec">인수인계 <small>${d.ho.length}건</small></div>${hoLines}${d.ho.length > 3 ? `<div class="ps-li muted">외 ${d.ho.length - 3}건</div>` : ''}<div class="ps-sec">교차검증 <small>${d.cross.length}건</small></div>${crossLines}${d.cross.length > 3 ? `<div class="ps-li muted">외 ${d.cross.length - 3}건</div>` : ''}<div class="ps-sec">치료기록 QA</div>${qaLines}`
       + `</div></div></div>`;
     fillDay(p); fillCard(p);
   }
   // 오늘 하루 일정: 셸이 그날 작업치료실·물리치료·기구 시간표에서 이 환자의 하루를 시간순으로 모아 준다(시트가 없으면 이유를 알려 줌)
-  let dayToken = 0;
+  let dayToken = 0, dayWhich = 'today'; // 일정 보기: 오늘(기본) / 내일
+  const ymdOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   async function fillDay(p) {
     const my = ++dayToken, box = ov && ov.querySelector('#psDay'), hint = ov && ov.querySelector('#psDayHint'); if (!box) return;
-    const api = window.__dayPlanFor; if (!api) { box.innerHTML = '<div class="ps-li muted">시간표 파일이 연결되면 오늘 일정이 보여요.</div>'; return; }
-    let r = null; try { r = await api(p.name); } catch (e) { r = null; }
+    const lbl = dayWhich === 'tomorrow' ? '내일' : '오늘', api = window.__dayPlanFor; if (!api) { box.innerHTML = `<div class="ps-li muted">시간표 파일이 연결되면 ${lbl} 일정이 보여요.</div>`; return; }
+    const t = new Date(); if (dayWhich === 'tomorrow') t.setDate(t.getDate() + 1);
+    let r = null; try { r = await api(p.name, ymdOf(t)); } catch (e) { r = null; }
     if (my !== dayToken || !ov || !ov.querySelector('#psDay')) return;
-    if (!r) { box.innerHTML = '<div class="ps-li muted">시간표 파일이 연결되면 오늘 일정이 보여요.</div>'; return; }
+    if (!r) { box.innerHTML = `<div class="ps-li muted">시간표 파일이 연결되면 ${lbl} 일정이 보여요.</div>`; return; }
     const md = r.date.slice(5).replace('-', '/'), hm = (m) => (m == null ? '--:--' : String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
     if (hint) hint.textContent = `${md} · ${r.rows.length}건`;
-    if (!r.rows.length) { box.innerHTML = `<div class="ps-li muted">${r.missing.length && !r.have.ot && !r.have.pt && !r.have.gi ? `${md} 날짜 시트가 없어요(${esc(r.missing.slice(0, 2).join(', '))} 등) — 주말·공휴일이거나 아직 안 만들었을 수 있어요.` : '오늘 시간표에는 이 환자의 일정이 없어요(외래·퇴원·이름 표기 차이일 수 있어요).'}</div>`; return; }
+    if (!r.rows.length) { box.innerHTML = `<div class="ps-li muted">${r.missing.length && !r.have.ot && !r.have.pt && !r.have.gi ? `${md} 날짜 시트가 없어요(${esc(r.missing.slice(0, 2).join(', '))} 등) — 주말·공휴일이거나 아직 안 만들었을 수 있어요.` : `${lbl} 시간표에는 이 환자의 일정이 없어요(외래·퇴원·이름 표기 차이일 수 있어요).`}</div>`; return; }
     const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes(), isToday = r.date === now.toISOString().slice(0, 10) || r.date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     box.innerHTML = '<div class="ps-day">' + r.rows.map(x => { const st = isToday && x.startM != null ? (nowM >= x.startM + 30 ? ' past' : nowM >= x.startM ? ' now' : '') : ''; return `<div class="ps-dr${st}"><b>${hm(x.startM)}</b><span class="ps-dk ${x.kind}">${esc(x.label)}</span><span>${esc(x.who || '')}</span><span class="muted">${esc(x.loc || '')}</span></div>`; }).join('') + '</div>'
       + (r.missing.length ? `<div class="ps-li muted" style="font-size:11px">⚠ ${esc(r.missing.join(', '))}에 ${md} 시트가 없어 그 부분은 빠졌어요</div>` : '');
@@ -157,7 +159,7 @@
     if (ov) { input.focus(); input.select(); return; }
     ov = document.createElement('div'); ov.className = 'ps-overlay'; window.__psOpen = true;
     ov.innerHTML = '<div class="ps-card" role="dialog" aria-label="환자 빠른 검색"><div class="ps-top"><span>🔎</span><input type="text" class="ps-input" placeholder="환자 이름 또는 병실 번호" autocomplete="off" spellcheck="false"><kbd>Esc</kbd><button type="button" class="btn" data-ps-close>닫기</button></div><div class="ps-body"></div><div class="ps-foot">↑↓ 환자 선택 · Enter ' + (ENTER_HINT[settings.psEnter] || ENTER_HINT.card) + ' · ' + keyLabel(effKeys({ id: 'ps-write', keys: 'F2' })) + ' 검색창에 쓰기 · Esc 또는 닫기 버튼으로 닫기</div></div>';
-    window.__loadAway?.();
+    window.__loadAway?.(); dayWhich = 'today'; // 열 때마다 오늘이 기본
     document.body.appendChild(ov); input = ov.querySelector('.ps-input'); results = []; sel = 0; render(); input.focus();
     input.addEventListener('input', () => { results = search(input.value); sel = 0; render(); });
     input.addEventListener('keydown', (e) => {
@@ -170,6 +172,7 @@
       if (e.target.closest('[data-ps-keep]')) { setSetting('psRecent', !keepOn()); if (!keepOn()) clearRecents(); render(); input.focus(); return; }
       const r = e.target.closest('[data-ps-i]'); if (r) { sel = +r.dataset.psI; render(); input.focus(); return; }
       const c = e.target.closest('[data-ps-q]'); if (c) { input.value = c.dataset.psQ; results = search(input.value); sel = 0; render(); input.focus(); return; }
+      const dsw = e.target.closest('[data-ps-day]'); if (dsw) { dayWhich = dsw.dataset.psDay; ov.querySelectorAll('[data-ps-day]').forEach(b => b.classList.toggle('on', b.dataset.psDay === dayWhich)); if (results[sel]) fillDay(results[sel]); input.focus(); return; } // 오늘/내일 버튼: 일정만 다시 불러온다
       if (e.target.closest('[data-ps-big]')) { openBig(); return; }
       const g = e.target.closest('[data-ps-go]'); if (g && results[sel]) go(g.dataset.psGo, results[sel]);
     });

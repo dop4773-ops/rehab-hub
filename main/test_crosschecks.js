@@ -55,3 +55,12 @@ assert.strictEqual(C.buildSaturdayLocationChecks(so.slice(2, 3), () => null, nul
 assert.strictEqual(C.buildSaturdayLocationIssue(sat.out[0], 7).title, '회복기 아닌 환자 작업(SOT) 배정 (토요일 규칙 위반)');
 assert.strictEqual(C.buildSaturdayLocationIssue(sat.out[1], 8).detail.kind, 'sat_missing');
 console.log('crosschecks 테스트 통과');
+
+// 토요일 SM/ST 코드 비교: 평일에 ST와 SM을 둘 다 받는 환자는 토요일 코드가 둘 중 하나면 정상, 평일에 없던 코드이거나 평일 코드가 하나뿐이고 다르면 불일치
+assert.strictEqual(C.satCodeMismatch(new Set(['ST', 'SM']), 'SM'), false, '둘 다 있으면 SM도 정상');
+assert.strictEqual(C.satCodeMismatch(new Set(['ST', 'SM']), 'ST'), false, '둘 다 있으면 ST도 정상');
+assert.strictEqual(C.satCodeMismatch(new Set(['ST']), 'SM'), true, '평일엔 ST뿐인데 토요일이 SM이면 불일치');
+assert.strictEqual(C.satCodeMismatch(['SM'], 'SM'), false);
+assert.strictEqual(C.satCodeMismatch(undefined, 'SM'), false, '평일 코드가 없으면 비교 안 함');
+assert.strictEqual(C.satCodeMismatch(new Set(['ST']), ''), false, '토요일 코드가 없으면 비교 안 함');
+console.log('토요일 코드(SM/ST) 비교 점검 통과');

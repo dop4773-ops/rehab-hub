@@ -202,6 +202,12 @@ function buildSaturdayLocationChecks(occs, findCardFn, recoverySet){
   }
   return {out, checked};
 }
+// 토요일 코드(ST/SM)가 평일시간표(원본)의 코드와 다른가. 평일에 같은 환자가 ST와 SM을 둘 다 받으면 둘 중 하나면 정상이다(평일 코드 모음 안에 있으면 OK).
+// weekdayCodes: 평일 코드 목록/Set(없거나 비어 있으면 비교 안 함) · satCode: 토요일 코드
+function satCodeMismatch(weekdayCodes, satCode){
+  const set = weekdayCodes instanceof Set ? weekdayCodes : new Set(weekdayCodes||[]);
+  return !!(satCode && set.size && !set.has(satCode));
+}
 function buildSaturdayLocationIssue(r, idx){
   if(r.kind==='rule'){
     const typeLabel = r.type==='rdt' ? '연하(RDT)' : '작업(SOT)';
@@ -227,7 +233,7 @@ function buildSaturdayLocationIssue(r, idx){
 }
 
 
-const api = { collectFieldOccurrences, buildLocationIssue, buildScheduleLocationChecks, buildScheduleLocationIssue, buildSchedTherapistIndex, buildHandoverTherapistChecks, buildHandoverExcessChecks, buildDoctorChecks, buildSaturdayLocationChecks, buildSaturdayLocationIssue };
+const api = { collectFieldOccurrences, buildLocationIssue, buildScheduleLocationChecks, buildScheduleLocationIssue, buildSchedTherapistIndex, buildHandoverTherapistChecks, buildHandoverExcessChecks, buildDoctorChecks, buildSaturdayLocationChecks, buildSaturdayLocationIssue, satCodeMismatch };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 root.RehabCore = Object.assign(root.RehabCore || {}, { crossChecks: api });
 })(typeof window !== 'undefined' ? window : globalThis);

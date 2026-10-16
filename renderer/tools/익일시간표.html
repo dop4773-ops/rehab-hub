@@ -342,6 +342,8 @@ body.side-off #app.on{grid-template-columns:minmax(0,1fr)}
 .bt.side{position:relative}.sidemini{position:absolute;right:-4px;top:-9px;pointer-events:none;display:inline-flex;gap:3px}.sbadge{background:#d4606c;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 7px;white-space:nowrap;line-height:1.3}
 body.emb #drop{display:none!important}
 #wait{flex:1;align-items:center;justify-content:center;color:#8a95a8}.waitcard{text-align:center;max-width:460px;line-height:1.8;font-size:13px}.waitcard b{color:#33445c;font-size:14px}
+.awaynote{margin:0 0 8px;padding:5px 10px;border-radius:8px;font-size:12.5px}.awaynote.has{background:#fdf0dc;color:#7a4a00;border:1px solid #f0d9a8}.awaynote.none{background:#f4f7fb;color:#6a7690}.awaytag{margin-left:6px;font-size:10.5px;font-weight:800;background:#fdf0dc;color:#9a5a00;border-radius:6px;padding:0 6px}
+#grid td .why,#grid td.gone em,#grid td.freed em.why{display:block;font-style:normal;font-size:9.5px;font-weight:700;color:#8a4b00;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#grid td .why.hint{color:#9a6a00;font-weight:600}
 </style>
 </head>
 <body>
@@ -1356,18 +1358,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     String(text || '').split(/\n+/).forEach(function (raw) {
       var line = raw.trim(); if (!line) return;
       var km = line.match(AWAY_RE), kind = km ? km[1] : curKind;
-      var from = null, to = null, rm = line.match(/(\d{1,2})(?::(\d{2}))?\s*시?\s*[~\-–]\s*(\d{1,2})(?::(\d{2}))?\s*시?/);
+      var from = null, to = null, unk = false, rm = line.match(/(\d{1,2})(?::(\d{2}))?\s*시?\s*[~\-–]\s*(\d{1,2})(?::(\d{2}))?\s*시?/);
       if (rm) { from = +rm[1] * 60 + (+rm[2] || 0); to = +rm[3] * 60 + (+rm[4] || 0); }
       else {
         var sm = line.match(/(\d{1,2}):(\d{2})|(\d{1,2})\s*시/);
-        if (sm) { from = sm[1] ? +sm[1] * 60 + (+sm[2]) : +sm[3] * 60; to = half(from) === 'AM' ? NOON_END : 24 * 60; } // 돌아오는 시각이 없으면 그 오전/오후가 끝날 때까지
-        else if (/오전/.test(line)) { from = 0; to = NOON_END; } else if (/오후/.test(line)) { from = NOON_END; to = 24 * 60; }
+        if (sm) { from = sm[1] ? +sm[1] * 60 + (+sm[2]) : +sm[3] * 60; to = half(from) === 'AM' ? NOON_END : 24 * 60; unk = true; } // 돌아오는 시각이 없으면 그 오전/오후가 끝날 때까지
+        else if (/오전/.test(line)) { from = 0; to = NOON_END; unk = true; } else if (/오후/.test(line)) { from = NOON_END; to = 24 * 60; unk = true; }
       }
       var body = line.replace(AWAY_RE, ' ').replace(/\d{1,2}(:\d{2})?\s*시?/g, ' ').replace(/선생님|님/g, ' ');
       var toks = body.match(/[가-힣]{2,4}[A-Z]?/g) || [], found = 0;
       toks.forEach(function (t) {
         var nm = known[t] ? t : null;
-        if (nm) { entries.push({ name: nm, kind: kind, from: from, to: to }); found++; }
+        if (nm) { entries.push({ name: nm, kind: kind, from: from, to: to, unk: unk }); found++; }
         else if (!STOP.test(t) && !known[t.replace(/[A-Z]$/, '')]) unknown.push(t);
       });
       if (km && !found) curKind = kind; // 머리글 줄
@@ -1380,7 +1382,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var cur = st.away[e.name] || (st.away[e.name] = { kind: e.kind, ranges: [], src: e.src });
       cur.kind = cur.kind || e.kind;
       if (e.from == null) cur.ranges = null;                          // 시간이 없으면 하루 종일
-      else if (cur.ranges) cur.ranges.push([e.from, e.to]);
+      else if (cur.ranges) cur.ranges.push(e.unk ? [e.from, e.to, 1] : [e.from, e.to]); // 세 번째 값 1 = 돌아오는 시각 미정
     });
   }
   function removeAway(st, name) { if (st.away) delete st.away[name]; }
@@ -1405,13 +1407,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (!hit) { skipped++; return; }
       var text = String(r.category || '') + ' ' + String(r.reason || ''), kind = /외진/.test(text) ? '외진' : /외박/.test(text) ? '외박' : /외출/.test(text) ? '외출' : (String(r.category || '').trim() || '외출');
       // 외박은 하루 종일. 외출·외진: 나가는 시각~돌아오는 시각. 돌아오는 시각이 미정이면 나간 시간이 오전이면 오전 치료만, 오후면 오후 치료만 못 받는 걸로 본다(「오전」「오후」글자만 있어도 같은 규칙).
-      var from = null, to = null;
+      var from = null, to = null, unk = false;
       if (kind !== '외박') {
         var a = clockMin(r.departureText), b = clockMin(r.returnText), dw = String(r.departureText || ''), rw = String(r.returnText || '');
         if (a == null) a = /오전/.test(dw) ? 0 : /오후/.test(dw) ? NOON_END : null;
-        if (a != null) { from = a; to = b != null && b > a ? b : (/오전/.test(rw) && !/\d/.test(rw) ? NOON_END : (half(a) === 'AM' ? NOON_END : 24 * 60)); }
+        if (a != null) { from = a; unk = !(b != null && b > a); to = !unk ? b : (/오전/.test(rw) && !/\d/.test(rw) ? NOON_END : (half(a) === 'AM' ? NOON_END : 24 * 60)); }
       }
-      entries.push({ name: hit, kind: kind, from: from, to: to, src: 'msg' });
+      entries.push({ name: hit, kind: kind, from: from, to: to, unk: unk, src: 'msg' });
     });
     return { entries: entries, ambiguous: ambiguous, skipped: skipped };
   }
@@ -2023,7 +2025,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (seq !== msgSeq || S.st.date !== date) return; // 그 사이 날짜를 바꿨으면 버린다
       if (!r.ok) { if (!auto || r.code !== 'NOT_FOUND') msg.textContent = '⚠ ' + r.message; return; }
       var res = Core.awayFromMessenger(r.rows, S.names);
-      Core.clearMessengerAway(S.st); Core.applyAway(S.st, res.entries); changed();
+      S.msgDate = date; Core.clearMessengerAway(S.st); Core.applyAway(S.st, res.entries); changed();
       var extra = (res.ambiguous.length ? ' · 이름이 같은 사람이 여럿이라 못 이은 ' + res.ambiguous.map(function (a) { return a.patient + '(' + a.candidates.join('/') + ')'; }).join(', ') + ' — 직접 붙여넣어 주세요' : '') + (res.skipped ? ' · 시간표에 없는 환자 ' + res.skipped + '명은 건너뜀' : '');
       $('#awayMsg').textContent = '🔗 메신저에서 ' + res.entries.length + '명 불러왔어요 (' + date.slice(5).replace('-', '/') + ')' + extra;
     }, function () { if (!auto) msg.textContent = '⚠ 메신저를 읽지 못했어요.'; });
@@ -2121,14 +2123,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (ab) {
       var bg = 'background:' + st.colors[co.c];
       if (rec && (rec.kind === 'item' || rec.kind === 'block')) {
-        if (rec.kind === 'item' && st.gone[rec.item.name]) return '<td class="gone" style="' + bg + '" data-id="' + id + '"><s>' + esc(rec.item.name) + '</s><em>퇴원/결석</em></td>';
+        if (rec.kind === 'item' && Core.isGone(st, rec)) return '<td class="gone" style="' + bg + '" data-id="' + id + '" title="' + esc(goneReasonText(rec)) + '"><s>' + esc(rec.item.name) + '</s><em>' + esc(goneReasonText(rec)) + '</em></td>';
         var p = st.place[id];
         if (p) {
           var dst = gen.colSet[p.dc];
           var same = p.dr === rec.r;
           return '<td class="moved" style="' + bg + '" data-id="' + id + '" title="' + esc(descOf(rec)) + ' → ' + esc(dst.name) + ' ' + timeOf(p.dr) + '"><span class="ghost">↗ ' + (same ? esc(dst.name) : timeOf(p.dr) + ' ' + esc(dst.name)) + '</span></td>';
         }
-        return '<td class="hold' + (S.selected === id ? ' sel' : '') + '" data-id="' + id + '" data-act="hold" title="HOLD — 눌러서 넣을 수 있는 칸 보기">' + itemHTML(rec) + '</td>';
+        return '<td class="hold' + (S.selected === id ? ' sel' : '') + '" data-id="' + id + '" data-act="hold" title="HOLD — 눌러서 넣을 수 있는 칸 보기">' + itemHTML(rec) + (rec.kind === 'item' && awayHintText(rec) ? '<span class="why">' + esc(awayHintText(rec)) + '</span>' : '') + '</td>';
       }
       return '<td style="' + bg + '"></td>';
     }
@@ -2146,7 +2148,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var cm = candMap[id];
       var freed = rec.kind !== 'slot';
       var base = freed ? 'freed' : 'slot';
-      var inner = freed ? '<s>' + esc(rec.kind === 'item' ? descOf(rec) : rec.text.trim()) + '</s>' : (rec.label ? '<span class="lbl">' + esc(rec.label) + '</span>' : '');
+      var inner = freed ? '<s>' + esc(rec.kind === 'item' ? descOf(rec) : rec.text.trim()) + '</s>' + (rec.kind === 'item' && goneReasonText(rec) ? '<em class="why">' + esc(goneReasonText(rec)) + '</em>' : '') : (rec.label ? '<span class="lbl">' + esc(rec.label) + '</span>' : '');
       if (cm) {
         var badge = cm.sel ? '<span class="lbl2">' + (cm.mode === 'swap' ? '교환해서 가능' : (cm.mode === 'nocard' ? '확인 필요' : '넣을 수 있음')) + '</span>' : '<span class="cnt">' + cm.n + '</span><span class="lbl2">누르면 명단</span>';
         return '<td class="' + base + ' cand' + (cm.sel ? ' sel2' : '') + '" data-id="' + id + '" data-act="cand">' + badge + inner + '</td>';
@@ -2156,10 +2158,38 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (!rec) return '<td></td>';
     if (rec.kind === 'note') return '<td class="note">' + esc(rec.text) + '</td>';
     var fill = rec.fill ? 'background:#' + rec.fill : '';
-    return '<td class="normal" style="' + fill + '" data-id="' + id + '">' + itemHTML(rec) + '<button class="x" data-act="free" title="이 칸 비우기(퇴원/결석 등)">×</button></td>';
+    return '<td class="normal" style="' + fill + '" data-id="' + id + '">' + itemHTML(rec) + (rec.kind === 'item' && awayHintText(rec) ? '<span class="why hint">' + esc(awayHintText(rec)) + '</span>' : '') + '<button class="x" data-act="free" title="이 칸 비우기(퇴원/결석 등)">×</button></td>';
   }
 
   /* ---------- 오른쪽 패널 ---------- */
+  function awayRangeText(a) {
+    function hm(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
+    return a && a.ranges && a.ranges.length ? a.ranges.map(function (r) {
+      if (r[2]) return r[0] === 0 && r[1] === 750 ? '오전 · 귀원 미정' : (r[0] === 750 && r[1] === 1440 ? '오후 · 귀원 미정' : hm(r[0]) + '~미정'); // 귀원 시각이 미정인 외출(그 오전/오후 치료만 못 받아요)
+      return r[0] === 0 && r[1] === 750 ? '오전' : (r[0] === 750 && r[1] === 1440 ? '오후' : (r[1] === 750 ? hm(r[0]) + '~오전 끝' : (r[1] === 1440 ? hm(r[0]) + ' 이후' : hm(r[0]) + '~' + hm(r[1]))));
+    }).join(', ') : '종일';
+  }
+  // 칸에 적는 이유: 「외출(10:00~미정)」 — 이름 밑에 보여 줘서 왜 비운 칸인지 알 수 있게 한다
+  function awayText(a) { return (a.kind || '외출') + '(' + awayRangeText(a) + ')'; }
+  function goneReasonText(rec) {
+    var nm = rec.item.name, st = S.st;
+    if (st.gone[nm]) return '퇴원/결석';
+    var a = st.away && st.away[nm]; if (a && Core.isGone(st, rec)) return awayText(a);
+    return Core.isFreed(st, rec) ? '직접 비움' : '';
+  }
+  // 나가는·돌아오는 시각이 치료 중간에 걸쳐서 「치료는 받는 걸로」 보는 칸에 붙이는 작은 표시
+  function awayHintText(rec) {
+    var a = S.st.away && S.st.away[rec.item.name]; if (!a || !a.ranges || Core.isGone(S.st, rec)) return '';
+    var m = Core.hmToMin(rec.hm);
+    return a.ranges.some(function (r) { return m < r[1] && m + 35 > r[0]; }) ? '🚶' + awayText(a) + ' 걸침' : '';
+  }
+  // 이 환자의 외진·외박·외출 내역(메신저에서 불러왔거나 직접 넣은 것) — HOLD를 눌렀을 때 같이 보여 준다
+  function awayNoteHTML(name) {
+    var a = (S.st.away || {})[name];
+    if (a) return '<div class="awaynote has">🚶 <b>' + esc(a.kind || '외출') + '</b> · ' + esc(awayRangeText(a)) + ' <span class="note2">(' + (a.src === 'msg' ? '메신저' : '직접 입력') + ')</span></div>';
+    if (S.st.gone && S.st.gone[name]) return '<div class="awaynote has">🚪 오늘 없는 환자로 표시돼 있어요(퇴원·결석)</div>';
+    return '<div class="awaynote none">외진·외박·외출 내역 없음' + (S.msgDate === S.st.date ? ' <span class="note2">(메신저 확인함)</span>' : ' <span class="note2">(메신저 연동 전이라 확인하지 못했어요)</span>') + '</div>';
+  }
   function renderPanels() {
     var gen = S.gen, st = S.st;
     // 연차 선택
@@ -2191,7 +2221,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         var hi = Core.holdInfo(gen, st, S.cards, r), cands = hi.any, sel = S.selected === r.id, pinned = !!(st.pins && st.pins[r.id]);
         var rcv = Core.recoveryOf(r, cfgNow, S.cards) === 'non' ? '비회복기 · ' + Core.HALF_LABEL[Core.halfOf(r.hm)] + '만 · ' : '';
         var info = rcv + ((hi.any || hi.cross) ? '같은 시간 ' + hi.same + ' · 가까운 시간 ' + hi.change + ' · 그 외 ' + Math.max(0, hi.any - hi.same - hi.change) + (hi.cross ? ' · 다른 층 ' + hi.cross : '') + (hi.ask ? ' · 기구 옮기면 +' + hi.ask : '') : (hi.ask ? '기구를 옮기면 ' + hi.ask + '곳에 넣을 수 있어요(눌러서 확인)' : hi.whyNone));
-        return '<div class="row ' + (sel ? 'sel' : '') + '" data-hold="' + r.id + '"><span class="sw" style="background:' + st.colors[r.c] + '"></span><div class="t"><b>' + esc(descOf(r)) + '</b><small>' + esc(gen.colSet[r.c].name) + ' · ' + r.hm + (r.kind === 'item' && r.item.loc ? ' · ' + esc(Core.locText(r.item)) : '') + '</small><span class="hi' + (cands ? '' : ' bad') + '">' + esc(info) + '</span></div><button class="star ' + (pinned ? '' : 'off') + '" data-pin="' + r.id + '" title="먼저 넣을 치료로 표시(자동 배치에서 가장 먼저)">' + (pinned ? '★' : '☆') + '</button><span class="n ' + (cands ? '' : 'zero') + '">' + (cands ? '가능 ' + cands + '곳' : (hi.cross ? '다른 층만' : '자리 없음')) + '</span>' + (r.kind === 'item' ? '<button data-gone="' + esc(r.item.name) + '" title="퇴원/결석 등 오늘 치료 없음">제외</button>' : '') + '</div>';
+        return '<div class="row ' + (sel ? 'sel' : '') + '" data-hold="' + r.id + '"><span class="sw" style="background:' + st.colors[r.c] + '"></span><div class="t"><b>' + esc(descOf(r)) + '</b>' + (r.kind === 'item' && st.away && st.away[r.item.name] ? '<span class="awaytag" title="이 환자는 ' + esc(st.away[r.item.name].kind || '외출') + ' 내역이 있어요 · ' + esc(awayRangeText(st.away[r.item.name])) + '">🚶' + esc(st.away[r.item.name].kind || '외출') + '</span>' : '') + '<small>' + esc(gen.colSet[r.c].name) + ' · ' + r.hm + (r.kind === 'item' && r.item.loc ? ' · ' + esc(Core.locText(r.item)) : '') + '</small><span class="hi' + (cands ? '' : ' bad') + '">' + esc(info) + '</span></div><button class="star ' + (pinned ? '' : 'off') + '" data-pin="' + r.id + '" title="먼저 넣을 치료로 표시(자동 배치에서 가장 먼저)">' + (pinned ? '★' : '☆') + '</button><span class="n ' + (cands ? '' : 'zero') + '">' + (cands ? '가능 ' + cands + '곳' : (hi.cross ? '다른 층만' : '자리 없음')) + '</span>' + (r.kind === 'item' ? '<button data-gone="' + esc(r.item.name) + '" title="퇴원/결석 등 오늘 치료 없음">제외</button>' : '') + '</div>';
       }).join('');
     }
 
@@ -2200,7 +2230,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var aw = Object.keys(st.away || {});
     function hmFromMin(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
     $('#goneTags').innerHTML = (gn.length || aw.length) ? gn.map(function (n) { return '<span class="tag">' + esc(n) + '<button data-ungone="' + esc(n) + '">×</button></span>'; }).join('')
-      + aw.map(function (n) { var a = st.away[n], rg = a.ranges && a.ranges.length ? a.ranges.map(function (r) { return r[0] === 0 && r[1] === 750 ? '오전' : (r[0] === 750 && r[1] === 1440 ? '오후' : (r[1] === 750 ? hmFromMin(r[0]) + '~오전 끝' : (r[1] === 1440 ? hmFromMin(r[0]) + ' 이후' : hmFromMin(r[0]) + '~' + hmFromMin(r[1])))); }).join(',') : '종일'; return '<span class="tag away">' + esc(n) + '<small>' + esc((a.kind || '') + ' ' + rg) + '</small><button data-unaway="' + esc(n) + '">×</button></span>'; }).join('') : '<span class="empty">없음</span>';
+      + aw.map(function (n) { var a = st.away[n], rg = awayRangeText(a); return '<span class="tag away">' + esc(n) + '<small>' + esc((a.kind || '') + ' ' + rg) + '</small><button data-unaway="' + esc(n) + '">×</button></span>'; }).join('') : '<span class="empty">없음</span>';
     renderPrioSum(); renderChecks(); renderSideMini();
   }
 
@@ -2395,7 +2425,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     right += '</div>';
     var html = '<div class="mhead"><h2>' + (M.byItem ? esc(descOf(rec)) + ' <small>' + esc(gen.colSet[rec.c].name) + ' 선생님 ' + rec.hm + ' · 넣을 수 있는 자리 ' + list.length + '곳 — 자리를 눌러 확인하세요</small>' : slot.hm + ' · ' + esc(th.name) + ' 선생님 빈 시간<small>' + list.length + '명 넣을 수 있어요 — 이름을 눌러 확인하세요</small>') + '</h2><button data-close="1">닫기 ✕</button></div>' +
-      '<div class="mbody"><div class="mlist">' + left + '</div><div class="mdetail">' + head4 + '<div class="split"><div class="splitL">' + cardPart + '</div><div class="splitR">' + right + '</div></div></div></div>' +
+      '<div class="mbody"><div class="mlist">' + left + '</div><div class="mdetail">' + head4 + (it ? awayNoteHTML(it.name) : '') + '<div class="split"><div class="splitL">' + cardPart + '</div><div class="splitR">' + right + '</div></div></div></div>' +
       '<div class="mfoot"><span class="grow">넣으면 초록색으로 표시돼요. 나중에 칸을 눌러 취소할 수 있어요.</span><button data-close="1">취소</button><button class="primary" data-confirm="1">' + (M.byItem ? '이 자리에 넣기' : '이 시간에 넣기') + '</button></div>';
     var sx = M.listScroll; openModal(html); if (sx != null) { var ml = $('#modal .mlist'); if (ml) ml.scrollTop = sx; }
     if (cd && it) fillRealCard(cd, it.name, rec.hm, slot.hm);

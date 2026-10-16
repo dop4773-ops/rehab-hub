@@ -1767,7 +1767,8 @@ async function runAllVerifications(){
           // 둘 다 받는 경우 먼저 발견된 쪽 코드가 다른 종류 비교에도 잘못 쓰이는 문제가 있었다.
           // 이름+종류(sot/rdt)로 따로 저장해서, 토요일 ST는 반드시 평일 ST/SM끼리만 비교하게 한다.
           const k=normKey(o.name)+'|'+o.type;
-          if(!previewSaturday.weekdayCode.has(k)) previewSaturday.weekdayCode.set(k, o.code);
+          if(!previewSaturday.weekdayCode.has(k)) previewSaturday.weekdayCode.set(k, new Set());
+          previewSaturday.weekdayCode.get(k).add(o.code); // ST와 SM을 둘 다 받는 환자는 코드를 모두 모은다(먼저 나온 하나만 쓰면 오탐이 난다)
         }
       }
     }
@@ -2057,7 +2058,7 @@ async function runAllVerifications(){
 // 안 붙어서 iframe.contentWindow로 직접 못 읽기 때문에 명시적으로 저장한다. 화면 자체 로직에는 영향 없음.
 // 이전 날짜 검증과 비교할 수 있을 때(histState.cmp.baseline), 어제 이전부터 계속되는 불일치의 건수·3일 이상 건수·가장 오래된 일수
 // 위치·인수인계 대조로 문제 항목을 만드는 계산은 core/crosschecks.js로 옮겼다(단위 테스트 있음).
-const { collectFieldOccurrences, buildLocationIssue, buildScheduleLocationChecks, buildScheduleLocationIssue, buildSchedTherapistIndex, buildHandoverTherapistChecks, buildHandoverExcessChecks, buildDoctorChecks, buildSaturdayLocationChecks, buildSaturdayLocationIssue } = RehabCore.crossChecks;
+const { collectFieldOccurrences, buildLocationIssue, buildScheduleLocationChecks, buildScheduleLocationIssue, buildSchedTherapistIndex, buildHandoverTherapistChecks, buildHandoverExcessChecks, buildDoctorChecks, buildSaturdayLocationChecks, buildSaturdayLocationIssue, satCodeMismatch } = RehabCore.crossChecks;
 function carryOf(){
   try{ if(!histState||!histState.cmp.baseline) return null; const cmp=histState.cmp, days=issues.filter(i=>i.hist&&!i.hist.isNew&&cmp.comparable.includes(i.category)).map(i=>i.hist.streak);
     return {count:days.length, hot:days.filter(d=>d>=3).length, maxDays:days.length?Math.max(...days):0}; }catch(e){ return null; }
@@ -2326,9 +2327,9 @@ function computeSaturdayPreview(){
     const status=judge(o, card);
     // 참고: 토요일 담당 치료사는 평일 담당과 달리 주말 당번제로 배정되는 경우가 많아,
     // 담당자 이름 자체를 정답 비교 기준으로 쓰면 오탐이 너무 많아진다 → 존재/시간 일치만 1차 판정으로 쓴다.
-    const weekdayCode=previewSaturday.weekdayCode.get(normKey(o.name)+'|'+o.type)||'';
-    // 5. SM/ST 코드가 평일원본과 다름 — R(연하)은 코드 비교 대상이 아니다.
-    const codeMismatch = !!(o.type==='sot' && o.code && weekdayCode && o.code!==weekdayCode);
+    const wdSet=previewSaturday.weekdayCode.get(normKey(o.name)+'|'+o.type), weekdayCode=wdSet?[...wdSet].sort().join(' / '):'';
+    // 5. SM/ST 코드가 평일원본의 코드(둘 다 있으면 둘 중 하나)와 다름 — R(연하)은 코드 비교 대상이 아니다.
+    const codeMismatch = !!(o.type==='sot' && satCodeMismatch(wdSet, o.code));
     cellMap.set(key, {time:o.time, timeKey:o.timeKey, therapist:o.therapist, name:o.name, status, code:o.code, type:o.type, weekdayCode, codeMismatch, hasCard:!!card});
   }
   // 4. 중복: 같은 환자, 같은 시간에 다른 치료사 칸에도 등장
@@ -2608,10 +2609,10 @@ function showSaturdayCellDetail(c){
     codeHtml = `
       <div class="occ-title">2순위 확인: 평일 · 토요일 코드(ST/SM) 비교</div>
       <div class="compare-box">
-        <div class="cb ${!c.codeMismatch?'good':'bad'}"><div class="cbt">평일시간표(원본) 코드</div><div class="cbv">${esc(c.weekdayCode||'-')}</div></div>
+        <div class="cb ${!c.codeMismatch?'good':'bad'}"><div class="cbt">평일시간표(원본) 코드${String(c.weekdayCode).includes('/')?' (여러 개)':''}</div><div class="cbv">${esc(c.weekdayCode||'-')}</div></div>
         <div class="cb ${!c.codeMismatch?'good':'bad'}"><div class="cbt">토요일 코드</div><div class="cbv">${esc(c.code||'-')}</div></div>
       </div>
-      ${c.codeMismatch?'<div class="verdictbox">평일과 토요일의 치료 코드가 서로 달라요. (MSK 등 다른 코드는 비교 대상이 아니에요)</div>':''}
+      ${c.codeMismatch?'<div class="verdictbox">평일 시간표에는 없는 치료 코드가 토요일에 적혀 있어요. (평일에 ST와 SM을 둘 다 받으면 둘 중 하나면 정상이에요 · MSK 등 다른 코드는 비교 대상이 아니에요)</div>':(String(c.weekdayCode).includes('/')?'<div class="verdictbox" style="background:#eef7f1;color:#2b6b4a">평일에 이 환자는 코드가 여러 가지(SM/ST)라서, 토요일 코드가 그중 하나면 정상으로 봐요.</div>':'')}
     `;
   }
   document.getElementById('gridDetailBody').innerHTML = `
