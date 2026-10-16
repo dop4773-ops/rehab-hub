@@ -1084,7 +1084,6 @@ function closeTrashModal() {
   trashModalOpen = false;
   document.getElementById('trashModal').classList.remove('open');
 }
-document.getElementById('trashModal').addEventListener('click', function (e) { if (e.target === this) closeTrashModal(); });
 
 function renderTrashModalIfOpen() {
   if (trashModalOpen) renderTrashModal();
@@ -1320,7 +1319,6 @@ function openDischargeModal() {
 function closeDischargeModal() {
   document.getElementById('dischargeModal').classList.remove('open');
 }
-document.getElementById('dischargeModal').addEventListener('click', function (e) { if (e.target === this) closeDischargeModal(); });
 
 function parseDischargeNames(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -1445,7 +1443,6 @@ function confirmDischargeProcess(uids) {
 function closeDischargeConfirmModal() {
   document.getElementById('dischargeConfirmModal').classList.remove('open');
 }
-document.getElementById('dischargeConfirmModal').addEventListener('click', function (e) { if (e.target === this) closeDischargeConfirmModal(); });
 
 // 퇴원 처리는 삭제보다 영향도가 크므로, 관리자 모드와 별개로 이 시점에만 관리자
 // 코드를 물어봅니다. 한 번 입력하면 이 컴퓨터에 저장되어 다음부터는 다시 묻지 않습니다.
@@ -1457,7 +1454,7 @@ function askText(msg) { // Electron에는 window.prompt가 없어 같은 역할�
     ov.firstChild.firstChild.textContent = msg;
     const inp = ov.querySelector('input');
     const done = v => { ov.remove(); resolve(v); };
-    ov.addEventListener('click', e => { const x = e.target.dataset && e.target.dataset.x; if (x === '1') done(inp.value); else if (x === '0' || e.target === ov) done(null); });
+    ov.addEventListener('click', e => { const x = e.target.dataset && e.target.dataset.x; if (x === '1') done(inp.value); else if (x === '0') done(null); });
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') done(inp.value); else if (e.key === 'Escape') done(null); });
     document.body.appendChild(ov); inp.focus();
   });
@@ -2396,7 +2393,6 @@ function closeTrayGotoModal() {
   document.getElementById('trayGotoModal').classList.remove('open');
   trayGotoTargetId = null;
 }
-document.getElementById('trayGotoModal').addEventListener('click', function (e) { if (e.target === this) closeTrayGotoModal(); });
 
 function confirmTrayGoto() {
   const id = trayGotoTargetId;
@@ -2510,6 +2506,9 @@ document.addEventListener('keydown', function (e) {
     if (document.getElementById('trayContextMenu').classList.contains('open')) { closeTrayContextMenu(); return; }
     if (document.getElementById('trayGotoModal').classList.contains('open')) { closeTrayGotoModal(); return; }
     if (document.getElementById('printSettingsModal').classList.contains('open')) { closePrintSettingsModal(); return; }
+    if (document.getElementById('dischargeConfirmModal').classList.contains('open')) { closeDischargeConfirmModal(); return; }
+    if (document.getElementById('dischargeModal').classList.contains('open')) { closeDischargeModal(); return; }
+    if (document.getElementById('trashModal').classList.contains('open')) { closeTrashModal(); return; }
     const anyOtherModalOpen = document.querySelector('.modal-overlay.open');
     if (!anyOtherModalOpen && selected.size > 0) {
       clearTray(); // 다른 모달이 없고 선택된 항목이 있으면 선택 해제

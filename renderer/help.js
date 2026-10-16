@@ -189,6 +189,5 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('[data-help-close]')) { closePop(); return; }
   const g = e.target.closest('[data-help-go]'); if (g) { e.preventDefault(); const el = document.getElementById('hp-' + g.dataset.helpGo); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
   const b = e.target.closest('[data-help]'); if (b) { e.stopPropagation(); window.__openHelp(b.dataset.help); return; }
-  if (pop && !e.target.closest('.hp-pop')) closePop();
 });
 })();

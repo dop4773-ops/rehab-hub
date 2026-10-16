@@ -813,7 +813,6 @@ function openWhoModal() {
 }
 document.getElementById('whoClose').addEventListener('click', () => document.getElementById('whoModal').classList.remove('show'));
 document.getElementById('whoModal').addEventListener('click', async (e) => {
-  if (e.target.id === 'whoModal') { e.currentTarget.classList.remove('show'); return; }
   const c = e.target.closest('[data-who-copy]'); if (c) { const p = whoMerged[+c.dataset.whoCopy]; showToast((await copyText(p.text)) ? `✅ ${updEsc(p.who)} 선생님 글을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)` : '⚠ 복사하지 못했어요', 3500); }
 });
 document.getElementById('whoCopyAll').addEventListener('click', async () => { const t = whoMerged.map(p => p.text).join('\n\n──────────\n\n'); showToast((await copyText(t)) ? `✅ ${whoMerged.length}명 글을 복사했어요 — 카톡에 붙여넣기` : '⚠ 복사하지 못했어요', 3500); });
@@ -1550,11 +1549,9 @@ async function renderUpdLog(tab) {
 }
 document.getElementById('updaterLogBtn').addEventListener('click', () => { document.getElementById('updLogModal').classList.add('show'); renderUpdLog('rel'); });
 document.getElementById('dailyClose').addEventListener('click', () => document.getElementById('dailyModal').classList.remove('show'));
-document.getElementById('dailyModal').addEventListener('click', (e) => { if (e.target.id === 'dailyModal') e.currentTarget.classList.remove('show'); });
 document.getElementById('dailyCopy').addEventListener('click', async () => showToast((await copyText(lastDailyText)) ? '✅ 점검 결과를 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요'));
 document.getElementById('dailyAgain').addEventListener('click', () => { document.getElementById('dailyModal').classList.remove('show'); runDailyCheck(); });
 document.getElementById('updLogClose').addEventListener('click', () => document.getElementById('updLogModal').classList.remove('show'));
-document.getElementById('updLogModal').addEventListener('click', (e) => { if (e.target.id === 'updLogModal') e.currentTarget.classList.remove('show'); });
 document.querySelector('.upd-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) renderUpdLog(b.dataset.t); });
 document.querySelectorAll('input[name=updMode]').forEach(r => r.addEventListener('change', async () => {
   if (r.checked) updaterMode = await window.rehab.updater.setMode(r.value);
@@ -1629,6 +1626,7 @@ function onKeyDown(e) {
   if (e.key === 'Escape' && window.__psBig) { window.__psCloseBig(); return; } // 카드 크게 보기가 열려 있으면 그것만 먼저 닫는다
   if (e.key === 'Escape' && window.__psOpen) { window.__psClose(); return; } // 환자 빠른 검색이 열려 있으면 Esc는 그것만 닫는다
   if (e.key === 'Escape' && chipMenu) { closeChipMenu(); return; }
+  if (e.key === 'Escape') { const m = [...document.querySelectorAll('.modal-overlay.show')].pop(); if (m) { m.classList.remove('show'); return; } } // 팝업은 Esc나 닫기 버튼으로만 닫힌다(바깥을 눌러도 안 닫힘)
   if (e.key === 'Alt') { if (!e.repeat) { altCombo = false; clearTimeout(altHold); altHold = setTimeout(() => showAlt(true), 500); } return; }
   if (e.altKey) altCombo = true;
   // 홈 작업대: 숫자 키 1~9 = 오늘 할 일 n번의 주 버튼 실행(입력칸에 글을 쓰는 중이면 무시)

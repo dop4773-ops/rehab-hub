@@ -2461,7 +2461,6 @@ ${text}`,
   // 일일통계 인식 현황은 위쪽 파일 띠의 "일일통계" 칩을 누르면 팝업으로 열린다(셸이 이 함수를 부른다)
   $('msCriteriaBtn').addEventListener('click', () => { $('msCriteriaModal').style.display = 'flex'; });
   $('msCriteriaClose').addEventListener('click', () => { $('msCriteriaModal').style.display = 'none'; });
-  $('msCriteriaModal').addEventListener('click', e => { if(e.target === $('msCriteriaModal')) $('msCriteriaModal').style.display = 'none'; });
   document.addEventListener('keydown', e => { if(e.key==='Escape' && $('msCriteriaModal').style.display!=='none') $('msCriteriaModal').style.display = 'none'; });
   window.__showDcStatus = () => { msRenderDcStatus(); $('dcModal').style.display = 'flex'; };
   // 설정 > 오류 확인 기본 필터: 설정 값이 바뀐 때만 반영한다(그 사이 화면에서 직접 고른 필터는 건드리지 않음)
@@ -2481,7 +2480,6 @@ ${text}`,
     const el = $('severityFilter'); if(el.value !== want){ el.value = want; el.dispatchEvent(new Event('change')); }
   };
   $('dcModalClose').addEventListener('click', () => { $('dcModal').style.display = 'none'; });
-  $('dcModal').addEventListener('click', e => { if(e.target === $('dcModal')) $('dcModal').style.display = 'none'; });
   document.addEventListener('keydown', e => { if(e.key==='Escape' && $('dcModal').style.display!=='none') $('dcModal').style.display = 'none'; });
   $('dcModalPick').addEventListener('click', () => $('dcFileInput').click());
   $('dcModalFolder').addEventListener('click', () => $('dcFolderInput').click());
@@ -2904,7 +2902,7 @@ ${text}`,
       </div>`;
   }
   $('msDetailPanel').addEventListener('click', e=>{
-    if(e.target.id==='msDetailPanel' || e.target.closest('#msCloseDetailBtn')) $('msDetailPanel').style.display='none';
+    if(e.target.closest('#msCloseDetailBtn')) $('msDetailPanel').style.display='none'; // 바깥을 눌러도 안 닫힘(닫기 버튼·Esc만)
   });
 
   // "스케줄 인지(CCRT) → 특수로 액팅(09:10 · 처방명 · 치료사)"
@@ -3275,7 +3273,7 @@ ${text}`,
   const capClose = () => { $('capModal').style.display = 'none'; };
   $('capList').addEventListener('click', e => { const r = e.target.closest('[data-cap]'); if(r) capOpen(r.dataset.cap); });
   $('capModalClose').addEventListener('click', capClose);
-  $('capModal').addEventListener('click', e => { if(e.target.id === 'capModal') capClose(); });
+  document.addEventListener('keydown', e => { if(e.key==='Escape' && $('msDetailPanel').style.display!=='none' && ['capModal','dcModal','kakaoModal','msCriteriaModal'].every(id => $(id).style.display==='none')) $('msDetailPanel').style.display='none'; });
   document.addEventListener('keydown', e => { if(e.key === 'Escape' && $('capModal').style.display === 'flex') capClose(); });
   function refreshTabBadges(){
     try{ if($('capView').style.display === 'block') capRender(); }catch(e){}
@@ -3439,11 +3437,9 @@ ${text}`,
 
     lines.push(
       '',
-      '✅ 꼭!!당일에 수정하시고 수정했다고 올려주세요.',
+      '✅ 4시30분까지 모든 액팅/통계작성 완료해 주세요.',
       '',
-      '✅ 격일로 받는 모든(CCRT, SOT, RDT, ERDT) 치료 없는 날은 담당선생님이 꼭 액팅 삭제 해주세요!',
-      '',
-      '✅ 평가 있는 날 또는 치료 hold인 날 치료 오더 삭제 해주세요!'
+      '✅ 꼭!!당일에 수정하시고 수정했다고 올려주세요.'
     );
     return lines.join('\n');
   }

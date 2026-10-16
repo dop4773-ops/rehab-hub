@@ -61,7 +61,7 @@
     const ov = document.createElement('div'); ov.className = 'ps-overlay'; ov.style.zIndex = 9200;
     ov.innerHTML = `<div class="ps-card" style="width:min(520px,92vw);padding:18px 20px"><b style="font-size:15px">⚠ 작업 중인 내용이 있어요</b><div style="margin:10px 0;line-height:1.6;font-size:13px">${items.map(x => '· ' + updEsc(x)).join('<br>')}</div><div style="font-size:12.5px;color:var(--sub)">설정·검증 기록·제외 표시 같은 저장된 작업은 그대로 남아요. 지금 설치하면 위 내용은 사라지니, 끝낸 뒤 프로그램을 끄면 그때 설치되게 두는 걸 권해요.</div><div class="ut-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn primary" data-wr="later">나중에 (끌 때 설치)</button><button class="btn" data-wr="now">그래도 지금 설치</button></div></div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click', (e) => { const b = e.target.closest('[data-wr]'); if (!b && e.target !== ov) return; ov.remove(); if (b && b.dataset.wr === 'now') go(); });
+    ov.addEventListener('click', (e) => { const b = e.target.closest('[data-wr]'); if (!b) return; ov.remove(); if (b && b.dataset.wr === 'now') go(); });
   };
   window.__workResume = { save, unsavedWork, snapshot, load, restore, KEY };
 })();

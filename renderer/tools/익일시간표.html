@@ -2504,7 +2504,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var t = e.target;
     // 모달 내부
     if (t.closest('#mback')) {
-      if (t === $('#mback')) { closeModal(); return; }
+      // 바깥을 눌러도 안 닫힘 — 팝업은 닫기 버튼이나 Esc로만 닫힌다
       var b;
       if ((b = t.closest('[data-close]'))) { closeModal(); return; }
       if (M && M.mode === 'text') {
