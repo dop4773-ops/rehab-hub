@@ -368,7 +368,10 @@
 .cap-pv .g-cell{font-size:12.5px;padding:3px 8px;line-height:1.3}.cap-pv .g-head{font-size:12px;padding:5px 6px;position:static}.cap-pv .g-cell.l{align-items:flex-start;text-align:left}
 .cap-pv .g-rec{background:#dcefe3;color:#1f6a4d;font-weight:800}.cap-pv .g-oth{background:#f4f6fa;color:#8a97ab;font-weight:600}.cap-pv .g-type{font-weight:700}.cap-pv .g-diff{background:#ece0fb;color:#5a3a96;font-weight:700}
 .cap-leg{font-size:11.5px;color:#5a6b86;margin:2px 0 8px;display:flex;gap:12px;flex-wrap:wrap}.cap-leg i{display:inline-block;width:14px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
-.cap-hint{font-size:12px;color:#8a97ab;margin:2px 0 6px}.cap-sum .cap-df b{color:#6b3fa0}
+.cap-hint{font-size:12px;color:#8a97ab;margin:2px 0 6px}
+.cap-who{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;padding:0 13px 9px;font-size:12px}.cap-who-h{font-size:11px;font-weight:800;color:#b01f2e;background:#fde3e6;border-radius:99px;padding:1px 9px}.cap-who-p{background:#fff3f4;border:1px solid #f3c7cc;border-radius:8px;padding:2px 9px;color:#7a1f2a}.cap-who-p b{color:#b01f2e}
+#capModalBody>.cap-who{padding:0 0 10px}
+.cap-pv .g-over{background:#fde3e6!important;color:#b01f2e!important;font-weight:800!important}.cap-sum .cap-df b{color:#6b3fa0}
 .cap-da{margin-top:12px;padding:10px 12px;background:#fff4df;border:1px solid #f0c98a;border-radius:10px;font-size:12.5px;color:#7a4a00;line-height:1.7}
 .scale-warn{background:#fff4df;border:1px solid #f0c98a;border-radius:10px;padding:8px 12px;margin:8px 0;color:#7a4a00;font-size:12.5px;display:flex;flex-direction:column;gap:2px}.scale-warn b{color:#a85a00}.scale-warn span{font-weight:500}
 .thv-row{border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:#fff;overflow:hidden}.thv-row.open{border-color:#9dbceb}
@@ -1461,7 +1464,11 @@ ${text}`,
       });
       const uq = (a) => [...new Set(a)].join('·'), basis = [useDaily.pt && daily ? `${uq(daily.sheets.pt)} 물리치료시간표` : '', useDaily.gi && daily ? `${uq(daily.sheets.gi)} 기구시간표` : '', cardOk ? '전체시간표' : ''].filter(Boolean);
       const dailyMiss = daily ? [...new Set(daily.missing)] : [], dailyUnread = daily ? [...new Set(daily.unread)] : [];
-      return { ...g, day, by, mine, ov, hasCard: basis.length > 0, basis, dailyMiss, dailyUnread, dailyLoading: !daily && !!(dailyBooks.pt.length || dailyBooks.gi.length), differs: day.filter(x => x.differs).length };
+      // 누가 문제인가: 하루 16개를 넘긴 뒤(시간순 17번째부터)에 액팅한 선생님과, 스케줄에 없는 시간·종류로 액팅한 선생님을 치료사별로 센다
+      const who = new Map(), tally = (t) => { const k = t || '담당자 미상'; if(!who.has(k)) who.set(k, { name: k, extra: 0, diff: 0 }); return who.get(k); };
+      g.items.forEach((x, i) => { if(i >= RECOVERY_DAILY_MAX) tally(x.therapist).extra++; if(x.differs) tally(x.therapist).diff++; });
+      const culprits = [...who.values()].filter(c => c.extra || c.diff).sort((a, b) => (b.extra + b.diff) - (a.extra + a.diff) || a.name.localeCompare(b.name, 'ko'));
+      return { ...g, culprits, over: g.count - RECOVERY_DAILY_MAX, day, by, mine, ov, hasCard: basis.length > 0, basis, dailyMiss, dailyUnread, dailyLoading: !daily && !!(dailyBooks.pt.length || dailyBooks.gi.length), differs: day.filter(x => x.differs).length };
     });
   }
   function recoveryCapIssues(list){
@@ -1479,7 +1486,7 @@ ${text}`,
       }
       const detail = currentThenExplain(`회복기재활 액팅 ${g.count}개 (기준: 한 환자 하루 ${RECOVERY_DAILY_MAX}개 초과)`,
         `회복기재활 오더가 ${g.count}개 액팅돼 하루 ${RECOVERY_DAILY_MAX}개를 넘었습니다.\n치료사별: ${[...g.by.entries()].map(([t, n]) => `${t} ${n}개`).join(' · ')}\n액팅 시간: ${g.items.map(x => (x.time.split('~')[0])).join(' · ')}${da}`);
-      const iss = makeIssue('오류', RECOVERY_CAP_TYPE, g.trigger.ref.excelRow, g.trigger.ref.row, detail); iss.capCount = g.count; iss.capTherapists = [...g.by.keys()]; return iss;
+      const iss = makeIssue('오류', RECOVERY_CAP_TYPE, g.trigger.ref.excelRow, g.trigger.ref.row, detail); iss.capCount = g.count; iss.capTherapists = (g.culprits && g.culprits.length ? g.culprits.map(c => c.name) : [...g.by.keys()]); return iss;
     });
   }
   function analyze(){
@@ -3214,14 +3221,21 @@ ${text}`,
   window.__qaApi = { errors: () => (state.issues||[]).filter(i=>i.severity==='오류').map(i=>({patientName:i.patientName,type:i.type,therapist:i.therapist})), missing: () => thvMissingEntries().map(x=>({name:x.name,type:x.type,timeSlot:x.timeSlot})) };
   function thvMissingTotal(){ return (msState.result||[]).filter(r=>!r.dc).reduce((s,r)=>s+Math.max(r.diff,0),0); } // 미액팅 탭 요약의 "미액팅" 숫자와 같은 식
   // ── 회복기재활 16개 초과 환자 명단 + 클릭하면 그 환자의 하루 액팅 미리보기 팝업 ──
+  const CAP_OVER_NOTE = 1;
   const CAP_COLORS = ['#3b6fd8','#8a6d3b','#2e9e6b','#8e5bd0','#e08a00','#1a9aa8','#c2487f','#6b7a2b'];
   const capHM = (m) => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+  // 이 환자 때문에 누구에게 확인해야 하나 — 초과분(17번째부터)과 스케줄 밖 액팅을 선생님별로 한 줄에 보여 준다
+  function capWhoLine(g){
+    const c = g.culprits || [];
+    if(!c.length) return `<div class="cap-who"><span class="cap-who-h">확인할 사람</span><span class="muted">초과분(${g.over}개)을 누가 했는지 알 수 없어요</span></div>`;
+    return `<div class="cap-who"><span class="cap-who-h">확인할 사람</span>${c.map(x => `<span class="cap-who-p"><b>${escapeHtml(x.name)}</b>${x.extra ? ` 초과분 ${x.extra}개` : ''}${x.extra && x.diff ? ' ·' : ''}${x.diff ? ` 스케줄 밖 ${x.diff}개` : ''}</span>`).join('')}</div>`;
+  }
   function capRender(){
     const list = state.capList || [], box = $('capList');
     if(!(state.dataRows||[]).length){ $('capInfo').innerHTML = ''; box.innerHTML = '<div class="empty-state"><strong>액팅 기록 파일을 올리면 회복기재활 16개 초과 환자를 모아서 보여드려요.</strong></div>'; return; }
     $('capInfo').innerHTML = `회복기재활 액팅이 하루 ${RECOVERY_DAILY_MAX}개(정상 한도)를 넘은 환자 <b>${list.length}명</b> <span class="thv-sp"></span> 삭제·추가 내역: ${delAddData ? `<span class="thv-ok">올림 · 삭제 유지 ${delAddData.entries.length}건</span>` : '<span class="thv-warn">안 올림(선택 — 올리면 삭제된 시간의 액팅을 참고로 보여줘요)</span>'}`;
     box.innerHTML = list.length ? list.map(g => { const hits = g.ov ? g.ov.hits.length : 0;
-      return `<div class="thv-row" data-cap="${msEscapeAttr(g.key)}"><div class="thv-hd" style="cursor:pointer"><b>${escapeHtml(g.name)}</b><span class="pill err">회복기재활 ${g.count}개</span><span class="thv-part">${[...g.by.entries()].map(([t,n]) => `${escapeHtml(t)} ${n}`).join(' · ')}</span>${hits ? `<span class="pill" style="background:#ffe9c7;color:#a85a00;">삭제된 시간에 액팅 ${hits}</span>` : ''}${g.differs ? `<span class="pill" style="background:#ece0fb;color:#6b3fa0;">스케줄과 다름 ${g.differs}</span>` : ''}<span class="thv-sp"></span><span style="color:#5b72b4;font-size:12px;font-weight:700;">미리보기 ▸</span></div></div>`; }).join('')
+      return `<div class="thv-row" data-cap="${msEscapeAttr(g.key)}"><div class="thv-hd" style="cursor:pointer"><b>${escapeHtml(g.name)}</b><span class="pill err">회복기재활 ${g.count}개</span><span class="thv-part">${[...g.by.entries()].map(([t,n]) => `${escapeHtml(t)} ${n}`).join(' · ')}</span>${hits ? `<span class="pill" style="background:#ffe9c7;color:#a85a00;">삭제된 시간에 액팅 ${hits}</span>` : ''}${g.differs ? `<span class="pill" style="background:#ece0fb;color:#6b3fa0;">스케줄과 다름 ${g.differs}</span>` : ''}<span class="thv-sp"></span><span style="color:#5b72b4;font-size:12px;font-weight:700;">미리보기 ▸</span></div>${capWhoLine(g)}</div>`; }).join('')
       : '<div class="empty-state"><strong>회복기재활 액팅이 16개를 넘은 환자가 없어요 ✅</strong></div>';
   }
   // 클릭한 환자의 하루 액팅을 시간 순서대로 한 줄씩(번호 · 시간 · 종류 · 치료사) 보여준다. 번호는 회복기재활만 세서 마지막 번호가 곧 개수다.
@@ -3239,17 +3253,19 @@ ${text}`,
     };
     const rowsInfo = g.day.map(x => ({ x, note: noteOf(x) })), showNote = rowsInfo.some(r => r.note);
     let n = 0;
-    const cols = `44px 112px minmax(0,1fr) 92px${showNote ? ' minmax(0,1fr)' : ''}`;
+    const cols = `60px 112px minmax(0,1fr) 92px${showNote ? ' minmax(0,1fr)' : ''}`;
     let html = `<div class="schedule-grid cap-pv" style="grid-template-columns:${cols};grid-auto-rows:minmax(32px,auto);"><div class="g-cell g-head">번호</div><div class="g-cell g-head">시간</div><div class="g-cell g-head">종류</div><div class="g-cell g-head">치료사</div>${showNote ? '<div class="g-cell g-head">참고</div>' : ''}`;
     rowsInfo.forEach(({ x, note }) => {
       const explained = (g.ov && g.ov.hits.some(h => h.item === x)) || x.addedBy;
       const cls = explained ? 'g-type' : x.differs ? 'g-diff' : x.recovery ? 'g-rec' : 'g-oth';
-      html += `<div class="g-cell ${cls}">${x.recovery ? ++n : ''}</div><div class="g-cell ${cls}">${escapeHtml(x.time)}</div><div class="g-cell ${cls} l">${escapeHtml(x.order)}</div><div class="g-cell ${cls}">${escapeHtml(x.therapist || '담당자 미상')}</div>${showNote ? `<div class="g-cell ${cls} l">${note}</div>` : ''}`;
+      if(x.recovery) n++;
+      const ov = x.recovery && n > RECOVERY_DAILY_MAX, cls2 = cls + (ov ? ' g-over' : '');
+      html += `<div class="g-cell ${cls2}">${x.recovery ? (ov ? n + ' 초과' : n) : ''}</div><div class="g-cell ${cls2}">${escapeHtml(x.time)}</div><div class="g-cell ${cls2} l">${escapeHtml(x.order)}</div><div class="g-cell ${cls2}">${escapeHtml(x.therapist || '담당자 미상')}</div>${showNote ? `<div class="g-cell ${cls} l">${note}</div>` : ''}`;
     });
     html += '</div>';
     const legend = `<div class="cap-leg"><span><i style="background:#dcefe3"></i>회복기재활</span><span><i style="background:#f4f6fa;border:1px solid #d5dce8"></i>그 밖의 액팅</span><span><i style="background:#ece0fb"></i>스케줄(그날 시간표·전체시간표)과 다른 치료</span><span><i style="background:#ffe9c7"></i>삭제·추가 내역과 겹침</span></div>`;
     $('capModalTitle').textContent = `${g.name} · 회복기재활 액팅 ${g.count}개`;
-    $('capModalBody').innerHTML = `<div class="cap-sum">회복기재활 <b class="bad">${g.count}개</b> <span style="color:#7a8ba1">· 하루 전체 액팅 ${g.day.length}개 중 · 번호는 회복기재활만 센 값</span>${g.hasCard ? ` <span class="cap-df">· 스케줄과 다른 액팅 <b>${g.differs}개</b></span>` : ''}</div>`
+    $('capModalBody').innerHTML = capWhoLine(g) + `<div class="cap-sum">회복기재활 <b class="bad">${g.count}개</b> <span style="color:#7a8ba1">· 하루 전체 액팅 ${g.day.length}개 중 · 번호는 회복기재활만 센 값</span>${g.hasCard ? ` <span class="cap-df">· 스케줄과 다른 액팅 <b>${g.differs}개</b></span>` : ''}</div>`
       + (g.hasCard ? `<div class="cap-hint">비교 기준: ${escapeHtml(g.basis.join(' + '))}${g.dailyMiss.length ? ' · ⚠ ' + escapeHtml(g.dailyMiss.join(', ')) + '에 이 날짜 시트가 없어 전체시간표로 비교했어요' : ''}${g.dailyUnread.length ? ' · ⚠ ' + escapeHtml(g.dailyUnread.join(', ')) + '의 이 날짜 시트는 모양이 달라 읽지 못해 전체시간표로 비교했어요' : ''}</div>` : '')
       + (g.dailyLoading ? '<div class="cap-hint">그날 시간표를 읽는 중이에요… 잠시 뒤 다시 열면 반영돼요.</div>' : '')
       + (g.hasCard ? '' : '<div class="cap-hint">전체시간표나 그날 물리치료·기구시간표를 올리면 스케줄과 다른 치료를 보라색으로 알려드려요.</div>') + legend + html

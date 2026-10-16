@@ -266,6 +266,82 @@ body.emb .top{display:none}
 .cardhead{padding:6px 10px;font-size:12px;font-weight:700;color:var(--navy);background:#f3f7fd;border-bottom:1px solid var(--line)}
 .cardwrap{padding:6px;overflow:auto;max-height:46vh}
 @media (max-width:1100px){body{overflow:auto;height:auto}#app.on{display:block}.right{height:auto}}
+
+/* ===== 여백 없이 꽉 차게 · 팝업은 필요할 때만 스크롤 ===== */
+#app.on{grid-template-columns:minmax(0,1fr) clamp(340px,24vw,460px)}
+#grid th,#grid td{height:var(--rh,40px)}
+#grid thead th{height:auto}#grid tr.lunch td,#grid tr.lunch th{height:18px}
+.modal{width:min(1180px,100%)}
+.mbody{flex:1;min-height:0}
+.mlist,.mdetail{max-height:none;overflow:auto;min-height:0}
+.mdetail h4{margin-top:0}
+.cardwrap{overflow:hidden;max-height:none;padding:4px}
+.cardzoom{margin:0 auto}
+.badge.ask{background:#ffe9c7;color:#8a4b00}
+.mitem.ask{border-style:dashed;background:#fffaf0}
+.askbox{background:#fff7e8;border:1px solid #f0d9a8;border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.5;margin-bottom:8px}
+.mlist .gl{margin:4px 2px 2px}
+.split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;align-items:start}
+.splitR .form{border-top:0;padding-top:0}
+@media (max-width:1100px){.split{grid-template-columns:1fr}}
+
+/* ===== 차분한 디자인: 상단 바(전체 폭, 패널과 무관하게 고정) + 오른쪽 탭 패널 ===== */
+:root{--yellow:#fff3a8;--cand:#ffcf8a;--hold:#f4a3a0;--manual:#8fe0bd}
+#app.on{grid-template-columns:minmax(0,1fr) clamp(330px,23vw,430px);grid-template-rows:auto minmax(0,1fr);gap:8px 10px}
+body.side-off #app.on{grid-template-columns:minmax(0,1fr)}
+.bar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap;min-height:34px}
+.bar-l,.bar-r{display:flex;align-items:center;gap:8px;min-width:0}.bar-r{flex:none}.bar-l{flex-wrap:nowrap;overflow:hidden}
+.bar .sep{width:1px;height:20px;background:var(--line);flex:none}
+.bar input[type=date]{height:30px;padding:2px 8px;font-size:12.5px}.bar #wdLabel{font-weight:700;color:#33445c;font-size:12.5px;margin-left:2px}
+.bt{height:30px;padding:0 11px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:#33445c;border-radius:8px;white-space:nowrap}
+.bt:hover{background:#f1f5fa}.bt.pri{background:#5b72b4;border-color:#5b72b4;color:#fff;font-weight:700}.bt.pri:hover{background:#4d63a3}
+.bt.sm{height:24px;padding:0 8px;font-size:11.5px}.bt.wide{width:100%;height:34px;font-size:13px}
+.bt.side{min-width:70px}.bt.side::after{content:" ▸";opacity:.6}body.side-off .bt.side::after{content:" ◂"}
+.lnk{border:0;background:transparent;color:#5b6472;font-size:12px;padding:2px 4px;text-decoration:underline;text-underline-offset:2px}.lnk:hover{background:transparent;color:#2f4378}.lnk.dg{color:#b04a54}
+.seg{display:inline-flex;background:#eaeff6;border-radius:9px;padding:2px;gap:2px;flex:none}.seg button{border:0;background:transparent;border-radius:7px;padding:0 12px;height:26px;font-size:12.5px;font-weight:600;color:#5b6472}
+.seg button:hover{background:rgba(255,255,255,.6)}.seg button.on{background:#fff;color:#2f4378;box-shadow:0 1px 3px rgba(20,40,70,.15);font-weight:800}
+.daybar{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#5b6472;background:#f1f5fa;border:0;border-radius:8px;padding:0 4px 0 10px;height:30px;margin:0;white-space:nowrap}
+.daybar b{color:#2f4378}.daybar button{border:0;background:transparent;color:#2f4378;font-weight:700;font-size:12px;padding:0 8px;height:26px;text-decoration:underline;text-underline-offset:2px}
+.daybar.none{background:transparent;padding:0;color:#8a95a8}
+.mini-note{font-size:11.5px;color:#8a95a8;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toolbar{display:none}
+.right{background:#fff;border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;gap:0;padding:0;box-shadow:0 2px 10px rgba(20,40,70,.04)}
+.ptabs{display:flex;flex:none;border-bottom:1px solid var(--line);background:#fafcff}
+.ptabs button{flex:1;border:0;border-radius:0;background:transparent;height:38px;font-size:13px;font-weight:700;color:#7a8597;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ptabs button:hover{background:#f1f5fa}.ptabs button.on{color:#2f4378;border-bottom-color:#5b72b4;background:#fff}
+.ptabs i{font-style:normal;margin-left:5px;font-size:11px;font-weight:800;color:#5b6472;background:#e9eef6;border-radius:99px;padding:0 6px}.ptabs i:empty{display:none}.ptabs i.warn{background:#fde3e1;color:#a63a34}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 14px}
+.pane{display:none}.pane.on{display:block}
+.sec{margin-bottom:18px}.sec:last-child{margin-bottom:4px}
+.sec h3{margin:0 0 8px;font-size:12.5px;font-weight:800;color:#33445c;display:flex;align-items:center;gap:6px;justify-content:space-between}
+.sec h3 small{font-weight:500;font-size:11px;color:#8a95a8;margin-left:auto}
+.gl{font-size:11px;color:#8a95a8;margin:8px 0 4px;font-weight:700}
+.chips{gap:4px}
+.chip{border:1px solid transparent;background:#f1f4f9;border-radius:7px;padding:3px 9px;font-size:12px;font-weight:500;color:#33445c}
+.chip:hover{background:#e7ecf4}
+.chip.on{background:#fff;border-color:var(--c,#5b72b4);box-shadow:inset 3px 0 0 var(--c,#5b72b4);font-weight:800;color:#1c2230}
+.chip i{display:none}.chip.on i{display:inline-block;background:var(--c)}
+.halfrow{margin-top:5px;padding:5px 8px;background:#f7f9fc;border-radius:8px}.halfrow b{font-size:12px}
+.autorow{display:flex;gap:6px;margin:6px 0 0}.autorow.sub .bt{flex:1;padding:0 4px;font-size:12px}.autorow.end{justify-content:flex-end;margin-top:4px}
+.prio-sum{margin-top:8px;font-size:11.5px;color:#6a7690;background:#f7f9fc;border-radius:8px;padding:7px 10px;line-height:1.55}
+.stats{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:6px;font-size:12px;color:#5b6472}
+.stat{background:transparent;padding:0;border-radius:0}.stat b{font-size:13px;color:#1c2230}.stat.red b{color:#c2453f}
+.list{gap:0}
+.row{border:0;border-bottom:1px solid #eef1f6;border-radius:0;padding:7px 4px;background:transparent}
+.row:hover{background:#f7f9fc}.row.sel{outline:0;background:#eef3fb}
+.row .t b{font-size:12.5px}.row .t small{font-size:11.5px}
+.row .n{background:#eaf3ee;color:#2b6b4a}.row .n.zero{background:#fbe9e7;color:#a63a34}
+.tag{background:#f1f4f9}
+.awaybox summary{color:#5b6472;font-weight:600;font-size:12px}
+.ck-row{background:#f7f9fc}.ck-row.warn{background:#fff6ea}
+.mini{display:flex;gap:6px;margin-top:6px}.mini input{height:30px}
+#grid td.cand{animation:none;box-shadow:inset 0 0 0 2px #e0a24a}
+#grid td.slot{background:var(--yellow)}
+.legend{color:#8a95a8}
+@media (max-width:1100px){.bar{flex-wrap:wrap}.bar-l{flex-wrap:wrap}}
+.bt.side{position:relative}.sidemini{position:absolute;right:-4px;top:-9px;pointer-events:none;display:inline-flex;gap:3px}.sbadge{background:#d4606c;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 7px;white-space:nowrap;line-height:1.3}
+body.emb #drop{display:none!important}
+#wait{flex:1;align-items:center;justify-content:center;color:#8a95a8}.waitcard{text-align:center;max-width:460px;line-height:1.8;font-size:13px}.waitcard b{color:#33445c;font-size:14px}
 </style>
 </head>
 <body>
@@ -286,66 +362,85 @@ body.emb .top{display:none}
   <p id="loadMsg" style="margin-top:12px"></p>
 </section>
 
+<section id="wait" style="display:none"><div class="waitcard" id="waitMsg"></div></section>
+
 <main id="app">
-  <section class="left">
-    <div class="toolbar">
+  <div class="bar">
+    <div class="bar-l">
       <span class="datebox"><input type="date" id="date"><span id="wdLabel"></span></span>
-      <button id="btnDay" title="엑셀에서 이미 만들어 둔 날짜 시트를 불러와 미리보기를 만들어요" style="display:none">📄 날짜 시트 불러오기</button>
-      <div class="daybar none" id="dayBar" style="display:none"></div>
-      <div class="tabs" id="teamTabs">
+      <button id="btnDay" class="bt" title="엑셀에서 이미 만들어 둔 날짜 시트를 불러와 미리보기를 만들어요" style="display:none">📄 시트 불러오기</button>
+      <span class="daybar none" id="dayBar" style="display:none"></span>
+      <span class="sep"></span>
+      <div class="seg" id="teamTabs">
         <button data-t="all" class="on">전체</button><button data-t="1팀">1팀</button><button data-t="2팀">2팀</button><button data-t="3팀">3팀</button>
       </div>
       <span id="wkWarn" class="warn"></span>
-      <span class="grow"></span>
-      <span class="mini-note" id="matNote"></span>
-      <button id="btnText" class="primary" title="카톡에 보낼 문구(선생님별)와 병동에 보낼 문구(병동별)를 만들어요">📋 카톡·병동 문구</button>
-      <button id="btnXlsx" class="primary" title="그 날짜 시트만 든 새 엑셀로 저장해요(원본은 안 바뀌어요)">📥 엑셀 내보내기</button>
-      <span id="sideMini" class="sidemini" title="누르면 패널을 펴요"></span><button id="btnSide" title="오른쪽 패널 접기/펼치기">패널 접기 ▶</button>
     </div>
+    <div class="bar-r">
+      <span class="mini-note" id="matNote"></span>
+      <button id="btnText" class="bt" title="카톡에 보낼 문구(선생님별)와 병동에 보낼 문구(병동별)를 만들어요">📋 문구</button>
+      <button id="btnXlsx" class="bt" title="그 날짜 시트만 든 새 엑셀로 저장해요(원본은 안 바뀌어요)">📥 엑셀</button>
+      <span class="sep"></span>
+      <button id="btnSide" class="bt side" title="오른쪽 패널 열기/닫기">패널<span id="sideMini" class="sidemini"></span></button>
+    </div>
+  </div>
+  <section class="left">
     <div class="gridwrap"><table id="grid"></table></div>
     <div class="legend">
       <span><i style="background:var(--yellow)"></i>빈 시간</span>
-      <span><i style="background:var(--cand)"></i>넣을 수 있는 칸(숫자=가능 인원)</span>
+      <span><i style="background:var(--cand)"></i>넣을 수 있는 칸</span>
       <span><i style="background:#cc66ff"></i>연차자 색 = 그 선생님 대신 들어간 치료</span>
-      <span><i style="background:var(--manual)"></i>직접 넣은 치료</span>
-      <span><i style="background:var(--hold)"></i>HOLD(못 넣은 치료)</span>
-      <span><i style="background:repeating-linear-gradient(135deg,#fff7a8 0 4px,#ffe97a 4px 8px)"></i>비운 칸(퇴원/결석)</span>
+      <span><i style="background:var(--manual)"></i>직접 넣음</span>
+      <span><i style="background:var(--hold)"></i>HOLD</span>
+      <span><i style="background:repeating-linear-gradient(135deg,#fff7a8 0 4px,#ffe97a 4px 8px)"></i>비운 칸</span>
     </div>
   </section>
   <aside class="right">
-    <div class="card">
-      <h3>연차 / 휴가 / 반차 선생님 <small>눌러서 선택 · <b class="ebadge">E</b> = 연하전기(ERDT) 담당</small></h3>
-      <div id="absentChips"></div>
-      <div id="halfBox"></div>
+    <div class="ptabs" id="ptabs">
+      <button data-pane="a" class="on">선생님<i id="cntA"></i></button><button data-pane="b">배치<i id="cntB"></i></button><button data-pane="c">점검<i id="cntC"></i></button>
     </div>
-    <div class="card">
-      <h3>자동 배치 <button class="gear" id="btnPrio" title="우선순위·규칙 설정">⚙ 우선순위·규칙</button></h3>
-      <div class="autorow"><button id="btnAutoAll" class="primary">자동 배치 ▶</button><button id="btnResetAuto">자동 배치 지우기</button><button id="btnResetAll" class="danger">전부 초기화</button></div>
-      <div class="autorow sub"><button id="btnAuto" title="같은 시간·같은 층의 빈 칸에만 넣어요">① 같은 시간</button><button id="btnAutoChg" title="못 넣은 치료를 시간을 바꿔서(같은 층) 넣어요">② 시간 바꿔서</button><button id="btnAutoCross" title="마지막 수단: 환자 층과 다른 층 선생님 칸까지 써요">③ 다른 층까지</button></div>
-      <div class="prio-sum" id="prioSum"></div>
-    </div>
-    <div class="card">
-      <h3>진행 상황</h3>
-      <div class="stats" id="stats"></div>
-      <div class="gl" style="margin-top:0">HOLD (못 넣은 치료) — 누르면 넣을 수 있는 칸이 표시돼요 · ★ = 먼저 넣기</div>
-      <div class="list" id="holdList"></div>
-    </div>
-    <div class="card">
-      <h3>규칙 점검 <small id="checkCnt"></small></h3>
-      <div id="checkBody"></div>
-    </div>
-    <div class="card">
-      <h3>오늘 없는 환자 <small>퇴원·결석·외진·외박·외출 → 그 칸이 빈칸이 돼요</small></h3>
-      <div class="tags" id="goneTags"></div>
-      <div class="mini"><input type="text" id="goneIn" list="patList" placeholder="환자 이름 입력(하루 종일)"><button id="goneAdd">추가</button></div>
-      <datalist id="patList"></datalist>
-      <details class="awaybox" id="awayBox">
-        <summary>외진·외박·외출 명단 붙여넣기</summary>
-        <textarea id="awayText" spellcheck="false" placeholder="예)&#10;[외박] 김OO 박OO&#10;외진 이OO 10:30~12:00&#10;최OO 외출 14시"></textarea>
-        <div class="mini"><button id="awayAdd" class="primary">명단 적용</button><button id="awayClear">전부 해제</button></div>
-        <div class="mini"><button id="awayMsgBtn" title="메신저의 외출·외박 명단을 읽어 와요(읽기만 해요)">🔗 메신저에서 불러오기</button></div>
-        <div class="note2" id="awayMsg">줄마다 이름·종류(외진/외박/외출)·시간을 읽어요. 시간이 없으면 하루 종일, 있으면 그 시간 칸만 비워요.</div>
-      </details>
+    <div class="pbody">
+      <section class="pane on" data-pane="a">
+        <div class="sec">
+          <h3>연차 · 휴가 · 반차 <small>눌러서 선택 · <b class="ebadge">E</b> 연하전기 담당</small></h3>
+          <div id="absentChips"></div>
+          <div id="halfBox"></div>
+        </div>
+        <div class="sec">
+          <h3>오늘 없는 환자 <small>퇴원·결석·외진·외박·외출 → 그 칸이 빈칸이 돼요</small></h3>
+          <div class="tags" id="goneTags"></div>
+          <div class="mini"><input type="text" id="goneIn" list="patList" placeholder="환자 이름(하루 종일)"><button id="goneAdd" class="bt">추가</button></div>
+          <datalist id="patList"></datalist>
+          <div class="mini"><button id="awayMsgBtn" class="bt" title="메신저의 외출·외박 명단을 읽어 와요(읽기만 해요)">🔗 메신저에서 외진·외박·외출 불러오기</button></div>
+          <details class="awaybox" id="awayBox">
+            <summary>외진·외박·외출 명단 직접 붙여넣기</summary>
+            <textarea id="awayText" spellcheck="false" placeholder="예)&#10;[외박] 김OO 박OO&#10;외진 이OO 10:30~12:00&#10;최OO 외출 14시"></textarea>
+            <div class="mini"><button id="awayAdd" class="bt">명단 적용</button><button id="awayClear" class="bt">전부 해제</button></div>
+          </details>
+          <div class="note2" id="awayMsg">외출·외박은 나간 시간이 오전이면 오전 치료만, 오후면 오후 치료만 비워요(귀원 시각 미정일 때). 치료 중간에 걸치면 그 치료는 받는 걸로 봐요.</div>
+        </div>
+      </section>
+      <section class="pane" data-pane="b">
+        <div class="sec">
+          <h3>자동 배치 <button class="bt sm" id="btnPrio" title="우선순위·규칙 설정">⚙ 규칙</button></h3>
+          <button id="btnAutoAll" class="bt pri wide">자동 배치 ▶</button>
+          <div class="autorow sub"><button id="btnAuto" class="bt" title="같은 시간·같은 층의 빈 칸에만 넣어요">① 같은 시간</button><button id="btnAutoChg" class="bt" title="못 넣은 치료를 시간을 바꿔서(같은 층) 넣어요">② 시간 바꿔서</button><button id="btnAutoCross" class="bt" title="마지막 수단: 환자 층과 다른 층 선생님 칸까지 써요">③ 다른 층까지</button></div>
+          <div class="autorow end"><button id="btnResetAuto" class="lnk">자동 배치 지우기</button><button id="btnResetAll" class="lnk dg">전부 초기화</button></div>
+          <div class="prio-sum" id="prioSum"></div>
+        </div>
+        <div class="sec">
+          <h3>진행 상황</h3>
+          <div class="stats" id="stats"></div>
+          <div class="gl">HOLD — 눌러서 넣을 자리 보기 · ★ 먼저 넣기</div>
+          <div class="list" id="holdList"></div>
+        </div>
+      </section>
+      <section class="pane" data-pane="c">
+        <div class="sec">
+          <h3>규칙 점검 <small id="checkCnt"></small></h3>
+          <div id="checkBody"></div>
+        </div>
+      </section>
     </div>
   </aside>
 </main>
@@ -412,6 +507,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var NOTE_RE = /(휴직|단축|휴가|연차|반차|외근|출장)/;
   var BLOCK_RE = /(ERDT|CCRT|BETTER|COMCOG)/i;
   var SWAP_RE = /(연하전기|전기치료|FES)/;
+  var ASK_RE = /기구/; // 기구(1:다)는 시간을 옮길 수 있지만 자동으로 하지 않고, 칸을 눌렀을 때 안내만 한다
   var FLOOR_SPLIT_COL = 34; // AH 까지 10F, AI(35) 부터 3F
 
   /* ---------- 공통 유틸 ---------- */
@@ -824,7 +920,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var a = st.away && st.away[n]; if (!a) return false;
     if (!a.ranges || !a.ranges.length) return true;
     var m = hmToMin(rec.hm);
-    return a.ranges.some(function (r) { return m < r[1] && m + 35 > r[0]; });
+    // 치료 한 타임(약 30분)이 나가 있는 시간 안에 통째로 들어갈 때만 못 받는 치료로 본다 — 나가는·돌아오는 시각이 치료 중간에 걸치면 그 치료는 받는 걸로 둔다
+    return a.ranges.some(function (r) { return m >= r[0] && m + 30 <= r[1]; });
   }
   function isFreed(st, rec) {
     if (!rec) return false;
@@ -880,6 +977,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var tr = gen.timeRows.filter(function (t) { return t.row === dr; })[0];
     var ent = cd.sched[st.wd] && cd.sched[st.wd][tr.hm];
     if (!ent) return { ok: true, mode: 'free' };
+    if (ASK_RE.test(ent.tx)) return { ok: false, mode: 'ask', askTx: ent.tx, why: '그 시간에 ' + ent.tx + ' 치료가 있어요(기구는 옮길 수 있어요 — 확인 후 직접)', swapName: ent.tx.replace(/\(.*\)$/, '').trim() + (/\(/.test(ent.tx) ? '(' + (ent.tx.match(/\(([^)]*)\)/) || [0, ''])[1] + ')' : ''), swapFrom: tr.hm, swapTo: hm };
     if (SWAP_RE.test(ent.tx)) return { ok: true, mode: 'swap', swapName: ent.tx.replace(/\(.*\)$/, '').trim(), swapFrom: tr.hm, swapTo: hm };
     return { ok: false, mode: 'busy', why: '전체시간표(원본)에 ' + ent.tx + ' 있음' };
   }
@@ -956,6 +1054,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return out;
   }
 
+  // 환자가 그 시간에 기구 치료를 받고 있어서 자동으로는 못 넣지만, 기구를 옮기면 가능한 자리(눌렀을 때 안내용 — 자동 배치는 쓰지 않는다)
+  function askSlotsForItem(gen, st, cards, rec) {
+    var out = [];
+    slotCells(gen, st).forEach(function (s) {
+      var e = slotOk(gen, st, cards, rec, s);
+      if (e.ok || e.mode !== 'ask') return;
+      var cc = colCheck(gen, st, cards, rec, gen.colSet[s.c], rec.id), o = {}; Object.keys(e).forEach(function (k) { o[k] = e[k]; });
+      o.crossFloor = cc.crossFloor; o.rowDiff = Math.abs(rowIdx(gen, s.r) - rowIdx(gen, rec.r));
+      out.push({ slot: s, elig: o, score: scoreOf(gen, st, rec, s, o) });
+    });
+    out.sort(function (a, b) { return a.score - b.score; });
+    return out;
+  }
+
   function eligibleItemsForSlot(gen, st, cards, slot) {
     var out = [];
     unplacedItems(gen, st).forEach(function (rec) {
@@ -968,11 +1080,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   // HOLD 설명: 후보가 몇 곳이고 왜 못 넣었는지(같은 시간 / 시간 변경 / 다른 층)
   function holdInfo(gen, st, cards, rec) {
-    var cfg = cfgOf(st), info = { same: 0, change: 0, cross: 0, any: 0, whyNone: '' };
+    var cfg = cfgOf(st), info = { same: 0, change: 0, cross: 0, any: 0, ask: 0, whyNone: '' };
     var why = {};
     slotCells(gen, st).forEach(function (s) {
       var e = slotOk(gen, st, cards, rec, s);
-      if (!e.ok) { if (e.why) why[e.why] = (why[e.why] || 0) + 1; return; }
+      if (!e.ok) { if (e.mode === 'ask') info.ask++; if (e.why) why[e.why] = (why[e.why] || 0) + 1; return; }
       if (e.crossFloor) { info.cross++; return; }
       info.any++;
       if (e.rowDiff === 0) info.same++; else if (e.rowDiff <= cfg.maxMoveRows) info.change++;
@@ -1237,6 +1349,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   // 종류만 있고 이름이 없는 줄(예: "[외박]")은 아래 줄들의 종류로 쓴다. 시간이 없으면 하루 종일, 시작 시각만 있으면 그 한 타임.
   var AWAY_RE = /(외진|외박|외출|퇴원|전원|결석)/;
   var STOP = /^(오전|오후|병동|환자|명단|오늘|내일|명|분|외래|입원|예정|시간|선생님|이름|수술|검사|회진)$/;
+  var NOON_END = 12 * 60 + 30; // 오전 치료는 12:30 전 시작
+  function half(min) { return min < NOON_END ? 'AM' : 'PM'; }
   function parseAway(text, known) {
     var entries = [], unknown = [], curKind = '';
     String(text || '').split(/\n+/).forEach(function (raw) {
@@ -1244,7 +1358,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var km = line.match(AWAY_RE), kind = km ? km[1] : curKind;
       var from = null, to = null, rm = line.match(/(\d{1,2})(?::(\d{2}))?\s*시?\s*[~\-–]\s*(\d{1,2})(?::(\d{2}))?\s*시?/);
       if (rm) { from = +rm[1] * 60 + (+rm[2] || 0); to = +rm[3] * 60 + (+rm[4] || 0); }
-      else { var sm = line.match(/(\d{1,2}):(\d{2})|(\d{1,2})\s*시/); if (sm) { from = sm[1] ? +sm[1] * 60 + (+sm[2]) : +sm[3] * 60; to = from + 35; } }
+      else {
+        var sm = line.match(/(\d{1,2}):(\d{2})|(\d{1,2})\s*시/);
+        if (sm) { from = sm[1] ? +sm[1] * 60 + (+sm[2]) : +sm[3] * 60; to = half(from) === 'AM' ? NOON_END : 24 * 60; } // 돌아오는 시각이 없으면 그 오전/오후가 끝날 때까지
+        else if (/오전/.test(line)) { from = 0; to = NOON_END; } else if (/오후/.test(line)) { from = NOON_END; to = 24 * 60; }
+      }
       var body = line.replace(AWAY_RE, ' ').replace(/\d{1,2}(:\d{2})?\s*시?/g, ' ').replace(/선생님|님/g, ' ');
       var toks = body.match(/[가-힣]{2,4}[A-Z]?/g) || [], found = 0;
       toks.forEach(function (t) {
@@ -1286,8 +1404,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (!hit) { var c = names.filter(function (k) { return k.replace(/[A-Z]$/, '') === nm && k !== nm; }); if (c.length === 1) hit = c[0]; else if (c.length > 1) { ambiguous.push({ patient: nm, candidates: c, kind: r.category }); return; } }
       if (!hit) { skipped++; return; }
       var text = String(r.category || '') + ' ' + String(r.reason || ''), kind = /외진/.test(text) ? '외진' : /외박/.test(text) ? '외박' : /외출/.test(text) ? '외출' : (String(r.category || '').trim() || '외출');
+      // 외박은 하루 종일. 외출·외진: 나가는 시각~돌아오는 시각. 돌아오는 시각이 미정이면 나간 시간이 오전이면 오전 치료만, 오후면 오후 치료만 못 받는 걸로 본다(「오전」「오후」글자만 있어도 같은 규칙).
       var from = null, to = null;
-      if (kind !== '외박') { var a = clockMin(r.departureText), b = clockMin(r.returnText); if (a != null) { from = a; to = b != null && b > a ? b : 24 * 60; } }
+      if (kind !== '외박') {
+        var a = clockMin(r.departureText), b = clockMin(r.returnText), dw = String(r.departureText || ''), rw = String(r.returnText || '');
+        if (a == null) a = /오전/.test(dw) ? 0 : /오후/.test(dw) ? NOON_END : null;
+        if (a != null) { from = a; to = b != null && b > a ? b : (/오전/.test(rw) && !/\d/.test(rw) ? NOON_END : (half(a) === 'AM' ? NOON_END : 24 * 60)); }
+      }
       entries.push({ name: hit, kind: kind, from: from, to: to, src: 'msg' });
     });
     return { entries: entries, ambiguous: ambiguous, skipped: skipped };
@@ -1307,7 +1430,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (kind !== 'ERDT' && cfg.noOrdinaryRoles.indexOf(co.role) >= 0) out.push({ id: id, kind: 'ordinary', text: who + ' → ' + where + ': ' + co.role + '님은 일반 치료를 받지 않아요' });
       if (recoveryOf(rec, cfg, cards) === 'non' && halfOf(rec.hm) !== halfOf(dst.hm)) out.push({ id: id, kind: 'half', text: who + ' → ' + where + ': 비회복기 환자는 ' + HALF_LABEL[halfOf(rec.hm)] + ' 안에서만 옮길 수 있어요' });
       var pf = patientFloor(gen, cards, rec); if (pf && co.floor !== pf) out.push({ id: id, kind: 'cross', text: who + ' → ' + where + ': 환자 층(' + pf + ')과 다른 층 선생님이에요' });
-      if (rec.kind === 'item' && p.dr !== rec.r) { var rows = patientRows(gen, st, rec.item.name, id); if (rows[p.dr]) out.push({ id: id, kind: 'busy', text: who + ' → ' + where + ': 그 시간에 이 환자의 다른 치료가 있어요' }); }
+      if (rec.kind === 'item' && p.dr !== rec.r && !p.swap) { var rows = patientRows(gen, st, rec.item.name, id); if (rows[p.dr]) out.push({ id: id, kind: 'busy', text: who + ' → ' + where + ': 그 시간에 이 환자의 다른 치료가 있어요' }); }
       var cap = capOf(gen, cfg, co);
       if (cap < Infinity && !seenCap[co.c]) { var ld = loadOf(gen, st, co); if (ld > cap) { seenCap[co.c] = true; out.push({ id: id, kind: 'cap', text: co.name + ' 선생님: 대체를 받아 하루 ' + ld + '타임이에요(한도 ' + cap + '타임)' }); } } // 대체로 받은 칸이 있는 선생님만 본다
     });
@@ -1482,7 +1605,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     parseGenhwang: parseGenhwang, parseCardFile: parseCardFile, buildCardIndex: buildCardIndex,
     newState: newState, isAbsent: isAbsent, absentAt: absentAt, setHalf: setHalf, halfLabel: halfLabel, toggleAbsent: toggleAbsent,
     isGone: isGone, isPast: isPast, buildWardSummary: buildWardSummary, roomOf: roomOf, wardOf: wardOf, parseAway: parseAway, applyAway: applyAway, removeAway: removeAway, clearMessengerAway: clearMessengerAway, awayFromMessenger: awayFromMessenger, clockMin: clockMin, absentItems: absentItems, goneItems: goneItems, isFreed: isFreed, isOpen: isOpen, toggleGone: toggleGone, toggleFreed: toggleFreed, unplacedItems: unplacedItems, slotCells: slotCells,
-    eligibility: eligibility, candidateSlotsForItem: candidateSlotsForItem, eligibleItemsForSlot: eligibleItemsForSlot,
+    eligibility: eligibility, candidateSlotsForItem: candidateSlotsForItem, askSlotsForItem: askSlotsForItem, eligibleItemsForSlot: eligibleItemsForSlot,
     locSuggestions: locSuggestions, placeItem: placeItem, unplace: unplace, sanitize: sanitize,
     autoPlaceSameTime: autoPlaceSameTime, autoPlaceChangeTime: autoPlaceChangeTime, autoPlaceAll: autoPlaceAll, autoOrder: autoOrder, clearPlacements: clearPlacements,
     defaultCfg: defaultCfg, cfgOf: cfgOf, erdtNames: erdtNames, isErdtCol: isErdtCol, treatKind: treatKind, KIND_LABEL: KIND_LABEL, parseRoles: parseRoles,
@@ -1793,6 +1916,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (S.started && (kind === 'gen' || kind === 'c10' || kind === 'c3')) { startApp(true); }
   }
 
+  // 재활치료부 앱 안에서는 파일 넣는 화면을 보여 주지 않는다(파일은 위쪽 띠·데이터 준비 화면에서 자동으로 들어온다). 못 찾은 파일이 있을 때만 안내한다.
+  var waitSince = Date.now();
+  function updateWait() {
+    var w = $('#wait'); if (!w || !document.body.classList.contains('emb')) return;
+    if (S.started) { w.style.display = 'none'; return; }
+    w.style.display = 'flex';
+    var miss = [!S.gen && '평일시간표(원본) — 작업치료현황.xlsx', !S.c10 && '10F 환자전체시간표(원본)', !S.c3 && '3F 환자전체시간표(원본)'].filter(Boolean);
+    $('#waitMsg').innerHTML = (Date.now() - waitSince < 6000 || !miss.length) ? '<b>데이터를 불러오는 중이에요…</b>' : '<b>아직 못 찾은 파일이 있어요</b><br>' + miss.map(esc).join('<br>') + '<br><span class="note2">위쪽 띠의 「직접 넣기」나 「데이터 준비」 화면에서 파일을 넣으면 바로 시작돼요.</span>';
+  }
   function renderNeed() {
     var items = [
       ['gen', '작업치료현황.xlsx', '평일시간표(원본)', !!S.gen],
@@ -1801,6 +1933,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     ];
     $('#need').innerHTML = items.map(function (x) { return '<div class="' + (x[3] ? 'ok' : '') + '"><b>' + (x[3] ? '✓ ' : '') + esc(x[1]) + '</b><small>' + esc(x[2]) + (x[3] ? ' · 읽었어요' : ' · 필요해요') + '</small></div>'; }).join('') +
       '<div class="' + (S.dayBuf ? 'ok' : '') + '"><b>' + (S.dayBuf ? '✓ ' : '') + '작업치료실_시간표.xlsx</b><small>(선택) 만들어 둔 날짜 시트 불러오기용</small></div>';
+    updateWait();
     $('#btnStart').style.display = S.gen ? 'inline-block' : 'none';
     $('#btnPick').style.display = S.gen ? 'none' : 'inline-block';
     var chips = [
@@ -1900,7 +2033,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function startApp(keepState) {
     if (!S.gen) return;
     S.started = true;
-    $('#drop').style.display = 'none';
+    $('#drop').style.display = 'none'; updateWait();
     $('#app').classList.add('on');
     $('#patList').innerHTML = Object.keys(S.names).sort().map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
     renderNeed();
@@ -1968,11 +2101,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       cols.forEach(function (co) { body += cellHTML(tr, co, dm, candMap); });
       body += '</tr>';
     });
-    var wrapW = $('.gridwrap').clientWidth || 1000, cw = Math.max(76, Math.min(112, Math.floor((wrapW - 58 - 2) / Math.max(cols.length, 1)))); // 칸 너비: 보이는 열 수에 맞춰 늘이고 줄인다(팀 탭이면 스크롤 없이)
+    var wrapW = $('.gridwrap').clientWidth || 1000, cw = Math.max(76, Math.floor((wrapW - 58 - 2) / Math.max(cols.length, 1))); // 칸 너비: 보이는 열 수에 맞춰 늘이고 줄인다(팀 탭이면 스크롤 없이)
     var cg = '<colgroup><col style="width:58px">' + cols.map(function () { return '<col style="width:' + cw + 'px">'; }).join('') + '</colgroup>';
-    $('#grid').style.width = (58 + cols.length * cw) + 'px';
+    $('#grid').style.width = Math.max(58 + cols.length * cw, wrapW - 2) + 'px';
     $('#grid').innerHTML = cg + '<thead>' + g1 + g2 + '</thead><tbody>' + body + '</tbody>';
+    // 칸 높이: 창이 크면 남는 세로 공간을 시간 줄이 나눠 쓴다(아래 여백이 안 생기게). 작으면 기본 40px
+    var wrapH = $('.gridwrap').clientHeight, headH = $('#grid thead').offsetHeight, lunchH = $('#grid tr.lunch') ? 18 : 0;
+    var rh = Math.max(40, Math.min(76, Math.floor((wrapH - headH - lunchH - 2) / Math.max(gen.timeRows.length, 1))));
+    $('#grid').style.setProperty('--rh', rh + 'px');
   }
+  var rzT = null;
+  window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S.st && $('#app').classList.contains('on')) renderGrid(); }, 120); });
 
   function cellHTML(tr, co, dm, candMap) {
     var gen = S.gen, st = S.st;
@@ -2029,7 +2168,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('#absentChips').innerHTML = Object.keys(groups).map(function (g) {
       return '<div class="gl">' + esc(g) + '</div><div class="chips">' + groups[g].map(function (co) {
         var on = Core.isAbsent(st, co.c);
-        return '<button class="chip ' + (on ? 'on' : '') + (co.off ? ' dis' : '') + '" data-col="' + co.c + '"' + (on ? ' style="background:' + st.colors[co.c] + '"' : '') + '>' + (on ? '' : '<i style="background:#fff"></i>') + esc(co.name) + (Core.isErdtCol(gen, cfgNow, co) ? '<span class="ebadge">E</span>' : '') + '</button>';
+        return '<button class="chip ' + (on ? 'on' : '') + (co.off ? ' dis' : '') + '" data-col="' + co.c + '"' + (on ? ' style="--c:' + st.colors[co.c] + '"' : '') + '>' + (on ? '<i></i>' : '') + esc(co.name) + (Core.isErdtCol(gen, cfgNow, co) ? '<span class="ebadge">E</span>' : '') + '</button>';
       }).join('') + '</div>';
     }).join('');
 
@@ -2043,6 +2182,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     items.forEach(function (r) { var p = st.place[r.id]; if (p) { if (p.dr === r.r) same++; else chg++; } });
     $('#stats').innerHTML = '<span class="stat">연차 <b>' + st.absent.length + '</b>명</span><span class="stat">옮길 치료 <b>' + items.length + '</b>건</span><span class="stat">같은 시간 <b>' + same + '</b></span><span class="stat">시간변경 <b>' + chg + '</b></span><span class="stat red">HOLD <b>' + un.length + '</b></span>';
 
+    var ca = $('#cntA'), cb = $('#cntB'); ca.textContent = st.absent.length || ''; cb.textContent = un.length || (items.length ? '✓' : ''); cb.className = un.length ? 'warn' : '';
     // HOLD 목록
     if (!st.absent.length) $('#holdList').innerHTML = '<div class="empty">먼저 위에서 연차/휴가 선생님을 선택하세요.</div>';
     else if (!un.length) $('#holdList').innerHTML = '<div class="empty">' + (items.length ? '모든 치료를 넣었어요 🎉' : '옮길 치료가 없어요.') + '</div>';
@@ -2050,7 +2190,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       $('#holdList').innerHTML = un.map(function (r) {
         var hi = Core.holdInfo(gen, st, S.cards, r), cands = hi.any, sel = S.selected === r.id, pinned = !!(st.pins && st.pins[r.id]);
         var rcv = Core.recoveryOf(r, cfgNow, S.cards) === 'non' ? '비회복기 · ' + Core.HALF_LABEL[Core.halfOf(r.hm)] + '만 · ' : '';
-        var info = rcv + ((hi.any || hi.cross) ? '같은 시간 ' + hi.same + ' · 가까운 시간 ' + hi.change + ' · 그 외 ' + Math.max(0, hi.any - hi.same - hi.change) + (hi.cross ? ' · 다른 층 ' + hi.cross : '') : hi.whyNone);
+        var info = rcv + ((hi.any || hi.cross) ? '같은 시간 ' + hi.same + ' · 가까운 시간 ' + hi.change + ' · 그 외 ' + Math.max(0, hi.any - hi.same - hi.change) + (hi.cross ? ' · 다른 층 ' + hi.cross : '') + (hi.ask ? ' · 기구 옮기면 +' + hi.ask : '') : (hi.ask ? '기구를 옮기면 ' + hi.ask + '곳에 넣을 수 있어요(눌러서 확인)' : hi.whyNone));
         return '<div class="row ' + (sel ? 'sel' : '') + '" data-hold="' + r.id + '"><span class="sw" style="background:' + st.colors[r.c] + '"></span><div class="t"><b>' + esc(descOf(r)) + '</b><small>' + esc(gen.colSet[r.c].name) + ' · ' + r.hm + (r.kind === 'item' && r.item.loc ? ' · ' + esc(Core.locText(r.item)) : '') + '</small><span class="hi' + (cands ? '' : ' bad') + '">' + esc(info) + '</span></div><button class="star ' + (pinned ? '' : 'off') + '" data-pin="' + r.id + '" title="먼저 넣을 치료로 표시(자동 배치에서 가장 먼저)">' + (pinned ? '★' : '☆') + '</button><span class="n ' + (cands ? '' : 'zero') + '">' + (cands ? '가능 ' + cands + '곳' : (hi.cross ? '다른 층만' : '자리 없음')) + '</span>' + (r.kind === 'item' ? '<button data-gone="' + esc(r.item.name) + '" title="퇴원/결석 등 오늘 치료 없음">제외</button>' : '') + '</div>';
       }).join('');
     }
@@ -2060,7 +2200,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var aw = Object.keys(st.away || {});
     function hmFromMin(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
     $('#goneTags').innerHTML = (gn.length || aw.length) ? gn.map(function (n) { return '<span class="tag">' + esc(n) + '<button data-ungone="' + esc(n) + '">×</button></span>'; }).join('')
-      + aw.map(function (n) { var a = st.away[n], rg = a.ranges && a.ranges.length ? a.ranges.map(function (r) { return hmFromMin(r[0]) + '~' + hmFromMin(r[1]); }).join(',') : '종일'; return '<span class="tag away">' + esc(n) + '<small>' + esc((a.kind || '') + ' ' + rg) + '</small><button data-unaway="' + esc(n) + '">×</button></span>'; }).join('') : '<span class="empty">없음</span>';
+      + aw.map(function (n) { var a = st.away[n], rg = a.ranges && a.ranges.length ? a.ranges.map(function (r) { return r[0] === 0 && r[1] === 750 ? '오전' : (r[0] === 750 && r[1] === 1440 ? '오후' : (r[1] === 750 ? hmFromMin(r[0]) + '~오전 끝' : (r[1] === 1440 ? hmFromMin(r[0]) + ' 이후' : hmFromMin(r[0]) + '~' + hmFromMin(r[1])))); }).join(',') : '종일'; return '<span class="tag away">' + esc(n) + '<small>' + esc((a.kind || '') + ' ' + rg) + '</small><button data-unaway="' + esc(n) + '">×</button></span>'; }).join('') : '<span class="empty">없음</span>';
     renderPrioSum(); renderChecks(); renderSideMini();
   }
 
@@ -2071,6 +2211,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var list = Core.checkPlacements(S.gen, S.st, S.cards), warn = list.filter(function (x) { return x.kind !== 'cross'; }), cross = list.filter(function (x) { return x.kind === 'cross'; });
     S.nWarn = warn.length;
     $('#checkCnt').textContent = warn.length ? '확인 ' + warn.length + '건' : (S.st.absent.length ? '이상 없음' : '');
+    var cc = $('#cntC'); if (cc) { cc.textContent = warn.length || ''; cc.className = warn.length ? 'warn' : ''; }
     var h = '';
     if (warn.length) h += warn.map(function (x) { return '<div class="ck-row warn" data-chk="' + esc(x.id) + '"><b>' + esc(CHK_LABEL[x.kind] || x.kind) + '</b> ' + esc(x.text) + '</div>'; }).join('');
     else h += '<div class="empty">' + (S.st.absent.length ? '규칙에 어긋난 배치가 없어요.' : '연차 선생님을 선택하면 넣은 배치를 점검해요.') + '</div>';
@@ -2103,12 +2244,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   /* ---------- 오른쪽 패널 접기 ---------- */
   function sideOff() { try { return localStorage.getItem('otPreview:side') === 'off'; } catch (e) { return false; } }
-  function applySide() { var off = sideOff(); document.body.classList.toggle('side-off', off); var b = $('#btnSide'); if (b) b.textContent = off ? '◀ 패널 펴기' : '패널 접기 ▶'; }
+  function applySide() { var off = sideOff(); document.body.classList.toggle('side-off', off); setTimeout(function () { if (S.st && $('#app').classList.contains('on')) renderGrid(); }, 0); }
+  function showPane(k) { $$('#ptabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-pane') === k); }); $$('.pane').forEach(function (p) { p.classList.toggle('on', p.getAttribute('data-pane') === k); }); try { localStorage.setItem('otPreview:pane', k); } catch (e) { } }
   function toggleSide() { try { localStorage.setItem('otPreview:side', sideOff() ? 'on' : 'off'); } catch (e) { } applySide(); }
   function renderSideMini() {
     var el = $('#sideMini'); if (!el || !S.st) return;
     var un = Core.unplacedItems(S.gen, S.st).length;
-    el.innerHTML = sideOff() && S.st.absent.length ? '<span class="stat red">HOLD <b>' + un + '</b></span>' + (S.nWarn ? '<span class="stat red">점검 <b>' + S.nWarn + '</b></span>' : '') : '';
+    el.innerHTML = sideOff() && S.st.absent.length ? '<span class="sbadge">HOLD ' + un + '</span>' + (S.nWarn ? '<span class="sbadge">점검 ' + S.nWarn + '</span>' : '') : '';
   }
 
   var BY_LABEL = { pin: '★ 먼저 넣기', type: '치료 종류', absent: '연차 선생님 순서', time: '시간' };
@@ -2150,7 +2292,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     window.__cardApi(name, parseInt(cd.floor, 10), Core.DAYS[S.st.wd - 1] + '요일').then(function (d) {
       var wrap = $('#cardWrap'); if (!d || !wrap || !M || M.cardKey !== key) return;
       wrap.innerHTML = '<div class="cardzoom">' + d.html + '</div>';
-      var z = wrap.firstChild; z.style.zoom = Math.min(1, (wrap.clientWidth - 12) / d.width);
+      var z = wrap.firstChild; z.style.zoom = Math.min(1, (wrap.clientWidth - 12) / d.width, Math.max(220, window.innerHeight * 0.58) / d.height); // 팝업 안에서 카드가 따로 스크롤되지 않게 폭·높이 모두 맞춘다
       markCard(z, d, srcHm, dstHm);
     });
   }
@@ -2172,9 +2314,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (el.mode === 'free') return '<span class="badge free">빈 시간</span>';
     if (el.mode === 'swap') return '<span class="badge swap">교환 가능</span>';
     if (el.mode === 'same') return '<span class="badge same">같은 시간</span>';
+    if (el.mode === 'ask') return '<span class="badge ask">기구 옮김 확인</span>';
     return '<span class="badge nocard">전체시간표(원본) 없음</span>';
   }
 
+  function rowIdxOf(rec) { return S.gen.timeRows.map(function (t) { return t.row; }).indexOf(rec.r); }
+  function openItemModal(itemId) {
+    var rec = S.gen.cells[itemId]; if (!rec) return;
+    S.selected = null;
+    M = { mode: 'place', byItem: true, itemId: itemId, slotId: null, loc: null, swapOn: true, swapName: null };
+    renderPlaceModal();
+  }
   function openPlaceModal(slotId, pre) {
     var gen = S.gen, st = S.st, slot = gen.cells[slotId];
     var list = Core.eligibleItemsForSlot(gen, st, S.cards, slot);
@@ -2185,21 +2335,36 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function renderPlaceModal() {
-    var gen = S.gen, st = S.st, slot = gen.cells[M.slotId], th = gen.colSet[slot.c];
-    var list = Core.eligibleItemsForSlot(gen, st, S.cards, slot);
-    var cur = list.filter(function (x) { return x.rec.id === M.sel; })[0] || list[0];
-    if (!cur) { closeModal(); return; }
-    M.sel = cur.rec.id;
-    var rec = cur.rec, el = cur.elig, it = rec.item;
+    var gen = S.gen, st = S.st, slot, th, list, cur, rec, el, it, left;
+    if (M.byItem) { // HOLD를 눌렀을 때: 이 치료를 넣을 수 있는 자리(선생님·시간) 목록
+      rec = gen.cells[M.itemId]; it = rec.item;
+      var cands = Core.candidateSlotsForItem(gen, st, S.cards, rec), asks = Core.askSlotsForItem(gen, st, S.cards, rec), all = cands.concat(asks);
+      if (!all.length) { closeModal(); toast('넣을 수 있는 자리가 없어요'); return; }
+      cur = all.filter(function (x) { return x.slot.id === M.slotId; })[0] || all[0];
+      M.slotId = cur.slot.id; M.sel = rec.id; slot = cur.slot; el = cur.elig; list = all;
+      var slotRow = function (x, ask) {
+        var sl = x.slot, c = gen.colSet[sl.c], on = sl.id === M.slotId, rd = x.elig.rowDiff;
+        return '<div class="mitem ' + (on ? 'on' : '') + (ask ? ' ask' : '') + '" data-pickslot="' + sl.id + '"><b>' + sl.hm + ' · ' + esc(c.name) + ' 선생님</b>' + badgeFor(x.elig) + (x.elig.crossFloor ? '<span class="badge xf">다른 층</span>' : '') + '<small>' + esc(c.floor + (c.team ? ' ' + c.team : '')) + (rd === 0 ? ' · 같은 시간' : ' · 원래보다 ' + rd + '칸 ' + (rowIdxOf(sl) > rowIdxOf(rec) ? '뒤' : '앞')) + '</small></div>';
+      };
+      left = '<div class="gl" style="margin-top:0">넣을 수 있는 자리 ' + cands.length + '곳</div>' + (cands.length ? cands.map(function (x) { return slotRow(x, false); }).join('') : '<div class="empty">자동으로 넣을 수 있는 자리는 없어요</div>') +
+        (asks.length ? '<div class="gl">⚠ 기구를 옮겨야 넣을 수 있는 자리 ' + asks.length + '곳 <small>(눌러서 확인)</small></div>' + asks.map(function (x) { return slotRow(x, true); }).join('') : '');
+    } else {
+      slot = gen.cells[M.slotId];
+      list = Core.eligibleItemsForSlot(gen, st, S.cards, slot);
+      cur = list.filter(function (x) { return x.rec.id === M.sel; })[0] || list[0];
+      if (!cur) { closeModal(); return; }
+      M.sel = cur.rec.id; rec = cur.rec; el = cur.elig; it = rec.item;
+      left = list.map(function (x) {
+        var r = x.rec, on = r.id === M.sel;
+        return '<div class="mitem ' + (on ? 'on' : '') + '" data-pick="' + r.id + '"><b>' + esc(descOf(r)) + '</b>' + badgeFor(x.elig) + (x.elig.crossFloor ? '<span class="badge xf">다른 층</span>' : '') + '<small>' + esc(gen.colSet[r.c].name) + ' 선생님 · ' + r.hm + (r.kind === 'item' && r.item.loc ? ' · ' + esc(Core.locText(r.item)) : '') + '</small></div>';
+      }).join('');
+    }
+    th = gen.colSet[slot.c];
     var ls = it ? Core.locSuggestions(gen, st, rec, slot.r, slot.c, S.cards) : null;
     if (M.loc === null) M.loc = it ? (ls.best || it.loc || '') : '';
-    if (M.swapName === null) M.swapName = el.swapName || '';
+    if (M.swapName === null || M.swapFor !== slot.id) { M.swapName = el.swapName || ''; M.swapFor = slot.id; }
     var cd = it ? S.cards[it.name] : null;
-    var left = list.map(function (x) {
-      var r = x.rec, on = r.id === M.sel;
-      return '<div class="mitem ' + (on ? 'on' : '') + '" data-pick="' + r.id + '"><b>' + esc(descOf(r)) + '</b>' + badgeFor(x.elig) + (x.elig.crossFloor ? '<span class="badge xf">다른 층</span>' : '') + '<small>' + esc(gen.colSet[r.c].name) + ' 선생님 · ' + r.hm + (r.kind === 'item' && r.item.loc ? ' · ' + esc(Core.locText(r.item)) : '') + '</small></div>';
-    }).join('');
-    var right = '<h4>' + esc(descOf(rec)) + ' <span style="font-weight:400;color:var(--muted)">· ' + esc(gen.colSet[rec.c].name) + ' 선생님 ' + rec.hm + ' → ' + esc(th.name) + ' 선생님 ' + slot.hm + '</span></h4>';
+    var head4 = '<h4>' + esc(descOf(rec)) + ' <span style="font-weight:400;color:var(--muted)">· ' + esc(gen.colSet[rec.c].name) + ' 선생님 ' + rec.hm + ' → ' + esc(th.name) + ' 선생님 ' + slot.hm + '</span></h4>', right = '';
     if (cd) {
       right += cardSection(cd, it.name, rec.hm, slot.hm);
     } else if (it) {
@@ -2207,6 +2372,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     } else {
       right += '<div class="meta">치료실 블록(' + esc(rec.text.trim()) + ')은 그대로 옮겨져요.</div>';
     }
+    var cardPart = right; right = '';
     right += '<div class="form">';
     if (it) {
       var sugs = [], lab = {};
@@ -2223,14 +2389,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         right += '<div class="note2">' + (ls.hasMat ? '추천은 매트·테이블 현황(' + st.date.slice(5).replace('-', '/') + ' 시트)에서 그 시간에 비어 있는 자리 중 번호가 가까운 순이에요.' : '매트·테이블 현황을 넣으면 그날의 실제 빈 자리로 추천해요. 지금은 평일시간표(원본)의 번호 기준이에요.') + '</div>';
       }
     }
-    if (el.mode === 'swap') {
-      right += '<div class="line"><label><input type="checkbox" id="mSwap" ' + (M.swapOn ? 'checked' : '') + '> 교환</label><span>' + el.swapFrom + '의 </span><input type="text" id="mSwapName" value="' + esc(M.swapName) + '" size="8"><span> → ' + el.swapTo + '로 이동 (카톡 문구에 같이 적혀요)</span></div><div class="note2">그 시간에 환자는 ' + esc(el.swapName) + '(이)가 잡혀 있어서, 서로 시간을 맞바꾸는 경우예요. 맞바꾼 치료의 새 시간은 해당 시간표에서 따로 확인해 주세요.</div>';
+    if (el.mode === 'ask') right += '<div class="askbox"><b>⚠ 기구를 옮겨야 넣을 수 있는 자리예요</b><br>이 시간(' + slot.hm + ')에 환자는 <b>' + esc(el.askTx) + '</b> 치료가 잡혀 있어요(전체시간표 기준). 기구는 1:다 치료라 시간을 옮길 수 있어요 → <b>' + slot.hm + '의 기구를 원래 치료 시간 ' + el.swapTo + '로 옮기면</b> 환자 시간이 겹치지 않아요.<br><span class="note2">단, ' + el.swapTo + '에 기구 자리가 비어 있는지는 기구시간표에서 직접 확인해 주세요. 확인했으면 아래 체크를 켠 채로 넣으면 카톡 문구에 「기구 시간변경」이 같이 적혀요(자동으로 옮기지는 않아요).</span></div>';
+    if (el.mode === 'swap' || el.mode === 'ask') {
+      right += '<div class="line"><label><input type="checkbox" id="mSwap" ' + (M.swapOn ? 'checked' : '') + '> ' + (el.mode === 'ask' ? '기구 옮김' : '교환') + '</label><span>' + el.swapFrom + '의 </span><input type="text" id="mSwapName" value="' + esc(M.swapName) + '" size="8"><span> → ' + el.swapTo + '로 이동 (카톡 문구에 같이 적혀요)</span></div><div class="note2">그 시간에 환자는 ' + esc(el.swapName) + '(이)가 잡혀 있어서, 서로 시간을 맞바꾸는 경우예요. 맞바꾼 치료의 새 시간은 해당 시간표에서 따로 확인해 주세요.</div>';
     }
     right += '</div>';
-    var html = '<div class="mhead"><h2>' + slot.hm + ' · ' + esc(th.name) + ' 선생님 빈 시간<small>' + list.length + '명 넣을 수 있어요 — 이름을 눌러 확인하세요</small></h2><button data-close="1">닫기 ✕</button></div>' +
-      '<div class="mbody"><div class="mlist">' + left + '</div><div class="mdetail">' + right + '</div></div>' +
-      '<div class="mfoot"><span class="grow">넣으면 초록색으로 표시돼요. 나중에 칸을 눌러 취소할 수 있어요.</span><button data-close="1">취소</button><button class="primary" data-confirm="1">이 시간에 넣기</button></div>';
-    openModal(html);
+    var html = '<div class="mhead"><h2>' + (M.byItem ? esc(descOf(rec)) + ' <small>' + esc(gen.colSet[rec.c].name) + ' 선생님 ' + rec.hm + ' · 넣을 수 있는 자리 ' + list.length + '곳 — 자리를 눌러 확인하세요</small>' : slot.hm + ' · ' + esc(th.name) + ' 선생님 빈 시간<small>' + list.length + '명 넣을 수 있어요 — 이름을 눌러 확인하세요</small>') + '</h2><button data-close="1">닫기 ✕</button></div>' +
+      '<div class="mbody"><div class="mlist">' + left + '</div><div class="mdetail">' + head4 + '<div class="split"><div class="splitL">' + cardPart + '</div><div class="splitR">' + right + '</div></div></div></div>' +
+      '<div class="mfoot"><span class="grow">넣으면 초록색으로 표시돼요. 나중에 칸을 눌러 취소할 수 있어요.</span><button data-close="1">취소</button><button class="primary" data-confirm="1">' + (M.byItem ? '이 자리에 넣기' : '이 시간에 넣기') + '</button></div>';
+    var sx = M.listScroll; openModal(html); if (sx != null) { var ml = $('#modal .mlist'); if (ml) ml.scrollTop = sx; }
     if (cd && it) fillRealCard(cd, it.name, rec.hm, slot.hm);
   }
 
@@ -2345,6 +2512,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (t.closest('[data-textcopy]')) { copyText($('#textOut').value, $('#textOut')); return; }
       }
       if (M && M.mode === 'place') {
+        if ((b = t.closest('[data-pickslot]'))) { M.listScroll = ($('#modal .mlist') || {}).scrollTop; M.slotId = b.getAttribute('data-pickslot'); M.loc = null; M.swapName = null; M.swapOn = true; renderPlaceModal(); return; }
         if ((b = t.closest('[data-pick]'))) { M.sel = b.getAttribute('data-pick'); M.loc = null; M.swapName = null; M.swapOn = true; renderPlaceModal(); return; }
         if ((b = t.closest('[data-sug]'))) { M.loc = b.getAttribute('data-sug'); var inp = $('#mLoc'); if (inp) inp.value = M.loc; $$('[data-sug]').forEach(function (x) { x.classList.toggle('on', x === b); }); return; }
         if (t.closest('[data-confirm]')) {
@@ -2352,7 +2520,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           var rec = S.gen.cells[M.sel], slot = S.gen.cells[M.slotId];
           var el = Core.eligibility(S.gen, S.st, S.cards, rec, slot.r);
           var swap = null;
-          if (el.mode === 'swap' && swapCb && swapCb.checked) swap = { name: (swapNm && swapNm.value.trim()) || el.swapName, from: el.swapFrom, to: el.swapTo };
+          if ((el.mode === 'swap' || el.mode === 'ask') && swapCb && swapCb.checked) swap = { name: (swapNm && swapNm.value.trim()) || el.swapName, from: el.swapFrom, to: el.swapTo };
           Core.placeItem(S.gen, S.st, S.cards, rec.id, slot.r, slot.c, { loc: locIn ? locIn.value.trim() : '', manual: true, swap: swap });
           S.selected = null;
           closeModal(); changed();
@@ -2400,14 +2568,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var unaway = t.closest('[data-unaway]');
     if (unaway) { Core.removeAway(S.st, unaway.getAttribute('data-unaway')); changed(); return; }
     var hrow = t.closest('[data-hold]');
-    if (hrow) { var id = hrow.getAttribute('data-hold'); S.selected = S.selected === id ? null : id; render(); return; }
+    if (hrow) { openItemModal(hrow.getAttribute('data-hold')); return; }
     // 그리드 셀
     var x = t.closest('button.x');
     if (x) { openFreeModal(x.closest('td').getAttribute('data-id')); return; }
     var td = t.closest('td[data-act]');
     if (td) {
       var act = td.getAttribute('data-act'), cid = td.getAttribute('data-id');
-      if (act === 'hold') { S.selected = S.selected === cid ? null : cid; render(); return; }
+      if (act === 'hold') { openItemModal(cid); return; }
       if (act === 'cand') { openPlaceModal(cid, S.selected); return; }
       if (act === 'slot') { toast(Core.unplacedItems(S.gen, S.st).length ? '이 시간에 넣을 수 있는 미배치 치료가 없어요' : '아직 넣을 치료가 없어요 (연차 선생님을 먼저 선택하세요)'); return; }
       if (act === 'placed') { openPlacedModal(td.getAttribute('data-src')); return; }
@@ -2434,6 +2602,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('#mback').classList.contains('on')) closeModal(); });
 
+  $('#ptabs').addEventListener('click', function (e) { var b = e.target.closest('button[data-pane]'); if (b) showPane(b.getAttribute('data-pane')); });
   $('#teamTabs').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-t]'); if (!b) return;
     S.team = b.getAttribute('data-t');
@@ -2442,22 +2611,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   });
   function needAbsent() { if (!S.st.absent.length) { toast('먼저 연차/휴가 선생님을 선택하세요'); return true; } return false; }
   $('#btnAutoAll').addEventListener('click', function () {
+    showPane('b');
     if (needAbsent()) return;
     var r = Core.autoPlaceAll(S.gen, S.st, S.cards);
     changed();
     toast('같은 시간 ' + r.same + ' · 시간 바꿔서 ' + r.change + (r.cross ? ' · 다른 층 ' + r.cross : '') + ' · 남은 HOLD ' + r.left + ' (제안이에요 — 칸을 눌러 바꿀 수 있어요)');
   });
   $('#btnAuto').addEventListener('click', function () {
+    showPane('b');
     if (needAbsent()) return;
     var n = Core.autoPlaceSameTime(S.gen, S.st, S.cards);
     changed(); toast(n ? '같은 시간에 ' + n + '건을 넣었어요 (제안이에요 — 칸을 눌러 바꿀 수 있어요)' : '같은 시간·같은 층에 넣을 빈 칸이 없어요');
   });
   $('#btnAutoChg').addEventListener('click', function () {
+    showPane('b');
     if (needAbsent()) return;
     var n = Core.autoPlaceChangeTime(S.gen, S.st, S.cards);
     changed(); toast(n ? '시간을 바꿔서 ' + n + '건을 제안했어요 (같은 층, ' + Core.cfgOf(S.st).maxMoveRows + '칸 이내)' : '시간을 바꿔도 같은 층에 넣을 칸이 없어요');
   });
   $('#btnAutoCross').addEventListener('click', function () {
+    showPane('b');
     if (needAbsent()) return;
     var n = Core.autoPlaceChangeTime(S.gen, S.st, S.cards, { cross: true });
     changed(); toast(n ? '다른 층 선생님 칸까지 써서 ' + n + '건을 제안했어요 (붉은 테두리 = 층 이동)' : '다른 층에도 넣을 칸이 없어요');
@@ -2528,7 +2701,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   window.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) handleFiles(Array.prototype.slice.call(e.dataTransfer.files)); });
 
   try { if (window.parent !== window) document.body.classList.add('emb'); } catch (e) { document.body.classList.add('emb'); }
-  renderNeed(); applySide();
+  try { showPane(localStorage.getItem('otPreview:pane') || 'a'); } catch (e) { }
+  renderNeed(); applySide(); setTimeout(updateWait, 6200);
   $('#date').value = defaultDate();
   window.__otp = { S: S, handleBuffer: handleBuffer, startApp: startApp, render: render, setDate: setDate, renderNeed: renderNeed };
 })();

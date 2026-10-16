@@ -100,3 +100,9 @@ assert.deepStrictEqual(S.DEFAULTS.navHidden, []);
 assert.deepStrictEqual(S.normalize({ navHidden: ['sub', 'home', 'settings', 'zzz', 'rm'] }).navHidden, ['rm', 'sub']);
 assert.deepStrictEqual(S.normalize({ navHidden: 'sub' }).navHidden, []);
 console.log('사이드바 메뉴 숨기기 점검 통과');
+
+// ⑪ 화면 크기(%): 5% 단위로 70~160, 예전 작게·보통·크게에서 이어받기
+assert.strictEqual(S.DEFAULTS.zoom, 100);
+assert.strictEqual(S.normalize({ zoom: 97 }).zoom, 95); assert.strictEqual(S.normalize({ zoom: 500 }).zoom, 160); assert.strictEqual(S.normalize({ zoom: 10 }).zoom, 70);
+assert.strictEqual(S.normalize({ fontSize: 'large' }).zoom, 112, '예전 「크게」는 보던 크기(112%) 그대로'); assert.strictEqual(S.normalize({ fontSize: 'small' }).zoom, 92); assert.strictEqual(S.normalize({ zoom: '', fontSize: 'normal' }).zoom, 100);
+console.log('화면 크기 점검 통과');

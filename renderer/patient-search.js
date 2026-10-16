@@ -43,7 +43,7 @@
   // 메신저의 오늘·내일 외출·외박(설정 연동이 꺼져 있거나 못 읽으면 아무것도 안 보인다)
   const awayHits = (name) => (typeof window.__awayFor === 'function' ? window.__awayFor(name) : []);
   const awayBadge = (name) => { const h = awayHits(name).filter(x => x.when === '오늘')[0]; return h ? `<em class="ps-away">${esc(h.kind)} 중${h.loose ? '?' : ''}</em>` : ''; };
-  const awayLine = (name) => { const hs = awayHits(name); return hs.length ? `<div class="ps-away-line">🚶 ${hs.map(h => `<b>${esc(h.when)} ${esc(h.kind)}</b>${h.time ? ' ' + esc(h.time) : ''}${h.loose ? ' <span class="muted">(이름이 같은 다른 환자일 수 있어요)</span>' : ''}`).join(' · ')}<small>메신저</small></div>` : ''; };
+  const awayLine = (name) => { const hs = awayHits(name); return hs.length ? `<div class="ps-away-line">🚶 ${hs.map(h => `<b>${esc(h.when)} ${esc(h.kind)}</b>${h.time ? ' · ' + esc(h.time) : ''}${h.loose ? ' <span class="muted">(이름이 같은 다른 환자일 수 있어요)</span>' : ''}`).join(' · ')}<small>메신저</small></div>` : ''; };
   let ov = null, results = [], sel = 0, input = null;
   const isOpen = () => !!ov;
   // 검색창에 쓰기 단축키(설정 > 단축키, 기본 F2): 어디를 눌러 놓았든 검색창으로 돌아가 바로 글을 쓸 수 있게(쓰던 글은 선택되어 덮어써진다). 검색창이 닫혀 있으면 false(= 할 일 없음)

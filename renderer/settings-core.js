@@ -7,7 +7,7 @@
   const DEFAULTS = {
     syncMode: 'instant', syncModeChosen: false, checkSec: 30, notifyStale: true, notifyOneDrive: true,
     dataView: 'list', dataStaleFirst: true, dataHideUnused: false,
-    homeLayout: 'workbench', sidebar: 'last', fontSize: 'normal', color: 'pastel', filesArea: 'collapsed',
+    homeLayout: 'workbench', sidebar: 'last', fontSize: 'normal', zoom: 100, color: 'pastel', filesArea: 'collapsed',
     actingSeverity: 'error', grandStats: 'collapsed', grandTime: '09',
     shortcuts: true, keymap: {},
     itda: true, itdaPush: true, itdaCategory: '그랜드라운딩',
@@ -101,6 +101,9 @@
     // 예전 기본값(앱 실행 시)을 사용자가 직접 고르지 않았다면 새 기본값(바뀌면 바로)으로 한 번 옮긴다 — 기본 설정이 "파일을 덮어써도 버튼을 눌러야 반영"이라 오래된 내용으로 검사하기 쉬웠다
     if (!s.syncModeChosen && s.syncMode === 'launch') s.syncMode = 'instant';
     if (typeof r.itdaCategory === 'string' && r.itdaCategory.trim()) s.itdaCategory = r.itdaCategory.trim().slice(0, 40);
+    // 화면 크기(%): 70~160, 5% 단위. 예전 「작게·보통·크게」만 저장돼 있으면 그 값(92·100·112%)에서 이어받는다
+    const z = Number(r.zoom);
+    s.zoom = Number.isFinite(z) && r.zoom !== '' && r.zoom != null ? Math.min(160, Math.max(70, Math.round(z / 5) * 5)) : Math.round(ZOOM[s.fontSize] * 100);
     if (typeof r.messengerDb === 'string') s.messengerDb = r.messengerDb.trim().slice(0, 500);
     if (Array.isArray(r.navHidden)) s.navHidden = NAV_HIDEABLE.filter(k => r.navHidden.includes(k));
     s.rules = normRules(r.rules);

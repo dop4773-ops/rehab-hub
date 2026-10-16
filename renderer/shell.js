@@ -563,17 +563,22 @@ async function loadMessengerAway(force) {
 }
 window.__loadAway = () => loadMessengerAway(false);
 // 환자 이름(시간표의 "이영호A" 형태 포함)에 해당하는 오늘·내일 외출·외박 [{when,kind,time,loose}]
-window.__awayFor = (name) => ['today', 'tomorrow'].flatMap((k) => MSG_AWAY[k] ? RehabCore.messengerAway.matchName(MSG_AWAY[k].items, name).map((x) => ({ when: k === 'today' ? '오늘' : '내일', kind: x.kind, time: x.time, loose: x.loose })) : []);
+window.__awayFor = (name) => ['today', 'tomorrow'].flatMap((k) => MSG_AWAY[k] ? RehabCore.messengerAway.matchName(MSG_AWAY[k].items, name).map((x) => ({ when: k === 'today' ? '오늘' : '내일', kind: x.kind, time: x.time, room: x.room, loose: x.loose })) : []);
+let msgAwayMore = {}; // 날짜별 「더 보기」 펼침(오늘/내일)
 function renderAwayHome() {
   const el = document.getElementById('wbAway'); if (!el) return;
   const head = `<div class="wb-away-h"><b>🚶 외진·외박·외출</b><small>메신저</small>${MSG_AWAY.today ? `<button class="btn" data-away-reveal>${msgAwayReveal ? '이름 가리기' : '이름 보기'}</button>` : ''}</div>`;
   if (!MSG_AWAY.today) { el.innerHTML = head + `<div class="muted" style="font-size:12px;padding:2px 2px 4px">${MSG_AWAY.at ? updEsc(MSG_AWAY.error || '불러오는 중…') : '불러오는 중…'}</div>`; return; }
-  const nm = (n) => msgAwayReveal ? n : RehabCore.therapistView.maskName(n);
-  const line = (label, s) => {
-    const total = s.items.length, cnt = RehabCore.messengerAway.KINDS.filter(k => s.counts[k]).map(k => `${k} ${s.counts[k]}`).join(' · ');
-    return `<div class="wb-away"><span class="d">${label}</span>${total ? `<span class="c">${cnt}</span>` : '<span class="muted">없음</span>'}<div class="n">${s.items.slice(0, 8).map(x => `<span class="k-${x.kind}">${updEsc(nm(x.name))}${x.time ? `<i>${updEsc(x.time)}</i>` : ''}</span>`).join('')}${total > 8 ? `<span class="more">외 ${total - 8}명</span>` : ''}</div></div>`;
+  const nm = (n) => msgAwayReveal ? n : RehabCore.therapistView.maskName(n), M = RehabCore.messengerAway;
+  const wk = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('ko-KR', { weekday: 'short' });
+  const day = (key, label, s) => {
+    const total = s.items.length, open = !!msgAwayMore[key], shown = open ? s.items : s.items.slice(0, 5);
+    const cnt = M.KINDS.filter(k => s.counts[k]).map(k => `<em class="k-${k}">${k} ${s.counts[k]}</em>`).join('');
+    return `<div class="wb-aw-day"><div class="wb-aw-dh"><b>${label}</b><span>${M.md(s.date)}(${wk(s.date)})</span>${total ? cnt : '<span class="muted">없음</span>'}</div>`
+      + shown.map(x => `<div class="wb-aw-row"><i class="k-${x.kind}">${x.kind}</i><b>${updEsc(nm(x.name))}</b><span class="rm">${x.room ? updEsc(x.room) + '호' : ''}</span><span class="tx">${updEsc(x.time)}</span></div>`).join('')
+      + (total > 5 ? `<button class="btn wb-aw-more" data-away-more="${key}">${open ? '접기 ▴' : `${total - 5}명 더 보기 ▾`}</button>` : '') + '</div>';
   };
-  el.innerHTML = head + line('오늘', MSG_AWAY.today) + line('내일', MSG_AWAY.tomorrow);
+  el.innerHTML = head + day('today', '오늘', MSG_AWAY.today) + day('tomorrow', '내일', MSG_AWAY.tomorrow);
 }
 const fmtDay = (iso) => { const d = new Date(iso + 'T00:00:00'), t = new Date(); t.setHours(0, 0, 0, 0); const wd = d.toLocaleDateString('ko-KR', { weekday: 'short' }); return d.getTime() === t.getTime() ? `오늘(${wd})` : `${d.getMonth() + 1}/${d.getDate()}(${wd})`; };
 const CROSS_CAT_LABEL = { count: '개수', location: '위치', therapist: '치료사', handover: '인수인계', eval: '평가메인', room: 'PTA 대조' };
@@ -1382,6 +1387,7 @@ document.addEventListener('click', async (e) => {
   if (fp) { chipMenu && chipMenu.dataset.for === 'files-pop' ? closeChipMenu() : openFilesPop(fp); return; }
   if (e.target.closest('[data-daily-check]')) { closeChipMenu(); runDailyCheck(); return; }
   if (e.target.closest('[data-away-reveal]')) { msgAwayReveal = !msgAwayReveal; renderAwayHome(); return; }
+  { const mb = e.target.closest('[data-away-more]'); if (mb) { msgAwayMore[mb.dataset.awayMore] = !msgAwayMore[mb.dataset.awayMore]; renderAwayHome(); return; } }
   if (e.target.closest('[data-who-all]')) { openWhoModal(); return; }
   const ts = e.target.closest('[data-today-summary]');
   if (ts) { closeChipMenu(); const ok = await copyText(todaySummaryText()); showToast(ok ? '✔ 오늘 요약을 복사했어요 — 카톡에 붙여넣기(Ctrl+V)' : '⚠ 복사하지 못했어요', 3500); return; }
@@ -1660,7 +1666,7 @@ function pushSettingsToTool(iframe) {
   try { iframe.contentWindow.__rhSettings = settings; iframe.contentWindow.__onSettingsChanged?.(); } catch (e) { /* 아직 로드 전이거나 훅이 없는 도구 */ }
 }
 const pushSettingsToTools = () => document.querySelectorAll('iframe[data-tool]').forEach(pushSettingsToTool);
-const applyZoom = () => { try { window.rehab.app.setZoom(RehabSettings.ZOOM[settings.fontSize]); } catch (e) { /* 개발용 화면 등 */ } };
+const applyZoom = () => { try { window.rehab.app.setZoom(settings.zoom / 100); } catch (e) { /* 개발용 화면 등 */ } };
 const applyHomeLayout = () => { document.body.classList.toggle('home-compact', settings.homeLayout !== 'classic'); document.body.classList.toggle('home-wb', settings.homeLayout === 'workbench'); renderHome(); };
 const applyColor = () => { document.documentElement.style.filter = settings.color === 'vivid' ? RehabSettings.VIVID_FILTER : ''; };
 // 설정 > 규칙을 바꾸면, 그 규칙으로 검사하는 파일(액팅 기록·미액팅 시간표)을 다시 도구에 넣어 바로 다시 검사한다.
@@ -1680,7 +1686,7 @@ function applySetting(key) {
     case 'sidebar': setSidebar(sidebarStart()); break;
     case 'navHidden': applyNavHidden(); break;
     case 'messengerDb': messengerAutoPath = undefined; loadMessengerAway(true); break;
-    case 'fontSize': applyZoom(); break;
+    case 'fontSize': case 'zoom': applyZoom(); break;
     case 'color': applyColor(); break;
     case 'homeLayout': applyHomeLayout(); break;
     case 'filesArea': Object.keys(filesOpen).forEach(k => delete filesOpen[k]); renderToolStrips(); break;

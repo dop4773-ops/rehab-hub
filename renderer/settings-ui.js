@@ -18,6 +18,7 @@ stq('#stTabs').addEventListener('click', (e) => { const b = e.target.closest('bu
 
 // 컨트롤 ↔ 설정 값
 function stRefreshControls() {
+  { const zv = stq('#zoomVal'); if (zv) zv.textContent = settings.zoom + '%'; }
   stRenderNavToggles();
   stAll('[data-set]').forEach(el => {
     const key = el.dataset.set, v = String(settings[key]);
@@ -41,6 +42,9 @@ stq('#msgFind')?.addEventListener('click', async () => {
   try { const f = await window.rehab.messenger.detect(); if (f.length) { setSetting('messengerDb', f[0].path); stRefreshControls(); msg.textContent = '✔ 찾았어요: ' + f[0].path; } else msg.textContent = '✕ 못 찾았어요 — 「파일 선택…」으로 직접 골라 주세요.'; } catch (e) { msg.textContent = '✕ 찾지 못했어요.'; }
 });
 stq('#msgPick')?.addEventListener('click', async () => { const p = await window.rehab.messenger.chooseDb(); if (p) { setSetting('messengerDb', p); stRefreshControls(); stq('#msgFindMsg').textContent = '✔ 선택했어요.'; } });
+// 화면 크기: 슬라이더를 끄는 동안 바로 보이고(−·＋는 5%씩, 「기본」은 100%)
+stq('.st-panel').addEventListener('input', (e) => { const el = e.target.closest('[data-set="zoom"]'); if (el) { setSetting('zoom', el.value); stq('#zoomVal').textContent = settings.zoom + '%'; } });
+stq('.st-panel').addEventListener('click', (e) => { const b = e.target.closest('[data-zoom-step]'); if (!b) return; const d = +b.dataset.zoomStep; setSetting('zoom', d ? settings.zoom + d : 100); });
 const stPanel = stq('.st-panel');
 stPanel.addEventListener('change', (e) => {
   const el = e.target.closest('[data-set]'); if (!el) return;
