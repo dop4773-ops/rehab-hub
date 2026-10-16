@@ -123,6 +123,7 @@ try { stateRestored = RehabCore.stateBackup.restoreMissing(localStorage, window.
 const settings = RehabSettings.load(localStorage);
 const settingListeners = []; // (key) => void — 설정 화면이 값이 바뀔 때 자기 표시를 고치려고 등록한다
 function setSetting(key, value) {
+  if (key === 'homeLayout') settings.homeLayoutChosen = true;
   if (key === 'syncMode') settings.syncModeChosen = true; // 사용자가 직접 고른 값은 새 기본값으로 옮기지 않는다
   settings[key] = RehabSettings.normalize({ ...settings, [key]: value })[key];
   RehabSettings.save(localStorage, settings);
@@ -558,7 +559,7 @@ async function loadMessengerAway(force) {
     else { MSG_AWAY.today = MSG_AWAY.tomorrow = null; MSG_AWAY.error = (a.ok ? b : a).message || '메신저를 읽지 못했어요.'; }
   } catch (e) { MSG_AWAY.today = MSG_AWAY.tomorrow = null; MSG_AWAY.error = '메신저를 읽지 못했어요.'; }
   MSG_AWAY.loading = false;
-  renderAwayHome(); window.__psRefresh?.();
+  renderAwayHome(); renderBoard(); window.__psRefresh?.();
   if (MSG_AWAY.again) { MSG_AWAY.again = false; loadMessengerAway(true); }
 }
 window.__loadAway = () => loadMessengerAway(false);
@@ -579,6 +580,102 @@ function renderAwayHome() {
       + (total > 5 ? `<button class="btn wb-aw-more" data-away-more="${key}">${open ? '접기 ▴' : `${total - 5}명 더 보기 ▾`}</button>` : '') + '</div>';
   };
   el.innerHTML = head + day('today', '오늘', MSG_AWAY.today) + day('tomorrow', '내일', MSG_AWAY.tomorrow);
+}
+// ── 홈 현황판(설정 > 화면 > 홈 화면 배치 > 현황판): 재원·입퇴원·회복기 종료 임박(작업치료현황) + 잇다(부재·평가 예정) + 메신저(외출) ──
+const BOARD = { sig: '', list: null, err: '', itda: null, itdaAt: 0, loading: false, gubun: '', ward: '', more: false, moveMore: false };
+async function loadBoardStatus() { // 작업치료현황 파일이 바뀐 때만 다시 읽는다(파일 서명 비교)
+  if (BOARD.loading || !lastScan) return;
+  const sig = RehabSync.roleSig(lastScan, 'status') || '';
+  if (sig === BOARD.sig && (BOARD.list || (BOARD.err && Date.now() - BOARD.errAt < 60 * 1000))) return; // 못 읽었을 땐 1분 뒤 다시 시도
+  BOARD.loading = true; BOARD.sig = sig; BOARD.errAt = Date.now(); BOARD.list = null; BOARD.err = '';
+  try {
+    if (!sig) BOARD.err = '작업치료현황 파일을 찾지 못했어요(데이터 준비에서 확인).';
+    else { const book = await RehabCore.readWorkbookFile((await getFilesForRole('status'))[0]); BOARD.list = (await RehabCore.parseStatusSheet(book)).list; }
+  } catch (e) { BOARD.err = (e && e.message) || '작업치료현황을 읽지 못했어요.'; }
+  BOARD.loading = false; renderBoard();
+}
+async function loadBoardItda(force) { // 잇다: 부재(구글캘린더)·평가 예정 — 읽기 전용, 1분에 한 번
+  if (!settings.itda) { BOARD.itda = null; return; }
+  if (!force && Date.now() - BOARD.itdaAt < 60 * 1000) return;
+  BOARD.itdaAt = Date.now();
+  try { BOARD.itda = await window.rehab.itda.homeInfo(); } catch (e) { BOARD.itda = { ok: false, message: '잇다를 읽지 못했어요.' }; }
+  renderBoard();
+}
+const loadBoard = (force) => { if (settings.homeLayout === 'board') { loadBoardStatus(); loadBoardItda(force); } };
+function renderBoard() {
+  const el = document.getElementById('homeBoard'); if (!el || settings.homeLayout !== 'board') return;
+  const H = RehabCore.homeboard, now = new Date(), todayISO = isoOf(now), tomoISO = isoOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  const st = BOARD.list ? H.summarize(BOARD.list, now) : null, itda = BOARD.itda && BOARD.itda.ok ? BOARD.itda : null;
+  const nm = (n) => msgAwayReveal ? n : RehabCore.therapistView.maskName(n), E = updEsc;
+  const cross = readToolSummary('cross'), acting = readToolSummary('acting'), ctx = BOARD.ctx || {};
+  const wd = (d) => '일월화수목금토'[d.getDay()];
+  const leaveOn = (iso) => itda ? itda.leaves.filter(l => l.from <= iso && l.to >= iso) : null;
+  const lvToday = leaveOn(todayISO), lvTomo = leaveOn(tomoISO), away = MSG_AWAY.today ? MSG_AWAY.today.items : null;
+  // 1) 숫자 띠
+  const kp = (lbl, num, cls, sub) => `<div class="bd-k"><span>${lbl}</span><b class="${cls}">${num}</b><small>${sub || '&nbsp;'}</small></div>`;
+  const dash = '–';
+  const kpis = kp('재원', st ? st.total : dash, '', '입원·재입원')
+    + kp('오늘 입원', st ? st.adm.filter(x => x.off === 0).length : dash, 'g', st ? `내일 ${st.adm.filter(x => x.off === 1).length}` : '')
+    + kp('오늘 퇴원 예정', st ? st.dis.filter(x => x.off === 0).length : dash, 'r', st ? `내일 ${st.dis.filter(x => x.off === 1).length}` : '')
+    + kp('외출·외진·외박', away ? away.length : dash, '', away ? '메신저 · 오늘' : '메신저 연동 전')
+    + kp('오늘 부재', lvToday ? lvToday.length : dash, '', lvTomo ? `내일 ${lvTomo.length}` : '잇다 연동 전')
+    + kp('회복기 임박', st ? st.soon : dash, 'o', '14일 이내');
+  // 2) 회복기 종료 임박 표
+  let table;
+  if (!st) table = `<div class="muted bd-empty">${E(BOARD.err || '작업치료현황을 읽는 중…')}</div>`;
+  else {
+    const gubuns = [...new Set(st.ending.map(x => x.gubun))], wards = [...new Set(st.ending.map(x => x.ward).filter(Boolean))].sort((a, b) => a - b);
+    const rows = st.ending.filter(x => (!BOARD.gubun || x.gubun === BOARD.gubun) && (!BOARD.ward || x.ward === BOARD.ward)), shown = BOARD.more ? rows.slice(0, 40) : rows.slice(0, 10);
+    const chip = (attr, v, label, on) => `<button class="bd-chip${on ? ' on' : ''}" ${attr}="${E(v)}">${E(label)}</button>`;
+    const dd = (x) => x.left < 0 ? `<span class="bd-d r">초과 ${-x.left}일</span>` : `<span class="bd-d ${x.left <= 3 ? 'r' : x.left <= 7 ? 'o' : ''}">${x.left === 0 ? '오늘' : 'D-' + x.left}</span>`;
+    table = `<div class="bd-chips">${chip('data-bd-g', '', '전체', !BOARD.gubun)}${gubuns.map(g => chip('data-bd-g', g, g, BOARD.gubun === g)).join('')}<i></i>${chip('data-bd-w', '', '전 병동', !BOARD.ward)}${wards.map(w => chip('data-bd-w', w, w + '병동', BOARD.ward === w)).join('')}</div>`
+      + (rows.length ? `<table class="bd-t"><thead><tr><th>종료</th><th>구분</th><th>주치의</th><th>병동·병실</th><th>성명</th><th>입원일</th><th>종료일</th></tr></thead><tbody>`
+        + shown.map(x => `<tr><td>${dd(x)}</td><td>${E(x.gubun)}</td><td>${E(x.dept)}</td><td>${x.ward ? E(x.ward) + '병동 ' : ''}${E(x.room)}</td><td><b>${E(nm(x.name))}</b></td><td>${x.admDate ? H.md(x.admDate) : ''}</td><td>${H.md(x.endDate)}</td></tr>`).join('') + '</tbody></table>'
+        + (rows.length > 10 ? `<button class="btn bd-more" data-bd-more>${BOARD.more ? '접기 ▴' : `${rows.length - 10}명 더 보기 ▾`}</button>` : '')
+        : '<div class="muted bd-empty">조건에 맞는 환자가 없어요</div>');
+  }
+  // 3) 담당자별 확인 필요
+  const who = (cross && cross.byWho) || [], mx = who.length ? who[0].count : 1;
+  const whoHtml = who.length ? who.slice(0, 6).map(w => `<div class="wb-who" data-who-plan="${E(w.name)}" title="${E(w.name)} 수정 지시서 열기"><b>${E(w.name)}</b><div class="b"><i style="width:${Math.max(8, Math.round(w.count / mx * 100))}%"></i></div><span>${w.count}</span></div>`).join('')
+    : `<div class="muted bd-empty">${cross ? '지금은 확인할 담당자가 없어요 ✅' : '교차검증을 실행하면 담당자별로 보여드려요'}</div>`;
+  // 4) 오늘 부재(잇다 구글캘린더)
+  const lvRow = (l) => `<div class="bd-r"><b>${E(l.name)}</b><span class="bd-tag${l.half ? ' h' : ''}">${E(l.label)}</span>${l.to > l.from ? `<small>~${l.to.slice(5).replace('-', '/')}</small>` : ''}</div>`;
+  const lvHtml = !settings.itda ? '<div class="muted bd-empty">잇다 연동이 꺼져 있어요(설정 › 잇다 연동)</div>'
+    : !itda ? `<div class="muted bd-empty">${E(BOARD.itda ? BOARD.itda.message : '불러오는 중…')}</div>`
+    : itda.leaveError ? `<div class="muted bd-empty">${E(itda.leaveError)}</div>`
+    : (lvToday.length ? lvToday.map(lvRow).join('') : '<div class="muted bd-empty">오늘 부재 없음</div>')
+      + `<div class="bd-sub">내일 ${lvTomo.length ? lvTomo.map(l => `${E(l.name)} ${E(l.label)}`).join(' · ') : '없음'}</div>`
+      + (lvToday.length ? '<div class="bd-sub"><a class="act" data-goto="sub">대체치료 열기 →</a></div>' : '');
+  // 5) 오늘·내일 환자 이동(입퇴원 + 외출)
+  const mv = [];
+  if (st) { st.adm.forEach(x => mv.push({ k: '입원', c: 'g', n: x.name, w: x.ward ? x.ward + '병동 ' + x.room : x.room, t: x.off ? '내일' : '오늘' }));
+    st.dis.forEach(x => mv.push({ k: '퇴원', c: 'r', n: x.name, w: x.ward ? x.ward + '병동 ' + x.room : x.room, t: (x.off ? '내일' : '오늘') + (x.text ? ' ' + x.text : '') })); }
+  if (away) away.forEach(x => mv.push({ k: x.kind, c: 'o', n: x.name, w: x.room ? x.room + '호' : '', t: x.time }));
+  const mvShown = BOARD.moveMore ? mv : mv.slice(0, 7);
+  const mvHtml = mv.length ? mvShown.map(x => `<div class="bd-r"><span class="bd-tag ${x.c}">${E(x.k)}</span><b>${E(nm(x.n))}</b><small>${E(x.w)}</small><span class="bd-t2">${E(x.t)}</span></div>`).join('')
+      + (mv.length > 7 ? `<button class="btn bd-more" data-bd-moremv>${BOARD.moveMore ? '접기 ▴' : `${mv.length - 7}건 더 보기 ▾`}</button>` : '')
+    : `<div class="muted bd-empty">${st || away ? '오늘·내일 입퇴원·외출이 없어요' : '불러오는 중…'}</div>`;
+  // 6) 평가 예정(잇다 "평가" 카테고리)
+  const evHtml = !settings.itda ? '<div class="muted bd-empty">잇다 연동이 꺼져 있어요</div>' : !itda ? `<div class="muted bd-empty">${E(BOARD.itda ? BOARD.itda.message : '불러오는 중…')}</div>`
+    : itda.evals.length ? itda.evals.slice(0, 7).map(e => { const d = new Date(e.date + 'T00:00:00'); return `<div class="bd-r"><small class="bd-dt">${d.getMonth() + 1}/${d.getDate()}(${wd(d)})</small><b>${E(e.names.map(nm).join(', '))}</b><span class="bd-tag">${E(e.test)}</span></div>`; }).join('')
+      : '<div class="muted bd-empty">3주 안에 평가 일정이 없어요</div>';
+  // 7) 확인 필요 한 줄(눌러서 해당 화면으로)
+  const left = [];
+  if (ctx.o && (ctx.o.cls !== 'ok' || (ctx.missReq || []).length)) left.push(['data', '파일 업데이트', 'o']);
+  if (cross && cross.count) left.push(['cross', `교차검증 ${cross.count}건${cross.carry && cross.carry.hot ? ` (3일↑ ${cross.carry.hot})` : ''}`, 'r']);
+  if (!acting) left.push(['acting', 'QA 파일 올리기', 'o']); else if (acting.count) left.push(['acting', `치료기록 QA ${acting.count}건`, 'r']);
+  { const hf = handoverFreshness(); if (hf.cls !== 'ok') left.push(['handover', `인수인계 ${hf.at ? hf.age : '못 가져옴'}`, 'o']); }
+  if (backupStatus && backupStatus.level !== 'ok' && backupStatus.level !== 'off') left.push(['backup', '백업 확인', 'o']);
+  const bar = `<b>${left.length ? `확인 필요 ${left.length}` : '✅ 확인할 것을 모두 확인했어요'}</b>` + left.map(x => `<button class="bd-chip ${x[2]}" data-goto="${x[0]}">${E(x[1])}</button>`).join('')
+    ;
+  el.innerHTML = `<div class="bd-head"><b>${now.getMonth() + 1}월 ${now.getDate()}일 ${wd(now)}요일</b><span class="muted">${msgAwayReveal ? '환자 이름이 보이는 중이에요' : '환자 이름은 가려서 보여요'}</span><button class="btn" data-away-reveal>${msgAwayReveal ? '이름 가리기' : '이름 보기'}</button></div>`
+    + `<div class="bd-kpis">${kpis}</div>`
+    + `<div class="bd-grid"><div class="bd-side"><div class="card bd-main"><h2>⏳ 회복기 종료 임박 <span class="sub">종료일 빠른 순 · 작업치료현황</span></h2>${table}</div>`
+    + `<div class="card"><h2>📝 평가 예정 <span class="sub">잇다</span></h2>${evHtml}</div></div>`
+    + `<div class="bd-side"><div class="card"><h2>👥 담당자별 확인 필요 <button class="btn" data-who-all style="margin-left:auto;padding:2px 10px;font-size:11px" title="교차검증·치료기록 QA의 확인 항목을 선생님 한 사람 기준으로 합쳐서 보고, 카톡 글로 복사해요">전체 보기·카톡 복사</button></h2>${whoHtml}</div>`
+    + `<div class="card"><h2>🏖 오늘 부재 <span class="sub">잇다 · 구글캘린더</span></h2>${lvHtml}</div>`
+    + `<div class="card"><h2>🔄 입퇴원 · 외출 <span class="sub">오늘·내일</span></h2>${mvHtml}</div></div></div>`
+    + `<div class="card bd-bar">${bar}</div>`;
 }
 const fmtDay = (iso) => { const d = new Date(iso + 'T00:00:00'), t = new Date(); t.setHours(0, 0, 0, 0); const wd = d.toLocaleDateString('ko-KR', { weekday: 'short' }); return d.getTime() === t.getTime() ? `오늘(${wd})` : `${d.getMonth() + 1}/${d.getDate()}(${wd})`; };
 const CROSS_CAT_LABEL = { count: '개수', location: '위치', therapist: '치료사', handover: '인수인계', eval: '평가메인', room: 'PTA 대조' };
@@ -711,6 +808,7 @@ function renderHome() {
   renderSyncPill();
   renderToolStrips();
   if (settings.homeLayout === 'workbench') renderWorkbench(summaries, { o, missReq });
+  if (settings.homeLayout === 'board') { BOARD.ctx = { o, missReq }; renderBoard(); loadBoard(false); }
 }
 
 // ── 시간표 파일 관리 점검: 날마다 사람이 복사해 만드는 시간표(물리치료·기구·작업치료실)에 오늘 시트가 있는지, 제목에 낡은 날짜가 남지 않았는지, 로봇재활 종료일이 임박/지났는지.
@@ -1385,7 +1483,12 @@ document.addEventListener('click', async (e) => {
   const fp = e.target.closest('[data-files-pop]');
   if (fp) { chipMenu && chipMenu.dataset.for === 'files-pop' ? closeChipMenu() : openFilesPop(fp); return; }
   if (e.target.closest('[data-daily-check]')) { closeChipMenu(); runDailyCheck(); return; }
-  if (e.target.closest('[data-away-reveal]')) { msgAwayReveal = !msgAwayReveal; renderAwayHome(); return; }
+  if (e.target.closest('[data-away-reveal]')) { msgAwayReveal = !msgAwayReveal; renderAwayHome(); renderBoard(); return; }
+  { const bg = e.target.closest('[data-bd-g]'), bw = e.target.closest('[data-bd-w]');
+    if (bg) { BOARD.gubun = BOARD.gubun === bg.dataset.bdG ? '' : bg.dataset.bdG; BOARD.more = false; renderBoard(); return; }
+    if (bw) { BOARD.ward = BOARD.ward === bw.dataset.bdW ? '' : bw.dataset.bdW; BOARD.more = false; renderBoard(); return; }
+    if (e.target.closest('[data-bd-more]')) { BOARD.more = !BOARD.more; renderBoard(); return; }
+    if (e.target.closest('[data-bd-moremv]')) { BOARD.moveMore = !BOARD.moveMore; renderBoard(); return; } }
   { const mb = e.target.closest('[data-away-more]'); if (mb) { msgAwayMore[mb.dataset.awayMore] = !msgAwayMore[mb.dataset.awayMore]; renderAwayHome(); return; } }
   if (e.target.closest('[data-who-all]')) { openWhoModal(); return; }
   const ts = e.target.closest('[data-today-summary]');
@@ -1665,7 +1768,7 @@ function pushSettingsToTool(iframe) {
 }
 const pushSettingsToTools = () => document.querySelectorAll('iframe[data-tool]').forEach(pushSettingsToTool);
 const applyZoom = () => { try { window.rehab.app.setZoom(settings.zoom / 100); } catch (e) { /* 개발용 화면 등 */ } };
-const applyHomeLayout = () => { document.body.classList.toggle('home-compact', settings.homeLayout !== 'classic'); document.body.classList.toggle('home-wb', settings.homeLayout === 'workbench'); renderHome(); };
+const applyHomeLayout = () => { document.body.classList.toggle('home-compact', settings.homeLayout !== 'classic'); document.body.classList.toggle('home-wb', settings.homeLayout === 'workbench'); document.body.classList.toggle('home-board', settings.homeLayout === 'board'); renderHome(); };
 const applyColor = () => { document.documentElement.style.filter = settings.color === 'vivid' ? RehabSettings.VIVID_FILTER : ''; };
 // 설정 > 규칙을 바꾸면, 그 규칙으로 검사하는 파일(액팅 기록·미액팅 시간표)을 다시 도구에 넣어 바로 다시 검사한다.
 let rulesTimer = null;

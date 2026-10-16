@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld('rehab', {
   itda: {
     installed: () => ipcRenderer.invoke('itda:installed'),
     grandEvents: (category) => ipcRenderer.invoke('itda:grandEvents', category),
+    homeInfo: () => ipcRenderer.invoke('itda:homeInfo'),
     pushInboxItem: (content) => ipcRenderer.invoke('itda:pushInboxItem', content),
   },
   exportFiles: {

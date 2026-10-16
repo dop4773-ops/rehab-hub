@@ -15,7 +15,7 @@ assert.strictEqual(n.shortcuts, true); assert.strictEqual(n.grandTime, '13'); as
 assert.notStrictEqual(S.normalize({}).keymap, S.DEFAULTS.keymap); // 기본값 객체를 공유하지 않는다
 
 // ② 저장/불러오기 왕복, 예전 키에서 한 번 옮겨오기
-const o = {}; S.save(mem(o), S.normalize({ dataView: 'board', homeLayout: 'classic' }));
+const o = {}; S.save(mem(o), S.normalize({ dataView: 'board', homeLayout: 'classic', homeLayoutChosen: true }));
 assert.strictEqual(S.load(mem(o)).dataView, 'board'); assert.strictEqual(S.load(mem(o)).homeLayout, 'classic');
 const legacy = S.load(mem({ rehab_sync_mode: '30', rehab_data_view_v1: 'board' }));
 assert.strictEqual(legacy.syncMode, '30'); assert.strictEqual(legacy.dataView, 'board');
@@ -106,3 +106,10 @@ assert.strictEqual(S.DEFAULTS.zoom, 100);
 assert.strictEqual(S.normalize({ zoom: 97 }).zoom, 95); assert.strictEqual(S.normalize({ zoom: 500 }).zoom, 160); assert.strictEqual(S.normalize({ zoom: 10 }).zoom, 70);
 assert.strictEqual(S.normalize({ fontSize: 'large' }).zoom, 112, '예전 「크게」는 보던 크기(112%) 그대로'); assert.strictEqual(S.normalize({ fontSize: 'small' }).zoom, 92); assert.strictEqual(S.normalize({ zoom: '', fontSize: 'normal' }).zoom, 100);
 console.log('화면 크기 점검 통과');
+{ // 홈 현황판이 새 기본값: 예전 기본값(작업대)을 그냥 쓰던 사람만 옮기고, 직접 고른 값은 건드리지 않는다
+  assert.strictEqual(S.normalize({}).homeLayout, 'board');
+  assert.strictEqual(S.normalize({ homeLayout: 'workbench' }).homeLayout, 'board', '고른 적 없는 작업대 → 현황판');
+  assert.strictEqual(S.normalize({ homeLayout: 'workbench', homeLayoutChosen: true }).homeLayout, 'workbench', '직접 고른 작업대는 유지');
+  assert.strictEqual(S.normalize({ homeLayout: 'compact' }).homeLayout, 'compact');
+  console.log('홈 현황판 기본값 점검 통과');
+}

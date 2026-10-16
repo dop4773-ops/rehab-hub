@@ -609,3 +609,36 @@ body:not(.home-wb) .wb-end{display:none}
 .who-top{display:flex;align-items:center;gap:10px;margin:0 0 10px!important}
 
 .ps-dayhd{display:flex;align-items:center;gap:8px}.ps-daysw{display:inline-flex;background:#eaeff6;border-radius:8px;padding:2px;gap:2px}.ps-daysw button{border:0;background:transparent;border-radius:6px;padding:1px 10px;font-size:11.5px;font-weight:700;color:#5b6472;cursor:pointer}.ps-daysw button.on{background:#fff;color:#2f4378;box-shadow:0 1px 3px rgba(20,40,70,.15)}
+
+/* ── 홈 현황판(설정 > 화면 > 홈 화면 배치 > 현황판) ─────────────────────────────── */
+.board{display:none}
+body.home-board .board{display:block}
+body.home-board .home-main,body.home-board .wb-tiles,body.home-board .home-cards,body.home-board .quick-bar{display:none !important}
+body.home-board .wb-memo{display:flex}
+.bd-head{display:flex;align-items:center;gap:10px;margin:10px 0 8px}.bd-head b{font-size:15px;color:var(--navy)}.bd-head .muted{font-size:11.5px}.bd-head .btn{margin-left:auto;padding:4px 12px;font-size:11.5px}
+.bd-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.bd-k{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px 13px;display:flex;flex-direction:column;gap:1px}
+.bd-k span{font-size:11.5px;color:var(--sub)}.bd-k b{font-size:22px;font-weight:800;color:var(--navy);line-height:1.25}.bd-k small{font-size:10.5px;color:var(--muted)}
+.bd-k b.g{color:var(--green)}.bd-k b.r{color:var(--red)}.bd-k b.o{color:var(--orange)}
+.bd-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:10px;align-items:start}
+.bd-side{display:flex;flex-direction:column;gap:10px}
+.bd-grid .card{padding:12px 14px}.bd-grid .card h2{font-size:13px;margin:0 0 8px}
+.bd-chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:8px}.bd-chips i{width:1px;height:16px;background:var(--border);margin:0 4px}
+.bd-chip{border:1px solid var(--border);background:#fff;border-radius:99px;padding:2px 10px;font-size:11.5px;color:var(--sub);cursor:pointer;font-family:inherit}
+.bd-chip:hover{background:#f4f7fd}.bd-chip.on{background:#eaf0fd;color:var(--navy);border-color:#b9ccf3;font-weight:700}
+.bd-chip.r{background:#fdeaec;color:var(--red);border-color:#f3c5ca}.bd-chip.o{background:#fff3dc;color:var(--orange);border-color:#f0d9a8}
+.bd-t{width:100%;border-collapse:collapse;font-size:12.5px}
+.bd-t th{font-weight:500;color:var(--muted);font-size:11px;text-align:left;padding:3px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
+.bd-t td{padding:6px;border-bottom:1px solid #eef1f6;white-space:nowrap}.bd-t tr:last-child td{border-bottom:0}.bd-t tbody tr:hover{background:#f8faff}
+.bd-d{display:inline-block;min-width:46px;text-align:center;padding:1px 8px;border-radius:7px;font-size:11.5px;font-weight:800;background:#eef1f6;color:var(--sub)}
+.bd-d.r{background:#fdeaec;color:var(--red)}.bd-d.o{background:#fff3dc;color:var(--orange)}
+.bd-r{display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid #eef1f6;font-size:12.5px}.bd-r:first-of-type{border-top:0}
+.bd-r small{color:var(--sub);font-size:11.5px}.bd-r .bd-t2{margin-left:auto;font-size:11.5px;color:var(--sub);white-space:nowrap}.bd-r .bd-dt{width:62px;flex-shrink:0}
+.bd-tag{display:inline-block;padding:1px 8px;border-radius:7px;font-size:11px;font-weight:700;background:#eef1f6;color:var(--sub);white-space:nowrap}
+.bd-tag.h{background:#eaf0fd;color:var(--navy)}.bd-tag.g{background:#e6f4ee;color:var(--green)}.bd-tag.r{background:#fdeaec;color:var(--red)}.bd-tag.o{background:#fff3dc;color:var(--orange)}
+.bd-sub{font-size:11.5px;color:var(--sub);padding-top:6px;border-top:1px dashed var(--border);margin-top:4px}.bd-sub .act{color:var(--navy);font-weight:800;cursor:pointer}
+.bd-empty{font-size:12px;padding:6px 2px}
+.bd-more{display:block;margin:8px auto 0;padding:3px 12px;font-size:11px}
+.bd-bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px;padding:9px 14px}.bd-bar>b{font-size:12.5px;margin-right:4px;color:var(--navy)}
+.bd-bar .sp{margin-left:auto;display:flex;gap:6px}.bd-bar .sp .btn{padding:4px 12px;font-size:11.5px}
+@media (max-width:1150px){.bd-grid{grid-template-columns:1fr}.bd-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}

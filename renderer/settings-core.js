@@ -7,7 +7,7 @@
   const DEFAULTS = {
     syncMode: 'instant', syncModeChosen: false, checkSec: 30, notifyStale: true, notifyOneDrive: true,
     dataView: 'list', dataStaleFirst: true, dataHideUnused: false,
-    homeLayout: 'workbench', sidebar: 'last', fontSize: 'normal', zoom: 100, color: 'pastel', filesArea: 'collapsed',
+    homeLayout: 'board', homeLayoutChosen: false, sidebar: 'last', fontSize: 'normal', zoom: 100, color: 'pastel', filesArea: 'collapsed',
     actingSeverity: 'error', grandStats: 'collapsed', grandTime: '09',
     shortcuts: true, keymap: {},
     itda: true, itdaPush: true, itdaCategory: '그랜드라운딩',
@@ -58,11 +58,11 @@
   const HOURS = ['08', '09', '10', '11', '13', '14', '15', '16'];
   const ENUMS = {
     syncMode: ['instant', 'launch', '5', '10', '30', '60', 'manual'], checkSec: [15, 30, 60, 120, 300],
-    dataView: ['list', 'matrix', 'board'], homeLayout: ['workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
+    dataView: ['list', 'matrix', 'board'], homeLayout: ['board', 'workbench', 'compact', 'classic'], sidebar: ['last', 'open', 'closed'],
     fontSize: ['small', 'normal', 'large'], color: ['pastel', 'vivid'], filesArea: ['collapsed', 'open'],
     actingSeverity: ['error', 'all'], qaStartTab: ['missing', 'error', 'therapist'], grandStats: ['collapsed', 'open'], grandTime: HOURS, exportToastAuto: ['10', '30', '60', '0'], psEnter: ['card', 'stay', 'goto'],
   };
-  const BOOLS = ['notifyStale', 'notifyOneDrive', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen', 'psRecent', 'syncModeChosen'];
+  const BOOLS = ['notifyStale', 'notifyOneDrive', 'dataStaleFirst', 'dataHideUnused', 'shortcuts', 'itda', 'itdaPush', 'qaTherapistTab', 'qaTabCounts', 'qaMaskNames', 'exportToast', 'exportToastCloseOnOpen', 'psRecent', 'syncModeChosen', 'homeLayoutChosen'];
   const ZOOM = { small: 0.92, normal: 1, large: 1.12 };
   const VIVID_FILTER = 'saturate(1.45)'; // "선명" 색감 — 파스텔 색을 그대로 두고 채도만 올린다
 
@@ -100,6 +100,7 @@
     for (const k of BOOLS) if (typeof r[k] === 'boolean') s[k] = r[k];
     // 예전 기본값(앱 실행 시)을 사용자가 직접 고르지 않았다면 새 기본값(바뀌면 바로)으로 한 번 옮긴다 — 기본 설정이 "파일을 덮어써도 버튼을 눌러야 반영"이라 오래된 내용으로 검사하기 쉬웠다
     if (!s.syncModeChosen && s.syncMode === 'launch') s.syncMode = 'instant';
+    if (!s.homeLayoutChosen && s.homeLayout === 'workbench') s.homeLayout = 'board'; // 홈 현황판이 새 기본값 — 예전 기본값(작업대)을 그대로 쓰던 사람만 한 번 옮긴다
     if (typeof r.itdaCategory === 'string' && r.itdaCategory.trim()) s.itdaCategory = r.itdaCategory.trim().slice(0, 40);
     // 화면 크기(%): 70~160, 5% 단위. 예전 「작게·보통·크게」만 저장돼 있으면 그 값(92·100·112%)에서 이어받는다
     const z = Number(r.zoom);
